@@ -1,0 +1,19 @@
+# Phase B allowed paths. Uses PowerShell -like wildcard matching.
+src/App.vue
+src/main.js
+src/i18n.js
+src/styles.css
+src/components/*.vue
+src/pages/*.vue
+src/services/*.js
+src/data/demoProducts.js
+tests/*.test.js
+docs/yudao-integration/*.md
+docs/yudao-integration/
+docs/superpowers/plans/*.md
+docs/superpowers/
+harness/phase-b/*
+harness/
+package.json
+package-lock.json
+vite.config.js

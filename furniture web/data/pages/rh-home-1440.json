@@ -1,0 +1,78 @@
+{
+  "url": "https://rh.com/us/en",
+  "title": "rh.com",
+  "capturedAt": "2026-05-26T01:46:23.028Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "devicePixelRatio": 1
+  },
+  "document": {
+    "scrollWidth": 1440,
+    "scrollHeight": 900
+  },
+  "body": {
+    "brand": null,
+    "pagePath": null,
+    "userType": null
+  },
+  "summary": {
+    "elements": 1,
+    "images": 0
+  },
+  "elements": [
+    {
+      "selector": "body",
+      "tag": "body",
+      "id": null,
+      "className": "",
+      "role": null,
+      "authoringName": null,
+      "ariaLabel": null,
+      "href": null,
+      "text": "var dd={'rt':'c','cid':'AHrlqAAAAAMAUssY-lXxgOwAjvkk1g==','hsh':'F75F6A645A0924A56C13CEADB37640','t':'bv','qp':'','s':50381,'e':'e08e82a4af7d4ae4dca5544159def63d736ef56cbca8d6dec23...",
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 1440,
+        "height": 900
+      },
+      "styles": {
+        "display": "block",
+        "position": "static",
+        "boxSizing": "content-box",
+        "width": "1440px",
+        "height": "900px",
+        "marginTop": "0px",
+        "marginRight": "0px",
+        "marginBottom": "0px",
+        "marginLeft": "0px",
+        "paddingTop": "0px",
+        "paddingRight": "0px",
+        "paddingBottom": "0px",
+        "paddingLeft": "0px",
+        "gap": "normal",
+        "fontFamily": "\"Times New Roman\"",
+        "fontSize": "16px",
+        "fontWeight": "400",
+        "lineHeight": "normal",
+        "letterSpacing": "normal",
+        "textTransform": "none",
+        "color": "rgb(0, 0, 0)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderTopWidth": "0px",
+        "borderRightWidth": "0px",
+        "borderBottomWidth": "0px",
+        "borderLeftWidth": "0px",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "objectFit": "fill",
+        "objectPosition": "50% 50%",
+        "overflow": "visible",
+        "zIndex": "auto"
+      }
+    }
+  ],
+  "images": []
+}

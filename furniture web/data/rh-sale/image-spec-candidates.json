@@ -1,0 +1,207 @@
+﻿[
+    {
+        "source":  "background-image",
+        "url":  "https://media.rh.com/is/image/rhis/11102025_RH_Sale_Membership_1600?$responsive$\u0026wid=1600\u0026bfc=on",
+        "extractedSize":  null,
+        "recommended1x":  "Use rendered container size after browser measurement",
+        "recommended2x":  "2x rendered container size",
+        "recommendedFormat":  "WebP for photos, JPG fallback",
+        "recommendedMaxSize":  "Hero 250-600KB; cards 80-180KB",
+        "objectFit":  "cover unless source layout proves contain"
+    },
+    {
+        "source":  "background-image",
+        "url":  "https://media.rh.com/is/image/rhis/11102025_RH_Sale_Membership_375?$responsive$\u0026wid=375\u0026bfc=on",
+        "extractedSize":  null,
+        "recommended1x":  "Use rendered container size after browser measurement",
+        "recommended2x":  "2x rendered container size",
+        "recommendedFormat":  "WebP for photos, JPG fallback",
+        "recommendedMaxSize":  "Hero 250-600KB; cards 80-180KB",
+        "objectFit":  "cover unless source layout proves contain"
+    },
+    {
+        "source":  "background-image",
+        "url":  "#clip0_11443_87270",
+        "extractedSize":  null,
+        "recommended1x":  "Use rendered container size after browser measurement",
+        "recommended2x":  "2x rendered container size",
+        "recommendedFormat":  "WebP for photos, JPG fallback",
+        "recommendedMaxSize":  "Hero 250-600KB; cards 80-180KB",
+        "objectFit":  "cover unless source layout proves contain"
+    },
+    {
+        "source":  "background-image",
+        "url":  "#mask0_5301_119153",
+        "extractedSize":  null,
+        "recommended1x":  "Use rendered container size after browser measurement",
+        "recommended2x":  "2x rendered container size",
+        "recommendedFormat":  "WebP for photos, JPG fallback",
+        "recommendedMaxSize":  "Hero 250-600KB; cards 80-180KB",
+        "objectFit":  "cover unless source layout proves contain"
+    },
+    {
+        "source":  "img",
+        "url":  "https://media.restorationhardware.com/is/image/rhis/05212026_RH_Sale_US CA Sale?$responsive-gallery-image$\u0026wid=2000\u0026fmt=png-alpha\u0026resMode=sharp2\u0026op_sharpen=1\u0026op_usm=1.0,0.3,1.0,0\u0026bfc=on",
+        "alt":  "",
+        "attrSize":  null,
+        "recommended1x":  "Use rendered container size after browser measurement",
+        "recommended2x":  "2x rendered container size",
+        "recommendedFormat":  "WebP for photos, PNG/WebP alpha for transparent assets",
+        "recommendedMaxSize":  "Hero 250-600KB; cards 80-180KB",
+        "objectFit":  "cover unless source layout proves contain"
+    },
+    {
+        "source":  "img",
+        "url":  "https://media.restorationhardware.com/is/image/rhis/05212026_RH_Sale_US CA Sale Mobile?$responsive-gallery-image$\u0026wid=2000\u0026fmt=png-alpha\u0026resMode=sharp2\u0026op_sharpen=1\u0026op_usm=1.0,0.3,1.0,0\u0026bfc=on",
+        "alt":  "",
+        "attrSize":  null,
+        "recommended1x":  "Use rendered container size after browser measurement",
+        "recommended2x":  "2x rendered container size",
+        "recommendedFormat":  "WebP for photos, PNG/WebP alpha for transparent assets",
+        "recommendedMaxSize":  "Hero 250-600KB; cards 80-180KB",
+        "objectFit":  "cover unless source layout proves contain"
+    },
+    {
+        "source":  "img",
+        "url":  "https://media.restorationhardware.com/is/image/rhis/03062026_RH_Core_Sale1?$responsive-gallery-image$\u0026wid=2000\u0026fmt=png-alpha\u0026bfc=on",
+        "alt":  "",
+        "attrSize":  null,
+        "recommended1x":  "Use rendered container size after browser measurement",
+        "recommended2x":  "2x rendered container size",
+        "recommendedFormat":  "WebP for photos, PNG/WebP alpha for transparent assets",
+        "recommendedMaxSize":  "Hero 250-600KB; cards 80-180KB",
+        "objectFit":  "cover unless source layout proves contain"
+    },
+    {
+        "source":  "img",
+        "url":  "https://media.restorationhardware.com/is/image/rhis/03062026_RH_Core_Sale2?$responsive-gallery-image$\u0026wid=2000\u0026fmt=png-alpha\u0026bfc=on",
+        "alt":  "",
+        "attrSize":  null,
+        "recommended1x":  "Use rendered container size after browser measurement",
+        "recommended2x":  "2x rendered container size",
+        "recommendedFormat":  "WebP for photos, PNG/WebP alpha for transparent assets",
+        "recommendedMaxSize":  "Hero 250-600KB; cards 80-180KB",
+        "objectFit":  "cover unless source layout proves contain"
+    },
+    {
+        "source":  "img",
+        "url":  "https://media.restorationhardware.com/is/image/rhis/03062026_RH_Core_Sale3?$responsive-gallery-image$\u0026wid=2000\u0026fmt=png-alpha\u0026bfc=on",
+        "alt":  "",
+        "attrSize":  null,
+        "recommended1x":  "Use rendered container size after browser measurement",
+        "recommended2x":  "2x rendered container size",
+        "recommendedFormat":  "WebP for photos, PNG/WebP alpha for transparent assets",
+        "recommendedMaxSize":  "Hero 250-600KB; cards 80-180KB",
+        "objectFit":  "cover unless source layout proves contain"
+    },
+    {
+        "source":  "img",
+        "url":  "https://media.restorationhardware.com/is/image/rhis/03062026_RH_Core_Sale4?$responsive-gallery-image$\u0026wid=2000\u0026bfc=on",
+        "alt":  "",
+        "attrSize":  null,
+        "recommended1x":  "Use rendered container size after browser measurement",
+        "recommended2x":  "2x rendered container size",
+        "recommendedFormat":  "WebP for photos, PNG/WebP alpha for transparent assets",
+        "recommendedMaxSize":  "Hero 250-600KB; cards 80-180KB",
+        "objectFit":  "cover unless source layout proves contain"
+    },
+    {
+        "source":  "img",
+        "url":  "https://media.restorationhardware.com/is/image/rhis/03062026_RH_Core_Sale5?$responsive-gallery-image$\u0026wid=2000\u0026bfc=on",
+        "alt":  "",
+        "attrSize":  null,
+        "recommended1x":  "Use rendered container size after browser measurement",
+        "recommended2x":  "2x rendered container size",
+        "recommendedFormat":  "WebP for photos, PNG/WebP alpha for transparent assets",
+        "recommendedMaxSize":  "Hero 250-600KB; cards 80-180KB",
+        "objectFit":  "cover unless source layout proves contain"
+    },
+    {
+        "source":  "img",
+        "url":  "https://media.restorationhardware.com/is/image/rhis/03062026_RH_Core_Sale6?$responsive-gallery-image$\u0026wid=2000\u0026bfc=on",
+        "alt":  "",
+        "attrSize":  null,
+        "recommended1x":  "Use rendered container size after browser measurement",
+        "recommended2x":  "2x rendered container size",
+        "recommendedFormat":  "WebP for photos, PNG/WebP alpha for transparent assets",
+        "recommendedMaxSize":  "Hero 250-600KB; cards 80-180KB",
+        "objectFit":  "cover unless source layout proves contain"
+    },
+    {
+        "source":  "img",
+        "url":  "https://media.restorationhardware.com/is/image/rhis/11252024_Rugs_Slide8?$responsive-gallery-image$\u0026wid=2000\u0026bfc=on",
+        "alt":  "",
+        "attrSize":  null,
+        "recommended1x":  "Use rendered container size after browser measurement",
+        "recommended2x":  "2x rendered container size",
+        "recommendedFormat":  "WebP for photos, PNG/WebP alpha for transparent assets",
+        "recommendedMaxSize":  "Hero 250-600KB; cards 80-180KB",
+        "objectFit":  "cover unless source layout proves contain"
+    },
+    {
+        "source":  "img",
+        "url":  "https://media.restorationhardware.com/is/image/rhis/03062026_RH_Core_Sale7?$responsive-gallery-image$\u0026wid=2000\u0026fmt=png-alpha\u0026bfc=on",
+        "alt":  "",
+        "attrSize":  null,
+        "recommended1x":  "Use rendered container size after browser measurement",
+        "recommended2x":  "2x rendered container size",
+        "recommendedFormat":  "WebP for photos, PNG/WebP alpha for transparent assets",
+        "recommendedMaxSize":  "Hero 250-600KB; cards 80-180KB",
+        "objectFit":  "cover unless source layout proves contain"
+    },
+    {
+        "source":  "img",
+        "url":  "https://media.restorationhardware.com/is/image/rhis/03062026_RH_Core_Sale8?$responsive-gallery-image$\u0026wid=2000\u0026fmt=png-alpha\u0026bfc=on",
+        "alt":  "",
+        "attrSize":  null,
+        "recommended1x":  "Use rendered container size after browser measurement",
+        "recommended2x":  "2x rendered container size",
+        "recommendedFormat":  "WebP for photos, PNG/WebP alpha for transparent assets",
+        "recommendedMaxSize":  "Hero 250-600KB; cards 80-180KB",
+        "objectFit":  "cover unless source layout proves contain"
+    },
+    {
+        "source":  "img",
+        "url":  "https://media.restorationhardware.com/is/image/rhis/03062026_RH_Core_Sale9?$responsive-gallery-image$\u0026wid=2000\u0026fmt=png-alpha\u0026bfc=on",
+        "alt":  "",
+        "attrSize":  null,
+        "recommended1x":  "Use rendered container size after browser measurement",
+        "recommended2x":  "2x rendered container size",
+        "recommendedFormat":  "WebP for photos, PNG/WebP alpha for transparent assets",
+        "recommendedMaxSize":  "Hero 250-600KB; cards 80-180KB",
+        "objectFit":  "cover unless source layout proves contain"
+    },
+    {
+        "source":  "img",
+        "url":  "https://media.restorationhardware.com/is/image/rhis/03062026_RH_Core_Sale10?$responsive-gallery-image$\u0026wid=2000\u0026fmt=png-alpha\u0026bfc=on",
+        "alt":  "",
+        "attrSize":  null,
+        "recommended1x":  "Use rendered container size after browser measurement",
+        "recommended2x":  "2x rendered container size",
+        "recommendedFormat":  "WebP for photos, PNG/WebP alpha for transparent assets",
+        "recommendedMaxSize":  "Hero 250-600KB; cards 80-180KB",
+        "objectFit":  "cover unless source layout proves contain"
+    },
+    {
+        "source":  "img",
+        "url":  "/content/dam/rh-inc/us/en/home/project-library/digital/world-of-rh/products/baby-and-child/10162025/10162025_RH_BC_RH_Members.svg",
+        "alt":  "",
+        "attrSize":  null,
+        "recommended1x":  "Use rendered container size after browser measurement",
+        "recommended2x":  "2x rendered container size",
+        "recommendedFormat":  "WebP for photos, PNG/WebP alpha for transparent assets",
+        "recommendedMaxSize":  "Hero 250-600KB; cards 80-180KB",
+        "objectFit":  "cover unless source layout proves contain"
+    },
+    {
+        "source":  "img",
+        "url":  "/content/dam/rh-inc/us/en/home/project-library/digital/world-of-rh/services/membership-banners/10242025_RH_Membership_Banner_Lockup.svg",
+        "alt":  "",
+        "attrSize":  null,
+        "recommended1x":  "Use rendered container size after browser measurement",
+        "recommended2x":  "2x rendered container size",
+        "recommendedFormat":  "WebP for photos, PNG/WebP alpha for transparent assets",
+        "recommendedMaxSize":  "Hero 250-600KB; cards 80-180KB",
+        "objectFit":  "cover unless source layout proves contain"
+    }
+]

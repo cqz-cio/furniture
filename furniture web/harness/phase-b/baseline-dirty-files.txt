@@ -1,0 +1,26 @@
+# Dirty paths observed before Phase B implementation begins.
+# These are acknowledged so the harness does not revert or claim ownership of older work.
+dist/assets/index-8RDTPegt.css
+dist/assets/index-DttY-vS7.js
+dist/index.html
+node_modules/.vite/vitest/da39a3ee5e6b4b0d3255bfef95601890afd80709/results.json
+src/App.vue
+src/components/RhHeader.vue
+src/data/rhLayout.js
+src/pages/HomePage.vue
+src/pages/SalePage.vue
+src/pages/SofaPdpPage.vue
+src/pages/SofasPlpPage.vue
+src/styles.css
+tests/rhLayout.test.js
+dist/assets/index-B91LlL9e.js
+dist/assets/index-CLqeCfl2.css
+docs/image-requirements-checklist.md
+docs/~$age-requirements-checklist.docx
+docs/*.docx
+src/components/CartDrawer.vue
+src/components/ProductImage.vue
+src/data/demoProducts.js
+src/i18n.js
+src/services/
+tests/integrationModels.test.js

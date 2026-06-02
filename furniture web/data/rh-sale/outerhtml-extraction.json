@@ -1,0 +1,1055 @@
+﻿{
+    "metadata":  {
+                     "sourceFile":  "C:\\Users\\admin\\Desktop\\新建文本文档.txt",
+                     "extractedAt":  "2026-05-26T09:38:01",
+                     "htmlBytes":  171572,
+                     "bodyId":  "body-root",
+                     "brand":  "RH",
+                     "pagePath":  "/us/en/sale",
+                     "userType":  "ANONYMOUS"
+                 },
+    "summary":  {
+                    "totalTags":  1059,
+                    "uniqueTags":  36,
+                    "anchors":  55,
+                    "images":  15,
+                    "backgroundImages":  4,
+                    "authoringModules":  91,
+                    "styleBlocks":  3,
+                    "landmarks":  3
+                },
+    "tagCounts":  {
+                      "body":  1,
+                      "noscript":  3,
+                      "iframe":  1,
+                      "script":  60,
+                      "div":  599,
+                      "style":  3,
+                      "p":  48,
+                      "span":  105,
+                      "br":  7,
+                      "a":  55,
+                      "button":  42,
+                      "svg":  14,
+                      "g":  4,
+                      "rect":  3,
+                      "path":  30,
+                      "main":  1,
+                      "header":  1,
+                      "line":  4,
+                      "circle":  1,
+                      "defs":  1,
+                      "clippath":  1,
+                      "mask":  1,
+                      "ul":  5,
+                      "img":  15,
+                      "sup":  7,
+                      "hr":  5,
+                      "footer":  1,
+                      "form":  1,
+                      "label":  1,
+                      "input":  1,
+                      "fieldset":  1,
+                      "legend":  1,
+                      "li":  28,
+                      "title":  6,
+                      "d":  1,
+                      "cs-native-frame-holder":  1
+                  },
+    "anchors":  [
+                    {
+                        "text":  "SHOP",
+                        "href":  "/sale",
+                        "ariaLabel":  null
+                    },
+                    {
+                        "text":  "Accessibility Statement",
+                        "href":  "/us/en/customer-experience/accessibility-statement",
+                        "ariaLabel":  "Accessibility Statement"
+                    },
+                    {
+                        "text":  "",
+                        "href":  "https://rh.com/us/en",
+                        "ariaLabel":  "The World of RH homepage"
+                    },
+                    {
+                        "text":  "",
+                        "href":  "/us/en/checkout/shopping_cart.jsp",
+                        "ariaLabel":  "0 Items in Cart"
+                    },
+                    {
+                        "text":  "BABY \u0026 CHILD",
+                        "href":  "https://rhbabyandchild.rh.com/us/en/",
+                        "ariaLabel":  null
+                    },
+                    {
+                        "text":  "TEEN",
+                        "href":  "https://rhteen.rh.com/us/en/",
+                        "ariaLabel":  null
+                    },
+                    {
+                        "text":  "Living",
+                        "href":  "/us/en/catalog/category/products.jsp/cat29830020/category%3Acat29830020?Ns=product.sale|1\u0026filter=on_sale_i%3A1",
+                        "ariaLabel":  "Living Sale"
+                    },
+                    {
+                        "text":  "Dining",
+                        "href":  "/us/en/catalog/category/products.jsp/cat29830024/category%3Acat29830024?Ns=product.sale|1\u0026filter=on_sale_i%3A1",
+                        "ariaLabel":  "Dining Sale"
+                    },
+                    {
+                        "text":  "Bedroom",
+                        "href":  "/us/en/catalog/category/collections.jsp/cat10250052?filter=sale\u0026sale=true\u0026cm_vc=sale\u0026cellBackground=false",
+                        "ariaLabel":  "Bed Sale"
+                    },
+                    {
+                        "text":  "Bath",
+                        "href":  "/us/en/catalog/category/collections.jsp/cat10250054?filter=sale\u0026sale=true\u0026cm_vc=sale\u0026cellBackground=false",
+                        "ariaLabel":  "Bath Sale"
+                    },
+                    {
+                        "text":  "Outdoor",
+                        "href":  "/us/en/outdoor/catalog/category/collections.jsp/cat3860030?filter=sale\u0026sale=true\u0026cm_vc=sale",
+                        "ariaLabel":  "Outdoor Sale"
+                    },
+                    {
+                        "text":  "Rugs",
+                        "href":  "/us/en/catalog/category/products.jsp/cat18620003/rh-all-rugs?sale=true\u0026Ns=product.sale|1\u0026filter=on_sale_i%3A1",
+                        "ariaLabel":  "Rug Sale"
+                    },
+                    {
+                        "text":  "Lighting",
+                        "href":  "/us/en/catalog/category/products.jsp/cat29840010/category%3acat29840010?Ns=product.sale%7C1\u0026filter=on_sale_i%3A1",
+                        "ariaLabel":  "Lighting Sale"
+                    },
+                    {
+                        "text":  "Bedding",
+                        "href":  "/us/en/catalog/category/collections.jsp/cat16860001?filter=sale\u0026sale=true\u0026topCatId=cat9750013\u0026cm_vc=sale\u0026parentCatId=cat90071\u0026cellBackground=false",
+                        "ariaLabel":  "Textiles Sale"
+                    },
+                    {
+                        "text":  "Bath Towels",
+                        "href":  "/us/en/catalog/category/products.jsp/cat17860005/rh-bath-towels?Ns=product.sale%7C1\u0026filter=on_sale_i%3A1",
+                        "ariaLabel":  "Bath Towels Sale"
+                    },
+                    {
+                        "text":  "SHOP",
+                        "href":  "/us/en/catalog/category/products.jsp/cat29830020/category%3Acat29830020?Ns=product.sale|1\u0026filter=on_sale_i%3A1",
+                        "ariaLabel":  "Living Sale"
+                    },
+                    {
+                        "text":  "SHOP",
+                        "href":  "/us/en/catalog/category/collections.jsp/cat28710004?cellBackground=false\u0026cm_vc=sale\u0026sale=true\u0026filter=sale\u0026topCatId=cat160024\u0026parentCatId=cat8750009",
+                        "ariaLabel":  null
+                    },
+                    {
+                        "text":  "SHOP",
+                        "href":  "/us/en/catalog/category/products.jsp/cat29830024/category%3Acat29830024?Ns=product.sale|1\u0026filter=on_sale_i%3A1",
+                        "ariaLabel":  "Living Sale"
+                    },
+                    {
+                        "text":  "SHOP",
+                        "href":  "/us/en/catalog/category/collections.jsp/cat10250052?filter=sale\u0026sale=true\u0026cm_vc=sale\u0026cellBackground=false",
+                        "ariaLabel":  "Bed Sale"
+                    },
+                    {
+                        "text":  "SHOP",
+                        "href":  "/us/en/catalog/category/collections.jsp/cat10250054?filter=sale\u0026sale=true\u0026cm_vc=sale\u0026cellBackground=false",
+                        "ariaLabel":  "Bath Sale"
+                    },
+                    {
+                        "text":  "SHOP",
+                        "href":  "/us/en/outdoor/catalog/category/collections.jsp/cat3860030?filter=sale\u0026sale=true\u0026cm_vc=sale",
+                        "ariaLabel":  "Outdoor Sale"
+                    },
+                    {
+                        "text":  "SHOP",
+                        "href":  "/us/en/catalog/category/products.jsp/cat18620003/rh-all-rugs?sale=true\u0026Ns=product.sale|1\u0026filter=on_sale_i%3A1",
+                        "ariaLabel":  "Rugs Sale"
+                    },
+                    {
+                        "text":  "SHOP",
+                        "href":  "/us/en/catalog/category/products.jsp/cat29840010/category%3acat29840010?Ns=product.sale%7C1\u0026filter=on_sale_i%3A1",
+                        "ariaLabel":  "Lighting Sale"
+                    },
+                    {
+                        "text":  "SHOP",
+                        "href":  "/us/en/catalog/category/collections.jsp/cat16860001?filter=sale\u0026sale=true\u0026topCatId=cat9750013\u0026cm_vc=sale\u0026parentCatId=cat90071\u0026cellBackground=false",
+                        "ariaLabel":  "Textiles Sale"
+                    },
+                    {
+                        "text":  "SHOP",
+                        "href":  "/us/en/catalog/category/products.jsp/cat17860005/rh-bath-towels?Ns=product.sale%7C1\u0026filter=on_sale_i%3A1",
+                        "ariaLabel":  "Bath Towels Sale"
+                    },
+                    {
+                        "text":  "JOIN NOW",
+                        "href":  "/us/en/membership",
+                        "ariaLabel":  "RH Membership"
+                    },
+                    {
+                        "text":  "LEARN MORE",
+                        "href":  "/us/en/customer-experience/credit-card",
+                        "ariaLabel":  "RH Membership"
+                    },
+                    {
+                        "text":  "LOCATE A GALLERY",
+                        "href":  "/us/en/store-locations/stores.jsp",
+                        "ariaLabel":  null
+                    },
+                    {
+                        "text":  "VIEW SOURCEBOOKS",
+                        "href":  "/us/en/sourcebooks",
+                        "ariaLabel":  null
+                    },
+                    {
+                        "text":  "Request a Sourcebook",
+                        "href":  "/us/en/customer-experience/sourcebook-request",
+                        "ariaLabel":  null
+                    },
+                    {
+                        "text":  "RH MEMBERS PROGRAM",
+                        "href":  "/us/en/membership",
+                        "ariaLabel":  null
+                    },
+                    {
+                        "text":  "RH TRADE",
+                        "href":  "/us/en/trade",
+                        "ariaLabel":  null
+                    },
+                    {
+                        "text":  "RH CONTRACT",
+                        "href":  "/us/en/contract",
+                        "ariaLabel":  null
+                    },
+                    {
+                        "text":  "RH CREDIT CARD",
+                        "href":  "/us/en/customer-experience/credit-card",
+                        "ariaLabel":  null
+                    },
+                    {
+                        "text":  "SITE MAP",
+                        "href":  "/us/en/sitemap",
+                        "ariaLabel":  null
+                    },
+                    {
+                        "text":  "Contact Us",
+                        "href":  "/us/en/customer-experience/contact-us",
+                        "ariaLabel":  null
+                    },
+                    {
+                        "text":  "PLACING AN ORDER",
+                        "href":  "/us/en/customer-experience/placing-an-order",
+                        "ariaLabel":  null
+                    },
+                    {
+                        "text":  "SHIPPING \u0026 DELIVERY",
+                        "href":  "/us/en/customer-experience/shipping-and-delivery",
+                        "ariaLabel":  null
+                    },
+                    {
+                        "text":  "RETURNS \u0026 EXCHANGES",
+                        "href":  "/us/en/customer-experience/return-policy",
+                        "ariaLabel":  null
+                    },
+                    {
+                        "text":  "LIFETIME GUARANTEE",
+                        "href":  "/us/en/customer-experience/lifetime-guarantee",
+                        "ariaLabel":  null
+                    },
+                    {
+                        "text":  "RH GIFT CARD",
+                        "href":  "/us/en/catalog/category/products.jsp?categoryId=cat7440069",
+                        "ariaLabel":  null
+                    },
+                    {
+                        "text":  "GIFT REGISTRY",
+                        "href":  "/us/en/gift-registry",
+                        "ariaLabel":  null
+                    },
+                    {
+                        "text":  "Accessibility Statement",
+                        "href":  "/us/en/customer-experience/accessibility-statement",
+                        "ariaLabel":  null
+                    },
+                    {
+                        "text":  "FAQS",
+                        "href":  "/us/en/customer-experience/frequently-asked-questions",
+                        "ariaLabel":  null
+                    },
+                    {
+                        "text":  "LETTERS FROM THE CEO Opens in a new tab",
+                        "href":  "https://rh.online/letters-blog",
+                        "ariaLabel":  null
+                    },
+                    {
+                        "text":  "LEADERSHIP TEAM Opens in a new tab",
+                        "href":  "https://ir.rh.com/corporate-governance/leadership",
+                        "ariaLabel":  null
+                    },
+                    {
+                        "text":  "INVESTOR RELATIONS Opens in a new tab",
+                        "href":  "https://ir.rh.com",
+                        "ariaLabel":  null
+                    },
+                    {
+                        "text":  "PRESS Opens in a new tab",
+                        "href":  "https://rh.online/",
+                        "ariaLabel":  null
+                    },
+                    {
+                        "text":  "CAREERS Opens in a new tab",
+                        "href":  "https://careers.rh.com",
+                        "ariaLabel":  null
+                    },
+                    {
+                        "text":  "PRIVACY",
+                        "href":  "/us/en/our-company/privacy-policy",
+                        "ariaLabel":  null
+                    },
+                    {
+                        "text":  "TERMS OF USE",
+                        "href":  "/us/en/our-company/terms-of-use",
+                        "ariaLabel":  null
+                    },
+                    {
+                        "text":  "TEXT MESSAGING TERMS",
+                        "href":  "/us/en/our-company/text-messaging-terms",
+                        "ariaLabel":  null
+                    },
+                    {
+                        "text":  "RH IN CANADA",
+                        "href":  "/us/en/our-company/canada-shipping",
+                        "ariaLabel":  null
+                    },
+                    {
+                        "text":  "CPRA OPT-OUT Opens in a new tab",
+                        "href":  "https://preferences.restorationhardware.com/dont_sell",
+                        "ariaLabel":  null
+                    },
+                    {
+                        "text":  "SAFETY RECALLS",
+                        "href":  "/us/en/customer-experience/safety-recalls",
+                        "ariaLabel":  null
+                    }
+                ],
+    "images":  [
+                   {
+                       "type":  "img",
+                       "src":  "https://media.restorationhardware.com/is/image/rhis/05212026_RH_Sale_US CA Sale?$responsive-gallery-image$\u0026wid=2000\u0026fmt=png-alpha\u0026resMode=sharp2\u0026op_sharpen=1\u0026op_usm=1.0,0.3,1.0,0\u0026bfc=on",
+                       "alt":  "",
+                       "widthAttr":  null,
+                       "heightAttr":  null,
+                       "inlineStyle":  "object-fit: contain; height: 100%; margin-top: 0px;"
+                   },
+                   {
+                       "type":  "img",
+                       "src":  "https://media.restorationhardware.com/is/image/rhis/05212026_RH_Sale_US CA Sale Mobile?$responsive-gallery-image$\u0026wid=2000\u0026fmt=png-alpha\u0026resMode=sharp2\u0026op_sharpen=1\u0026op_usm=1.0,0.3,1.0,0\u0026bfc=on",
+                       "alt":  "",
+                       "widthAttr":  null,
+                       "heightAttr":  null,
+                       "inlineStyle":  "object-fit: contain; height: 100%; margin-top: 0px;"
+                   },
+                   {
+                       "type":  "img",
+                       "src":  "https://media.restorationhardware.com/is/image/rhis/03062026_RH_Core_Sale1?$responsive-gallery-image$\u0026wid=2000\u0026fmt=png-alpha\u0026bfc=on",
+                       "alt":  "",
+                       "widthAttr":  null,
+                       "heightAttr":  null,
+                       "inlineStyle":  "width: 100%; object-fit: contain; height: 100%; margin-top: 0px;"
+                   },
+                   {
+                       "type":  "img",
+                       "src":  "https://media.restorationhardware.com/is/image/rhis/03062026_RH_Core_Sale2?$responsive-gallery-image$\u0026wid=2000\u0026fmt=png-alpha\u0026bfc=on",
+                       "alt":  "",
+                       "widthAttr":  null,
+                       "heightAttr":  null,
+                       "inlineStyle":  "width: 100%; object-fit: contain; height: 100%; margin-top: 0px;"
+                   },
+                   {
+                       "type":  "img",
+                       "src":  "https://media.restorationhardware.com/is/image/rhis/03062026_RH_Core_Sale3?$responsive-gallery-image$\u0026wid=2000\u0026fmt=png-alpha\u0026bfc=on",
+                       "alt":  "",
+                       "widthAttr":  null,
+                       "heightAttr":  null,
+                       "inlineStyle":  "object-fit: contain; height: 100%; margin-top: 0px;"
+                   },
+                   {
+                       "type":  "img",
+                       "src":  "https://media.restorationhardware.com/is/image/rhis/03062026_RH_Core_Sale4?$responsive-gallery-image$\u0026wid=2000\u0026bfc=on",
+                       "alt":  "",
+                       "widthAttr":  null,
+                       "heightAttr":  null,
+                       "inlineStyle":  "object-fit: contain; height: 100%; margin-top: 0px;"
+                   },
+                   {
+                       "type":  "img",
+                       "src":  "https://media.restorationhardware.com/is/image/rhis/03062026_RH_Core_Sale5?$responsive-gallery-image$\u0026wid=2000\u0026bfc=on",
+                       "alt":  "",
+                       "widthAttr":  null,
+                       "heightAttr":  null,
+                       "inlineStyle":  "object-fit: contain; height: 100%; margin-top: 0px;"
+                   },
+                   {
+                       "type":  "img",
+                       "src":  "https://media.restorationhardware.com/is/image/rhis/03062026_RH_Core_Sale6?$responsive-gallery-image$\u0026wid=2000\u0026bfc=on",
+                       "alt":  "",
+                       "widthAttr":  null,
+                       "heightAttr":  null,
+                       "inlineStyle":  "object-fit: contain; height: 100%; margin-top: 0px;"
+                   },
+                   {
+                       "type":  "img",
+                       "src":  "https://media.restorationhardware.com/is/image/rhis/11252024_Rugs_Slide8?$responsive-gallery-image$\u0026wid=2000\u0026bfc=on",
+                       "alt":  "",
+                       "widthAttr":  null,
+                       "heightAttr":  null,
+                       "inlineStyle":  "object-fit: contain; height: 100%; margin-top: 0px;"
+                   },
+                   {
+                       "type":  "img",
+                       "src":  "https://media.restorationhardware.com/is/image/rhis/03062026_RH_Core_Sale7?$responsive-gallery-image$\u0026wid=2000\u0026fmt=png-alpha\u0026bfc=on",
+                       "alt":  "",
+                       "widthAttr":  null,
+                       "heightAttr":  null,
+                       "inlineStyle":  "object-fit: contain; height: 100%; margin-top: 0px;"
+                   },
+                   {
+                       "type":  "img",
+                       "src":  "https://media.restorationhardware.com/is/image/rhis/03062026_RH_Core_Sale8?$responsive-gallery-image$\u0026wid=2000\u0026fmt=png-alpha\u0026bfc=on",
+                       "alt":  "",
+                       "widthAttr":  null,
+                       "heightAttr":  null,
+                       "inlineStyle":  "object-fit: contain; height: 100%; margin-top: 0px;"
+                   },
+                   {
+                       "type":  "img",
+                       "src":  "https://media.restorationhardware.com/is/image/rhis/03062026_RH_Core_Sale9?$responsive-gallery-image$\u0026wid=2000\u0026fmt=png-alpha\u0026bfc=on",
+                       "alt":  "",
+                       "widthAttr":  null,
+                       "heightAttr":  null,
+                       "inlineStyle":  "object-fit: contain; height: 100%; margin-top: 0px;"
+                   },
+                   {
+                       "type":  "img",
+                       "src":  "https://media.restorationhardware.com/is/image/rhis/03062026_RH_Core_Sale10?$responsive-gallery-image$\u0026wid=2000\u0026fmt=png-alpha\u0026bfc=on",
+                       "alt":  "",
+                       "widthAttr":  null,
+                       "heightAttr":  null,
+                       "inlineStyle":  "object-fit: contain; height: 100%; margin-top: 0px;"
+                   },
+                   {
+                       "type":  "img",
+                       "src":  "/content/dam/rh-inc/us/en/home/project-library/digital/world-of-rh/products/baby-and-child/10162025/10162025_RH_BC_RH_Members.svg",
+                       "alt":  "",
+                       "widthAttr":  null,
+                       "heightAttr":  null,
+                       "inlineStyle":  "object-fit: contain; height: 100%; margin-top: 0px;"
+                   },
+                   {
+                       "type":  "img",
+                       "src":  "/content/dam/rh-inc/us/en/home/project-library/digital/world-of-rh/services/membership-banners/10242025_RH_Membership_Banner_Lockup.svg",
+                       "alt":  "",
+                       "widthAttr":  null,
+                       "heightAttr":  null,
+                       "inlineStyle":  "object-fit: contain; height: 100%; margin-top: 0px;"
+                   }
+               ],
+    "backgroundImages":  [
+                             "https://media.rh.com/is/image/rhis/11102025_RH_Sale_Membership_1600?$responsive$\u0026wid=1600\u0026bfc=on",
+                             "https://media.rh.com/is/image/rhis/11102025_RH_Sale_Membership_375?$responsive$\u0026wid=375\u0026bfc=on",
+                             "#clip0_11443_87270",
+                             "#mask0_5301_119153"
+                         ],
+    "authoringModules":  [
+                             {
+                                 "authoringName":  "Box 2.0 - Sale Content",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5917",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Sale Hero",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5918",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Spring Clearance",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5919",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Spring",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5920",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - On Hundreds",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5924",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Links",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5926",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Row",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5927",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Link - Living",
+                                 "id":  "component-link",
+                                 "class":  "MuiTypography-root MuiTypography-inherit MuiLink-root MuiLink-underlineHover css-10z61qv",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Link - Dining",
+                                 "id":  "component-link",
+                                 "class":  "MuiTypography-root MuiTypography-inherit MuiLink-root MuiLink-underlineHover css-10z61qv",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Link - Bedroom",
+                                 "id":  "component-link",
+                                 "class":  "MuiTypography-root MuiTypography-inherit MuiLink-root MuiLink-underlineHover css-10z61qv",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Link - Bath",
+                                 "id":  "component-link",
+                                 "class":  "MuiTypography-root MuiTypography-inherit MuiLink-root MuiLink-underlineHover css-10z61qv",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Link - Outdoor",
+                                 "id":  "component-link",
+                                 "class":  "MuiTypography-root MuiTypography-inherit MuiLink-root MuiLink-underlineHover css-10z61qv",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Row",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5928",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Link - Rugs",
+                                 "id":  "component-link",
+                                 "class":  "MuiTypography-root MuiTypography-inherit MuiLink-root MuiLink-underlineHover css-10z61qv",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Link - Lighting",
+                                 "id":  "component-link",
+                                 "class":  "MuiTypography-root MuiTypography-inherit MuiLink-root MuiLink-underlineHover css-10z61qv",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Link - Bedding",
+                                 "id":  "component-link",
+                                 "class":  "MuiTypography-root MuiTypography-inherit MuiLink-root MuiLink-underlineHover css-10z61qv",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Link - Bath Towels",
+                                 "id":  "component-link",
+                                 "class":  "MuiTypography-root MuiTypography-inherit MuiLink-root MuiLink-underlineHover css-10z61qv",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Living",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5930",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Text + Link",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5931",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Living",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5932",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Save Up To",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5934",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Sofias, Chairs",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5936",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Link",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5938",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Link - Living",
+                                 "id":  "component-link",
+                                 "class":  "MuiTypography-root MuiTypography-inherit MuiLink-root MuiLink-underlineHover css-tee414",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Sofas",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5939",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Text + Link",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5940",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Sofas",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5941",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Save Up To",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5943",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Sofias, Chairs",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5945",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Link",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5947",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Link - Sofas",
+                                 "id":  "component-link",
+                                 "class":  "MuiTypography-root MuiTypography-inherit MuiLink-root MuiLink-underlineHover css-tee414",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Dining",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5948",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Text + Link",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5949",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Dining",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5950",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Save Up To",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5952",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Dining Tables, Chairs, Bar Stools",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5954",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Link",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5956",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Link - Dining",
+                                 "id":  "component-link",
+                                 "class":  "MuiTypography-root MuiTypography-inherit MuiLink-root MuiLink-underlineHover css-tee414",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - M - Bed",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5957",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Text + Link",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5958",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Bedroom",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5959",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Save Up To",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5961",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - beds, nightstands, dressers",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5963",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Link",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5965",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Link - Bed",
+                                 "id":  "component-link",
+                                 "class":  "MuiTypography-root MuiTypography-inherit MuiLink-root MuiLink-underlineHover css-tee414",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Bathroom Collections",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5966",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Text + Link",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5967",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Baathrooms",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5968",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Save Up To",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5970",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - vanities, washstands, cabinets, towels",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5972",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Link",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5974",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Link - Bathroom",
+                                 "id":  "component-link",
+                                 "class":  "MuiTypography-root MuiTypography-inherit MuiLink-root MuiLink-underlineHover css-tee414",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - M - Outdoor Collection",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5975",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Text + Link",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5976",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Outdoor",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5977",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Save Up To",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5979",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Lounge, Dining, Décor",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5981",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Link",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5983",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Link - Outdoor",
+                                 "id":  "component-link",
+                                 "class":  "MuiTypography-root MuiTypography-inherit MuiLink-root MuiLink-underlineHover css-tee414",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - M - Rug Collections -",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5984",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Text + Link",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5985",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Rugs",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5986",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Save Up To",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5988",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Moroccan, Contemporary, Traditional",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5990",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Link",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5992",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Link - Rugs",
+                                 "id":  "component-link",
+                                 "class":  "MuiTypography-root MuiTypography-inherit MuiLink-root MuiLink-underlineHover css-tee414",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Lighting",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5993",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Text + Link",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5994",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Bedroom",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5995",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Save Up To",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5997",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Linens, Pillows, Throws",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_5999",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Link",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_6001",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Link - Lighting",
+                                 "id":  "component-link",
+                                 "class":  "MuiTypography-root MuiTypography-inherit MuiLink-root MuiLink-underlineHover css-tee414",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Bedding Collections",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_6002",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Text + Link",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_6003",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Bedroom",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_6004",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Save Up To",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_6006",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Linens, Pillows, Throws",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_6008",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Link",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_6010",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Link - Bedroom",
+                                 "id":  "component-link",
+                                 "class":  "MuiTypography-root MuiTypography-inherit MuiLink-root MuiLink-underlineHover css-tee414",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Bath Towels Collections",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_6011",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Text + Link",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_6012",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Bedroom",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_6013",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Save Up To",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_6015",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Link",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_6017",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Link - Bath Towels",
+                                 "id":  "component-link",
+                                 "class":  "MuiTypography-root MuiTypography-inherit MuiLink-root MuiLink-underlineHover css-tee414",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Membership Banner",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_6018",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Subtitle",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_6022",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Link - Join Now",
+                                 "id":  "component-link",
+                                 "class":  "MuiTypography-root MuiTypography-inherit MuiLink-root MuiLink-underlineHover css-10z61qv",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Link - Credit Card",
+                                 "id":  "component-link",
+                                 "class":  "MuiTypography-root MuiTypography-inherit MuiLink-root MuiLink-underlineHover css-10z61qv",
+                                 "style":  null
+                             },
+                             {
+                                 "authoringName":  "Box 2.0 - Disclaimer",
+                                 "id":  null,
+                                 "class":  "rh-store-jss_6042",
+                                 "style":  null
+                             }
+                         ],
+    "styleBlocks":  [
+                        {
+                            "index":  1,
+                            "length":  2046,
+                            "preview":  "body[data-page-path=\"/us/en\"] div[data-banner=\"above-nav\"],\r\n    body[data-page-path=\"/us/en/us/zzz_test_pages/jack-s-test-pages/0715-0719/2024-summer-interiors-hp\"] div[data-banner=\"above-nav\"],\r\n    body[data-page-path=\"/ca/en\"] div[data-banner=\"above-nav\"],\r\n    body[data-page-path=\"/gb/en\"] div[data-banner=\"above-n"
+                        },
+                        {
+                            "index":  2,
+                            "length":  1536,
+                            "preview":  "div[authoringname=\"Box 2.0 - Membership Banner\"] {\r\n        background: url(\"https://media.rh.com/is/image/rhis/11102025_RH_Sale_Membership_1600?$responsive$\u0026wid=1600\u0026bfc=on\") no-repeat;\r\n        background-size: cover;\r\n        background-position: center center;\r\n    }\r\n\r\ndiv[authoringname=\"Box 2.0 - Membership Banne"
+                        },
+                        {
+                            "index":  3,
+                            "length":  542,
+                            "preview":  ".sup-asterisks {\r\n    position: absolute;\r\n    }\r\n    a[authoringname=\"Link - Hero\"] {\r\n    cursor: default !important;\r\n    }\r\n    a[authoringname=\"Link - Bedding\"], a[authoringname=\"Link - Pillows\"] {flex-basis: 50%;}\r\n    #rh-header nav {\r\n        margin-bottom: 0;\r\n    }\r\n    .rhtext--content-d5-caslon, .rhtext--co"
+                        }
+                    ],
+    "landmarks":  [
+                      {
+                          "tag":  "main",
+                          "id":  "main",
+                          "class":  "rh-store-jss_1",
+                          "role":  null,
+                          "ariaLabel":  null,
+                          "style":  "flex: 1 1 0%; position: relative; z-index: 1099; min-height: 80vh; padding-top: 0px;"
+                      },
+                      {
+                          "tag":  "header",
+                          "id":  "app-navigation-bar",
+                          "class":  "MuiPaper-root MuiPaper-elevation MuiPaper-elevation4 MuiAppBar-root MuiAppBar-colorPrimary MuiAppBar-positionFixed rh-store-jss_784 header-height !pr-0 mui-fixed css-1p6sy91",
+                          "role":  null,
+                          "ariaLabel":  null,
+                          "style":  "position: relative; background: transparent; color: black; transition: background 0.8s ease-in-out; top: 0px; height: 136px;"
+                      },
+                      {
+                          "tag":  "footer",
+                          "id":  null,
+                          "class":  "px-8 py-10",
+                          "role":  null,
+                          "ariaLabel":  null,
+                          "style":  null
+                      }
+                  ]
+}

@@ -1,0 +1,257 @@
+﻿[
+    {
+        "text":  "SHOP",
+        "href":  "/sale",
+        "ariaLabel":  null
+    },
+    {
+        "text":  "Accessibility Statement",
+        "href":  "/us/en/customer-experience/accessibility-statement",
+        "ariaLabel":  "Accessibility Statement"
+    },
+    {
+        "text":  "",
+        "href":  "https://rh.com/us/en",
+        "ariaLabel":  "The World of RH homepage"
+    },
+    {
+        "text":  "",
+        "href":  "/us/en/checkout/shopping_cart.jsp",
+        "ariaLabel":  "0 Items in Cart"
+    },
+    {
+        "text":  "BABY \u0026 CHILD",
+        "href":  "https://rhbabyandchild.rh.com/us/en/",
+        "ariaLabel":  null
+    },
+    {
+        "text":  "TEEN",
+        "href":  "https://rhteen.rh.com/us/en/",
+        "ariaLabel":  null
+    },
+    {
+        "text":  "Living",
+        "href":  "/us/en/catalog/category/products.jsp/cat29830020/category%3Acat29830020?Ns=product.sale|1\u0026filter=on_sale_i%3A1",
+        "ariaLabel":  "Living Sale"
+    },
+    {
+        "text":  "Dining",
+        "href":  "/us/en/catalog/category/products.jsp/cat29830024/category%3Acat29830024?Ns=product.sale|1\u0026filter=on_sale_i%3A1",
+        "ariaLabel":  "Dining Sale"
+    },
+    {
+        "text":  "Bedroom",
+        "href":  "/us/en/catalog/category/collections.jsp/cat10250052?filter=sale\u0026sale=true\u0026cm_vc=sale\u0026cellBackground=false",
+        "ariaLabel":  "Bed Sale"
+    },
+    {
+        "text":  "Bath",
+        "href":  "/us/en/catalog/category/collections.jsp/cat10250054?filter=sale\u0026sale=true\u0026cm_vc=sale\u0026cellBackground=false",
+        "ariaLabel":  "Bath Sale"
+    },
+    {
+        "text":  "Outdoor",
+        "href":  "/us/en/outdoor/catalog/category/collections.jsp/cat3860030?filter=sale\u0026sale=true\u0026cm_vc=sale",
+        "ariaLabel":  "Outdoor Sale"
+    },
+    {
+        "text":  "Rugs",
+        "href":  "/us/en/catalog/category/products.jsp/cat18620003/rh-all-rugs?sale=true\u0026Ns=product.sale|1\u0026filter=on_sale_i%3A1",
+        "ariaLabel":  "Rug Sale"
+    },
+    {
+        "text":  "Lighting",
+        "href":  "/us/en/catalog/category/products.jsp/cat29840010/category%3acat29840010?Ns=product.sale%7C1\u0026filter=on_sale_i%3A1",
+        "ariaLabel":  "Lighting Sale"
+    },
+    {
+        "text":  "Bedding",
+        "href":  "/us/en/catalog/category/collections.jsp/cat16860001?filter=sale\u0026sale=true\u0026topCatId=cat9750013\u0026cm_vc=sale\u0026parentCatId=cat90071\u0026cellBackground=false",
+        "ariaLabel":  "Textiles Sale"
+    },
+    {
+        "text":  "Bath Towels",
+        "href":  "/us/en/catalog/category/products.jsp/cat17860005/rh-bath-towels?Ns=product.sale%7C1\u0026filter=on_sale_i%3A1",
+        "ariaLabel":  "Bath Towels Sale"
+    },
+    {
+        "text":  "SHOP",
+        "href":  "/us/en/catalog/category/products.jsp/cat29830020/category%3Acat29830020?Ns=product.sale|1\u0026filter=on_sale_i%3A1",
+        "ariaLabel":  "Living Sale"
+    },
+    {
+        "text":  "SHOP",
+        "href":  "/us/en/catalog/category/collections.jsp/cat28710004?cellBackground=false\u0026cm_vc=sale\u0026sale=true\u0026filter=sale\u0026topCatId=cat160024\u0026parentCatId=cat8750009",
+        "ariaLabel":  null
+    },
+    {
+        "text":  "SHOP",
+        "href":  "/us/en/catalog/category/products.jsp/cat29830024/category%3Acat29830024?Ns=product.sale|1\u0026filter=on_sale_i%3A1",
+        "ariaLabel":  "Living Sale"
+    },
+    {
+        "text":  "SHOP",
+        "href":  "/us/en/catalog/category/collections.jsp/cat10250052?filter=sale\u0026sale=true\u0026cm_vc=sale\u0026cellBackground=false",
+        "ariaLabel":  "Bed Sale"
+    },
+    {
+        "text":  "SHOP",
+        "href":  "/us/en/catalog/category/collections.jsp/cat10250054?filter=sale\u0026sale=true\u0026cm_vc=sale\u0026cellBackground=false",
+        "ariaLabel":  "Bath Sale"
+    },
+    {
+        "text":  "SHOP",
+        "href":  "/us/en/outdoor/catalog/category/collections.jsp/cat3860030?filter=sale\u0026sale=true\u0026cm_vc=sale",
+        "ariaLabel":  "Outdoor Sale"
+    },
+    {
+        "text":  "SHOP",
+        "href":  "/us/en/catalog/category/products.jsp/cat18620003/rh-all-rugs?sale=true\u0026Ns=product.sale|1\u0026filter=on_sale_i%3A1",
+        "ariaLabel":  "Rugs Sale"
+    },
+    {
+        "text":  "SHOP",
+        "href":  "/us/en/catalog/category/products.jsp/cat29840010/category%3acat29840010?Ns=product.sale%7C1\u0026filter=on_sale_i%3A1",
+        "ariaLabel":  "Lighting Sale"
+    },
+    {
+        "text":  "SHOP",
+        "href":  "/us/en/catalog/category/collections.jsp/cat16860001?filter=sale\u0026sale=true\u0026topCatId=cat9750013\u0026cm_vc=sale\u0026parentCatId=cat90071\u0026cellBackground=false",
+        "ariaLabel":  "Textiles Sale"
+    },
+    {
+        "text":  "SHOP",
+        "href":  "/us/en/catalog/category/products.jsp/cat17860005/rh-bath-towels?Ns=product.sale%7C1\u0026filter=on_sale_i%3A1",
+        "ariaLabel":  "Bath Towels Sale"
+    },
+    {
+        "text":  "JOIN NOW",
+        "href":  "/us/en/membership",
+        "ariaLabel":  "RH Membership"
+    },
+    {
+        "text":  "LEARN MORE",
+        "href":  "/us/en/customer-experience/credit-card",
+        "ariaLabel":  "RH Membership"
+    },
+    {
+        "text":  "LOCATE A GALLERY",
+        "href":  "/us/en/store-locations/stores.jsp",
+        "ariaLabel":  null
+    },
+    {
+        "text":  "VIEW SOURCEBOOKS",
+        "href":  "/us/en/sourcebooks",
+        "ariaLabel":  null
+    },
+    {
+        "text":  "Request a Sourcebook",
+        "href":  "/us/en/customer-experience/sourcebook-request",
+        "ariaLabel":  null
+    },
+    {
+        "text":  "RH MEMBERS PROGRAM",
+        "href":  "/us/en/membership",
+        "ariaLabel":  null
+    },
+    {
+        "text":  "RH TRADE",
+        "href":  "/us/en/trade",
+        "ariaLabel":  null
+    },
+    {
+        "text":  "RH CONTRACT",
+        "href":  "/us/en/contract",
+        "ariaLabel":  null
+    },
+    {
+        "text":  "RH CREDIT CARD",
+        "href":  "/us/en/customer-experience/credit-card",
+        "ariaLabel":  null
+    },
+    {
+        "text":  "SITE MAP",
+        "href":  "/us/en/sitemap",
+        "ariaLabel":  null
+    },
+    {
+        "text":  "Contact Us",
+        "href":  "/us/en/customer-experience/contact-us",
+        "ariaLabel":  null
+    },
+    {
+        "text":  "PLACING AN ORDER",
+        "href":  "/us/en/customer-experience/placing-an-order",
+        "ariaLabel":  null
+    },
+    {
+        "text":  "SHIPPING \u0026 DELIVERY",
+        "href":  "/us/en/customer-experience/shipping-and-delivery",
+        "ariaLabel":  null
+    },
+    {
+        "text":  "RETURNS \u0026 EXCHANGES",
+        "href":  "/us/en/customer-experience/return-policy",
+        "ariaLabel":  null
+    },
+    {
+        "text":  "LIFETIME GUARANTEE",
+        "href":  "/us/en/customer-experience/lifetime-guarantee",
+        "ariaLabel":  null
+    },
+    {
+        "text":  "RH GIFT CARD",
+        "href":  "/us/en/catalog/category/products.jsp?categoryId=cat7440069",
+        "ariaLabel":  null
+    },
+    {
+        "text":  "GIFT REGISTRY",
+        "href":  "/us/en/gift-registry",
+        "ariaLabel":  null
+    },
+    {
+        "text":  "Accessibility Statement",
+        "href":  "/us/en/customer-experience/accessibility-statement",
+        "ariaLabel":  null
+    },
+    {
+        "text":  "FAQS",
+        "href":  "/us/en/customer-experience/frequently-asked-questions",
+        "ariaLabel":  null
+    },
+    {
+        "text":  "LETTERS FROM THE CEO Opens in a new tab",
+        "href":  "https://rh.online/letters-blog",
+        "ariaLabel":  null
+    },
+    {
+        "text":  "PRESS Opens in a new tab",
+        "href":  "https://rh.online/",
+        "ariaLabel":  null
+    },
+    {
+        "text":  "PRIVACY",
+        "href":  "/us/en/our-company/privacy-policy",
+        "ariaLabel":  null
+    },
+    {
+        "text":  "TERMS OF USE",
+        "href":  "/us/en/our-company/terms-of-use",
+        "ariaLabel":  null
+    },
+    {
+        "text":  "TEXT MESSAGING TERMS",
+        "href":  "/us/en/our-company/text-messaging-terms",
+        "ariaLabel":  null
+    },
+    {
+        "text":  "RH IN CANADA",
+        "href":  "/us/en/our-company/canada-shipping",
+        "ariaLabel":  null
+    },
+    {
+        "text":  "SAFETY RECALLS",
+        "href":  "/us/en/customer-experience/safety-recalls",
+        "ariaLabel":  null
+    }
+]

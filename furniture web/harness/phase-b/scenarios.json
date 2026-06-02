@@ -1,0 +1,45 @@
+{
+  "phase": "B",
+  "repo": "D:\\code\\furniture web",
+  "yudaoAppApiBase": "http://127.0.0.1:48080/app-api",
+  "manualSmokeScenarios": [
+    {
+      "name": "catalog-from-yudao",
+      "path": "/sofas-plp",
+      "requiresToken": false,
+      "expected": "Product list loads from Yudao when backend has enabled products; otherwise demo products remain visible."
+    },
+    {
+      "name": "product-detail-from-yudao",
+      "path": "/sofa-pdp?id=<spuId>",
+      "requiresToken": false,
+      "expected": "Product detail shows Yudao name, cover, price, market price, stock, and add-to-cart action."
+    },
+    {
+      "name": "remote-cart",
+      "path": "/sofas-plp",
+      "requiresToken": true,
+      "expected": "Adding a Yudao product calls remote cart add and cart drawer shows remote cart items."
+    },
+    {
+      "name": "checkout-token-required",
+      "path": "/checkout",
+      "requiresToken": false,
+      "expected": "Checkout page explains that a Yudao App token is needed for remote order creation."
+    },
+    {
+      "name": "checkout-create-order",
+      "path": "/checkout",
+      "requiresToken": true,
+      "requiresDefaultAddress": true,
+      "expected": "Remote cart items settle and create a Yudao order using deliveryType 1."
+    },
+    {
+      "name": "orders-list-and-detail",
+      "path": "/orders",
+      "requiresToken": true,
+      "expected": "Order list loads and an order detail can be opened with /orders?id=<orderId>."
+    }
+  ]
+}
+
