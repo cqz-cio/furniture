@@ -1,6 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { addLocalCartItem, removeLocalCartItem, updateLocalCartItemQuantity } from "../src/services/localCart.js";
-import { mapSpuToProduct, unwrapYudaoResult } from "../src/services/yudaoClient.js";
+import {
+  AUTH_TOKEN_STORAGE_KEY,
+  mapAddressResponse,
+  mapOrderDetail,
+  mapOrderPage,
+  mapSettlementResponse,
+  mapSpuToProduct,
+  readYudaoToken,
+  unwrapYudaoResult,
+  writeYudaoToken,
+} from "../src/services/yudaoClient.js";
 
 describe("yudao integration models", () => {
   it("unwraps successful yudao CommonResult responses", () => {
@@ -48,5 +58,68 @@ describe("yudao integration models", () => {
     expect(merged[0].quantity).toBe(5);
     expect(updated[0].quantity).toBe(1);
     expect(removed).toEqual([]);
+  });
+
+  it("maps yudao address responses for checkout selection", () => {
+    expect(
+      mapAddressResponse({
+        id: 9,
+        name: "Ada",
+        mobile: "15500000000",
+        areaName: "Shanghai",
+        detailAddress: "Road 1",
+      }),
+    ).toEqual({
+      id: 9,
+      name: "Ada",
+      mobile: "15500000000",
+      areaName: "Shanghai",
+      detailAddress: "Road 1",
+      label: "Ada - 15500000000 - Shanghai Road 1",
+      raw: expect.any(Object),
+    });
+  });
+
+  it("maps settlement totals and items from yudao order settlement response", () => {
+    const settlement = mapSettlementResponse({
+      price: { payPrice: 259900, totalPrice: 329900, deliveryPrice: 0 },
+      items: [{ skuId: 88, count: 1, spuName: "Cloud Sofa", picUrl: "cover.jpg", payPrice: 259900 }],
+    });
+
+    expect(settlement).toEqual({
+      payPrice: 2599,
+      totalPrice: 3299,
+      deliveryPrice: 0,
+      items: [{ skuId: 88, count: 1, name: "Cloud Sofa", cover: "cover.jpg", payPrice: 2599 }],
+      raw: expect.any(Object),
+    });
+  });
+
+  it("maps order page and detail responses into storefront orders", () => {
+    const page = mapOrderPage({
+      list: [{ id: 1, no: "O1", status: 10, payPrice: 120000, items: [{ spuName: "Sofa" }] }],
+      total: 1,
+    });
+    const detail = mapOrderDetail({ id: 1, no: "O1", status: 10, payPrice: 120000, payOrderId: 99, items: [] });
+
+    expect(page.total).toBe(1);
+    expect(page.list[0]).toMatchObject({ id: 1, no: "O1", payPrice: 1200 });
+    expect(detail).toMatchObject({ id: 1, no: "O1", payPrice: 1200, payOrderId: 99 });
+  });
+
+  it("reads and writes the yudao app token using the shared storage key", () => {
+    const storage = new Map();
+    const fakeStorage = {
+      getItem: (key) => storage.get(key),
+      setItem: (key, value) => storage.set(key, value),
+      removeItem: (key) => storage.delete(key),
+    };
+
+    writeYudaoToken(" abc ", fakeStorage);
+    expect(storage.get(AUTH_TOKEN_STORAGE_KEY)).toBe("abc");
+    expect(readYudaoToken(fakeStorage)).toBe("abc");
+
+    writeYudaoToken("", fakeStorage);
+    expect(storage.has(AUTH_TOKEN_STORAGE_KEY)).toBe(false);
   });
 });

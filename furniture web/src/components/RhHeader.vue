@@ -9,6 +9,7 @@ import {
   saleMegaMenu,
 } from "../data/rhLayout.js";
 import { useI18n } from "../i18n.js";
+import AuthTokenPanel from "./AuthTokenPanel.vue";
 import ImageSpecPlaceholder from "./ImageSpecPlaceholder.vue";
 
 defineProps({
@@ -292,6 +293,7 @@ const activatePage = (label) => {
           <a class="forgot-password" href="#">Forgot Password?</a>
           <button type="button">SIGN IN</button>
         </form>
+        <AuthTokenPanel />
         <div class="account-modal-links">
           <a href="#">Sign In With a Secure Link</a>
           <a href="#">Trade Program Sign In</a>

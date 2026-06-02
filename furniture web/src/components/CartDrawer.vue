@@ -15,7 +15,7 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(["close", "update-quantity", "remove"]);
+const emit = defineEmits(["checkout", "close", "update-quantity", "remove"]);
 const { t } = useI18n();
 const totals = computed(() => getCartTotals(props.items));
 const money = (value) => `$${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -66,7 +66,7 @@ const money = (value) => `$${value.toLocaleString("en-US", { minimumFractionDigi
           <span>{{ t("subtotal") }}</span>
           <strong>{{ money(totals.subtotal) }}</strong>
         </div>
-        <button type="button">{{ t("checkout") }}</button>
+        <button type="button" :disabled="items.length === 0" @click="emit('checkout')">{{ t("checkout") }}</button>
       </footer>
     </aside>
   </div>
