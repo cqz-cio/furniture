@@ -1,3 +1,5 @@
+import { hasMembershipService } from "./membershipCart.js";
+
 export const membershipRoutes = {
   membership: "/membership",
   membershipEnrollment: "/membership/enrollment",
@@ -53,6 +55,23 @@ export const checkoutAuthOptions = [
     disabledForMembership: true,
   },
 ];
+
+export const getCheckoutEntryRoute = (items = []) =>
+  hasMembershipService(items) ? `${membershipRoutes.checkoutAuth}?intent=membership` : membershipRoutes.checkoutAuth;
+
+export const getCheckoutAuthOptions = (items = []) => {
+  const containsMembership = hasMembershipService(items);
+
+  return checkoutAuthOptions.map((option) => {
+    if (option.key !== "guest") return { ...option, disabled: false, reason: "" };
+
+    return {
+      ...option,
+      disabled: containsMembership,
+      reason: containsMembership ? "Guest checkout is not available when the bag contains a membership service." : "",
+    };
+  });
+};
 
 export const getMembershipJoinTarget = ({ signedIn, memberStatus }) => {
   if (!signedIn) return `${membershipRoutes.checkoutAuth}?intent=membership`;

@@ -1,5 +1,21 @@
 <script setup>
-import { checkoutAuthOptions } from "../services/membershipNavigation.js";
+import { computed } from "vue";
+import { getCheckoutAuthOptions } from "../services/membershipNavigation.js";
+
+const props = defineProps({
+  items: {
+    type: Array,
+    default: () => [],
+  },
+});
+
+const emit = defineEmits(["continue-checkout"]);
+const authOptions = computed(() => getCheckoutAuthOptions(props.items));
+
+const chooseOption = (option) => {
+  if (option.disabled) return;
+  if (option.key === "guest") emit("continue-checkout");
+};
 </script>
 
 <template>
@@ -11,11 +27,15 @@ import { checkoutAuthOptions } from "../services/membershipNavigation.js";
     </header>
 
     <section class="checkout-auth-options" aria-label="Checkout authentication choices">
-      <article v-for="option in checkoutAuthOptions" :key="option.key">
+      <article v-for="option in authOptions" :key="option.key" :class="{ disabled: option.disabled }">
         <h2>{{ option.title }}</h2>
         <p>{{ option.description }}</p>
-        <small v-if="option.disabledForMembership">Not available when the bag contains a membership service.</small>
-        <a :href="option.href">{{ option.cta }}</a>
+        <small v-if="option.disabled">{{ option.reason }}</small>
+        <small v-else-if="option.disabledForMembership">Membership services require account checkout.</small>
+        <button v-if="option.key === 'guest'" type="button" :disabled="option.disabled" @click="chooseOption(option)">
+          {{ option.cta }}
+        </button>
+        <a v-else :href="option.href" @click="chooseOption(option)">{{ option.cta }}</a>
       </article>
     </section>
   </section>

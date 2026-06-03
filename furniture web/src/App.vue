@@ -28,6 +28,7 @@ import {
   updateLocalCartItemQuantity,
   writeLocalCart,
 } from "./services/localCart.js";
+import { getCheckoutEntryRoute } from "./services/membershipNavigation.js";
 import { addCartItem, deleteCartItems, getRemoteCartItems, updateCartItemCount } from "./services/yudaoClient.js";
 
 const pageRoutes = {
@@ -143,6 +144,17 @@ const openOrderDetail = (orderId) => {
   window.history.pushState({ page: "orders" }, "", `/orders?id=${orderId}`);
 };
 
+const startCheckout = () => {
+  const nextRoute = getCheckoutEntryRoute(cartItems.value);
+  currentPage.value = pageFromPath(nextRoute.split("?")[0]);
+  window.history.pushState({ page: currentPage.value }, "", nextRoute);
+  cartOpen.value = false;
+};
+
+const continueCheckout = () => {
+  currentPage.value = "checkout";
+};
+
 watch(currentPage, (page) => {
   const nextPath = pageRoutes[page] || pageRoutes.missing;
   if (window.location.pathname !== nextPath) {
@@ -165,13 +177,19 @@ onBeforeUnmount(() => {
 <template>
   <RhHeader v-model:page="currentPage" :cart-count="cartQuantity" :cart-mode="cartMode" @open-cart="cartOpen = true" />
   <main class="app-main">
-    <component :is="pageComponent" :items="cartItems" @add-to-cart="addToCart" @order-created="openOrderDetail" />
+    <component
+      :is="pageComponent"
+      :items="cartItems"
+      @add-to-cart="addToCart"
+      @continue-checkout="continueCheckout"
+      @order-created="openOrderDetail"
+    />
   </main>
   <RhFooter />
   <CartDrawer
     :items="cartItems"
     :open="cartOpen"
-    @checkout="currentPage = 'checkout'; cartOpen = false"
+    @checkout="startCheckout"
     @close="cartOpen = false"
     @remove="removeFromCart"
     @update-quantity="updateCartQuantity"

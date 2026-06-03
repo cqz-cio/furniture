@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  getCheckoutAuthOptions,
+  getCheckoutEntryRoute,
   accountMenuItems,
   checkoutAuthOptions,
   getMembershipJoinTarget,
@@ -38,5 +40,19 @@ describe("membership navigation model", () => {
     expect(getMembershipJoinTarget({ signedIn: false, memberStatus: "guest" })).toBe("/checkout/auth?intent=membership");
     expect(getMembershipJoinTarget({ signedIn: true, memberStatus: "not_member" })).toBe("/membership/enrollment");
     expect(getMembershipJoinTarget({ signedIn: true, memberStatus: "active" })).toBe("/account/membership");
+  });
+
+  it("starts checkout through the auth split and flags membership intent", () => {
+    expect(getCheckoutEntryRoute([])).toBe("/checkout/auth");
+    expect(getCheckoutEntryRoute([{ skuId: "membership-annual", quantity: 1 }])).toBe("/checkout/auth?intent=membership");
+  });
+
+  it("disables guest checkout only when a membership service is in the bag", () => {
+    const regularOptions = getCheckoutAuthOptions([{ skuId: "sofa-1", quantity: 1 }]);
+    const membershipOptions = getCheckoutAuthOptions([{ skuId: "membership-annual", quantity: 1 }]);
+
+    expect(regularOptions.find((option) => option.key === "guest").disabled).toBe(false);
+    expect(membershipOptions.find((option) => option.key === "guest").disabled).toBe(true);
+    expect(membershipOptions.find((option) => option.key === "guest").reason).toContain("membership");
   });
 });
