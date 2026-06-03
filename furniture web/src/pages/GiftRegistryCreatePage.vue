@@ -55,7 +55,7 @@ const visibilityOptions = [
 </script>
 
 <template>
-  <section class="membership-page registry-workflow-page">
+  <section class="membership-page service-page-shell registry-workflow-page">
     <header class="membership-hero registry-hero">
       <p class="eyebrow">Gift Registry</p>
       <h1>Create a registry with event, delivery and privacy planning.</h1>
@@ -63,7 +63,7 @@ const visibilityOptions = [
         The create flow captures the event, registrants, delivery addresses, subscription preferences and sharing state
         before the registry becomes visible.
       </p>
-      <div class="membership-actions">
+      <div class="membership-actions service-link-row">
         <a class="membership-primary-link" :href="membershipRoutes.giftRegistryFind">Find a Registry</a>
         <a :href="membershipRoutes.giftRegistryManage">Manage Registry</a>
       </div>

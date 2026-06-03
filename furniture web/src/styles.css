@@ -2890,6 +2890,20 @@ button {
   padding: 72px 48px 96px;
 }
 
+.service-page-shell {
+  max-width: 1180px;
+  margin: 0 auto;
+  gap: 40px;
+  padding-top: 62px;
+}
+
+.account-service-shell {
+  max-width: 1180px;
+  margin: 0 auto;
+  gap: 42px;
+  padding-top: 62px;
+}
+
 .membership-narrow {
   max-width: 980px;
   margin: 0 auto;
@@ -2926,6 +2940,12 @@ button {
   flex-wrap: wrap;
   gap: 18px;
   align-items: center;
+}
+
+.service-link-row {
+  gap: 22px;
+  border-top: 1px solid var(--line);
+  padding-top: 18px;
 }
 
 .membership-actions a,
@@ -3171,6 +3191,33 @@ button {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
+}
+
+.registry-owner-action-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.registry-owner-action-grid article {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--line);
+  background: #fff;
+  padding: 20px;
+}
+
+.registry-owner-action-grid h3 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 22px;
+  font-weight: 400;
+}
+
+.registry-owner-action-grid p {
+  margin: 0;
+  color: var(--soft-ink);
+  line-height: 1.6;
 }
 
 .checkout-auth-options article small {
@@ -3419,7 +3466,8 @@ button {
 }
 
 .registry-result-list a,
-.membership-benefit-grid a {
+.membership-benefit-grid a,
+.registry-owner-action-grid a {
   width: fit-content;
   border-bottom: 1px solid currentColor;
   color: var(--ink);
@@ -3441,6 +3489,7 @@ button {
   .account-page,
   .membership-status-panel,
   .membership-benefit-grid,
+  .registry-owner-action-grid,
   .membership-status-list div,
   .registry-entry-list,
   .registry-workflow-grid,

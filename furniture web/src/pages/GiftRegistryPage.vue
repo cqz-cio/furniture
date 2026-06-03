@@ -9,7 +9,7 @@ const registryEntries = [
 </script>
 
 <template>
-  <section class="membership-page">
+  <section class="membership-page service-page-shell">
     <header class="membership-hero registry-hero">
       <p class="eyebrow">Gift Registry</p>
       <h1>Find, create and manage furniture gift registries.</h1>

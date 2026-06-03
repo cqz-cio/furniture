@@ -12,7 +12,7 @@ const benefits = [
 </script>
 
 <template>
-  <section class="membership-page">
+  <section class="membership-page service-page-shell">
     <header class="membership-hero">
       <p class="eyebrow">Members Program</p>
       <h1>Membership, planned like a core account service.</h1>
@@ -20,7 +20,7 @@ const benefits = [
         Join to access member savings, account-based benefits and whole-room services aligned with the furniture
         purchase journey.
       </p>
-      <div class="membership-actions">
+      <div class="membership-actions service-link-row">
         <a class="membership-primary-link" :href="joinHref">Join Now</a>
         <a :href="membershipRoutes.membershipTerms">See Terms</a>
       </div>

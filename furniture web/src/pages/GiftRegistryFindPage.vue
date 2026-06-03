@@ -18,7 +18,7 @@ const sampleRegistries = [
 </script>
 
 <template>
-  <section class="membership-page registry-workflow-page">
+  <section class="membership-page service-page-shell registry-workflow-page">
     <header class="membership-hero registry-hero">
       <p class="eyebrow">Gift Registry</p>
       <h1>Find a Registry</h1>
@@ -26,7 +26,7 @@ const sampleRegistries = [
         Guests can search public registries by registrant name, event date or email, then enter the registry shopping
         path.
       </p>
-      <div class="membership-actions">
+      <div class="membership-actions service-link-row">
         <a class="membership-primary-link" :href="membershipRoutes.giftRegistryCreate">Create a Registry</a>
         <a :href="membershipRoutes.giftRegistryManage">Manage Registry</a>
       </div>
@@ -53,7 +53,7 @@ const sampleRegistries = [
         <div>
           <p class="eyebrow">{{ registry.event }}</p>
           <h2>{{ registry.name }}</h2>
-          <p>{{ registry.date }} · {{ registry.location }}</p>
+          <p>{{ registry.date }} - {{ registry.location }}</p>
         </div>
         <a :href="membershipRoutes.giftRegistry">View Registry</a>
       </article>

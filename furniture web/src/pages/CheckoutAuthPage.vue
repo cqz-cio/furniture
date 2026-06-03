@@ -19,7 +19,7 @@ const chooseOption = (option) => {
 </script>
 
 <template>
-  <section class="membership-page membership-narrow">
+  <section class="membership-page membership-narrow service-page-shell">
     <header class="membership-page-head">
       <p class="eyebrow">Checkout</p>
       <h1>Sign in, create an account or continue as guest.</h1>

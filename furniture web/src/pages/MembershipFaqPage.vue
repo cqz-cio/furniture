@@ -1,5 +1,5 @@
 <template>
-  <section class="membership-page membership-narrow">
+  <section class="membership-page membership-narrow service-page-shell">
     <header class="membership-page-head">
       <p class="eyebrow">Membership FAQs</p>
       <h1>Common membership questions.</h1>

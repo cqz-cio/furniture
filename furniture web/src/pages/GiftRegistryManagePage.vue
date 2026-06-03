@@ -21,32 +21,36 @@ const registry = createGiftRegistryDraft({
 
 const steps = getGiftRegistrySteps(registry);
 const shareState = getRegistryShareState(registry);
-const managementCards = [
+const ownerActions = [
   {
     title: "Registry Visibility",
     description: "Review public, email-searchable or invite-only access.",
     cta: "Edit Visibility",
+    href: `${membershipRoutes.giftRegistryManage}?section=visibility`,
   },
   {
     title: "Gift Card & Email Preferences",
     description: "Control gift card acceptance and registry communication preferences.",
     cta: "Edit Preferences",
+    href: `${membershipRoutes.giftRegistryManage}?section=preferences`,
   },
   {
     title: "Delivery Addresses",
     description: "Maintain before-event and after-event delivery destinations.",
     cta: "Edit Addresses",
+    href: `${membershipRoutes.giftRegistryManage}?section=addresses`,
   },
   {
     title: "Purchased Gifts",
     description: "Items purchased from the registry are automatically marked as purchased.",
     cta: "View Gifts",
+    href: `${membershipRoutes.giftRegistryManage}?section=purchased`,
   },
 ];
 </script>
 
 <template>
-  <section class="account-page">
+  <section class="account-page account-service-shell">
     <aside class="account-sidebar" aria-label="Registry management navigation">
       <p class="eyebrow">Gift Registry</p>
       <a :href="membershipRoutes.giftRegistry">Registry Home</a>
@@ -67,7 +71,7 @@ const managementCards = [
         <div>
           <p class="eyebrow">{{ registry.event.type }}</p>
           <h2>{{ registry.registrants.primaryName }} & {{ registry.registrants.coRegistrantName }}</h2>
-          <p>{{ registry.event.date }} · {{ shareState.publicUrl }}</p>
+          <p>{{ registry.event.date }} - {{ shareState.publicUrl }}</p>
         </div>
         <a :href="shareState.publicUrl">View Public Registry</a>
       </section>
@@ -79,11 +83,11 @@ const managementCards = [
         </li>
       </ol>
 
-      <section class="membership-benefit-grid" aria-label="Registry management tools">
-        <article v-for="card in managementCards" :key="card.title">
-          <h3>{{ card.title }}</h3>
-          <p>{{ card.description }}</p>
-          <a href="/gift-registry/manage">{{ card.cta }}</a>
+      <section class="registry-owner-action-grid" aria-label="Registry management tools">
+        <article v-for="action in ownerActions" :key="action.title">
+          <h3>{{ action.title }}</h3>
+          <p>{{ action.description }}</p>
+          <a :href="action.href">{{ action.cta }}</a>
         </article>
       </section>
     </section>

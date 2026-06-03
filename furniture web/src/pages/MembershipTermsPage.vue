@@ -1,5 +1,5 @@
 <template>
-  <section class="membership-page membership-narrow">
+  <section class="membership-page membership-narrow service-page-shell">
     <header class="membership-page-head">
       <p class="eyebrow">Members Program Terms</p>
       <h1>Rules, renewal and benefit eligibility.</h1>

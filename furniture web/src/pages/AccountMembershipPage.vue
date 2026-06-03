@@ -35,7 +35,7 @@ const statusRows = [
 </script>
 
 <template>
-  <section class="account-page">
+  <section class="account-page account-service-shell">
     <aside class="account-sidebar" aria-label="My Account navigation">
       <p class="eyebrow">My Account</p>
       <a v-for="item in accountMenuItems" :key="item.label" :href="item.href">{{ item.label }}</a>
@@ -90,7 +90,7 @@ const statusRows = [
         </article>
       </section>
 
-      <div class="membership-actions">
+      <div class="membership-actions service-link-row">
         <a class="membership-primary-link" :href="membershipRoutes.membershipEnrollment">Join or Renew</a>
         <a :href="membershipRoutes.membershipTerms">View Rules</a>
       </div>
