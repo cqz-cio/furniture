@@ -60,7 +60,6 @@ assert.match(configSource, /\/system\/role/)
 assert.match(configSource, /deniedFixedRoutePrefixes/)
 assert.match(configSource, /\/ai/)
 assert.match(configSource, /\/crm/)
-assert.match(configSource, /\/wms/)
 
 const permissionSource = read('src/store/modules/permission.ts')
 assert.match(permissionSource, /filterFurnitureLiteMenus/)

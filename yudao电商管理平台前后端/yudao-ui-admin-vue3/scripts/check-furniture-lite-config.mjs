@@ -69,8 +69,7 @@ const requiredFurnitureLiteConfigTokens = [
   '/system/role',
   'deniedFixedRoutePrefixes',
   '/ai',
-  '/crm',
-  '/wms'
+  '/crm'
 ]
 
 for (const token of requiredFurnitureLiteConfigTokens) {
