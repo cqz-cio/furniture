@@ -54,8 +54,7 @@ const deniedFixedRoutePrefixes = [
   '/mes',
   '/diy',
   '/codegen',
-  '/job',
-  '/wms'
+  '/job'
 ]
 
 const isFalseEnvValue = (value: unknown): boolean =>
