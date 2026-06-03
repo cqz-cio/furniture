@@ -8,6 +8,9 @@ import AccountPage from "./pages/AccountPage.vue";
 import BabyChildPage from "./pages/BabyChildPage.vue";
 import CheckoutAuthPage from "./pages/CheckoutAuthPage.vue";
 import CheckoutPage from "./pages/CheckoutPage.vue";
+import GiftRegistryCreatePage from "./pages/GiftRegistryCreatePage.vue";
+import GiftRegistryFindPage from "./pages/GiftRegistryFindPage.vue";
+import GiftRegistryManagePage from "./pages/GiftRegistryManagePage.vue";
 import GiftRegistryPage from "./pages/GiftRegistryPage.vue";
 import HomePage from "./pages/HomePage.vue";
 import MembershipEnrollmentPage from "./pages/MembershipEnrollmentPage.vue";
@@ -47,6 +50,9 @@ const pageRoutes = {
   "account-membership": "/account/membership",
   "checkout-auth": "/checkout/auth",
   "gift-registry": "/gift-registry",
+  "gift-registry-create": "/gift-registry/create",
+  "gift-registry-find": "/gift-registry/find",
+  "gift-registry-manage": "/gift-registry/manage",
   checkout: "/checkout",
   orders: "/orders",
   missing: "/missing",
@@ -54,7 +60,10 @@ const pageRoutes = {
 
 const routePages = Object.fromEntries(Object.entries(pageRoutes).map(([page, path]) => [path, page]));
 
-const pageFromPath = (path) => routePages[path.replace(/\/$/, "") || "/"] || "missing";
+const pageFromPath = (path) => {
+  const normalizedPath = path.replace(/\/$/, "") || "/";
+  return routePages[normalizedPath] || (normalizedPath.startsWith("/gift-registry/") ? "gift-registry" : "missing");
+};
 
 const currentPage = ref(pageFromPath(window.location.pathname));
 const cartOpen = ref(false);
@@ -77,6 +86,9 @@ const pageComponent = computed(() => {
   if (currentPage.value === "account-membership") return AccountMembershipPage;
   if (currentPage.value === "checkout-auth") return CheckoutAuthPage;
   if (currentPage.value === "gift-registry") return GiftRegistryPage;
+  if (currentPage.value === "gift-registry-create") return GiftRegistryCreatePage;
+  if (currentPage.value === "gift-registry-find") return GiftRegistryFindPage;
+  if (currentPage.value === "gift-registry-manage") return GiftRegistryManagePage;
   if (currentPage.value === "checkout") return CheckoutPage;
   if (currentPage.value === "orders") return OrdersPage;
   return MissingExtractionPage;

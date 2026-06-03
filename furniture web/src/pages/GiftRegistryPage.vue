@@ -2,7 +2,7 @@
 import { membershipRoutes } from "../services/membershipNavigation.js";
 
 const registryEntries = [
-  { title: "Find a Registry", href: "/gift-registry/find" },
+  { title: "Find a Registry", href: membershipRoutes.giftRegistryFind },
   { title: "Create a Registry", href: membershipRoutes.giftRegistryCreate },
   { title: "Manage Your Registry", href: membershipRoutes.giftRegistryManage },
 ];

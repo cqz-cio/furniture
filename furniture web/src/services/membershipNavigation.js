@@ -16,6 +16,7 @@ export const membershipRoutes = {
   checkoutAuth: "/checkout/auth",
   giftRegistry: "/gift-registry",
   giftRegistryCreate: "/gift-registry/create",
+  giftRegistryFind: "/gift-registry/find",
   giftRegistryManage: "/gift-registry/manage",
 };
 

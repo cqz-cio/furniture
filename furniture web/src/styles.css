@@ -3214,6 +3214,221 @@ button {
   text-decoration: none;
 }
 
+.registry-workflow-page {
+  gap: 42px;
+}
+
+.registry-workflow-grid {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 34px;
+  align-items: start;
+}
+
+.registry-step-panel,
+.registry-form-section,
+.registry-share-panel,
+.registry-search-panel,
+.registry-result-list article {
+  border: 1px solid var(--line);
+  background: #fff;
+  padding: 24px;
+}
+
+.registry-step-panel {
+  position: sticky;
+  top: 160px;
+  display: grid;
+  gap: 18px;
+}
+
+.registry-step-list {
+  display: grid;
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: var(--line);
+}
+
+.registry-step-list li {
+  display: grid;
+  gap: 8px;
+  background: var(--paper);
+  padding: 16px;
+}
+
+.registry-step-list span {
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.registry-step-list strong {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 20px;
+  font-weight: 400;
+}
+
+.registry-step-list li.complete span {
+  color: var(--ink);
+}
+
+.registry-step-list-inline {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.registry-form-stack {
+  display: grid;
+  gap: 18px;
+}
+
+.registry-form-section {
+  display: grid;
+  gap: 18px;
+}
+
+.registry-form-section h2,
+.registry-share-panel h2,
+.registry-result-list h2 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 30px;
+  font-weight: 400;
+}
+
+.registry-form-section dl {
+  display: grid;
+  gap: 1px;
+  margin: 0;
+  background: var(--line);
+}
+
+.registry-form-section dl div {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr);
+  gap: 18px;
+  background: #fff;
+  padding: 16px 0;
+}
+
+.registry-form-section dt {
+  color: var(--muted);
+}
+
+.registry-form-section dd {
+  margin: 0;
+  color: var(--soft-ink);
+  line-height: 1.5;
+}
+
+.registry-address-grid,
+.registry-choice-row,
+.registry-result-list {
+  display: grid;
+  gap: 14px;
+}
+
+.registry-address-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.registry-address-grid article {
+  display: grid;
+  gap: 8px;
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+}
+
+.registry-address-grid h3,
+.registry-address-grid p {
+  margin: 0;
+}
+
+.registry-address-grid small {
+  color: var(--muted);
+}
+
+.registry-choice-row {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.registry-choice-row span {
+  border: 1px solid var(--line);
+  padding: 14px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.registry-choice-row span.selected {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+.registry-share-panel,
+.registry-result-list article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 20px;
+  align-items: center;
+}
+
+.registry-share-panel p,
+.registry-result-list p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.registry-search-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px auto;
+  gap: 14px;
+  align-items: end;
+}
+
+.registry-search-panel label {
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.registry-search-panel input,
+.registry-search-panel select {
+  min-height: 42px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+  padding: 0 12px;
+  font-size: 14px;
+}
+
+.registry-search-panel button {
+  min-height: 42px;
+  border: 1px solid #211f1b;
+  background: #211f1b;
+  color: #fff;
+  cursor: pointer;
+  padding: 0 22px;
+  text-transform: uppercase;
+  font-size: 12px;
+}
+
+.registry-result-list a,
+.membership-benefit-grid a {
+  width: fit-content;
+  border-bottom: 1px solid currentColor;
+  color: var(--ink);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  padding-bottom: 5px;
+  text-transform: uppercase;
+}
+
 @media (max-width: 900px) {
   .membership-page,
   .account-page {
@@ -3227,8 +3442,19 @@ button {
   .membership-status-panel,
   .membership-benefit-grid,
   .membership-status-list div,
-  .registry-entry-list {
+  .registry-entry-list,
+  .registry-workflow-grid,
+  .registry-step-list-inline,
+  .registry-address-grid,
+  .registry-choice-row,
+  .registry-share-panel,
+  .registry-search-panel,
+  .registry-result-list article {
     grid-template-columns: 1fr;
+  }
+
+  .registry-step-panel {
+    position: static;
   }
 
   .account-sidebar {
