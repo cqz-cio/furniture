@@ -3,9 +3,17 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import CartDrawer from "./components/CartDrawer.vue";
 import RhFooter from "./components/RhFooter.vue";
 import RhHeader from "./components/RhHeader.vue";
+import AccountMembershipPage from "./pages/AccountMembershipPage.vue";
+import AccountPage from "./pages/AccountPage.vue";
 import BabyChildPage from "./pages/BabyChildPage.vue";
+import CheckoutAuthPage from "./pages/CheckoutAuthPage.vue";
 import CheckoutPage from "./pages/CheckoutPage.vue";
+import GiftRegistryPage from "./pages/GiftRegistryPage.vue";
 import HomePage from "./pages/HomePage.vue";
+import MembershipEnrollmentPage from "./pages/MembershipEnrollmentPage.vue";
+import MembershipFaqPage from "./pages/MembershipFaqPage.vue";
+import MembershipPage from "./pages/MembershipPage.vue";
+import MembershipTermsPage from "./pages/MembershipTermsPage.vue";
 import MissingExtractionPage from "./pages/MissingExtractionPage.vue";
 import OrdersPage from "./pages/OrdersPage.vue";
 import OutdoorPage from "./pages/OutdoorPage.vue";
@@ -30,6 +38,14 @@ const pageRoutes = {
   "sofa-pdp": "/sofa-pdp",
   teen: "/teen",
   "baby-child": "/baby-child",
+  membership: "/membership",
+  "membership-enrollment": "/membership/enrollment",
+  "membership-terms": "/membership/terms",
+  "membership-faqs": "/membership/faqs",
+  account: "/account",
+  "account-membership": "/account/membership",
+  "checkout-auth": "/checkout/auth",
+  "gift-registry": "/gift-registry",
   checkout: "/checkout",
   orders: "/orders",
   missing: "/missing",
@@ -52,6 +68,14 @@ const pageComponent = computed(() => {
   if (currentPage.value === "sofa-pdp") return SofaPdpPage;
   if (currentPage.value === "teen") return TeenPage;
   if (currentPage.value === "baby-child") return BabyChildPage;
+  if (currentPage.value === "membership") return MembershipPage;
+  if (currentPage.value === "membership-enrollment") return MembershipEnrollmentPage;
+  if (currentPage.value === "membership-terms") return MembershipTermsPage;
+  if (currentPage.value === "membership-faqs") return MembershipFaqPage;
+  if (currentPage.value === "account") return AccountPage;
+  if (currentPage.value === "account-membership") return AccountMembershipPage;
+  if (currentPage.value === "checkout-auth") return CheckoutAuthPage;
+  if (currentPage.value === "gift-registry") return GiftRegistryPage;
   if (currentPage.value === "checkout") return CheckoutPage;
   if (currentPage.value === "orders") return OrdersPage;
   return MissingExtractionPage;

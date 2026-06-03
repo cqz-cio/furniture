@@ -1,5 +1,5 @@
 <script setup>
-import { rhFooter } from "../data/rhLayout.js";
+import { footerLinkHref, rhFooter } from "../data/rhLayout.js";
 </script>
 
 <template>
@@ -16,7 +16,7 @@ import { rhFooter } from "../data/rhLayout.js";
     <section class="footer-links" aria-label="Footer links">
       <article v-for="column in rhFooter.columns" :key="column.title">
         <h3>{{ column.title }}</h3>
-        <a v-for="link in column.links" :key="link" href="#">{{ link }}</a>
+        <a v-for="link in column.links" :key="link" :href="footerLinkHref(link)">{{ link }}</a>
       </article>
     </section>
 

@@ -93,6 +93,7 @@ export const rhFooter = {
         "LIFETIME GUARANTEE",
         "RH GIFT CARD",
         "GIFT REGISTRY",
+        "MEMBERSHIP FAQS",
         "FAQS",
       ],
     },
@@ -108,6 +109,14 @@ export const rhFooter = {
   region: "United States ($) / English",
   copyright: "© 2026 RH",
 };
+
+const footerHrefMap = {
+  "RH MEMBERS PROGRAM": "/membership",
+  "GIFT REGISTRY": "/gift-registry",
+  "MEMBERSHIP FAQS": "/membership/faqs",
+};
+
+export const footerLinkHref = (label) => footerHrefMap[label] || "#";
 
 const legacyBabyChildPageSpecs = {
   url: "https://rhbabyandchild.rh.com/us/en/",
