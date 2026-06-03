@@ -30,6 +30,7 @@ const allowedMenuPaths = new Set([
   '/pay/refund',
   '/infra/file',
   '/infra/file-config',
+  '/infra/file/file-config',
   '/system/user',
   '/system/role',
   '/system/menu'

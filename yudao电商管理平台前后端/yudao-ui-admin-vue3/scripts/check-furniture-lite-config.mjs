@@ -17,6 +17,10 @@ const permissionStore = readRequired(
   'src/store/modules/permission.ts',
   'Task 2 should wire furniture lite menu and fixed route filters into the permission store.'
 )
+const routerIndex = readRequired(
+  'src/router/index.ts',
+  'Task 3 should filter fixed routes before Vue Router registers them.'
+)
 const docAlert = readRequired(
   'src/components/DocAlert/index.vue',
   'Task 2 should gate the documentation alert with isDocAlertVisible.'
@@ -67,6 +71,7 @@ const requiredFurnitureLiteConfigTokens = [
   '/mall/product/category',
   '/mall/trade/order',
   '/system/role',
+  '/infra/file/file-config',
   'deniedFixedRoutePrefixes',
   '/ai',
   '/crm'
@@ -79,6 +84,12 @@ for (const token of requiredFurnitureLiteConfigTokens) {
 for (const token of ['filterFurnitureLiteMenus', 'filterFurnitureLiteFixedRoutes']) {
   assert.ok(permissionStore.includes(token), `src/store/modules/permission.ts must reference ${token}`)
 }
+
+assert.ok(
+  routerIndex.includes('filterFurnitureLiteFixedRoutes') &&
+    routerIndex.includes('furnitureLiteRemainingRouter'),
+  'src/router/index.ts must filter fixed routes before Vue Router registers them'
+)
 
 assert.ok(
   docAlert.includes('isDocAlertVisible'),
