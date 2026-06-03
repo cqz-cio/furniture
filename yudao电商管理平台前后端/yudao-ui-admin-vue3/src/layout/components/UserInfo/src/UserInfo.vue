@@ -2,6 +2,7 @@
 import { ElMessageBox } from 'element-plus'
 
 import avatarImg from '@/assets/imgs/avatar.gif'
+import { isDevLinksVisible } from '@/config/furnitureLite'
 import { useDesign } from '@/hooks/web/useDesign'
 import { useTagsViewStore } from '@/store/modules/tagsView'
 import { useUserStore } from '@/store/modules/user'
@@ -25,6 +26,7 @@ const prefixCls = getPrefixCls('user-info')
 
 const avatar = computed(() => userStore.user.avatar || avatarImg)
 const userName = computed(() => userStore.user.nickname ?? 'Admin')
+const showDevLinks = computed(() => isDevLinksVisible())
 
 // 锁定屏幕
 const lockStore = useLockStore()
@@ -68,7 +70,7 @@ const toDocument = () => {
           <Icon icon="ep:tools" />
           <div @click="toProfile">{{ t('common.profile') }}</div>
         </ElDropdownItem>
-        <ElDropdownItem>
+        <ElDropdownItem v-if="showDevLinks">
           <Icon icon="ep:menu" />
           <div @click="toDocument">{{ t('common.document') }}</div>
         </ElDropdownItem>

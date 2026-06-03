@@ -1,6 +1,7 @@
 package cn.iocoder.yudao.module.member.service.auth;
 
 import cn.hutool.core.lang.Assert;
+import cn.hutool.core.util.StrUtil;
 import cn.iocoder.yudao.framework.common.enums.CommonStatusEnum;
 import cn.iocoder.yudao.framework.common.enums.TerminalEnum;
 import cn.iocoder.yudao.framework.common.enums.UserTypeEnum;
@@ -74,6 +75,42 @@ public class MemberAuthServiceImpl implements MemberAuthService {
 
         // 创建 Token 令牌，记录登录日志
         return createTokenAfterLoginSuccess(user, reqVO.getMobile(), LoginLogTypeEnum.LOGIN_MOBILE, openid);
+    }
+
+    @Override
+    public AppAuthLoginRespVO emailLogin(AppAuthEmailLoginReqVO reqVO) {
+        String email = normalizeEmail(reqVO.getEmail());
+        MemberUserDO user = emailLogin0(email, reqVO.getPassword());
+        return createTokenAfterLoginSuccess(user, email, LoginLogTypeEnum.LOGIN_USERNAME, null);
+    }
+
+    @Override
+    @Transactional
+    public AppAuthLoginRespVO emailRegister(AppAuthEmailRegisterReqVO reqVO) {
+        String email = normalizeEmail(reqVO.getEmail());
+        String nickname = StrUtil.trim(reqVO.getFirstName() + " " + reqVO.getLastName());
+        MemberUserDO user = userService.createUserByEmail(email, reqVO.getPassword(), nickname, getClientIP(), getTerminal());
+        Assert.notNull(user, "获取用户失败，结果为空");
+        return createTokenAfterLoginSuccess(user, email, LoginLogTypeEnum.LOGIN_USERNAME, null);
+    }
+
+    @Override
+    public void sendEmailSecureLink(AppAuthEmailSecureLinkReqVO reqVO) {
+        // 真实 magic link 邮件发送需要后续接入邮件模板与一次性 token 存储；这里先保留无枚举泄露的请求入口。
+        normalizeEmail(reqVO.getEmail());
+    }
+
+    @Override
+    public AppAuthLoginRespVO tradeLogin(AppAuthTradeLoginReqVO reqVO) {
+        String email = normalizeEmail(reqVO.getEmail());
+        MemberUserDO user = userService.getUserByEmail(email);
+        if (user == null || !StrUtil.equals(StrUtil.trim(reqVO.getTradeId()), user.getTradeId())) {
+            createLoginLog(user != null ? user.getId() : null, email, LoginLogTypeEnum.LOGIN_USERNAME,
+                    LoginResultEnum.BAD_CREDENTIALS);
+            throw exception(AUTH_TRADE_ACCOUNT_NOT_FOUND);
+        }
+        validateUserEnabled(user, email, LoginLogTypeEnum.LOGIN_USERNAME);
+        return createTokenAfterLoginSuccess(user, email, LoginLogTypeEnum.LOGIN_USERNAME, null);
     }
 
     @Override
@@ -181,22 +218,44 @@ public class MemberAuthServiceImpl implements MemberAuthService {
             createLoginLog(user.getId(), mobile, logTypeEnum, LoginResultEnum.BAD_CREDENTIALS);
             throw exception(AUTH_LOGIN_BAD_CREDENTIALS);
         }
-        // 校验是否禁用
-        if (CommonStatusEnum.isDisable(user.getStatus())) {
-            createLoginLog(user.getId(), mobile, logTypeEnum, LoginResultEnum.USER_DISABLED);
-            throw exception(AUTH_LOGIN_USER_DISABLED);
-        }
+        validateUserEnabled(user, mobile, logTypeEnum);
         return user;
     }
 
-    private void createLoginLog(Long userId, String mobile, LoginLogTypeEnum logType, LoginResultEnum loginResult) {
+    private MemberUserDO emailLogin0(String email, String password) {
+        final LoginLogTypeEnum logTypeEnum = LoginLogTypeEnum.LOGIN_USERNAME;
+        MemberUserDO user = userService.getUserByEmail(email);
+        if (user == null) {
+            createLoginLog(null, email, logTypeEnum, LoginResultEnum.BAD_CREDENTIALS);
+            throw exception(AUTH_LOGIN_BAD_CREDENTIALS);
+        }
+        if (!userService.isPasswordMatch(password, user.getPassword())) {
+            createLoginLog(user.getId(), email, logTypeEnum, LoginResultEnum.BAD_CREDENTIALS);
+            throw exception(AUTH_LOGIN_BAD_CREDENTIALS);
+        }
+        validateUserEnabled(user, email, logTypeEnum);
+        return user;
+    }
+
+    private void validateUserEnabled(MemberUserDO user, String username, LoginLogTypeEnum logTypeEnum) {
+        if (CommonStatusEnum.isDisable(user.getStatus())) {
+            createLoginLog(user.getId(), username, logTypeEnum, LoginResultEnum.USER_DISABLED);
+            throw exception(AUTH_LOGIN_USER_DISABLED);
+        }
+    }
+
+    private String normalizeEmail(String email) {
+        return StrUtil.isBlank(email) ? email : StrUtil.trim(email).toLowerCase();
+    }
+
+    private void createLoginLog(Long userId, String username, LoginLogTypeEnum logType, LoginResultEnum loginResult) {
         // 插入登录日志
         LoginLogCreateReqDTO reqDTO = new LoginLogCreateReqDTO();
         reqDTO.setLogType(logType.getType());
         reqDTO.setTraceId(TracerUtils.getTraceId());
         reqDTO.setUserId(userId);
         reqDTO.setUserType(getUserType().getValue());
-        reqDTO.setUsername(mobile);
+        reqDTO.setUsername(username);
         reqDTO.setUserAgent(ServletUtils.getUserAgent());
         reqDTO.setUserIp(getClientIP());
         reqDTO.setResult(loginResult.getResult());
@@ -263,19 +322,22 @@ public class MemberAuthServiceImpl implements MemberAuthService {
         reqDTO.setTraceId(TracerUtils.getTraceId());
         reqDTO.setUserId(userId);
         reqDTO.setUserType(getUserType().getValue());
-        reqDTO.setUsername(getMobile(userId));
+        reqDTO.setUsername(getLoginUsername(userId));
         reqDTO.setUserAgent(ServletUtils.getUserAgent());
         reqDTO.setUserIp(getClientIP());
         reqDTO.setResult(LoginResultEnum.SUCCESS.getResult());
         loginLogApi.createLoginLog(reqDTO).checkError();
     }
 
-    private String getMobile(Long userId) {
+    private String getLoginUsername(Long userId) {
         if (userId == null) {
             return null;
         }
         MemberUserDO user = userService.getUser(userId);
-        return user != null ? user.getMobile() : null;
+        if (user == null) {
+            return null;
+        }
+        return StrUtil.blankToDefault(user.getMobile(), user.getEmail());
     }
 
     private UserTypeEnum getUserType() {

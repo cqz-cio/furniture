@@ -4,6 +4,10 @@ import { cloneDeep } from 'lodash-es'
 import remainingRouter from '@/router/modules/remaining'
 import { flatMultiLevelRoutes, generateRoute } from '@/utils/routerHelper'
 import { CACHE_KEY, useCache } from '@/hooks/web/useCache'
+import {
+  filterFurnitureLiteFixedRoutes,
+  filterFurnitureLiteMenus
+} from '@/config/furnitureLite'
 
 const { wsCache } = useCache()
 
@@ -39,7 +43,8 @@ export const usePermissionStore = defineStore('permission', {
         if (roleRouters) {
           res = roleRouters as AppCustomRouteRecordRaw[]
         }
-        const routerMap: AppRouteRecordRaw[] = generateRoute(res)
+        const filteredRoutes = filterFurnitureLiteMenus(res)
+        const routerMap: AppRouteRecordRaw[] = generateRoute(filteredRoutes)
         // 动态路由，404一定要放到最后面
         // preschooler：vue-router@4以后已支持静态404路由，此处可不再追加
         this.addRouters = routerMap.concat([
@@ -55,7 +60,8 @@ export const usePermissionStore = defineStore('permission', {
           }
         ])
         // 渲染菜单的所有路由
-        this.routers = cloneDeep(remainingRouter).concat(routerMap)
+        const baseRouters = filterFurnitureLiteFixedRoutes(cloneDeep(remainingRouter))
+        this.routers = baseRouters.concat(routerMap)
         resolve()
       })
     },

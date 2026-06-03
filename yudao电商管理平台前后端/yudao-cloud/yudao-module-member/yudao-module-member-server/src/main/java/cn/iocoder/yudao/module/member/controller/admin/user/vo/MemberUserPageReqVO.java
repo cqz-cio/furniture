@@ -21,6 +21,12 @@ public class MemberUserPageReqVO extends PageParam {
     @Schema(description = "手机号", example = "15601691300")
     private String mobile;
 
+    @Schema(description = "邮箱", example = "designer@example.com")
+    private String email;
+
+    @Schema(description = "Trade Program 账号编号", example = "RH-TRADE-10086")
+    private String tradeId;
+
     @Schema(description = "用户昵称", example = "李四")
     private String nickname;
 

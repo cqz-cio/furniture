@@ -3,6 +3,7 @@ package cn.iocoder.yudao.module.system.service.member;
 import cn.hutool.core.util.ClassUtil;
 import cn.hutool.core.util.ReflectUtil;
 import cn.hutool.extra.spring.SpringUtil;
+import cn.iocoder.yudao.framework.common.pojo.CommonResult;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -41,7 +42,11 @@ public class MemberServiceImpl implements MemberService {
         if (id == null) {
             return null;
         }
-        return ReflectUtil.invoke(getMemberUserApi(), "getUser", id);
+        Object result = ReflectUtil.invoke(getMemberUserApi(), "getUser", id);
+        if (result instanceof CommonResult) {
+            return ((CommonResult<?>) result).getCheckedData();
+        }
+        return result;
     }
 
     private Object getMemberUserApi() {

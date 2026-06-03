@@ -22,6 +22,7 @@ import java.util.List;
  * 会员用户 DO
  *
  * uk_mobile 索引：基于 {@link #mobile} 字段
+ * uk_email 索引：基于 {@link #email} 字段
  *
  * @author 芋道源码
  */
@@ -45,6 +46,14 @@ public class MemberUserDO extends TenantBaseDO {
      * 手机
      */
     private String mobile;
+    /**
+     * 邮箱
+     */
+    private String email;
+    /**
+     * RH Trade Program 账号编号
+     */
+    private String tradeId;
     /**
      * 加密后的密码
      *

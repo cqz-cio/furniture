@@ -2,12 +2,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { readYudaoSession, writeYudaoSession } from "../src/services/authSession.js";
 import {
   getRemoteCartItems,
-  loginByPassword,
-  loginBySms,
+  loginByEmailPassword,
+  loginByTradeAccount,
   logoutMember,
   refreshMemberToken,
   requestYudao,
-  sendMemberSmsCode,
+  registerByEmail,
+  requestEmailSignInLink,
 } from "../src/services/yudaoClient.js";
 
 const API_BASE = "http://127.0.0.1:48080/app-api";
@@ -54,50 +55,91 @@ describe("Yudao member auth client", () => {
     vi.unstubAllGlobals();
   });
 
-  it("sendMemberSmsCode posts the member login SMS scene", async () => {
+  it("requestEmailSignInLink posts email with no auth token", async () => {
     fetchMock.mockResolvedValueOnce(mockYudaoResponse(true));
 
-    await sendMemberSmsCode("15601691300", { storage });
+    await requestEmailSignInLink("buyer@example.com", { storage });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toBe(`${API_BASE}/member/auth/send-sms-code`);
+    expect(url).toBe(`${API_BASE}/member/auth/email-secure-link`);
     expect(init.method).toBe("POST");
-    expect(JSON.parse(init.body)).toEqual({ mobile: "15601691300", scene: 1 });
+    expect(init.headers).not.toHaveProperty("Authorization");
+    expect(JSON.parse(init.body)).toEqual({ email: "buyer@example.com" });
   });
 
-  it("loginBySms posts to sms-login and persists the returned session", async () => {
+  it("loginByEmailPassword posts email credentials and persists the returned session", async () => {
     fetchMock.mockResolvedValueOnce(mockYudaoResponse(newSession));
 
-    const result = await loginBySms({ mobile: "15601691300", code: "123456" }, { storage });
-
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toBe(`${API_BASE}/member/auth/sms-login`);
-    expect(init.method).toBe("POST");
-    expect(JSON.parse(init.body)).toEqual({ mobile: "15601691300", code: "123456" });
-    expect(result).toEqual(newSession);
-    expect(readYudaoSession(storage)).toEqual(newSession);
-  });
-
-  it("loginByPassword posts mobile and password and persists the refresh token", async () => {
-    fetchMock.mockResolvedValueOnce(mockYudaoResponse(newSession));
-
-    const result = await loginByPassword(
-      { mobile: "15601691300", password: "fake-member-password" },
+    const result = await loginByEmailPassword(
+      { email: "buyer@example.com", password: "fake-member-password" },
       { storage }
     );
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toBe(`${API_BASE}/member/auth/login`);
+    expect(url).toBe(`${API_BASE}/member/auth/email-login`);
     expect(init.method).toBe("POST");
+    expect(init.headers).not.toHaveProperty("Authorization");
     expect(JSON.parse(init.body)).toEqual({
-      mobile: "15601691300",
+      email: "buyer@example.com",
       password: "fake-member-password",
     });
-    expect(result.refreshToken).toBe("fake-new-refresh-token");
-    expect(readYudaoSession(storage)?.refreshToken).toBe("fake-new-refresh-token");
+    expect(result).toEqual(newSession);
+    expect(readYudaoSession(storage)).toEqual(newSession);
+  });
+
+  it("registerByEmail posts account details and persists the returned session", async () => {
+    fetchMock.mockResolvedValueOnce(mockYudaoResponse(newSession));
+
+    const result = await registerByEmail(
+      {
+        firstName: "Ada",
+        lastName: "Lovelace",
+        email: "ada@example.com",
+        password: "fake-member-password",
+        emailOptIn: true,
+        privacyAccepted: true,
+      },
+      { storage }
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe(`${API_BASE}/member/auth/email-register`);
+    expect(init.method).toBe("POST");
+    expect(init.headers).not.toHaveProperty("Authorization");
+    expect(JSON.parse(init.body)).toEqual({
+      firstName: "Ada",
+      lastName: "Lovelace",
+      email: "ada@example.com",
+      password: "fake-member-password",
+      emailOptIn: true,
+      privacyAccepted: true,
+    });
+    expect(result).toEqual(newSession);
+    expect(readYudaoSession(storage)).toEqual(newSession);
+  });
+
+  it("loginByTradeAccount posts trade account details and persists the returned session", async () => {
+    fetchMock.mockResolvedValueOnce(mockYudaoResponse(newSession));
+
+    const result = await loginByTradeAccount(
+      { tradeId: "TRADE-100", email: "designer@example.com" },
+      { storage }
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe(`${API_BASE}/member/auth/trade-login`);
+    expect(init.method).toBe("POST");
+    expect(init.headers).not.toHaveProperty("Authorization");
+    expect(JSON.parse(init.body)).toEqual({
+      tradeId: "TRADE-100",
+      email: "designer@example.com",
+    });
+    expect(result).toEqual(newSession);
+    expect(readYudaoSession(storage)).toEqual(newSession);
   });
 
   it("refreshMemberToken posts the encoded refresh token without Authorization and persists the new session", async () => {

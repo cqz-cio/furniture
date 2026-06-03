@@ -24,6 +24,12 @@ public class MemberUserRespDTO {
     @Schema(description = "手机号", example = "15601691300")
     private String mobile;
 
+    @Schema(description = "邮箱", example = "designer@example.com")
+    private String email;
+
+    @Schema(description = "Trade Program 账号编号", example = "RH-TRADE-10086")
+    private String tradeId;
+
     @Schema(description = "创建时间", requiredMode = Schema.RequiredMode.REQUIRED)
     private LocalDateTime createTime;
 

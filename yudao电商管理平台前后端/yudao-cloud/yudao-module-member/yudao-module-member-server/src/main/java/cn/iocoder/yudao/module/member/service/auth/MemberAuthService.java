@@ -22,6 +22,37 @@ public interface MemberAuthService {
     AppAuthLoginRespVO login(@Valid AppAuthLoginReqVO reqVO);
 
     /**
+     * 邮箱 + 密码登录
+     *
+     * @param reqVO 登录信息
+     * @return 登录结果
+     */
+    AppAuthLoginRespVO emailLogin(@Valid AppAuthEmailLoginReqVO reqVO);
+
+    /**
+     * 邮箱注册
+     *
+     * @param reqVO 注册信息
+     * @return 登录结果
+     */
+    AppAuthLoginRespVO emailRegister(@Valid AppAuthEmailRegisterReqVO reqVO);
+
+    /**
+     * 请求邮箱安全登录链接
+     *
+     * @param reqVO 邮箱信息
+     */
+    void sendEmailSecureLink(@Valid AppAuthEmailSecureLinkReqVO reqVO);
+
+    /**
+     * Trade Program 登录
+     *
+     * @param reqVO 登录信息
+     * @return 登录结果
+     */
+    AppAuthLoginRespVO tradeLogin(@Valid AppAuthTradeLoginReqVO reqVO);
+
+    /**
      * 基于 token 退出登录
      *
      * @param token token

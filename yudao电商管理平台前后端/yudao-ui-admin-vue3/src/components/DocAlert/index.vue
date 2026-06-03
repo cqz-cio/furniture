@@ -6,6 +6,7 @@
   </el-alert>
 </template>
 <script setup lang="tsx">
+import { isDocAlertVisible } from '@/config/furnitureLite'
 import { propTypes } from '@/utils/propTypes'
 
 defineOptions({ name: 'DocAlert' })
@@ -22,7 +23,7 @@ const goToUrl = () => {
 
 /** 是否开启 */
 const getEnable = () => {
-  return import.meta.env.VITE_APP_DOCALERT_ENABLE !== 'false'
+  return isDocAlertVisible()
 }
 </script>
 <style scoped>

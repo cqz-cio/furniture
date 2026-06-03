@@ -51,4 +51,18 @@ describe("auth commerce refresh wiring", () => {
     expect(source).toContain("detail.value = null");
     expect(source).not.toContain("error.value = err.message");
   });
+
+  it("renders account modal as a viewport-level overlay", () => {
+    const modalSource = readSource("../src/components/AuthModal.vue");
+    const stylesSource = readSource("../src/styles.css");
+    const layerStyles = stylesSource.match(/\.account-modal-layer \{[\s\S]*?\n\}/)?.[0] || "";
+
+    expect(modalSource).toContain("<Teleport to=\"body\">");
+    expect(modalSource).toContain("document.body.classList.toggle(\"auth-modal-open\", isOpen)");
+    expect(stylesSource).toContain("body.auth-modal-open");
+    expect(layerStyles).toContain("position: fixed;");
+    expect(layerStyles).toContain("inset: 0;");
+    expect(layerStyles).toContain("z-index: 200;");
+    expect(layerStyles).not.toContain("top: 136px");
+  });
 });
