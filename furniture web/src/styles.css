@@ -321,11 +321,14 @@ button {
   background: rgba(30, 29, 27, 0.2);
   padding: 92px 20px 32px;
   z-index: 90;
+  overflow-y: auto;
 }
 
 .account-modal {
   position: relative;
   width: min(520px, calc(100vw - 40px));
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
   background: var(--paper);
   color: #1b1b1b;
   padding: 42px 46px 34px;

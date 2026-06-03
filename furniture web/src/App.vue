@@ -43,6 +43,7 @@ const currentPage = ref(pageFromPath(window.location.pathname));
 const cartOpen = ref(false);
 const cartItems = ref(readLocalCart());
 const cartMode = ref("local");
+const authVersion = ref(0);
 
 const pageComponent = computed(() => {
   if (currentPage.value === "home") return HomePage;
@@ -68,8 +69,14 @@ const loadRemoteCart = async () => {
     cartItems.value = await getRemoteCartItems();
     cartMode.value = "yudao";
   } catch {
+    cartItems.value = readLocalCart();
     cartMode.value = "local";
   }
+};
+
+const handleAuthChange = async () => {
+  authVersion.value += 1;
+  await loadRemoteCart();
 };
 
 const addToCart = async (product, quantity = 1) => {
@@ -139,9 +146,21 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <RhHeader v-model:page="currentPage" :cart-count="cartQuantity" :cart-mode="cartMode" @open-cart="cartOpen = true" />
+  <RhHeader
+    v-model:page="currentPage"
+    :cart-count="cartQuantity"
+    :cart-mode="cartMode"
+    @auth-change="handleAuthChange"
+    @open-cart="cartOpen = true"
+  />
   <main class="app-main">
-    <component :is="pageComponent" :items="cartItems" @add-to-cart="addToCart" @order-created="openOrderDetail" />
+    <component
+      :is="pageComponent"
+      :auth-version="authVersion"
+      :items="cartItems"
+      @add-to-cart="addToCart"
+      @order-created="openOrderDetail"
+    />
   </main>
   <RhFooter />
   <CartDrawer

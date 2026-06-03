@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import ProductImage from "../components/ProductImage.vue";
 import {
   buildLocalCheckoutSummary,
@@ -24,6 +24,10 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  authVersion: {
+    type: Number,
+    default: 0,
+  },
 });
 
 const addresses = ref([]);
@@ -42,7 +46,15 @@ const selectedAddress = computed(() => addresses.value.find((address) => address
 const { t } = useI18n();
 const money = (value) => `$${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
+const clearRemoteCheckoutData = () => {
+  addresses.value = [];
+  defaultAddress.value = null;
+  selectedAddressId.value = undefined;
+  settlement.value = null;
+};
+
 const loadCheckoutData = async () => {
+  clearRemoteCheckoutData();
   if (!canUseYudaoCheckout(props.items) || !readYudaoToken()) return;
   busy.value = true;
   error.value = "";
@@ -54,8 +66,8 @@ const loadCheckoutData = async () => {
       const payload = buildYudaoOrderPayload(props.items, { addressId: selectedAddressId.value });
       settlement.value = await settleOrder(payload);
     }
-  } catch (err) {
-    error.value = err.message;
+  } catch {
+    error.value = "Checkout service is unavailable. Please try again later.";
   } finally {
     busy.value = false;
   }
@@ -73,8 +85,8 @@ const submitOrder = async () => {
     const payload = buildYudaoOrderPayload(props.items, { addressId });
     const result = await createOrder(payload);
     emit("order-created", result.id);
-  } catch (err) {
-    error.value = err.message;
+  } catch {
+    error.value = "Order service is unavailable. Please try again later.";
   } finally {
     busy.value = false;
   }
@@ -89,6 +101,7 @@ const handlePrimaryAction = () => {
 };
 
 onMounted(loadCheckoutData);
+watch(() => props.authVersion, loadCheckoutData);
 </script>
 
 <template>

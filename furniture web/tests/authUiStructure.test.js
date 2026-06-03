@@ -26,6 +26,7 @@ describe("auth UI structure", () => {
     expect(source).toContain('<AuthPasswordForm');
     expect(source).toContain('<AuthTokenPanel');
     expect(source).toContain("logoutMember");
+    expect(source).toContain("logoutNotice");
   });
 
   it("defines SMS and password forms for Yudao member auth", () => {
@@ -37,5 +38,13 @@ describe("auth UI structure", () => {
     expect(smsSource).toContain('autocomplete="one-time-code" inputmode="numeric" type="password"');
     expect(passwordSource).toContain("loginByPassword");
     expect(passwordSource).toContain('type="password"');
+  });
+
+  it("keeps auth modal usable on small screens", () => {
+    const css = readSource("../src/styles.css");
+
+    expect(css).toContain("overflow-y: auto;");
+    expect(css).toContain(".account-modal-layer");
+    expect(css).toContain("max-height: calc(100vh - 32px);");
   });
 });

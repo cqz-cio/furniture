@@ -18,26 +18,30 @@ const mode = ref("sms");
 const session = ref(readYudaoSession());
 const logoutBusy = ref(false);
 const error = ref("");
+const logoutNotice = ref("");
 const isAuthenticated = computed(() => Boolean(session.value?.accessToken));
 
 const refreshSession = () => {
   session.value = readYudaoSession();
+  logoutNotice.value = "";
   emit("auth-change", session.value);
 };
 
 const handleAuthenticated = (nextSession) => {
   session.value = nextSession;
   error.value = "";
+  logoutNotice.value = "";
   emit("auth-change", nextSession);
 };
 
 const logout = async () => {
   logoutBusy.value = true;
   error.value = "";
+  logoutNotice.value = "";
   try {
     await logoutMember();
   } catch {
-    error.value = "Signed out locally. Remote logout could not be confirmed.";
+    logoutNotice.value = "Signed out locally. Remote logout could not be confirmed.";
   } finally {
     session.value = null;
     logoutBusy.value = false;
@@ -51,6 +55,7 @@ watch(
     if (open) {
       session.value = readYudaoSession();
       error.value = "";
+      logoutNotice.value = "";
     }
   }
 );
@@ -76,6 +81,7 @@ watch(
       <template v-else>
         <h2 id="account-modal-title">SIGN IN</h2>
         <p>Use your mobile number to access your RH account.</p>
+        <p v-if="logoutNotice" class="auth-error">{{ logoutNotice }}</p>
         <div class="auth-mode-tabs" role="tablist" aria-label="Sign in method">
           <button type="button" :class="{ active: mode === 'sms' }" @click="mode = 'sms'">Code</button>
           <button type="button" :class="{ active: mode === 'password' }" @click="mode = 'password'">Password</button>
