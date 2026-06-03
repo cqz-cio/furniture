@@ -12,6 +12,8 @@ describe("auth commerce refresh wiring", () => {
     expect(source).toContain("authVersion.value += 1");
     expect(source).toContain("@auth-change=\"handleAuthChange\"");
     expect(source).toContain(":auth-version=\"authVersion\"");
+    expect(source).toContain("let remoteCartRequestId = 0");
+    expect(source).toContain("if (requestId !== remoteCartRequestId) return");
   });
 
   it("replaces remote cart with local cart when remote auth loading fails", () => {
@@ -19,13 +21,20 @@ describe("auth commerce refresh wiring", () => {
 
     expect(source).toContain("cartItems.value = readLocalCart()");
     expect(source).toContain("cartMode.value = \"local\"");
+    expect(source).toContain("if (cartMode.value !== \"yudao\") writeLocalCart(items)");
+    expect(source).toContain("const switchToLocalCart = () =>");
+    expect(source).toContain("switchToLocalCart()");
   });
 
   it("reloads and clears checkout data when authVersion changes", () => {
     const source = readSource("../src/pages/CheckoutPage.vue");
 
     expect(source).toContain("authVersion");
-    expect(source).toContain("watch(() => props.authVersion, loadCheckoutData)");
+    expect(source).toContain("preserveAddressSelection");
+    expect(source).toContain("watch(() => props.authVersion");
+    expect(source).toContain("watch(() => props.items");
+    expect(source).toContain("let checkoutRequestId = 0");
+    expect(source).toContain("if (requestId !== checkoutRequestId) return");
     expect(source).toContain("addresses.value = []");
     expect(source).toContain("settlement.value = null");
     expect(source).not.toContain("error.value = err.message");
@@ -36,6 +45,8 @@ describe("auth commerce refresh wiring", () => {
 
     expect(source).toContain("authVersion");
     expect(source).toContain("watch(() => props.authVersion, loadOrders)");
+    expect(source).toContain("let ordersRequestId = 0");
+    expect(source).toContain("if (requestId !== ordersRequestId) return");
     expect(source).toContain("orders.value = []");
     expect(source).toContain("detail.value = null");
     expect(source).not.toContain("error.value = err.message");

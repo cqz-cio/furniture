@@ -44,6 +44,7 @@ const cartOpen = ref(false);
 const cartItems = ref(readLocalCart());
 const cartMode = ref("local");
 const authVersion = ref(0);
+let remoteCartRequestId = 0;
 
 const pageComponent = computed(() => {
   if (currentPage.value === "home") return HomePage;
@@ -64,19 +65,29 @@ const syncPageFromLocation = () => {
 
 const cartQuantity = computed(() => cartItems.value.reduce((sum, item) => sum + item.quantity, 0));
 
+const switchToLocalCart = () => {
+  cartItems.value = readLocalCart();
+  cartMode.value = "local";
+};
+
 const loadRemoteCart = async () => {
+  const requestId = ++remoteCartRequestId;
   try {
-    cartItems.value = await getRemoteCartItems();
+    const remoteItems = await getRemoteCartItems();
+    if (requestId !== remoteCartRequestId) return false;
     cartMode.value = "yudao";
+    cartItems.value = remoteItems;
+    return true;
   } catch {
-    cartItems.value = readLocalCart();
-    cartMode.value = "local";
+    if (requestId !== remoteCartRequestId) return false;
+    switchToLocalCart();
+    return true;
   }
 };
 
 const handleAuthChange = async () => {
-  authVersion.value += 1;
   await loadRemoteCart();
+  authVersion.value += 1;
 };
 
 const addToCart = async (product, quantity = 1) => {
@@ -87,7 +98,7 @@ const addToCart = async (product, quantity = 1) => {
       cartOpen.value = true;
       return;
     } catch {
-      cartMode.value = "local";
+      switchToLocalCart();
     }
   }
 
@@ -102,7 +113,7 @@ const updateCartQuantity = async (item, quantity) => {
       await loadRemoteCart();
       return;
     } catch {
-      cartMode.value = "local";
+      switchToLocalCart();
     }
   }
   cartItems.value = updateLocalCartItemQuantity(cartItems.value, item.skuId, quantity);
@@ -115,7 +126,7 @@ const removeFromCart = async (item) => {
       await loadRemoteCart();
       return;
     } catch {
-      cartMode.value = "local";
+      switchToLocalCart();
     }
   }
   cartItems.value = removeLocalCartItem(cartItems.value, item.skuId);
@@ -133,7 +144,13 @@ watch(currentPage, (page) => {
   }
 });
 
-watch(cartItems, (items) => writeLocalCart(items), { deep: true });
+watch(
+  cartItems,
+  (items) => {
+    if (cartMode.value !== "yudao") writeLocalCart(items);
+  },
+  { deep: true }
+);
 
 onMounted(() => {
   window.addEventListener("popstate", syncPageFromLocation);

@@ -1,8 +1,15 @@
 <script setup>
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import ProductImage from "../components/ProductImage.vue";
 import { getOrderDetail, getOrderPage, readYudaoToken } from "../services/yudaoClient.js";
 import { useI18n } from "../i18n.js";
+
+const props = defineProps({
+  authVersion: {
+    type: Number,
+    default: 0,
+  },
+});
 
 const loading = ref(true);
 const error = ref("");
@@ -14,30 +21,44 @@ const orderId = computed(() => new URLSearchParams(window.location.search).get("
 const { t } = useI18n();
 const money = (value) => `$${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const statusLabel = (status) => t("orders.status", { status: status ?? "Pending" });
+let ordersRequestId = 0;
+
+const clearOrderData = () => {
+  orders.value = [];
+  total.value = 0;
+  detail.value = null;
+};
 
 const loadOrders = async () => {
+  const requestId = ++ordersRequestId;
   loading.value = true;
   error.value = "";
   tokenRequired.value = false;
+  clearOrderData();
   try {
     if (!readYudaoToken()) {
       tokenRequired.value = true;
       return;
     }
     if (orderId.value) {
-      detail.value = await getOrderDetail(orderId.value);
+      const nextDetail = await getOrderDetail(orderId.value);
+      if (requestId !== ordersRequestId) return;
+      detail.value = nextDetail;
     }
     const page = await getOrderPage({ pageNo: 1, pageSize: 10 });
+    if (requestId !== ordersRequestId) return;
     orders.value = page.list;
     total.value = page.total;
-  } catch (err) {
-    error.value = err.message;
+  } catch {
+    if (requestId !== ordersRequestId) return;
+    error.value = "Order service is unavailable. Please try again later.";
   } finally {
-    loading.value = false;
+    if (requestId === ordersRequestId) loading.value = false;
   }
 };
 
 onMounted(loadOrders);
+watch(() => props.authVersion, loadOrders);
 </script>
 
 <template>

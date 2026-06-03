@@ -45,31 +45,41 @@ const displayItemTotal = computed(() => settlement.value?.totalPrice ?? summary.
 const selectedAddress = computed(() => addresses.value.find((address) => address.id === selectedAddressId.value));
 const { t } = useI18n();
 const money = (value) => `$${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+let checkoutRequestId = 0;
 
-const clearRemoteCheckoutData = () => {
+const clearRemoteCheckoutData = ({ preserveAddressSelection = false } = {}) => {
+  const previousAddressId = selectedAddressId.value;
   addresses.value = [];
   defaultAddress.value = null;
-  selectedAddressId.value = undefined;
+  selectedAddressId.value = preserveAddressSelection ? previousAddressId : undefined;
   settlement.value = null;
 };
 
-const loadCheckoutData = async () => {
-  clearRemoteCheckoutData();
+const loadCheckoutData = async (options = {}) => {
+  const requestId = ++checkoutRequestId;
+  clearRemoteCheckoutData(options);
+  error.value = "";
   if (!canUseYudaoCheckout(props.items) || !readYudaoToken()) return;
   busy.value = true;
-  error.value = "";
   try {
-    addresses.value = await getAddressList();
-    defaultAddress.value = await getDefaultAddress();
-    selectedAddressId.value = getSelectedAddressId(selectedAddressId.value, defaultAddress.value);
+    const nextAddresses = await getAddressList();
+    if (requestId !== checkoutRequestId) return;
+    const nextDefaultAddress = await getDefaultAddress();
+    if (requestId !== checkoutRequestId) return;
+    addresses.value = nextAddresses;
+    defaultAddress.value = nextDefaultAddress;
+    selectedAddressId.value = getSelectedAddressId(selectedAddressId.value, nextDefaultAddress);
     if (selectedAddressId.value) {
       const payload = buildYudaoOrderPayload(props.items, { addressId: selectedAddressId.value });
-      settlement.value = await settleOrder(payload);
+      const nextSettlement = await settleOrder(payload);
+      if (requestId !== checkoutRequestId) return;
+      settlement.value = nextSettlement;
     }
   } catch {
+    if (requestId !== checkoutRequestId) return;
     error.value = "Checkout service is unavailable. Please try again later.";
   } finally {
-    busy.value = false;
+    if (requestId === checkoutRequestId) busy.value = false;
   }
 };
 
@@ -102,6 +112,7 @@ const handlePrimaryAction = () => {
 
 onMounted(loadCheckoutData);
 watch(() => props.authVersion, loadCheckoutData);
+watch(() => props.items, () => loadCheckoutData({ preserveAddressSelection: true }), { deep: true });
 </script>
 
 <template>
@@ -134,7 +145,7 @@ watch(() => props.authVersion, loadCheckoutData);
           </div>
           <label>
             {{ t("checkout.shipTo") }}
-            <select v-model.number="selectedAddressId" @change="loadCheckoutData">
+            <select v-model.number="selectedAddressId" @change="loadCheckoutData({ preserveAddressSelection: true })">
               <option v-for="address in addresses" :key="address.id" :value="address.id">{{ address.label }}</option>
             </select>
           </label>
