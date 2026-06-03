@@ -129,21 +129,23 @@
           </div>
         </el-form-item>
       </el-col>
-      <el-divider content-position="center">萌新必读</el-divider>
-      <el-col :span="24" class="px-10px">
-        <el-form-item>
-          <div class="w-full flex justify-between">
-            <el-link href="https://doc.iocoder.cn/" target="_blank">📚开发指南</el-link>
-            <el-link href="https://doc.iocoder.cn/video/" target="_blank">🔥视频教程</el-link>
-            <el-link href="https://www.iocoder.cn/Interview/good-collection/" target="_blank">
-              ⚡面试手册
-            </el-link>
-            <el-link href="http://static.yudao.iocoder.cn/mp/Aix9975.jpeg" target="_blank">
-              🤝外包咨询
-            </el-link>
-          </div>
-        </el-form-item>
-      </el-col>
+      <template v-if="showDevLinks">
+        <el-divider content-position="center">萌新必读</el-divider>
+        <el-col :span="24" class="px-10px">
+          <el-form-item>
+            <div class="w-full flex justify-between">
+              <el-link href="https://doc.iocoder.cn/" target="_blank">📚开发指南</el-link>
+              <el-link href="https://doc.iocoder.cn/video/" target="_blank">🔥视频教程</el-link>
+              <el-link href="https://www.iocoder.cn/Interview/good-collection/" target="_blank">
+                ⚡面试手册
+              </el-link>
+              <el-link href="http://static.yudao.iocoder.cn/mp/Aix9975.jpeg" target="_blank">
+                🤝外包咨询
+              </el-link>
+            </div>
+          </el-form-item>
+        </el-col>
+      </template>
     </el-row>
   </el-form>
 </template>
@@ -158,6 +160,7 @@ import * as authUtil from '@/utils/auth'
 import { usePermissionStore } from '@/store/modules/permission'
 import * as LoginApi from '@/api/login'
 import { LoginStateEnum, useFormValid, useLoginState } from './useLogin'
+import { isDevLinksVisible } from '@/config/furnitureLite'
 
 defineOptions({ name: 'LoginForm' })
 
@@ -177,6 +180,7 @@ const verify = ref()
 const captchaType = ref('blockPuzzle') // blockPuzzle 滑块 clickWord 点击文字 pictureWord 文字验证码
 
 const getShow = computed(() => unref(getLoginState) === LoginStateEnum.LOGIN)
+const showDevLinks = computed(() => isDevLinksVisible())
 
 const LoginRules = {
   tenantName: [required],
