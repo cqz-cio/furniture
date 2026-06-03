@@ -1,0 +1,56 @@
+<script setup>
+import { ANNUAL_MEMBERSHIP_PRODUCT } from "../services/membershipCart.js";
+import { membershipRoutes } from "../services/membershipNavigation.js";
+
+const emit = defineEmits(["add-to-cart"]);
+
+const plans = [
+  {
+    title: "Annual Membership",
+    price: "$200 / year",
+    description: "For individual customers who want account-based member savings and annual renewal management.",
+  },
+  {
+    title: "Whole-Room Membership",
+    price: "Project based",
+    description: "For room-level furnishing projects that need whole-room benefits and service visibility.",
+  },
+];
+
+const addAnnualMembership = () => {
+  emit("add-to-cart", ANNUAL_MEMBERSHIP_PRODUCT, 1);
+};
+</script>
+
+<template>
+  <section class="membership-page membership-narrow">
+    <header class="membership-page-head">
+      <p class="eyebrow">Membership Enrollment</p>
+      <h1>Select a membership plan.</h1>
+      <p>Membership is treated as a purchasable service before checkout, with account sign-in required.</p>
+    </header>
+
+    <section class="membership-plan-list" aria-label="Membership plans">
+      <article v-for="plan in plans" :key="plan.title">
+        <div>
+          <h2>{{ plan.title }}</h2>
+          <p>{{ plan.description }}</p>
+        </div>
+        <strong>{{ plan.price }}</strong>
+      </article>
+    </section>
+
+    <section class="membership-agreement">
+      <label>
+        <input type="checkbox" />
+        <span>I agree to the Members Program Terms &amp; Conditions.</span>
+      </label>
+      <a :href="membershipRoutes.membershipTerms">Read Terms</a>
+    </section>
+
+    <div class="membership-actions">
+      <button class="membership-primary-button" type="button" @click="addAnnualMembership">Add Membership to Bag</button>
+      <a :href="membershipRoutes.checkoutAuth">Continue to Checkout</a>
+    </div>
+  </section>
+</template>

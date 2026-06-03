@@ -3,9 +3,20 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import CartDrawer from "./components/CartDrawer.vue";
 import RhFooter from "./components/RhFooter.vue";
 import RhHeader from "./components/RhHeader.vue";
+import AccountMembershipPage from "./pages/AccountMembershipPage.vue";
+import AccountPage from "./pages/AccountPage.vue";
 import BabyChildPage from "./pages/BabyChildPage.vue";
+import CheckoutAuthPage from "./pages/CheckoutAuthPage.vue";
 import CheckoutPage from "./pages/CheckoutPage.vue";
+import GiftRegistryCreatePage from "./pages/GiftRegistryCreatePage.vue";
+import GiftRegistryFindPage from "./pages/GiftRegistryFindPage.vue";
+import GiftRegistryManagePage from "./pages/GiftRegistryManagePage.vue";
+import GiftRegistryPage from "./pages/GiftRegistryPage.vue";
 import HomePage from "./pages/HomePage.vue";
+import MembershipEnrollmentPage from "./pages/MembershipEnrollmentPage.vue";
+import MembershipFaqPage from "./pages/MembershipFaqPage.vue";
+import MembershipPage from "./pages/MembershipPage.vue";
+import MembershipTermsPage from "./pages/MembershipTermsPage.vue";
 import MissingExtractionPage from "./pages/MissingExtractionPage.vue";
 import OrdersPage from "./pages/OrdersPage.vue";
 import OutdoorPage from "./pages/OutdoorPage.vue";
@@ -20,6 +31,7 @@ import {
   updateLocalCartItemQuantity,
   writeLocalCart,
 } from "./services/localCart.js";
+import { getCheckoutEntryRoute } from "./services/membershipNavigation.js";
 import { addCartItem, deleteCartItems, getRemoteCartItems, updateCartItemCount } from "./services/yudaoClient.js";
 
 const pageRoutes = {
@@ -30,6 +42,17 @@ const pageRoutes = {
   "sofa-pdp": "/sofa-pdp",
   teen: "/teen",
   "baby-child": "/baby-child",
+  membership: "/membership",
+  "membership-enrollment": "/membership/enrollment",
+  "membership-terms": "/membership/terms",
+  "membership-faqs": "/membership/faqs",
+  account: "/account",
+  "account-membership": "/account/membership",
+  "checkout-auth": "/checkout/auth",
+  "gift-registry": "/gift-registry",
+  "gift-registry-create": "/gift-registry/create",
+  "gift-registry-find": "/gift-registry/find",
+  "gift-registry-manage": "/gift-registry/manage",
   checkout: "/checkout",
   orders: "/orders",
   missing: "/missing",
@@ -37,7 +60,10 @@ const pageRoutes = {
 
 const routePages = Object.fromEntries(Object.entries(pageRoutes).map(([page, path]) => [path, page]));
 
-const pageFromPath = (path) => routePages[path.replace(/\/$/, "") || "/"] || "missing";
+const pageFromPath = (path) => {
+  const normalizedPath = path.replace(/\/$/, "") || "/";
+  return routePages[normalizedPath] || (normalizedPath.startsWith("/gift-registry/") ? "gift-registry" : "missing");
+};
 
 const currentPage = ref(pageFromPath(window.location.pathname));
 const cartOpen = ref(false);
@@ -54,6 +80,17 @@ const pageComponent = computed(() => {
   if (currentPage.value === "sofa-pdp") return SofaPdpPage;
   if (currentPage.value === "teen") return TeenPage;
   if (currentPage.value === "baby-child") return BabyChildPage;
+  if (currentPage.value === "membership") return MembershipPage;
+  if (currentPage.value === "membership-enrollment") return MembershipEnrollmentPage;
+  if (currentPage.value === "membership-terms") return MembershipTermsPage;
+  if (currentPage.value === "membership-faqs") return MembershipFaqPage;
+  if (currentPage.value === "account") return AccountPage;
+  if (currentPage.value === "account-membership") return AccountMembershipPage;
+  if (currentPage.value === "checkout-auth") return CheckoutAuthPage;
+  if (currentPage.value === "gift-registry") return GiftRegistryPage;
+  if (currentPage.value === "gift-registry-create") return GiftRegistryCreatePage;
+  if (currentPage.value === "gift-registry-find") return GiftRegistryFindPage;
+  if (currentPage.value === "gift-registry-manage") return GiftRegistryManagePage;
   if (currentPage.value === "checkout") return CheckoutPage;
   if (currentPage.value === "orders") return OrdersPage;
   return MissingExtractionPage;
@@ -137,6 +174,17 @@ const openOrderDetail = (orderId) => {
   window.history.pushState({ page: "orders" }, "", `/orders?id=${orderId}`);
 };
 
+const startCheckout = () => {
+  const nextRoute = getCheckoutEntryRoute(cartItems.value);
+  currentPage.value = pageFromPath(nextRoute.split("?")[0]);
+  window.history.pushState({ page: currentPage.value }, "", nextRoute);
+  cartOpen.value = false;
+};
+
+const continueCheckout = () => {
+  currentPage.value = "checkout";
+};
+
 watch(currentPage, (page) => {
   const nextPath = pageRoutes[page] || pageRoutes.missing;
   if (window.location.pathname !== nextPath) {
@@ -176,6 +224,7 @@ onBeforeUnmount(() => {
       :auth-version="authVersion"
       :items="cartItems"
       @add-to-cart="addToCart"
+      @continue-checkout="continueCheckout"
       @order-created="openOrderDetail"
     />
   </main>
@@ -183,7 +232,7 @@ onBeforeUnmount(() => {
   <CartDrawer
     :items="cartItems"
     :open="cartOpen"
-    @checkout="currentPage = 'checkout'; cartOpen = false"
+    @checkout="startCheckout"
     @close="cartOpen = false"
     @remove="removeFromCart"
     @update-quantity="updateCartQuantity"

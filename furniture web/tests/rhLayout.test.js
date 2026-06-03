@@ -7,6 +7,7 @@ import {
   homeHighlights,
   homeFullPageModules,
   homeHeroAssets,
+  footerLinkHref,
   globalMenuPanels,
   livingMegaMenu,
   mobileDrawerNavigation,
@@ -107,8 +108,16 @@ describe("RH layout extraction data", () => {
       "LEGAL",
     ]);
     expect(rhFooter.columns[0].links).toContain("REQUEST A SOURCEBOOK");
+    expect(rhFooter.columns[0].links).toContain("RH MEMBERS PROGRAM");
+    expect(rhFooter.columns[1].links).toContain("MEMBERSHIP FAQS");
     expect(rhFooter.columns.at(-1).links).toContain("PRODUCT REGISTRATION");
     expect(rhFooter.region).toBe("United States ($) / English");
+  });
+
+  it("maps membership and registry footer links to local routes", () => {
+    expect(footerLinkHref("RH MEMBERS PROGRAM")).toBe("/membership");
+    expect(footerLinkHref("MEMBERSHIP FAQS")).toBe("/membership/faqs");
+    expect(footerLinkHref("GIFT REGISTRY")).toBe("/gift-registry");
   });
 
   it("keeps extracted Baby & Child homepage media slots", () => {

@@ -2879,6 +2879,26 @@ button {
   padding: 8px 26px;
 }
 
+.cart-membership-notice {
+  display: grid;
+  gap: 6px;
+  border-bottom: 1px solid var(--line);
+  padding: 18px 0;
+}
+
+.cart-membership-notice strong {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 20px;
+  font-weight: 400;
+}
+
+.cart-membership-notice p {
+  margin: 0;
+  color: var(--soft-ink);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 .cart-item {
   display: grid;
   grid-template-columns: 104px minmax(0, 1fr);
@@ -3079,7 +3099,12 @@ button {
 .order-row,
 .order-detail-card,
 .checkout-summary,
-.checkout-addresses {
+.checkout-addresses,
+.checkout-custom-notice,
+.checkout-address-verification,
+.checkout-payment-panel,
+.checkout-terms-panel,
+.checkout-delivery-notes {
   border: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.82);
 }
@@ -3129,6 +3154,45 @@ button {
   border: 1px solid var(--line);
   background: #fff;
   gap: 0;
+}
+
+.checkout-flow-rail {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  margin-bottom: 14px;
+  background: var(--line);
+}
+
+.checkout-flow-card {
+  display: grid;
+  gap: 8px;
+  min-height: 112px;
+  background: var(--paper);
+  padding: 16px;
+}
+
+.checkout-flow-card span,
+.checkout-flow-card small {
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.checkout-flow-card strong {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 1.1;
+}
+
+.checkout-flow-card.is-attention small {
+  color: #8b4b40;
+}
+
+.checkout-flow-card.is-complete small {
+  color: var(--ink);
 }
 
 .checkout-item {
@@ -3207,6 +3271,18 @@ button {
   font-size: 26px;
 }
 
+.summary-row,
+.summary-total {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.summary-total {
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+
 .checkout-summary button {
   min-height: 48px;
   width: 100%;
@@ -3234,6 +3310,53 @@ button {
   display: grid;
   gap: 18px;
   padding-bottom: 22px;
+}
+
+.checkout-custom-notice,
+.checkout-address-verification,
+.checkout-payment-panel,
+.checkout-terms-panel,
+.checkout-delivery-notes {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 14px;
+  padding: 18px;
+}
+
+.checkout-address-verification article {
+  display: grid;
+  gap: 8px;
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+}
+
+.checkout-address-verification article strong,
+.checkout-address-verification article span {
+  color: var(--soft-ink);
+}
+
+.checkout-payment-panel dl {
+  display: grid;
+  gap: 1px;
+  margin: 0;
+  background: var(--line);
+}
+
+.checkout-payment-panel dl div {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr);
+  gap: 16px;
+  background: #fff;
+  padding: 14px 0;
+}
+
+.checkout-payment-panel dt {
+  color: var(--muted);
+}
+
+.checkout-payment-panel dd {
+  margin: 0;
+  color: var(--soft-ink);
 }
 
 .checkout-addresses label {
@@ -3351,6 +3474,8 @@ button {
   .product-grid,
   .product-detail-grid,
   .checkout-grid,
+  .checkout-flow-rail,
+  .checkout-payment-panel dl div,
   .order-row {
     grid-template-columns: 1fr;
   }
@@ -3361,5 +3486,634 @@ button {
 
   .checkout-summary {
     position: static;
+  }
+}
+
+.membership-page {
+  display: grid;
+  gap: 56px;
+  padding: 72px 48px 96px;
+}
+
+.service-page-shell {
+  max-width: 1180px;
+  margin: 0 auto;
+  gap: 40px;
+  padding-top: 62px;
+}
+
+.account-service-shell {
+  max-width: 1180px;
+  margin: 0 auto;
+  gap: 42px;
+  padding-top: 62px;
+}
+
+.membership-narrow {
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+.membership-hero,
+.membership-page-head {
+  display: grid;
+  gap: 18px;
+  max-width: 820px;
+}
+
+.membership-hero h1,
+.membership-page-head h1,
+.account-content h1 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(38px, 5vw, 68px);
+  font-weight: 400;
+  line-height: 1.05;
+}
+
+.membership-hero p,
+.membership-page-head p,
+.account-content p {
+  max-width: 700px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.membership-actions,
+.membership-agreement {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  align-items: center;
+}
+
+.service-link-row {
+  gap: 22px;
+  border-top: 1px solid var(--line);
+  padding-top: 18px;
+}
+
+.membership-actions a,
+.membership-agreement a,
+.checkout-auth-options a,
+.registry-entry-list a {
+  color: var(--ink);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.membership-primary-button {
+  min-height: 42px;
+  border: 1px solid #211f1b;
+  background: #211f1b;
+  color: #fff;
+  cursor: pointer;
+  padding: 0 22px;
+  text-transform: uppercase;
+  font-size: 12px;
+}
+
+.membership-primary-link {
+  border-bottom: 1px solid currentColor;
+  padding-bottom: 5px;
+  text-decoration: none;
+}
+
+.membership-section {
+  border-top: 1px solid var(--line);
+  padding-top: 36px;
+}
+
+.membership-benefits {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.membership-benefits article {
+  display: grid;
+  gap: 18px;
+}
+
+.membership-benefits span {
+  width: 32px;
+  height: 1px;
+  background: var(--ink);
+}
+
+.membership-benefits p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.membership-two-column {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1fr);
+  gap: 36px;
+  align-items: start;
+}
+
+.membership-two-column h2 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 34px;
+  font-weight: 400;
+}
+
+.membership-two-column p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.membership-plan-list,
+.terms-list,
+.checkout-auth-options,
+.registry-entry-list {
+  display: grid;
+  gap: 1px;
+  background: var(--line);
+}
+
+.membership-plan-list article,
+.terms-list article,
+.checkout-auth-options article,
+.registry-entry-list a {
+  display: grid;
+  gap: 12px;
+  background: var(--page);
+  padding: 28px 0;
+}
+
+.membership-plan-list article {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.membership-plan-list h2,
+.terms-list h2,
+.checkout-auth-options h2 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 28px;
+  font-weight: 400;
+}
+
+.membership-plan-list p,
+.terms-list p,
+.checkout-auth-options p {
+  margin: 0;
+  max-width: 620px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.membership-agreement {
+  border-top: 1px solid var(--line);
+  padding-top: 24px;
+}
+
+.membership-agreement label {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  color: var(--muted);
+}
+
+.account-page {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 56px;
+  padding: 72px 48px 96px;
+}
+
+.account-sidebar {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  border-right: 1px solid var(--line);
+  padding-right: 28px;
+}
+
+.account-sidebar a {
+  color: var(--ink);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.account-content {
+  display: grid;
+  gap: 22px;
+  max-width: 840px;
+}
+
+.membership-status-list {
+  display: grid;
+  border-top: 1px solid var(--line);
+}
+
+.membership-status-list div {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  gap: 24px;
+  border-bottom: 1px solid var(--line);
+  padding: 18px 0;
+}
+
+.membership-status-list dt {
+  color: var(--muted);
+}
+
+.membership-status-list dd {
+  margin: 0;
+}
+
+.membership-status-panel,
+.membership-growth-panel,
+.membership-email-panel,
+.membership-benefit-grid article {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--line);
+  background: #fff;
+  padding: 22px;
+}
+
+.membership-status-panel {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.membership-status-panel h2,
+.membership-growth-panel h2,
+.membership-email-panel h2,
+.membership-benefit-grid h3 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 400;
+}
+
+.membership-status-panel h2,
+.membership-growth-panel h2,
+.membership-email-panel h2 {
+  font-size: 28px;
+}
+
+.membership-status-panel p,
+.membership-growth-panel p,
+.membership-email-panel p,
+.membership-benefit-grid p {
+  margin: 0;
+  color: var(--soft-ink);
+  line-height: 1.6;
+}
+
+.membership-status-panel a {
+  border-bottom: 1px solid currentColor;
+  color: var(--ink);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  padding-bottom: 5px;
+  text-transform: uppercase;
+}
+
+.membership-progress {
+  height: 4px;
+  overflow: hidden;
+  background: #e6e1d8;
+}
+
+.membership-progress span {
+  display: block;
+  height: 100%;
+  background: var(--ink);
+}
+
+.membership-benefit-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.registry-owner-action-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.registry-owner-action-grid article {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--line);
+  background: #fff;
+  padding: 20px;
+}
+
+.registry-owner-action-grid h3 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 22px;
+  font-weight: 400;
+}
+
+.registry-owner-action-grid p {
+  margin: 0;
+  color: var(--soft-ink);
+  line-height: 1.6;
+}
+
+.checkout-auth-options article small {
+  color: #8b4b40;
+}
+
+.checkout-auth-options article.disabled {
+  color: var(--muted);
+}
+
+.checkout-auth-options button {
+  width: fit-content;
+  min-height: 42px;
+  border: 1px solid #211f1b;
+  background: #211f1b;
+  color: #fff;
+  cursor: pointer;
+  padding: 0 22px;
+  text-transform: uppercase;
+  font-size: 12px;
+}
+
+.checkout-auth-options button:disabled {
+  border-color: var(--line);
+  background: #e6e1d8;
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.registry-hero {
+  max-width: 760px;
+}
+
+.registry-entry-list {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.registry-entry-list a {
+  min-height: 160px;
+  align-content: end;
+  text-decoration: none;
+}
+
+.registry-workflow-page {
+  gap: 42px;
+}
+
+.registry-workflow-grid {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 34px;
+  align-items: start;
+}
+
+.registry-step-panel,
+.registry-form-section,
+.registry-share-panel,
+.registry-search-panel,
+.registry-result-list article {
+  border: 1px solid var(--line);
+  background: #fff;
+  padding: 24px;
+}
+
+.registry-step-panel {
+  position: sticky;
+  top: 160px;
+  display: grid;
+  gap: 18px;
+}
+
+.registry-step-list {
+  display: grid;
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: var(--line);
+}
+
+.registry-step-list li {
+  display: grid;
+  gap: 8px;
+  background: var(--paper);
+  padding: 16px;
+}
+
+.registry-step-list span {
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.registry-step-list strong {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 20px;
+  font-weight: 400;
+}
+
+.registry-step-list li.complete span {
+  color: var(--ink);
+}
+
+.registry-step-list-inline {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.registry-form-stack {
+  display: grid;
+  gap: 18px;
+}
+
+.registry-form-section {
+  display: grid;
+  gap: 18px;
+}
+
+.registry-form-section h2,
+.registry-share-panel h2,
+.registry-result-list h2 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 30px;
+  font-weight: 400;
+}
+
+.registry-form-section dl {
+  display: grid;
+  gap: 1px;
+  margin: 0;
+  background: var(--line);
+}
+
+.registry-form-section dl div {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr);
+  gap: 18px;
+  background: #fff;
+  padding: 16px 0;
+}
+
+.registry-form-section dt {
+  color: var(--muted);
+}
+
+.registry-form-section dd {
+  margin: 0;
+  color: var(--soft-ink);
+  line-height: 1.5;
+}
+
+.registry-address-grid,
+.registry-choice-row,
+.registry-result-list {
+  display: grid;
+  gap: 14px;
+}
+
+.registry-address-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.registry-address-grid article {
+  display: grid;
+  gap: 8px;
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+}
+
+.registry-address-grid h3,
+.registry-address-grid p {
+  margin: 0;
+}
+
+.registry-address-grid small {
+  color: var(--muted);
+}
+
+.registry-choice-row {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.registry-choice-row span {
+  border: 1px solid var(--line);
+  padding: 14px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.registry-choice-row span.selected {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+.registry-share-panel,
+.registry-result-list article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 20px;
+  align-items: center;
+}
+
+.registry-share-panel p,
+.registry-result-list p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.registry-search-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px auto;
+  gap: 14px;
+  align-items: end;
+}
+
+.registry-search-panel label {
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.registry-search-panel input,
+.registry-search-panel select {
+  min-height: 42px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+  padding: 0 12px;
+  font-size: 14px;
+}
+
+.registry-search-panel button {
+  min-height: 42px;
+  border: 1px solid #211f1b;
+  background: #211f1b;
+  color: #fff;
+  cursor: pointer;
+  padding: 0 22px;
+  text-transform: uppercase;
+  font-size: 12px;
+}
+
+.registry-result-list a,
+.membership-benefit-grid a,
+.registry-owner-action-grid a {
+  width: fit-content;
+  border-bottom: 1px solid currentColor;
+  color: var(--ink);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  padding-bottom: 5px;
+  text-transform: uppercase;
+}
+
+@media (max-width: 900px) {
+  .membership-page,
+  .account-page {
+    padding: 42px 18px 72px;
+  }
+
+  .membership-benefits,
+  .membership-two-column,
+  .membership-plan-list article,
+  .account-page,
+  .membership-status-panel,
+  .membership-benefit-grid,
+  .registry-owner-action-grid,
+  .membership-status-list div,
+  .registry-entry-list,
+  .registry-workflow-grid,
+  .registry-step-list-inline,
+  .registry-address-grid,
+  .registry-choice-row,
+  .registry-share-panel,
+  .registry-search-panel,
+  .registry-result-list article {
+    grid-template-columns: 1fr;
+  }
+
+  .registry-step-panel {
+    position: static;
+  }
+
+  .account-sidebar {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+    padding: 0 0 24px;
   }
 }
