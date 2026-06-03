@@ -62,9 +62,9 @@ const isFalseEnvValue = (value: unknown): boolean =>
 
 const normalizeRoutePath = (path: string, parentPath = ''): string => {
   const rawPath = path || ''
-  const joinedPath = rawPath.startsWith('/')
-    ? rawPath
-    : `${parentPath.replace(/\/$/, '')}/${rawPath.replace(/^\//, '')}`
+  const joinedPath = parentPath
+    ? `${parentPath.replace(/\/+$/, '')}/${rawPath.replace(/^\/+/, '')}`
+    : `/${rawPath.replace(/^\/+/, '')}`
   const normalizedPath = joinedPath.replace(/\/+/g, '/')
 
   if (!normalizedPath || normalizedPath === '/') {
