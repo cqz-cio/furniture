@@ -9,7 +9,7 @@ import {
   saleMegaMenu,
 } from "../data/rhLayout.js";
 import { useI18n } from "../i18n.js";
-import AuthTokenPanel from "./AuthTokenPanel.vue";
+import AuthModal from "./AuthModal.vue";
 import ImageSpecPlaceholder from "./ImageSpecPlaceholder.vue";
 
 defineProps({
@@ -27,7 +27,7 @@ defineProps({
   },
 });
 
-const emit = defineEmits(["open-cart"]);
+const emit = defineEmits(["open-cart", "auth-change"]);
 const page = defineModel("page", { type: String, default: "home" });
 const { availableLocales, currentLocale, setLocale, t } = useI18n();
 const menuOpen = ref(false);
@@ -277,28 +277,6 @@ const activatePage = (label) => {
       <button class="mobile-drawer-scrim" type="button" aria-label="Close menu" @click="closeMenu"></button>
     </div>
 
-    <div v-if="accountOpen" class="account-modal-layer" role="presentation">
-      <section class="account-modal" role="dialog" aria-modal="true" aria-labelledby="account-modal-title">
-        <button class="account-modal-close" type="button" aria-label="Close sign in" @click="closeAccount">
-          <span></span>
-          <span></span>
-        </button>
-        <h2 id="account-modal-title">SIGN IN</h2>
-        <p>
-          Please enter your email address to sign in, or
-          <a href="#">Create an Account</a>
-        </p>
-        <form class="account-signin-form">
-          <input type="email" placeholder="Email" aria-label="Email" autocomplete="email" />
-          <a class="forgot-password" href="#">Forgot Password?</a>
-          <button type="button">SIGN IN</button>
-        </form>
-        <AuthTokenPanel />
-        <div class="account-modal-links">
-          <a href="#">Sign In With a Secure Link</a>
-          <a href="#">Trade Program Sign In</a>
-        </div>
-      </section>
-    </div>
+    <AuthModal :open="accountOpen" @close="closeAccount" @auth-change="emit('auth-change', $event)" />
   </header>
 </template>
