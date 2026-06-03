@@ -8,6 +8,7 @@ import {
   getCheckoutMode,
   getSelectedAddressId,
 } from "../services/checkoutSession.js";
+import { getMembershipPricing, isMembershipItem } from "../services/membershipCart.js";
 import {
   createOrder,
   getAddressList,
@@ -33,11 +34,13 @@ const settlement = ref(null);
 const error = ref("");
 const busy = ref(false);
 const summary = computed(() => buildLocalCheckoutSummary(props.items));
+const membershipPricing = computed(() => getMembershipPricing(props.items));
 const mode = computed(() => getCheckoutMode(props.items, readYudaoToken()));
 const checkoutModeKey = computed(() => `checkout.mode.${mode.value}`);
-const displaySubtotal = computed(() => settlement.value?.payPrice ?? summary.value.subtotal);
+const displaySubtotal = computed(() => settlement.value?.payPrice ?? membershipPricing.value.estimatedTotal);
 const displayDelivery = computed(() => settlement.value?.deliveryPrice ?? 0);
-const displayItemTotal = computed(() => settlement.value?.totalPrice ?? summary.value.subtotal);
+const displayItemTotal = computed(() => settlement.value?.totalPrice ?? membershipPricing.value.merchandiseSubtotal);
+const displayEstimatedTotal = computed(() => displaySubtotal.value);
 const selectedAddress = computed(() => addresses.value.find((address) => address.id === selectedAddressId.value));
 const { t } = useI18n();
 const money = (value) => `$${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -139,7 +142,7 @@ onMounted(loadCheckoutData);
             <ProductImage :src="item.cover" :label="item.name" />
             <div>
               <p class="checkout-item-kicker">
-                {{ item.source === "yudao" ? t("checkout.itemKickerYudao") : t("checkout.itemKickerPreview") }}
+                {{ isMembershipItem(item) ? "Membership" : item.source === "yudao" ? t("checkout.itemKickerYudao") : t("checkout.itemKickerPreview") }}
               </p>
               <h3>{{ item.name }}</h3>
               <p>{{ item.subtitle }}</p>
@@ -159,13 +162,21 @@ onMounted(loadCheckoutData);
           <span>{{ t("checkout.merchandise") }}</span>
           <strong>{{ money(displayItemTotal) }}</strong>
         </div>
+        <div v-if="membershipPricing.membershipSubtotal" class="summary-row">
+          <span>Membership</span>
+          <strong>{{ money(membershipPricing.membershipSubtotal) }}</strong>
+        </div>
+        <div v-if="membershipPricing.memberDiscount" class="summary-row">
+          <span>Member Savings</span>
+          <strong>-{{ money(membershipPricing.memberDiscount) }}</strong>
+        </div>
         <div class="summary-row">
           <span>{{ t("checkout.delivery") }}</span>
           <strong>{{ money(displayDelivery) }}</strong>
         </div>
         <div class="summary-total">
           <span>{{ t("checkout.estimatedTotal") }}</span>
-          <strong>{{ money(displaySubtotal) }}</strong>
+          <strong>{{ money(displayEstimatedTotal) }}</strong>
         </div>
         <small v-if="settlement">{{ t("checkout.settlementIncluded") }}</small>
         <small v-else>{{ t("checkout.settlementPending") }}</small>

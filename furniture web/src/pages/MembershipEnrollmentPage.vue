@@ -1,5 +1,8 @@
 <script setup>
+import { ANNUAL_MEMBERSHIP_PRODUCT } from "../services/membershipCart.js";
 import { membershipRoutes } from "../services/membershipNavigation.js";
+
+const emit = defineEmits(["add-to-cart"]);
 
 const plans = [
   {
@@ -13,6 +16,10 @@ const plans = [
     description: "For room-level furnishing projects that need whole-room benefits and service visibility.",
   },
 ];
+
+const addAnnualMembership = () => {
+  emit("add-to-cart", ANNUAL_MEMBERSHIP_PRODUCT, 1);
+};
 </script>
 
 <template>
@@ -40,5 +47,10 @@ const plans = [
       </label>
       <a :href="membershipRoutes.membershipTerms">Read Terms</a>
     </section>
+
+    <div class="membership-actions">
+      <button class="membership-primary-button" type="button" @click="addAnnualMembership">Add Membership to Bag</button>
+      <a :href="membershipRoutes.checkoutAuth">Continue to Checkout</a>
+    </div>
   </section>
 </template>

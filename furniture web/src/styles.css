@@ -2641,6 +2641,26 @@ button {
   padding: 8px 26px;
 }
 
+.cart-membership-notice {
+  display: grid;
+  gap: 6px;
+  border-bottom: 1px solid var(--line);
+  padding: 18px 0;
+}
+
+.cart-membership-notice strong {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 20px;
+  font-weight: 400;
+}
+
+.cart-membership-notice p {
+  margin: 0;
+  color: var(--soft-ink);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 .cart-item {
   display: grid;
   grid-template-columns: 104px minmax(0, 1fr);
@@ -2916,6 +2936,17 @@ button {
   font-size: 12px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.membership-primary-button {
+  min-height: 42px;
+  border: 1px solid #211f1b;
+  background: #211f1b;
+  color: #fff;
+  cursor: pointer;
+  padding: 0 22px;
+  text-transform: uppercase;
+  font-size: 12px;
 }
 
 .membership-primary-link {
