@@ -1,15 +1,34 @@
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 
 const readText = (path) => readFileSync(path, 'utf8')
+const readRequired = (path, hint) => {
+  assert.ok(existsSync(path), `${path} is missing. ${hint}`)
+  return readFileSync(path, 'utf8')
+}
 
 const envLocal = readText('.env.local')
 const packageJson = JSON.parse(readText('package.json'))
-const furnitureLiteConfig = readText('src/config/furnitureLite.ts')
-const permissionStore = readText('src/store/modules/permission.ts')
-const docAlert = readText('src/components/DocAlert/index.vue')
-const userInfo = readText('src/layout/components/UserInfo/src/UserInfo.vue')
-const loginForm = readText('src/views/Login/components/LoginForm.vue')
+const furnitureLiteConfig = readRequired(
+  'src/config/furnitureLite.ts',
+  'Task 2 should add the furniture lite config exports and route allow/deny lists.'
+)
+const permissionStore = readRequired(
+  'src/store/modules/permission.ts',
+  'Task 2 should wire furniture lite menu and fixed route filters into the permission store.'
+)
+const docAlert = readRequired(
+  'src/components/DocAlert/index.vue',
+  'Task 2 should gate the documentation alert with isDocAlertVisible.'
+)
+const userInfo = readRequired(
+  'src/layout/components/UserInfo/src/UserInfo.vue',
+  'Task 2 should gate developer links with isDevLinksVisible.'
+)
+const loginForm = readRequired(
+  'src/views/Login/components/LoginForm.vue',
+  'Task 2 should gate login developer links with showDevLinks.'
+)
 
 const requiredEnvLines = [
   'VITE_ADMIN_MODE=furniture-lite',
