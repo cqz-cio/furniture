@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="820" viewBox="0 0 1280 820" role="img" aria-labelledby="title desc">
+  <title id="title">Furniture Web / Yudao Web / Yudao Cloud 项目关系图谱</title>
+  <desc id="desc">展示 furniture web、yudao-ui-admin-vue3、yudao-server、Yudao 业务模块以及 MySQL Redis 文件存储之间的关系。</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#334155"/>
+    </marker>
+    <style>
+      .bg { fill: #f8fafc; }
+      .band { fill: #e2e8f0; stroke: #cbd5e1; stroke-width: 1; }
+      .node { fill: #ffffff; stroke: #334155; stroke-width: 2; rx: 10; }
+      .front { stroke: #0f766e; }
+      .api { stroke: #2563eb; }
+      .server { stroke: #7c3aed; }
+      .data { stroke: #b45309; }
+      .title { font: 700 30px Arial, "Microsoft YaHei", sans-serif; fill: #0f172a; }
+      .subtitle { font: 400 15px Arial, "Microsoft YaHei", sans-serif; fill: #475569; }
+      .label { font: 700 18px Arial, "Microsoft YaHei", sans-serif; fill: #0f172a; }
+      .small { font: 400 14px Arial, "Microsoft YaHei", sans-serif; fill: #475569; }
+      .edge { stroke: #334155; stroke-width: 2.2; fill: none; marker-end: url(#arrow); }
+      .edgeLabel { font: 700 13px Arial, "Microsoft YaHei", sans-serif; fill: #1e293b; }
+      .note { fill: #fff7ed; stroke: #fb923c; stroke-width: 1.5; rx: 8; }
+      .noteText { font: 400 14px Arial, "Microsoft YaHei", sans-serif; fill: #7c2d12; }
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1280" height="820"/>
+  <text class="title" x="60" y="60">Furniture Web / Yudao Web / Yudao Cloud 项目关系图谱</text>
+  <text class="subtitle" x="60" y="88">客户前台独立、运营后台独立、统一后端与数据库；前台走 /app-api，后台走 /admin-api。</text>
+
+  <rect class="band" x="40" y="125" width="1200" height="150" rx="14"/>
+  <text class="label" x="60" y="155">访问入口</text>
+
+  <rect class="node front" x="90" y="175" width="240" height="72"/>
+  <text class="label" x="120" y="205">客户浏览器</text>
+  <text class="small" x="120" y="229">访问家具商城</text>
+
+  <rect class="node front" x="470" y="175" width="260" height="72"/>
+  <text class="label" x="500" y="205">运营/管理员浏览器</text>
+  <text class="small" x="500" y="229">访问 Yudao 后台</text>
+
+  <rect class="band" x="40" y="305" width="1200" height="165" rx="14"/>
+  <text class="label" x="60" y="335">前端项目</text>
+
+  <rect class="node front" x="90" y="360" width="300" height="82"/>
+  <text class="label" x="120" y="390">furniture web</text>
+  <text class="small" x="120" y="414">客户侧家具商城</text>
+  <text class="small" x="120" y="434">商品 / 购物车 / 结算 / 订单</text>
+
+  <rect class="node front" x="470" y="360" width="300" height="82"/>
+  <text class="label" x="500" y="390">yudao-ui-admin-vue3</text>
+  <text class="small" x="500" y="414">员工侧运营后台</text>
+  <text class="small" x="500" y="434">商品 / 库存 / 订单 / 权限</text>
+
+  <rect class="band" x="40" y="500" width="1200" height="150" rx="14"/>
+  <text class="label" x="60" y="530">接口与后端</text>
+
+  <rect class="node api" x="90" y="555" width="210" height="68"/>
+  <text class="label" x="125" y="584">/app-api</text>
+  <text class="small" x="125" y="606">会员端接口</text>
+
+  <rect class="node api" x="470" y="555" width="210" height="68"/>
+  <text class="label" x="505" y="584">/admin-api</text>
+  <text class="small" x="505" y="606">管理端接口</text>
+
+  <rect class="node server" x="850" y="535" width="300" height="96"/>
+  <text class="label" x="885" y="568">yudao-cloud / yudao-server</text>
+  <text class="small" x="885" y="592">统一业务后端 :48080</text>
+  <text class="small" x="885" y="612">member / product / trade / pay</text>
+
+  <rect class="band" x="40" y="680" width="1200" height="100" rx="14"/>
+  <text class="label" x="60" y="710">数据层</text>
+
+  <rect class="node data" x="360" y="720" width="180" height="44"/>
+  <text class="label" x="410" y="748">MySQL</text>
+
+  <rect class="node data" x="585" y="720" width="180" height="44"/>
+  <text class="label" x="640" y="748">Redis</text>
+
+  <rect class="node data" x="810" y="720" width="180" height="44"/>
+  <text class="label" x="850" y="748">文件/图片</text>
+
+  <path class="edge" d="M210 247 L210 360"/>
+  <path class="edge" d="M600 247 L600 360"/>
+  <path class="edge" d="M240 442 L200 555"/>
+  <path class="edge" d="M620 442 L575 555"/>
+  <path class="edge" d="M300 589 L850 575"/>
+  <path class="edge" d="M680 589 L850 590"/>
+  <path class="edge" d="M955 631 L480 720"/>
+  <path class="edge" d="M1000 631 L690 720"/>
+  <path class="edge" d="M1045 631 L920 720"/>
+
+  <text class="edgeLabel" x="222" y="315">客户访问</text>
+  <text class="edgeLabel" x="613" y="315">员工访问</text>
+  <text class="edgeLabel" x="292" y="518">MEMBER token</text>
+  <text class="edgeLabel" x="646" y="518">ADMIN token</text>
+
+  <rect class="note" x="835" y="175" width="345" height="116"/>
+  <text class="noteText" x="860" y="205">边界规则：</text>
+  <text class="noteText" x="860" y="230">1. furniture web 不调用 /admin-api</text>
+  <text class="noteText" x="860" y="255">2. yudao 后台不面向普通客户开放</text>
+  <text class="noteText" x="860" y="280">3. 价格、库存、订单以后端为准</text>
+</svg>
