@@ -15,6 +15,7 @@ import {
   readYudaoToken,
   settleOrder,
 } from "../services/yudaoClient.js";
+import { useI18n } from "../i18n.js";
 
 const emit = defineEmits(["order-created"]);
 
@@ -33,7 +34,12 @@ const error = ref("");
 const busy = ref(false);
 const summary = computed(() => buildLocalCheckoutSummary(props.items));
 const mode = computed(() => getCheckoutMode(props.items, readYudaoToken()));
+const checkoutModeKey = computed(() => `checkout.mode.${mode.value}`);
 const displaySubtotal = computed(() => settlement.value?.payPrice ?? summary.value.subtotal);
+const displayDelivery = computed(() => settlement.value?.deliveryPrice ?? 0);
+const displayItemTotal = computed(() => settlement.value?.totalPrice ?? summary.value.subtotal);
+const selectedAddress = computed(() => addresses.value.find((address) => address.id === selectedAddressId.value));
+const { t } = useI18n();
 const money = (value) => `$${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 const loadCheckoutData = async () => {
@@ -74,46 +80,97 @@ const submitOrder = async () => {
   }
 };
 
+const handlePrimaryAction = () => {
+  if (mode.value === "empty") {
+    window.location.href = "/";
+    return;
+  }
+  submitOrder();
+};
+
 onMounted(loadCheckoutData);
 </script>
 
 <template>
   <section class="checkout-page">
     <header class="checkout-head">
-      <p class="eyebrow">Checkout</p>
-      <h1>Review Your Order</h1>
-      <p v-if="mode === 'token-required'">Add a Yudao App token before creating a remote order.</p>
-      <p v-else-if="mode === 'local-preview'">Demo cart items can be reviewed locally but cannot create a Yudao order.</p>
-      <p v-else-if="mode === 'empty'">Your bag is empty.</p>
+      <p class="eyebrow">{{ t("checkout.eyebrow") }}</p>
+      <h1>{{ t(`${checkoutModeKey}.title`) }}</h1>
+      <p>{{ t(`${checkoutModeKey}.message`) }}</p>
     </header>
-
-    <section v-if="addresses.length" class="checkout-addresses">
-      <label>
-        Ship To
-        <select v-model.number="selectedAddressId" @change="loadCheckoutData">
-          <option v-for="address in addresses" :key="address.id" :value="address.id">{{ address.label }}</option>
-        </select>
-      </label>
-    </section>
 
     <p v-if="error" class="checkout-error">{{ error }}</p>
 
     <section class="checkout-grid">
-      <div class="checkout-items">
-        <article v-for="item in items" :key="item.skuId" class="checkout-item">
-          <ProductImage :src="item.cover" :label="item.name" />
+      <div class="checkout-main">
+        <section class="checkout-status-card">
+          <span>01</span>
           <div>
-            <h2>{{ item.name }}</h2>
-            <p>{{ item.quantity }} x {{ money(item.price) }}</p>
+            <h2>{{ t("checkout.statusTitle") }}</h2>
+            <p>{{ t(`${checkoutModeKey}.status`) }}</p>
           </div>
-        </article>
+        </section>
+
+        <section v-if="addresses.length" class="checkout-addresses">
+          <div class="checkout-section-title">
+            <span>02</span>
+            <div>
+              <h2>{{ t("checkout.deliveryTitle") }}</h2>
+              <p v-if="selectedAddress">{{ selectedAddress.label }}</p>
+            </div>
+          </div>
+          <label>
+            {{ t("checkout.shipTo") }}
+            <select v-model.number="selectedAddressId" @change="loadCheckoutData">
+              <option v-for="address in addresses" :key="address.id" :value="address.id">{{ address.label }}</option>
+            </select>
+          </label>
+        </section>
+
+        <section class="checkout-items">
+          <div class="checkout-section-title">
+            <span>03</span>
+            <div>
+              <h2>{{ t("checkout.itemsTitle") }}</h2>
+              <p>{{ t("checkout.itemsCount", { count: summary.quantity }) }}</p>
+            </div>
+          </div>
+          <article v-for="item in items" :key="item.skuId" class="checkout-item">
+            <ProductImage :src="item.cover" :label="item.name" />
+            <div>
+              <p class="checkout-item-kicker">
+                {{ item.source === "yudao" ? t("checkout.itemKickerYudao") : t("checkout.itemKickerPreview") }}
+              </p>
+              <h3>{{ item.name }}</h3>
+              <p>{{ item.subtitle }}</p>
+              <strong>{{ item.quantity }} x {{ money(item.price) }}</strong>
+            </div>
+          </article>
+          <p v-if="items.length === 0" class="checkout-empty-note">{{ t("checkout.emptyNote") }}</p>
+        </section>
       </div>
       <aside class="checkout-summary">
-        <span>Subtotal</span>
-        <strong>{{ money(displaySubtotal) }}</strong>
-        <small v-if="settlement">Includes Yudao settlement pricing.</small>
-        <button type="button" :disabled="busy || mode !== 'yudao'" @click="submitOrder">
-          {{ busy ? "Working..." : "Create Yudao Order" }}
+        <p class="eyebrow">{{ t("checkout.summaryTitle") }}</p>
+        <div class="summary-row">
+          <span>{{ t("checkout.pieces") }}</span>
+          <strong>{{ summary.quantity }}</strong>
+        </div>
+        <div class="summary-row">
+          <span>{{ t("checkout.merchandise") }}</span>
+          <strong>{{ money(displayItemTotal) }}</strong>
+        </div>
+        <div class="summary-row">
+          <span>{{ t("checkout.delivery") }}</span>
+          <strong>{{ money(displayDelivery) }}</strong>
+        </div>
+        <div class="summary-total">
+          <span>{{ t("checkout.estimatedTotal") }}</span>
+          <strong>{{ money(displaySubtotal) }}</strong>
+        </div>
+        <small v-if="settlement">{{ t("checkout.settlementIncluded") }}</small>
+        <small v-else>{{ t("checkout.settlementPending") }}</small>
+        <button type="button" :disabled="busy || (mode !== 'yudao' && mode !== 'empty')" @click="handlePrimaryAction">
+          {{ busy ? t("common.working") : t(`${checkoutModeKey}.cta`) }}
         </button>
       </aside>
     </section>

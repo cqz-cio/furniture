@@ -9,7 +9,7 @@ import {
   saleMegaMenu,
 } from "../data/rhLayout.js";
 import { useI18n } from "../i18n.js";
-import AuthTokenPanel from "./AuthTokenPanel.vue";
+import AuthModal from "./AuthModal.vue";
 import ImageSpecPlaceholder from "./ImageSpecPlaceholder.vue";
 
 defineProps({
@@ -27,7 +27,7 @@ defineProps({
   },
 });
 
-const emit = defineEmits(["open-cart"]);
+const emit = defineEmits(["open-cart", "auth-change"]);
 const page = defineModel("page", { type: String, default: "home" });
 const { availableLocales, currentLocale, setLocale, t } = useI18n();
 const menuOpen = ref(false);
@@ -57,7 +57,9 @@ const pageKey = (label) => {
   return "missing";
 };
 
-const localeButtonLabel = computed(() => (currentLocale.value === "zh-CN" ? "中文" : "EN"));
+const localeButtonLabel = computed(
+  () => availableLocales.find((item) => item.lang === currentLocale.value)?.shortLabel || "EN",
+);
 
 const isActive = (label) => {
   if (page.value === "baby-child") return label === "Furniture";
@@ -80,6 +82,11 @@ const toggleRegion = () => {
   activeDropdown.value = "";
   accountOpen.value = false;
   closeMenu();
+};
+
+const selectLocale = (lang) => {
+  setLocale(lang);
+  regionOpen.value = false;
 };
 
 const openAccount = () => {
@@ -117,12 +124,12 @@ const activatePage = (label) => {
     @mouseleave="hideDropdown"
   >
     <div class="header-topline">
-      <div class="header-left" aria-label="Menu and search">
+      <div class="header-left" :aria-label="`${t('header.menuOpen')} / ${t('common.search')}`">
         <button
           class="icon-button menu-icon"
           :class="{ open: menuOpen }"
           type="button"
-          :aria-label="menuOpen ? 'Close menu' : 'Open menu'"
+          :aria-label="menuOpen ? t('header.menuClose') : t('header.menuOpen')"
           :aria-expanded="menuOpen"
           @click="toggleMenu"
         >
@@ -131,8 +138,8 @@ const activatePage = (label) => {
           <span></span>
         </button>
         <div class="header-search">
-          <button class="icon-button search-icon" type="button" aria-label="Search"></button>
-          <input class="search-input" aria-label="Search text" type="search" />
+          <button class="icon-button search-icon" type="button" :aria-label="t('common.search')"></button>
+          <input class="search-input" :aria-label="t('common.search')" type="search" />
         </div>
       </div>
 
@@ -154,7 +161,7 @@ const activatePage = (label) => {
         </template>
       </button>
 
-      <div class="header-actions" aria-label="Account and cart links">
+      <div class="header-actions" :aria-label="`${t('header.account')} / ${t('header.bag')}`">
         <div class="region-switcher">
           <button
             class="country-button"
@@ -165,21 +172,21 @@ const activatePage = (label) => {
           >
             {{ localeButtonLabel }} <span aria-hidden="true">⌃</span>
           </button>
-          <section v-if="regionOpen" id="region-menu" class="region-menu" aria-label="Region selector">
-            <div class="region-language-list" :aria-label="t('language')">
+          <section v-if="regionOpen" id="region-menu" class="region-menu" :aria-label="t('header.regionSelector')">
+            <div class="region-language-list" :aria-label="t('common.language')">
               <button
                 v-for="locale in availableLocales"
                 :key="locale.lang"
                 class="region-option"
                 :class="{ active: currentLocale === locale.lang }"
                 type="button"
-                @click="setLocale(locale.lang)"
+                @click="selectLocale(locale.lang)"
               >
                 {{ locale.label }}
               </button>
             </div>
             <div class="region-input-row">
-              <input value="USA" aria-label="Selected country" />
+              <input value="USA" :aria-label="t('header.selectedCountry')" />
               <span aria-hidden="true">⌃</span>
             </div>
             <button v-for="item in regionOptions" :key="item.country" class="region-option" type="button">
@@ -190,8 +197,8 @@ const activatePage = (label) => {
             </button>
           </section>
         </div>
-        <button class="account-icon" type="button" aria-label="Account" @click="openAccount"></button>
-        <button class="bag-icon" type="button" :aria-label="t('bag')" @click="emit('open-cart')">
+        <button class="account-icon" type="button" :aria-label="t('header.account')" @click="openAccount"></button>
+        <button class="bag-icon" type="button" :aria-label="t('header.bag')" @click="emit('open-cart')">
           <span v-if="cartCount" class="bag-count">{{ cartCount }}</span>
         </button>
       </div>
@@ -267,38 +274,16 @@ const activatePage = (label) => {
           <span aria-hidden="true">›</span>
         </button>
         <button class="mobile-region" type="button">
-          <span>United States ($) / English</span>
+          <span>{{ t("header.mobileRegion") }}</span>
           <span aria-hidden="true">›</span>
         </button>
         <div class="mobile-drawer-brand">
           <span>The</span> WORLD <span>of</span> RH
         </div>
       </aside>
-      <button class="mobile-drawer-scrim" type="button" aria-label="Close menu" @click="closeMenu"></button>
+      <button class="mobile-drawer-scrim" type="button" :aria-label="t('header.menuClose')" @click="closeMenu"></button>
     </div>
 
-    <div v-if="accountOpen" class="account-modal-layer" role="presentation">
-      <section class="account-modal" role="dialog" aria-modal="true" aria-labelledby="account-modal-title">
-        <button class="account-modal-close" type="button" aria-label="Close sign in" @click="closeAccount">
-          <span></span>
-          <span></span>
-        </button>
-        <h2 id="account-modal-title">SIGN IN</h2>
-        <p>
-          Please enter your email address to sign in, or
-          <a href="#">Create an Account</a>
-        </p>
-        <form class="account-signin-form">
-          <input type="email" placeholder="Email" aria-label="Email" autocomplete="email" />
-          <a class="forgot-password" href="#">Forgot Password?</a>
-          <button type="button">SIGN IN</button>
-        </form>
-        <AuthTokenPanel />
-        <div class="account-modal-links">
-          <a href="#">Sign In With a Secure Link</a>
-          <a href="#">Trade Program Sign In</a>
-        </div>
-      </section>
-    </div>
+    <AuthModal :open="accountOpen" @close="closeAccount" @auth-change="emit('auth-change', $event)" />
   </header>
 </template>

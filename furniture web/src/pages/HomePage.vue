@@ -1,6 +1,9 @@
 <script setup>
 import ImageSpecPlaceholder from "../components/ImageSpecPlaceholder.vue";
 import { homeFullPageModules, homeHeroAssets } from "../data/rhLayout.js";
+import { useI18n } from "../i18n.js";
+
+const { t } = useI18n();
 
 const specHeight = (rendered) => {
   const match = rendered.match(/x\s*([0-9.]+)/);
@@ -35,13 +38,13 @@ const specHeight = (rendered) => {
       />
     </div>
     <div class="home-hero-copy">
-      <p class="eyebrow">Welcome to the World of RH</p>
+      <p class="eyebrow">{{ t("home.heroEyebrow") }}</p>
       <h1>RH</h1>
-      <p>首页图片区域规格抽取</p>
+      <p>{{ t("home.heroSubtitle") }}</p>
     </div>
   </section>
 
-  <section class="home-grid" aria-label="World of RH entry modules">
+  <section class="home-grid" :aria-label="t('home.gridAria')">
     <article
       v-for="item in homeFullPageModules"
       :key="item.title"
