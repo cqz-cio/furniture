@@ -5,6 +5,7 @@ import {
   canUseYudaoCheckout,
   getCheckoutReturnPath,
   getCheckoutMode,
+  getCheckoutPresentation,
   getSelectedAddressId,
   getOrderDetailPath,
 } from "../src/services/checkoutSession.js";
@@ -47,6 +48,24 @@ describe("checkout session helpers", () => {
     expect(getCheckoutMode(yudaoItems, "")).toBe("token-required");
     expect(getCheckoutMode([{ ...yudaoItems[0], source: "demo" }], "token")).toBe("local-preview");
     expect(getCheckoutMode([], "token")).toBe("empty");
+  });
+
+  it("maps checkout modes to polished page copy and action states", () => {
+    expect(getCheckoutPresentation("yudao")).toEqual({
+      title: "Review Your Order",
+      message: "Confirm your delivery address and send the order to Yudao.",
+      cta: "Create Yudao Order",
+      canSubmit: true,
+    });
+    expect(getCheckoutPresentation("token-required")).toMatchObject({
+      cta: "Add Token To Continue",
+      canSubmit: false,
+    });
+    expect(getCheckoutPresentation("empty")).toMatchObject({
+      title: "Your Bag Is Empty",
+      cta: "Return To Gallery",
+      canSubmit: false,
+    });
   });
 
   it("returns the checkout route used by the cart drawer", () => {

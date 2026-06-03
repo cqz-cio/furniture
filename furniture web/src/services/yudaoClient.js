@@ -1,20 +1,61 @@
+import {
+  clearYudaoSession,
+  LEGACY_AUTH_TOKEN_STORAGE_KEY,
+  readYudaoSession,
+  writeYudaoSession,
+} from "./authSession.js";
+
 const DEFAULT_APP_API_BASE = "http://127.0.0.1:48080/app-api";
-export const AUTH_TOKEN_STORAGE_KEY = "YUDAO_APP_TOKEN";
+export const AUTH_TOKEN_STORAGE_KEY = LEGACY_AUTH_TOKEN_STORAGE_KEY;
 
 const trimSlash = (value) => value.replace(/\/$/, "");
 
 export const getYudaoAppApiBase = () =>
   trimSlash(import.meta.env.VITE_YUDAO_APP_API_BASE || DEFAULT_APP_API_BASE);
 
-export const readYudaoToken = (storage = globalThis.localStorage) => storage?.getItem(AUTH_TOKEN_STORAGE_KEY) || "";
+export const readYudaoToken = (storage) =>
+  readYudaoSession(storage)?.accessToken || "";
 
-export const writeYudaoToken = (token, storage = globalThis.localStorage) => {
-  if (!storage) return;
+export const writeYudaoToken = (token, storage) => {
   const nextToken = String(token || "").trim();
   if (nextToken) {
-    storage.setItem(AUTH_TOKEN_STORAGE_KEY, nextToken);
+    writeYudaoSession(
+      {
+        userId: null,
+        accessToken: nextToken,
+        refreshToken: "",
+        expiresTime: "",
+      },
+      storage
+    );
   } else {
-    storage.removeItem(AUTH_TOKEN_STORAGE_KEY);
+    clearYudaoSession(storage);
+  }
+};
+
+const hasOwn = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
+
+const authStorage = (options = {}) => (hasOwn(options, "storage") ? options.storage : undefined);
+
+const persistLoginResponse = (data, options = {}) => writeYudaoSession(data, authStorage(options));
+
+const AUTH_FAILURE_CODES = new Set([401]);
+
+const isAuthFailurePayload = (payload) =>
+  payload && typeof payload === "object" && AUTH_FAILURE_CODES.has(Number(payload.code));
+
+const withoutAuthorizationHeader = (headers = {}) => {
+  const nextHeaders = { ...headers };
+  delete nextHeaders.Authorization;
+  delete nextHeaders.authorization;
+  return nextHeaders;
+};
+
+const readYudaoPayload = async (response) => {
+  try {
+    return await response.json();
+  } catch {
+    return null;
   }
 };
 
@@ -120,24 +161,118 @@ export const mapOrderPage = (page = {}) => ({
 });
 
 export const requestYudao = async (path, options = {}) => {
-  const base = options.baseUrl || getYudaoAppApiBase();
-  const token = options.token || readYudaoToken();
+  const { baseUrl, storage, token: optionToken, skipAuthRetry, headers: optionHeaders, ...fetchOptions } = options;
+  const base = baseUrl || getYudaoAppApiBase();
+  const session = readYudaoSession(storage);
+  const token = hasOwn(options, "token") ? optionToken : session?.accessToken || "";
   const headers = {
     "Content-Type": "application/json",
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...(options.headers || {}),
+    ...(optionHeaders || {}),
   };
 
   const response = await fetch(`${base}${path}`, {
-    ...options,
+    ...fetchOptions,
     headers,
   });
+  const payload = await readYudaoPayload(response);
 
   if (!response.ok) {
+    if (isAuthFailurePayload(payload) && session?.refreshToken && !skipAuthRetry) {
+      let refreshed;
+      try {
+        refreshed = await refreshMemberToken(session.refreshToken, {
+          ...options,
+          headers: withoutAuthorizationHeader(optionHeaders),
+        });
+      } catch (error) {
+        clearYudaoSession(authStorage(options));
+        throw error;
+      }
+      return requestYudao(path, {
+        ...options,
+        headers: withoutAuthorizationHeader(optionHeaders),
+        token: refreshed?.accessToken || "",
+        skipAuthRetry: true,
+      });
+    }
     throw new Error(`Yudao HTTP ${response.status}`);
   }
 
-  return unwrapYudaoResult(await response.json());
+  if (isAuthFailurePayload(payload) && session?.refreshToken && !skipAuthRetry) {
+    let refreshed;
+    try {
+      refreshed = await refreshMemberToken(session.refreshToken, {
+        ...options,
+        headers: withoutAuthorizationHeader(optionHeaders),
+      });
+    } catch (error) {
+      clearYudaoSession(authStorage(options));
+      throw error;
+    }
+    return requestYudao(path, {
+      ...options,
+      headers: withoutAuthorizationHeader(optionHeaders),
+      token: refreshed?.accessToken || "",
+      skipAuthRetry: true,
+    });
+  }
+
+  return unwrapYudaoResult(payload);
+};
+
+export const sendMemberSmsCode = (mobile, options = {}) =>
+  requestYudao("/member/auth/send-sms-code", {
+    ...options,
+    method: "POST",
+    token: "",
+    body: JSON.stringify({ mobile, scene: 1 }),
+  });
+
+export const loginBySms = async (payload, options = {}) => {
+  const data = await requestYudao("/member/auth/sms-login", {
+    ...options,
+    method: "POST",
+    token: "",
+    body: JSON.stringify(payload),
+  });
+  return persistLoginResponse(data, options);
+};
+
+export const loginByPassword = async (payload, options = {}) => {
+  const data = await requestYudao("/member/auth/login", {
+    ...options,
+    method: "POST",
+    token: "",
+    body: JSON.stringify(payload),
+  });
+  return persistLoginResponse(data, options);
+};
+
+export const refreshMemberToken = async (refreshToken, options = {}) => {
+  const data = await requestYudao(
+    `/member/auth/refresh-token?refreshToken=${encodeURIComponent(refreshToken)}`,
+    {
+      ...options,
+      headers: withoutAuthorizationHeader(options.headers),
+      method: "POST",
+      token: "",
+      skipAuthRetry: true,
+    }
+  );
+  return persistLoginResponse(data, options);
+};
+
+export const logoutMember = async (options = {}) => {
+  try {
+    await requestYudao("/member/auth/logout", {
+      ...options,
+      method: "POST",
+      skipAuthRetry: true,
+    });
+  } finally {
+    clearYudaoSession(authStorage(options));
+  }
 };
 
 export const getProductPage = async (params = {}, options = {}) => {

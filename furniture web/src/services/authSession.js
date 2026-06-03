@@ -31,7 +31,7 @@ const safeRemoveItem = (storage, key) => {
   try {
     storage.removeItem(key);
   } catch {
-    // Storage may be unavailable in private or test contexts.
+    // Ignore storage failures so auth state helpers stay safe to call.
   }
 };
 
@@ -64,7 +64,9 @@ export const readYudaoSession = (storage) => {
   }
 
   const legacyToken = String(safeGetItem(storage, LEGACY_AUTH_TOKEN_STORAGE_KEY) || "").trim();
-  return legacyToken ? { userId: null, accessToken: legacyToken, refreshToken: "", expiresTime: "" } : null;
+  return legacyToken
+    ? { userId: null, accessToken: legacyToken, refreshToken: "", expiresTime: "" }
+    : null;
 };
 
 export const writeYudaoSession = (session, storage) => {
@@ -90,7 +92,8 @@ export const clearYudaoSession = (storage) => {
   safeRemoveItem(storage, LEGACY_AUTH_TOKEN_STORAGE_KEY);
 };
 
-export const isYudaoSessionAuthenticated = (storage) => Boolean(readYudaoSession(storage)?.accessToken);
+export const isYudaoSessionAuthenticated = (storage) =>
+  Boolean(readYudaoSession(storage)?.accessToken);
 
 export const redactSecret = (value) => {
   const text = String(value || "");
