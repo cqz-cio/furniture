@@ -2775,9 +2775,53 @@ button {
 .order-row,
 .order-detail-card,
 .checkout-summary,
-.checkout-addresses {
+.checkout-addresses,
+.checkout-custom-notice,
+.checkout-address-verification,
+.checkout-payment-panel,
+.checkout-terms-panel,
+.checkout-delivery-notes {
   border: 1px solid var(--line);
   background: #fff;
+}
+
+.checkout-flow-rail {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  margin-bottom: 14px;
+  background: var(--line);
+}
+
+.checkout-flow-card {
+  display: grid;
+  gap: 8px;
+  min-height: 112px;
+  background: var(--paper);
+  padding: 16px;
+}
+
+.checkout-flow-card span,
+.checkout-flow-card small {
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.checkout-flow-card strong {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 1.1;
+}
+
+.checkout-flow-card.is-attention small {
+  color: #8b4b40;
+}
+
+.checkout-flow-card.is-complete small {
+  color: var(--ink);
 }
 
 .checkout-item {
@@ -2811,6 +2855,18 @@ button {
   font-size: 24px;
 }
 
+.summary-row,
+.summary-total {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.summary-total {
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+
 .checkout-summary button {
   width: 100%;
 }
@@ -2818,6 +2874,53 @@ button {
 .checkout-addresses {
   margin-bottom: 24px;
   padding: 18px;
+}
+
+.checkout-custom-notice,
+.checkout-address-verification,
+.checkout-payment-panel,
+.checkout-terms-panel,
+.checkout-delivery-notes {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 14px;
+  padding: 18px;
+}
+
+.checkout-address-verification article {
+  display: grid;
+  gap: 8px;
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+}
+
+.checkout-address-verification article strong,
+.checkout-address-verification article span {
+  color: var(--soft-ink);
+}
+
+.checkout-payment-panel dl {
+  display: grid;
+  gap: 1px;
+  margin: 0;
+  background: var(--line);
+}
+
+.checkout-payment-panel dl div {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr);
+  gap: 16px;
+  background: #fff;
+  padding: 14px 0;
+}
+
+.checkout-payment-panel dt {
+  color: var(--muted);
+}
+
+.checkout-payment-panel dd {
+  margin: 0;
+  color: var(--soft-ink);
 }
 
 .checkout-addresses label {
@@ -2871,6 +2974,8 @@ button {
   .product-grid,
   .product-detail-grid,
   .checkout-grid,
+  .checkout-flow-rail,
+  .checkout-payment-panel dl div,
   .order-row {
     grid-template-columns: 1fr;
   }

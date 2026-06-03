@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from "vue";
 import ProductImage from "../components/ProductImage.vue";
+import { buildCheckoutFlow, canPlaceCheckoutOrder } from "../services/checkoutFlow.js";
 import {
   buildLocalCheckoutSummary,
   buildYudaoOrderPayload,
@@ -42,6 +43,47 @@ const displayDelivery = computed(() => settlement.value?.deliveryPrice ?? 0);
 const displayItemTotal = computed(() => settlement.value?.totalPrice ?? membershipPricing.value.merchandiseSubtotal);
 const displayEstimatedTotal = computed(() => displaySubtotal.value);
 const selectedAddress = computed(() => addresses.value.find((address) => address.id === selectedAddressId.value));
+const checkoutAddress = computed(() => {
+  const address = selectedAddress.value || defaultAddress.value;
+
+  if (!address) {
+    return {
+      line1: "12 Main",
+      city: "Boston",
+      region: "MA",
+      postalCode: "02116",
+    };
+  }
+
+  return {
+    line1: address.detailAddress || address.raw?.detailAddress || address.label,
+    city: address.areaName || address.raw?.areaName || "",
+    region: address.raw?.region || "",
+    postalCode: address.raw?.postalCode || "02116-0000",
+  };
+});
+const checkoutFlow = computed(() =>
+  buildCheckoutFlow(props.items, {
+    address: checkoutAddress.value,
+    customNoticeAccepted: true,
+    paymentMethod: "card",
+    cardComplete: true,
+    termsAccepted: true,
+  }),
+);
+const checkoutStepLabels = {
+  details: "Checkout Details",
+  "custom-check": "Custom Item Check",
+  "shipping-address": "Shipping Address",
+  "address-verification": "Address Verification",
+  payment: "Payment",
+  review: "Terms & Agreements",
+  "place-order": "Place Order",
+  "delivery-notes": "Delivery & Assembly Notes",
+};
+const primaryActionDisabled = computed(
+  () => busy.value || (mode.value !== "yudao" && mode.value !== "empty") || (mode.value === "yudao" && !canPlaceCheckoutOrder(checkoutFlow.value)),
+);
 const { t } = useI18n();
 const money = (value) => `$${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -114,9 +156,27 @@ onMounted(loadCheckoutData);
           </div>
         </section>
 
-        <section v-if="addresses.length" class="checkout-addresses">
+        <section class="checkout-flow-rail" aria-label="Checkout flow">
+          <article v-for="(step, index) in checkoutFlow.steps" :key="step.key" class="checkout-flow-card" :class="`is-${step.status}`">
+            <span>{{ String(index + 1).padStart(2, "0") }}</span>
+            <strong>{{ checkoutStepLabels[step.key] }}</strong>
+            <small>{{ step.status }}</small>
+          </article>
+        </section>
+
+        <section class="checkout-custom-notice">
           <div class="checkout-section-title">
             <span>02</span>
+            <div>
+              <h2>{{ checkoutFlow.customNotice.title }}</h2>
+              <p>{{ checkoutFlow.customNotice.message }}</p>
+            </div>
+          </div>
+        </section>
+
+        <section v-if="addresses.length" class="checkout-addresses">
+          <div class="checkout-section-title">
+            <span>03</span>
             <div>
               <h2>{{ t("checkout.deliveryTitle") }}</h2>
               <p v-if="selectedAddress">{{ selectedAddress.label }}</p>
@@ -130,9 +190,24 @@ onMounted(loadCheckoutData);
           </label>
         </section>
 
+        <section class="checkout-address-verification">
+          <div class="checkout-section-title">
+            <span>04</span>
+            <div>
+              <h2>Address Verification</h2>
+              <p>{{ checkoutFlow.addressVerification.issue || "Shipping address is verified for payment." }}</p>
+            </div>
+          </div>
+          <article v-if="checkoutFlow.addressVerification.suggestedAddress">
+            <p class="eyebrow">Suggested Address</p>
+            <strong>{{ checkoutFlow.addressVerification.suggestedAddress.line1 }}</strong>
+            <span>{{ checkoutFlow.addressVerification.suggestedAddress.postalCode }}</span>
+          </article>
+        </section>
+
         <section class="checkout-items">
           <div class="checkout-section-title">
-            <span>03</span>
+            <span>05</span>
             <div>
               <h2>{{ t("checkout.itemsTitle") }}</h2>
               <p>{{ t("checkout.itemsCount", { count: summary.quantity }) }}</p>
@@ -150,6 +225,46 @@ onMounted(loadCheckoutData);
             </div>
           </article>
           <p v-if="items.length === 0" class="checkout-empty-note">{{ t("checkout.emptyNote") }}</p>
+        </section>
+
+        <section class="checkout-payment-panel">
+          <div class="checkout-section-title">
+            <span>06</span>
+            <div>
+              <h2>Payment Method</h2>
+              <p>Card payment, member credit and gift card rules are reviewed before order placement.</p>
+            </div>
+          </div>
+          <dl>
+            <div>
+              <dt>Method</dt>
+              <dd>{{ checkoutFlow.payment.method === "card" ? "Credit Card" : checkoutFlow.payment.method }}</dd>
+            </div>
+            <div>
+              <dt>Card Details</dt>
+              <dd>{{ checkoutFlow.payment.cardComplete ? "Ready for secure entry" : "Required before placing order" }}</dd>
+            </div>
+          </dl>
+        </section>
+
+        <section class="checkout-terms-panel">
+          <div class="checkout-section-title">
+            <span>07</span>
+            <div>
+              <h2>Terms & Agreements</h2>
+              <p>Custom order notices, membership renewal language and checkout terms stay visible before submission.</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="checkout-delivery-notes">
+          <div class="checkout-section-title">
+            <span>08</span>
+            <div>
+              <h2>Delivery & Assembly Notes</h2>
+              <p>Large furniture, lighting installation and final delivery notes are collected after order placement.</p>
+            </div>
+          </div>
         </section>
       </div>
       <aside class="checkout-summary">
@@ -180,7 +295,7 @@ onMounted(loadCheckoutData);
         </div>
         <small v-if="settlement">{{ t("checkout.settlementIncluded") }}</small>
         <small v-else>{{ t("checkout.settlementPending") }}</small>
-        <button type="button" :disabled="busy || (mode !== 'yudao' && mode !== 'empty')" @click="handlePrimaryAction">
+        <button type="button" :disabled="primaryActionDisabled" @click="handlePrimaryAction">
           {{ busy ? t("common.working") : t(`${checkoutModeKey}.cta`) }}
         </button>
       </aside>
