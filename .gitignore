@@ -5,3 +5,5 @@
 **/logs/
 _git-backups/
 **/sql/**/*.sql
+.pnpm-store/
+.worktrees/

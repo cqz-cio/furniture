@@ -210,7 +210,7 @@ describe("RH layout extraction data", () => {
   });
 
   it("keeps the Sale mobile hero hidden on desktop with a specific CSS rule", () => {
-    const css = readFileSync(new URL("../src/styles.css", import.meta.url), "utf8");
+    const css = readFileSync(new URL("../src/styles.css", import.meta.url), "utf8").replace(/\r\n/g, "\n");
     expect(css).toContain(".sale-hero .sale-hero-image-mobile {\n  display: none;");
     expect(css).toContain(".sale-hero .sale-hero-image-mobile {\n    display: flex;");
   });

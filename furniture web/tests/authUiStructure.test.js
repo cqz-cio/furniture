@@ -22,22 +22,43 @@ describe("auth UI structure", () => {
     expect(source).toContain('defineEmits(["close", "auth-change"])');
     expect(source).toContain('role="dialog"');
     expect(source).toContain('aria-labelledby="account-modal-title"');
-    expect(source).toContain('<AuthSmsForm');
-    expect(source).toContain('<AuthPasswordForm');
+    expect(source).toContain('<AuthEmailSignInForm');
+    expect(source).toContain('<AuthCreateAccountForm');
+    expect(source).toContain('<AuthTradeSignInForm');
+    expect(source).toContain('mode.value = "secureLink"');
+    expect(source).toContain('mode.value = "create"');
+    expect(source).toContain('mode.value = "trade"');
+    expect(source).not.toContain('<AuthSmsForm');
+    expect(source).not.toContain('<AuthPasswordForm');
     expect(source).toContain('<AuthTokenPanel');
     expect(source).toContain("logoutMember");
     expect(source).toContain("logoutNotice");
   });
 
-  it("defines SMS and password forms for Yudao member auth", () => {
-    const smsSource = readSource("../src/components/AuthSmsForm.vue");
-    const passwordSource = readSource("../src/components/AuthPasswordForm.vue");
+  it("defines RH-style email, account creation, and trade sign-in forms", () => {
+    const emailSource = readSource("../src/components/AuthEmailSignInForm.vue");
+    const createSource = readSource("../src/components/AuthCreateAccountForm.vue");
+    const tradeSource = readSource("../src/components/AuthTradeSignInForm.vue");
 
-    expect(smsSource).toContain("sendMemberSmsCode");
-    expect(smsSource).toContain("loginBySms");
-    expect(smsSource).toContain('autocomplete="one-time-code" inputmode="numeric" type="password"');
-    expect(passwordSource).toContain("loginByPassword");
-    expect(passwordSource).toContain('type="password"');
+    expect(emailSource).toContain("requestEmailSignInLink");
+    expect(emailSource).toContain('autocomplete="email"');
+    expect(emailSource).toContain("SIGN IN");
+    expect(emailSource).toContain("Forgot Password?");
+    expect(emailSource).not.toContain("mobile");
+    expect(emailSource).not.toContain("sms");
+    expect(emailSource).not.toContain('inputmode="tel"');
+    expect(emailSource).not.toContain("one-time-code");
+
+    expect(createSource).toContain("registerByEmail");
+    expect(createSource).toContain("First Name");
+    expect(createSource).toContain("Last Name");
+    expect(createSource).toContain("RH Privacy Notice");
+    expect(createSource).toContain("emailOptIn");
+
+    expect(tradeSource).toContain("loginByTradeAccount");
+    expect(tradeSource).toContain("Trade ID");
+    expect(tradeSource).toContain("Email Address");
+    expect(tradeSource).toContain("Apply for a Trade Account");
   });
 
   it("keeps auth modal usable on small screens", () => {
@@ -45,6 +66,6 @@ describe("auth UI structure", () => {
 
     expect(css).toContain("overflow-y: auto;");
     expect(css).toContain(".account-modal-layer");
-    expect(css).toContain("max-height: calc(100vh - 32px);");
+    expect(css).toContain("max-height: calc(100dvh - 40px);");
   });
 });

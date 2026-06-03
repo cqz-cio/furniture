@@ -9,6 +9,7 @@ import cn.iocoder.yudao.module.member.controller.app.user.vo.*;
 import cn.iocoder.yudao.module.member.dal.dataobject.user.MemberUserDO;
 
 import javax.validation.Valid;
+import javax.validation.constraints.Email;
 import java.util.Collection;
 import java.util.List;
 
@@ -28,6 +29,14 @@ public interface MemberUserService {
     MemberUserDO getUserByMobile(String mobile);
 
     /**
+     * 通过邮箱查询用户
+     *
+     * @param email 邮箱
+     * @return 用户对象
+     */
+    MemberUserDO getUserByEmail(@Email String email);
+
+    /**
      * 基于用户昵称，模糊匹配用户列表
      *
      * @param nickname 用户昵称，模糊匹配
@@ -45,6 +54,19 @@ public interface MemberUserService {
      * @return 用户对象
      */
     MemberUserDO createUserIfAbsent(@Mobile String mobile, String registerIp, Integer terminal);
+
+    /**
+     * 基于邮箱创建用户
+     *
+     * @param email 邮箱
+     * @param password 密码
+     * @param nickname 昵称
+     * @param registerIp 注册 IP
+     * @param terminal 终端 {@link TerminalEnum}
+     * @return 用户对象
+     */
+    MemberUserDO createUserByEmail(@Email String email, String password, String nickname,
+                                   String registerIp, Integer terminal);
 
     /**
      * 创建用户

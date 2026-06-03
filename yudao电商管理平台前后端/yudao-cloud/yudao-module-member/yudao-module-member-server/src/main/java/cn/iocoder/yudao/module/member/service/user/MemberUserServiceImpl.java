@@ -70,6 +70,11 @@ public class MemberUserServiceImpl implements MemberUserService {
     }
 
     @Override
+    public MemberUserDO getUserByEmail(String email) {
+        return memberUserMapper.selectByEmail(normalizeEmail(email));
+    }
+
+    @Override
     public List<MemberUserDO> getUserListByNickname(String nickname) {
         return memberUserMapper.selectListByNicknameLike(nickname);
     }
@@ -83,24 +88,32 @@ public class MemberUserServiceImpl implements MemberUserService {
             return user;
         }
         // 用户不存在，则进行创建
-        return createUser(mobile, null, null, registerIp, terminal);
+        return createUser(mobile, null, IdUtil.fastSimpleUUID(), null, null, registerIp, terminal);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public MemberUserDO createUserByEmail(String email, String password, String nickname,
+                                          String registerIp, Integer terminal) {
+        email = normalizeEmail(email);
+        validateEmailUnique(null, email);
+        return createUser(null, email, password, nickname, null, registerIp, terminal);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public MemberUserDO createUser(String nickname, String avtar, String registerIp, Integer terminal) {
-        return createUser(null, nickname, avtar, registerIp, terminal);
+        return createUser(null, null, IdUtil.fastSimpleUUID(), nickname, avtar, registerIp, terminal);
     }
 
-    private MemberUserDO createUser(String mobile, String nickname, String avtar,
+    private MemberUserDO createUser(String mobile, String email, String rawPassword, String nickname, String avtar,
                                     String registerIp, Integer terminal) {
-        // 生成密码
-        String password = IdUtil.fastSimpleUUID();
         // 插入用户
         MemberUserDO user = new MemberUserDO();
         user.setMobile(mobile);
+        user.setEmail(email);
         user.setStatus(CommonStatusEnum.ENABLE.getStatus()); // 默认开启
-        user.setPassword(encodePassword(password)); // 加密密码
+        user.setPassword(encodePassword(rawPassword)); // 加密密码
         user.setRegisterIp(registerIp).setRegisterTerminal(terminal);
         user.setNickname(nickname).setAvatar(avtar); // 基础信息
         if (StrUtil.isEmpty(nickname)) {
@@ -238,8 +251,10 @@ public class MemberUserServiceImpl implements MemberUserService {
         validateUserExists(updateReqVO.getId());
         // 校验手机唯一
         validateMobileUnique(updateReqVO.getId(), updateReqVO.getMobile());
+        validateEmailUnique(updateReqVO.getId(), updateReqVO.getEmail());
 
         // 更新
+        updateReqVO.setEmail(normalizeEmail(updateReqVO.getEmail()));
         MemberUserDO updateObj = MemberUserConvert.INSTANCE.convert(updateReqVO);
         memberUserMapper.updateById(updateObj);
     }
@@ -271,6 +286,23 @@ public class MemberUserServiceImpl implements MemberUserService {
         }
         if (!user.getId().equals(id)) {
             throw exception(USER_MOBILE_USED, mobile);
+        }
+    }
+
+    @VisibleForTesting
+    void validateEmailUnique(Long id, String email) {
+        if (StrUtil.isBlank(email)) {
+            return;
+        }
+        MemberUserDO user = memberUserMapper.selectByEmail(normalizeEmail(email));
+        if (user == null) {
+            return;
+        }
+        if (id == null) {
+            throw exception(USER_EMAIL_USED);
+        }
+        if (!user.getId().equals(id)) {
+            throw exception(USER_EMAIL_USED);
         }
     }
 
@@ -312,6 +344,10 @@ public class MemberUserServiceImpl implements MemberUserService {
             return memberUserMapper.updatePointDecr(id, point) > 0;
         }
         return true;
+    }
+
+    private String normalizeEmail(String email) {
+        return StrUtil.isBlank(email) ? email : StrUtil.trim(email).toLowerCase();
     }
 
 }

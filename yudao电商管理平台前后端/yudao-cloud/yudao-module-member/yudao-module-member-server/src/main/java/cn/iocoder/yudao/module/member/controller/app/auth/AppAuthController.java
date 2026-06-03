@@ -49,6 +49,35 @@ public class AppAuthController {
         return success(authService.login(reqVO));
     }
 
+    @PostMapping("/email-login")
+    @Operation(summary = "使用邮箱 + 密码登录")
+    @PermitAll
+    public CommonResult<AppAuthLoginRespVO> emailLogin(@RequestBody @Valid AppAuthEmailLoginReqVO reqVO) {
+        return success(authService.emailLogin(reqVO));
+    }
+
+    @PostMapping("/email-register")
+    @Operation(summary = "使用邮箱注册")
+    @PermitAll
+    public CommonResult<AppAuthLoginRespVO> emailRegister(@RequestBody @Valid AppAuthEmailRegisterReqVO reqVO) {
+        return success(authService.emailRegister(reqVO));
+    }
+
+    @PostMapping("/email-secure-link")
+    @Operation(summary = "请求邮箱安全登录链接")
+    @PermitAll
+    public CommonResult<Boolean> sendEmailSecureLink(@RequestBody @Valid AppAuthEmailSecureLinkReqVO reqVO) {
+        authService.sendEmailSecureLink(reqVO);
+        return success(true);
+    }
+
+    @PostMapping("/trade-login")
+    @Operation(summary = "Trade Program 登录")
+    @PermitAll
+    public CommonResult<AppAuthLoginRespVO> tradeLogin(@RequestBody @Valid AppAuthTradeLoginReqVO reqVO) {
+        return success(authService.tradeLogin(reqVO));
+    }
+
     @PostMapping("/logout")
     @Operation(summary = "登出系统")
     @PermitAll

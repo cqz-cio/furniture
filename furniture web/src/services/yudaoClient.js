@@ -229,6 +229,14 @@ export const sendMemberSmsCode = (mobile, options = {}) =>
     body: JSON.stringify({ mobile, scene: 1 }),
   });
 
+export const requestEmailSignInLink = (email, options = {}) =>
+  requestYudao("/member/auth/email-secure-link", {
+    ...options,
+    method: "POST",
+    token: "",
+    body: JSON.stringify({ email }),
+  });
+
 export const loginBySms = async (payload, options = {}) => {
   const data = await requestYudao("/member/auth/sms-login", {
     ...options,
@@ -241,6 +249,36 @@ export const loginBySms = async (payload, options = {}) => {
 
 export const loginByPassword = async (payload, options = {}) => {
   const data = await requestYudao("/member/auth/login", {
+    ...options,
+    method: "POST",
+    token: "",
+    body: JSON.stringify(payload),
+  });
+  return persistLoginResponse(data, options);
+};
+
+export const loginByEmailPassword = async (payload, options = {}) => {
+  const data = await requestYudao("/member/auth/email-login", {
+    ...options,
+    method: "POST",
+    token: "",
+    body: JSON.stringify(payload),
+  });
+  return persistLoginResponse(data, options);
+};
+
+export const registerByEmail = async (payload, options = {}) => {
+  const data = await requestYudao("/member/auth/email-register", {
+    ...options,
+    method: "POST",
+    token: "",
+    body: JSON.stringify(payload),
+  });
+  return persistLoginResponse(data, options);
+};
+
+export const loginByTradeAccount = async (payload, options = {}) => {
+  const data = await requestYudao("/member/auth/trade-login", {
     ...options,
     method: "POST",
     token: "",
