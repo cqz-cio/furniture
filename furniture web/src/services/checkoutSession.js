@@ -28,6 +28,37 @@ export const getCheckoutMode = (items, token) => {
   return token ? "yudao" : "token-required";
 };
 
+export const getCheckoutPresentation = (mode) => {
+  const states = {
+    yudao: {
+      title: "Review Your Order",
+      message: "Confirm your delivery address and send the order to Yudao.",
+      cta: "Create Yudao Order",
+      canSubmit: true,
+    },
+    "token-required": {
+      title: "Connect Your Account",
+      message: "Save a Yudao App token in the account panel before creating a remote order.",
+      cta: "Add Token To Continue",
+      canSubmit: false,
+    },
+    "local-preview": {
+      title: "Review Your Selections",
+      message: "Demo products can be reviewed locally. Add Yudao products to create a live order.",
+      cta: "Preview Only",
+      canSubmit: false,
+    },
+    empty: {
+      title: "Your Bag Is Empty",
+      message: "Browse the gallery and add pieces before beginning checkout.",
+      cta: "Return To Gallery",
+      canSubmit: false,
+    },
+  };
+
+  return states[mode] || states.empty;
+};
+
 export const getCheckoutReturnPath = () => "/checkout";
 
 export const getSelectedAddressId = (selectedAddressId, defaultAddress) => selectedAddressId || defaultAddress?.id;
