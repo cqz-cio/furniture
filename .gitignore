@@ -7,3 +7,6 @@ _git-backups/
 **/sql/**/*.sql
 .pnpm-store/
 .worktrees/
+
+tools/
+/furniture web/captures/local/
