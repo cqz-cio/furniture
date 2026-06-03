@@ -1,0 +1,46 @@
+name: yudao-local-infra
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: yudao-mysql-local
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-time-zone=+08:00
+    environment:
+      MYSQL_ROOT_PASSWORD: "123456"
+      MYSQL_DATABASE: "ruoyi-vue-pro"
+      TZ: Asia/Shanghai
+    ports:
+      - "3306:3306"
+    volumes:
+      - yudao_mysql_data:/var/lib/mysql
+      - ../../sql/mysql/ruoyi-vue-pro.sql:/docker-entrypoint-initdb.d/01-ruoyi-vue-pro.sql:ro
+      - ../../sql/mysql/quartz.sql:/docker-entrypoint-initdb.d/02-quartz.sql:ro
+      - ../../sql/mysql/yudao-module-tables.sql:/docker-entrypoint-initdb.d/03-yudao-module-tables.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -uroot -p$${MYSQL_ROOT_PASSWORD} --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  redis:
+    image: redis:7-alpine
+    container_name: yudao-redis-local
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - yudao_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+
+volumes:
+  yudao_mysql_data:
+  yudao_redis_data:

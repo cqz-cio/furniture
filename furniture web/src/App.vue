@@ -4,8 +4,10 @@ import CartDrawer from "./components/CartDrawer.vue";
 import RhFooter from "./components/RhFooter.vue";
 import RhHeader from "./components/RhHeader.vue";
 import BabyChildPage from "./pages/BabyChildPage.vue";
+import CheckoutPage from "./pages/CheckoutPage.vue";
 import HomePage from "./pages/HomePage.vue";
 import MissingExtractionPage from "./pages/MissingExtractionPage.vue";
+import OrdersPage from "./pages/OrdersPage.vue";
 import OutdoorPage from "./pages/OutdoorPage.vue";
 import SalePage from "./pages/SalePage.vue";
 import SofaPdpPage from "./pages/SofaPdpPage.vue";
@@ -28,6 +30,8 @@ const pageRoutes = {
   "sofa-pdp": "/sofa-pdp",
   teen: "/teen",
   "baby-child": "/baby-child",
+  checkout: "/checkout",
+  orders: "/orders",
   missing: "/missing",
 };
 
@@ -39,6 +43,8 @@ const currentPage = ref(pageFromPath(window.location.pathname));
 const cartOpen = ref(false);
 const cartItems = ref(readLocalCart());
 const cartMode = ref("local");
+const authVersion = ref(0);
+let remoteCartRequestId = 0;
 
 const pageComponent = computed(() => {
   if (currentPage.value === "home") return HomePage;
@@ -48,6 +54,8 @@ const pageComponent = computed(() => {
   if (currentPage.value === "sofa-pdp") return SofaPdpPage;
   if (currentPage.value === "teen") return TeenPage;
   if (currentPage.value === "baby-child") return BabyChildPage;
+  if (currentPage.value === "checkout") return CheckoutPage;
+  if (currentPage.value === "orders") return OrdersPage;
   return MissingExtractionPage;
 });
 
@@ -57,13 +65,29 @@ const syncPageFromLocation = () => {
 
 const cartQuantity = computed(() => cartItems.value.reduce((sum, item) => sum + item.quantity, 0));
 
+const switchToLocalCart = () => {
+  cartItems.value = readLocalCart();
+  cartMode.value = "local";
+};
+
 const loadRemoteCart = async () => {
+  const requestId = ++remoteCartRequestId;
   try {
-    cartItems.value = await getRemoteCartItems();
+    const remoteItems = await getRemoteCartItems();
+    if (requestId !== remoteCartRequestId) return false;
     cartMode.value = "yudao";
+    cartItems.value = remoteItems;
+    return true;
   } catch {
-    cartMode.value = "local";
+    if (requestId !== remoteCartRequestId) return false;
+    switchToLocalCart();
+    return true;
   }
+};
+
+const handleAuthChange = async () => {
+  await loadRemoteCart();
+  authVersion.value += 1;
 };
 
 const addToCart = async (product, quantity = 1) => {
@@ -74,7 +98,7 @@ const addToCart = async (product, quantity = 1) => {
       cartOpen.value = true;
       return;
     } catch {
-      cartMode.value = "local";
+      switchToLocalCart();
     }
   }
 
@@ -89,7 +113,7 @@ const updateCartQuantity = async (item, quantity) => {
       await loadRemoteCart();
       return;
     } catch {
-      cartMode.value = "local";
+      switchToLocalCart();
     }
   }
   cartItems.value = updateLocalCartItemQuantity(cartItems.value, item.skuId, quantity);
@@ -102,10 +126,15 @@ const removeFromCart = async (item) => {
       await loadRemoteCart();
       return;
     } catch {
-      cartMode.value = "local";
+      switchToLocalCart();
     }
   }
   cartItems.value = removeLocalCartItem(cartItems.value, item.skuId);
+};
+
+const openOrderDetail = (orderId) => {
+  currentPage.value = "orders";
+  window.history.pushState({ page: "orders" }, "", `/orders?id=${orderId}`);
 };
 
 watch(currentPage, (page) => {
@@ -115,7 +144,13 @@ watch(currentPage, (page) => {
   }
 });
 
-watch(cartItems, (items) => writeLocalCart(items), { deep: true });
+watch(
+  cartItems,
+  (items) => {
+    if (cartMode.value !== "yudao") writeLocalCart(items);
+  },
+  { deep: true }
+);
 
 onMounted(() => {
   window.addEventListener("popstate", syncPageFromLocation);
@@ -128,14 +163,27 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <RhHeader v-model:page="currentPage" :cart-count="cartQuantity" :cart-mode="cartMode" @open-cart="cartOpen = true" />
+  <RhHeader
+    v-model:page="currentPage"
+    :cart-count="cartQuantity"
+    :cart-mode="cartMode"
+    @auth-change="handleAuthChange"
+    @open-cart="cartOpen = true"
+  />
   <main class="app-main">
-    <component :is="pageComponent" @add-to-cart="addToCart" />
+    <component
+      :is="pageComponent"
+      :auth-version="authVersion"
+      :items="cartItems"
+      @add-to-cart="addToCart"
+      @order-created="openOrderDetail"
+    />
   </main>
   <RhFooter />
   <CartDrawer
     :items="cartItems"
     :open="cartOpen"
+    @checkout="currentPage = 'checkout'; cartOpen = false"
     @close="cartOpen = false"
     @remove="removeFromCart"
     @update-quantity="updateCartQuantity"

@@ -20,7 +20,7 @@ export default ({command, mode}: ConfigEnv): UserConfig => {
     } else {
         env = loadEnv(mode, root)
     }
-    const variablesScssPath = normalizePath(pathResolve('src/styles/variables.scss'))
+    const stylesPath = normalizePath(pathResolve('src/styles'))
     return {
         base: env.VITE_BASE_PATH,
         root: root,
@@ -48,6 +48,7 @@ export default ({command, mode}: ConfigEnv): UserConfig => {
             },
             preprocessorOptions: {
                 scss: {
+                    loadPaths: [stylesPath],
                     additionalData: (source: string, filename: string) => {
                         const normalizedFilename = normalizePath(filename)
                         // Windows 下更容易触发重复注入：定义或显式转导变量的文件，不能再次注入同一个
@@ -58,7 +59,7 @@ export default ({command, mode}: ConfigEnv): UserConfig => {
                         ) {
                             return source
                         }
-                        return `@use "${variablesScssPath}" as *;\n${source}`
+                        return `@use "variables.scss" as *;\n${source}`
                     },
                     api: 'modern-compiler'
                 }
