@@ -1,30 +1,22 @@
+<script setup>
+import { useI18n } from "../i18n.js";
+
+const { t } = useI18n();
+const sections = ["eligibility", "renewal", "emailBinding", "checkoutRules"];
+</script>
+
 <template>
   <section class="membership-page membership-narrow service-page-shell">
     <header class="membership-page-head">
-      <p class="eyebrow">Members Program Terms</p>
-      <h1>Rules, renewal and benefit eligibility.</h1>
-      <p>
-        This page is the long-form rule destination for membership fees, renewals, email binding, benefit eligibility
-        and checkout confirmations.
-      </p>
+      <p class="eyebrow">{{ t("membership.terms.eyebrow") }}</p>
+      <h1>{{ t("membership.terms.title") }}</h1>
+      <p>{{ t("membership.terms.intro") }}</p>
     </header>
 
-    <section class="terms-list" aria-label="Membership terms">
-      <article>
-        <h2>Eligibility</h2>
-        <p>Benefits apply only to eligible products and signed-in accounts with an active membership status.</p>
-      </article>
-      <article>
-        <h2>Renewal</h2>
-        <p>Automatic renewal status, reminders and cancellation controls are managed in My Account.</p>
-      </article>
-      <article>
-        <h2>Email Binding</h2>
-        <p>Offline memberships can be linked online when the registration email is matched or verified.</p>
-      </article>
-      <article>
-        <h2>Checkout Rules</h2>
-        <p>Membership purchases require account sign-in and cannot continue through guest checkout.</p>
+    <section class="terms-list" :aria-label="t('membership.terms.aria')">
+      <article v-for="section in sections" :key="section">
+        <h2>{{ t(`membership.terms.${section}Title`) }}</h2>
+        <p>{{ t(`membership.terms.${section}Description`) }}</p>
       </article>
     </section>
   </section>

@@ -9,6 +9,12 @@ const specHeight = (rendered) => {
   const match = rendered.match(/x\s*([0-9.]+)/);
   return match ? `${match[1]}px` : undefined;
 };
+
+const homeModuleHref = (title) => {
+  if (title.includes("Outdoor")) return "/outdoor";
+  if (title.includes("RH Members Program")) return "/membership";
+  return "";
+};
 </script>
 
 <template>
@@ -45,9 +51,11 @@ const specHeight = (rendered) => {
   </section>
 
   <section class="home-grid" :aria-label="t('home.gridAria')">
-    <article
+    <component
+      :is="homeModuleHref(item.title) ? 'a' : 'article'"
       v-for="item in homeFullPageModules"
       :key="item.title"
+      :href="homeModuleHref(item.title) || undefined"
       class="home-entry"
       :class="{ 'is-screenshot-inferred': item.sourceLevel.includes('截图推断') }"
     >
@@ -87,6 +95,6 @@ const specHeight = (rendered) => {
         <h2>{{ item.title }}</h2>
         <small>{{ item.sourceLevel }}</small>
       </div>
-    </article>
+    </component>
   </section>
 </template>

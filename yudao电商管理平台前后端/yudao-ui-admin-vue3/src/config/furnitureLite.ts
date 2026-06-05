@@ -12,11 +12,15 @@ const allowedMenuPaths = new Set([
   '/mall/product/category',
   '/mall/product/brand',
   '/mall/product/property',
+  '/mall/product/comment',
+  '/mall/statistics',
+  '/mall/statistics/product',
   '/mall/trade',
   '/mall/trade/order',
   '/mall/trade/after-sale',
   '/mall/trade/delivery',
   '/mall/trade/delivery/express',
+  '/mall/trade/delivery/express/express-template',
   '/mall/trade/delivery/express-template',
   '/mall/trade/delivery/pick-up-store',
   '/member',
@@ -35,17 +39,6 @@ const allowedMenuPaths = new Set([
   '/system/role',
   '/system/menu'
 ])
-
-const allowedDetailRoutePrefixes = [
-  '/mall/product/spu/add',
-  '/mall/product/spu/edit',
-  '/mall/product/spu/detail',
-  '/mall/product/property/value',
-  '/mall/trade/order/detail',
-  '/mall/trade/after-sale/detail',
-  '/member/user/detail',
-  '/pay/cashier'
-]
 
 const deniedFixedRoutePrefixes = [
   '/bpm',
@@ -75,9 +68,7 @@ const normalizeRoutePath = (path: string, parentPath = ''): string => {
   return normalizedPath.replace(/\/$/, '')
 }
 
-const isPathAllowed = (path: string): boolean =>
-  allowedMenuPaths.has(path) ||
-  allowedDetailRoutePrefixes.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))
+const isPathAllowed = (path: string): boolean => allowedMenuPaths.has(path)
 
 const isPathDenied = (path: string): boolean =>
   deniedFixedRoutePrefixes.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))

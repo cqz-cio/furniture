@@ -10,6 +10,7 @@ import cn.iocoder.yudao.framework.common.util.servlet.ServletUtils;
 import cn.iocoder.yudao.module.member.controller.app.auth.vo.*;
 import cn.iocoder.yudao.module.member.convert.auth.AuthConvert;
 import cn.iocoder.yudao.module.member.dal.dataobject.user.MemberUserDO;
+import cn.iocoder.yudao.module.member.enums.auth.MemberEmailAuthSceneEnum;
 import cn.iocoder.yudao.module.member.service.user.MemberUserService;
 import cn.iocoder.yudao.module.system.api.logger.LoginLogApi;
 import cn.iocoder.yudao.module.system.api.logger.dto.LoginLogCreateReqDTO;
@@ -51,6 +52,8 @@ public class MemberAuthServiceImpl implements MemberAuthService {
     @Resource
     private MemberUserService userService;
     @Resource
+    private MemberEmailAuthService memberEmailAuthService;
+    @Resource
     private SmsCodeApi smsCodeApi;
     @Resource
     private LoginLogApi loginLogApi;
@@ -88,16 +91,68 @@ public class MemberAuthServiceImpl implements MemberAuthService {
     @Transactional
     public AppAuthLoginRespVO emailRegister(AppAuthEmailRegisterReqVO reqVO) {
         String email = normalizeEmail(reqVO.getEmail());
+        if (userService.getUserByEmail(email) != null) {
+            throw exception(USER_EMAIL_USED);
+        }
+        memberEmailAuthService.validateCode(null, new AppAuthEmailCodeValidateReqVO(
+                MemberEmailAuthSceneEnum.GENERAL_CODE.getScene(), email, reqVO.getCode()));
         String nickname = StrUtil.trim(reqVO.getFirstName() + " " + reqVO.getLastName());
         MemberUserDO user = userService.createUserByEmail(email, reqVO.getPassword(), nickname, getClientIP(), getTerminal());
-        Assert.notNull(user, "获取用户失败，结果为空");
+        Assert.notNull(user, "get user failed");
         return createTokenAfterLoginSuccess(user, email, LoginLogTypeEnum.LOGIN_USERNAME, null);
     }
 
     @Override
     public void sendEmailSecureLink(AppAuthEmailSecureLinkReqVO reqVO) {
         // 真实 magic link 邮件发送需要后续接入邮件模板与一次性 token 存储；这里先保留无枚举泄露的请求入口。
-        normalizeEmail(reqVO.getEmail());
+        memberEmailAuthService.sendLoginLink(normalizeEmail(reqVO.getEmail()));
+    }
+
+    @Override
+    public AppAuthLoginRespVO emailSecureLogin(AppAuthEmailTokenReqVO reqVO) {
+        MemberUserDO user = memberEmailAuthService.loginByToken(reqVO.getToken());
+        validateUserEnabled(user, user.getEmail(), LoginLogTypeEnum.LOGIN_USERNAME);
+        return createTokenAfterLoginSuccess(user, user.getEmail(), LoginLogTypeEnum.LOGIN_USERNAME, null);
+    }
+
+    @Override
+    public void sendEmailVerifyLink(Long userId, AppAuthEmailSecureLinkReqVO reqVO) {
+        memberEmailAuthService.sendVerifyEmail(userId, normalizeEmail(reqVO.getEmail()));
+    }
+
+    @Override
+    public void verifyEmail(AppAuthEmailTokenReqVO reqVO) {
+        memberEmailAuthService.verifyEmail(reqVO.getToken());
+    }
+
+    @Override
+    public void sendEmailCode(Long userId, AppAuthEmailCodeSendReqVO reqVO) {
+        if (StrUtil.isNotBlank(reqVO.getEmail())) {
+            reqVO.setEmail(normalizeEmail(reqVO.getEmail()));
+        }
+        if (MemberEmailAuthSceneEnum.GENERAL_CODE.getScene().equals(reqVO.getScene())
+                && userService.getUserByEmail(reqVO.getEmail()) != null) {
+            throw exception(USER_EMAIL_USED);
+        }
+        memberEmailAuthService.sendCode(userId, reqVO);
+    }
+
+    @Override
+    public void validateEmailCode(Long userId, AppAuthEmailCodeValidateReqVO reqVO) {
+        if (StrUtil.isNotBlank(reqVO.getEmail())) {
+            reqVO.setEmail(normalizeEmail(reqVO.getEmail()));
+        }
+        memberEmailAuthService.validateCode(userId, reqVO);
+    }
+
+    @Override
+    public void sendPasswordResetEmail(AppAuthEmailPasswordResetSendReqVO reqVO) {
+        memberEmailAuthService.sendPasswordResetEmail(normalizeEmail(reqVO.getEmail()));
+    }
+
+    @Override
+    public void resetPasswordByEmail(AppAuthEmailPasswordResetReqVO reqVO) {
+        memberEmailAuthService.resetPasswordByEmail(reqVO);
     }
 
     @Override

@@ -8,8 +8,11 @@ import {
   homeFullPageModules,
   homeHeroAssets,
   footerLinkHref,
+  globalMenuLinkHref,
   globalMenuPanels,
   livingMegaMenu,
+  livingSeatingMegaMenu,
+  livingMegaSubmenus,
   mobileDrawerNavigation,
   primaryNavigation,
   rhFooter,
@@ -17,6 +20,7 @@ import {
   sofaPdpSpecs,
   sofasPlpSpecs,
   saleCategories,
+  saleCategoryLinkHref,
   saleQuickLinks,
   saleMegaMenu,
   saleHeroSpecs,
@@ -76,6 +80,19 @@ describe("RH layout extraction data", () => {
       "Shop By Room",
       "Sale",
     ]);
+    expect(livingSeatingMegaMenu.map((item) => item.label)).toContain("Sofas");
+    expect(livingSeatingMegaMenu.find((item) => item.label === "Sofas").href).toBe("/sofas-plp");
+    expect(livingMegaSubmenus["Fabric Seating"]).toBe(livingSeatingMegaMenu);
+    expect(livingMegaSubmenus["Leather Seating"].map((item) => item.label)).toContain("Leather Swatches");
+    expect(livingMegaSubmenus["The Cloud® Collection"].map((item) => item.label)).toContain("Cloud Leather Collection");
+    expect(livingMegaSubmenus["Shelving & Cabinets"].map((item) => item.label)).toContain("Bar Cabinets & Carts");
+    expect(livingMegaSubmenus.Sideboards.map((item) => item.label)).toContain("Glass Sideboards");
+    expect(livingMegaSubmenus.Media.map((item) => item.label)).toContain("Media Armoires");
+    expect(livingMegaSubmenus.Tables.map((item) => item.label)).toContain("Drink Tables");
+    expect(livingMegaSubmenus.Consoles.map((item) => item.label)).toContain("Sofa Console Tables");
+    expect(livingMegaSubmenus.Office.map((item) => item.label)).toContain("Office Accessories");
+    expect(livingMegaSubmenus["Shop By Room"].map((item) => item.label)).toEqual(["Living Rooms", "Office"]);
+    expect(livingMegaSubmenus.Sale.find((item) => item.label === "Sofas").href).toBe("/sofas-plp");
     expect(mobileDrawerNavigation.at(-1).label).toBe("Interior Design");
     expect(mobileDrawerNavigation.find((item) => item.label === "Sale").accent).toBe(true);
   });
@@ -118,6 +135,27 @@ describe("RH layout extraction data", () => {
     expect(footerLinkHref("RH MEMBERS PROGRAM")).toBe("/membership");
     expect(footerLinkHref("MEMBERSHIP FAQS")).toBe("/membership/faqs");
     expect(footerLinkHref("GIFT REGISTRY")).toBe("/gift-registry");
+  });
+
+  it("maps completed global menu entries to local routes", () => {
+    expect(globalMenuLinkHref("RH")).toBe("/");
+    expect(globalMenuLinkHref("RH Outdoor")).toBe("/outdoor");
+    expect(globalMenuLinkHref("RH Baby & Child")).toBe("/baby-child");
+    expect(globalMenuLinkHref("RH Teen")).toBe("/teen");
+    expect(globalMenuLinkHref("RH Members Program")).toBe("/membership");
+  });
+
+  it("maps sale category modules to local prototype routes", () => {
+    const salePageSource = readFileSync(new URL("../src/pages/SalePage.vue", import.meta.url), "utf8");
+    const saleTileSource = readFileSync(new URL("../src/components/SaleCategoryTile.vue", import.meta.url), "utf8");
+
+    expect(saleCategoryLinkHref(saleCategories.find((item) => item.title === "Living"))).toBe("/sofas-plp");
+    expect(saleCategoryLinkHref(saleCategories.find((item) => item.title === "Sofas"))).toBe("/sofas-plp");
+    expect(saleCategoryLinkHref(saleCategories.find((item) => item.title === "Outdoor"))).toBe("/outdoor");
+    expect(saleCategoryLinkHref(saleCategories.find((item) => item.title === "Dining"))).toBe("/missing");
+    expect(salePageSource).toContain("saleCategoryLinkHref(category)");
+    expect(saleTileSource).toContain('saleCategoryLinkHref(category)');
+    expect(saleTileSource).not.toContain('target="_blank"');
   });
 
   it("keeps extracted Baby & Child homepage media slots", () => {
@@ -257,6 +295,15 @@ describe("RH layout extraction data", () => {
       "Footer 前服务链接区域",
     ]);
     expect(homeFullPageModules.slice(4).every((item) => item.sourceLevel === "完整手机长截图推断，待首页 JSON 精确复核")).toBe(true);
+  });
+
+  it("links completed homepage modules to local pages", () => {
+    const source = readFileSync(new URL("../src/pages/HomePage.vue", import.meta.url), "utf8");
+
+    expect(source).toContain("const homeModuleHref = (title) => {");
+    expect(source).toContain('return "/outdoor"');
+    expect(source).toContain('return "/membership"');
+    expect(source).toContain(":is=\"homeModuleHref(item.title) ? 'a' : 'article'\"");
   });
 
   it("uses measured homepage hero assets for desktop and mobile", () => {

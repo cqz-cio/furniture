@@ -1,8 +1,10 @@
 <script setup>
 import { computed, ref } from "vue";
+import { useI18n } from "../i18n.js";
 import { loginByTradeAccount } from "../services/yudaoClient.js";
 
 const emit = defineEmits(["authenticated", "sign-in"]);
+const { t } = useI18n();
 
 const tradeId = ref("");
 const email = ref("");
@@ -20,7 +22,7 @@ const submit = async () => {
     const session = await loginByTradeAccount({ tradeId: tradeId.value, email: email.value });
     emit("authenticated", session);
   } catch {
-    error.value = "Trade sign in is unavailable. Please contact your trade leader.";
+    error.value = t("auth.trade.error");
   } finally {
     busy.value = false;
   }
@@ -30,24 +32,30 @@ const submit = async () => {
 <template>
   <form class="auth-form account-trade-form" @submit.prevent="submit">
     <p class="auth-intro">
-      Contact your trade leader to schedule a viewing of our latest collections.
+      {{ t("auth.trade.intro") }}
     </p>
     <label class="auth-field">
-      <span class="sr-only">Trade ID</span>
-      <input v-model.trim="tradeId" autocomplete="off" placeholder="Trade ID" type="text" />
+      <span class="sr-only">{{ t("auth.fields.tradeId") }}</span>
+      <input v-model.trim="tradeId" autocomplete="off" :placeholder="t('auth.fields.tradeId')" type="text" />
     </label>
     <label class="auth-field">
-      <span class="sr-only">Email Address</span>
-      <input v-model.trim="email" autocomplete="email" inputmode="email" placeholder="Email Address" type="email" />
+      <span class="sr-only">{{ t("auth.fields.emailAddress") }}</span>
+      <input
+        v-model.trim="email"
+        autocomplete="email"
+        inputmode="email"
+        :placeholder="t('auth.fields.emailAddress')"
+        type="email"
+      />
     </label>
     <p v-if="error" class="auth-error">{{ error }}</p>
     <button class="auth-primary-button" type="submit" :disabled="!canSubmit">
-      {{ busy ? "WORKING..." : "SIGN IN" }}
+      {{ busy ? t("common.working") : t("auth.trade.submit") }}
     </button>
     <div class="account-modal-links is-stacked">
-      <a href="#">Apply for a Trade Account</a>
-      <a href="#">Trade FAQ</a>
-      <button type="button" @click="emit('sign-in')">Return to Sign In</button>
+      <a href="#">{{ t("auth.trade.apply") }}</a>
+      <a href="#">{{ t("auth.trade.faq") }}</a>
+      <button type="button" @click="emit('sign-in')">{{ t("auth.returnToSignIn") }}</button>
     </div>
   </form>
 </template>

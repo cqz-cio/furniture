@@ -8,6 +8,7 @@ import cn.iocoder.yudao.framework.security.core.util.SecurityFrameworkUtils;
 import cn.iocoder.yudao.module.member.controller.app.auth.vo.*;
 import cn.iocoder.yudao.module.member.convert.auth.AuthConvert;
 import cn.iocoder.yudao.module.member.service.auth.MemberAuthService;
+import cn.iocoder.yudao.module.member.service.auth.MemberEmailAuthSecurityService;
 import cn.iocoder.yudao.module.system.api.social.SocialClientApi;
 import cn.iocoder.yudao.module.system.api.social.dto.SocialWxJsapiSignatureRespDTO;
 import io.swagger.v3.oas.annotations.Operation;
@@ -35,6 +36,8 @@ public class AppAuthController {
 
     @Resource
     private MemberAuthService authService;
+    @Resource
+    private MemberEmailAuthSecurityService memberEmailAuthSecurityService;
 
     @Resource
     private SocialClientApi socialClientApi;
@@ -68,6 +71,76 @@ public class AppAuthController {
     @PermitAll
     public CommonResult<Boolean> sendEmailSecureLink(@RequestBody @Valid AppAuthEmailSecureLinkReqVO reqVO) {
         authService.sendEmailSecureLink(reqVO);
+        return success(true);
+    }
+
+    @PostMapping("/email-secure-login")
+    @Operation(summary = "使用邮箱安全登录链接登录")
+    @PermitAll
+    public CommonResult<AppAuthLoginRespVO> emailSecureLogin(@RequestBody @Valid AppAuthEmailTokenReqVO reqVO) {
+        return success(authService.emailSecureLogin(reqVO));
+    }
+
+    @PostMapping("/email-verify-link")
+    @Operation(summary = "发送邮箱验证链接")
+    @PermitAll
+    public CommonResult<Boolean> sendEmailVerifyLink(@RequestBody @Valid AppAuthEmailSecureLinkReqVO reqVO) {
+        authService.sendEmailVerifyLink(getLoginUserId(), reqVO);
+        return success(true);
+    }
+
+    @PostMapping("/verify-email")
+    @Operation(summary = "验证邮箱")
+    @PermitAll
+    public CommonResult<Boolean> verifyEmail(@RequestBody @Valid AppAuthEmailTokenReqVO reqVO) {
+        authService.verifyEmail(reqVO);
+        return success(true);
+    }
+
+    @PostMapping("/send-email-code")
+    @Operation(summary = "发送邮箱验证码")
+    @PermitAll
+    public CommonResult<Boolean> sendEmailCode(@RequestBody @Valid AppAuthEmailCodeSendReqVO reqVO) {
+        authService.sendEmailCode(getLoginUserId(), reqVO);
+        return success(true);
+    }
+
+    @PostMapping("/validate-email-code")
+    @Operation(summary = "校验邮箱验证码")
+    @PermitAll
+    public CommonResult<Boolean> validateEmailCode(@RequestBody @Valid AppAuthEmailCodeValidateReqVO reqVO) {
+        authService.validateEmailCode(getLoginUserId(), reqVO);
+        return success(true);
+    }
+
+    @PostMapping("/email-captcha/challenge")
+    @Operation(summary = "创建邮箱验证码图形挑战")
+    @PermitAll
+    public CommonResult<AppAuthEmailCaptchaChallengeRespVO> createEmailCaptchaChallenge() {
+        return success(memberEmailAuthSecurityService.createCaptchaChallenge());
+    }
+
+    @PostMapping("/email-captcha/verify")
+    @Operation(summary = "校验邮箱验证码图形挑战")
+    @PermitAll
+    public CommonResult<AppAuthEmailCaptchaVerifyRespVO> verifyEmailCaptchaChallenge(
+            @RequestBody @Valid AppAuthEmailCaptchaVerifyReqVO reqVO) {
+        return success(memberEmailAuthSecurityService.verifyCaptchaChallenge(reqVO));
+    }
+
+    @PostMapping("/password-reset-email")
+    @Operation(summary = "发送邮箱重置密码链接")
+    @PermitAll
+    public CommonResult<Boolean> sendPasswordResetEmail(@RequestBody @Valid AppAuthEmailPasswordResetSendReqVO reqVO) {
+        authService.sendPasswordResetEmail(reqVO);
+        return success(true);
+    }
+
+    @PutMapping("/reset-password-by-email")
+    @Operation(summary = "使用邮箱链接重置密码")
+    @PermitAll
+    public CommonResult<Boolean> resetPasswordByEmail(@RequestBody @Valid AppAuthEmailPasswordResetReqVO reqVO) {
+        authService.resetPasswordByEmail(reqVO);
         return success(true);
     }
 

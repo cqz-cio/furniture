@@ -273,7 +273,11 @@ public class MailSendServiceImplTest extends BaseMockitoUnitTest {
             // 准备参数
             MailSendMessage message = randomPojo(MailSendMessage.class, o -> o.setNickname("芋艿"));
             // mock 方法（获得邮箱账号）
-            MailAccountDO account = randomPojo(MailAccountDO.class, o -> o.setMail("7685@qq.com"));
+            MailAccountDO account = randomPojo(MailAccountDO.class, o -> {
+                o.setMail("7685@qq.com");
+                o.setHost("smtp.qq.com");
+                o.setSslEnable(true);
+            });
             when(mailAccountService.getMailAccountFromCache(eq(message.getAccountId())))
                     .thenReturn(account);
 
@@ -288,6 +292,7 @@ public class MailSendServiceImplTest extends BaseMockitoUnitTest {
                                 assertEquals(account.getHost(), mailAccount.getHost());
                                 assertEquals(account.getPort(), mailAccount.getPort());
                                 assertEquals(account.getSslEnable(), mailAccount.isSslEnable());
+                                assertEquals(account.getHost(), mailAccount.getCustomProperty().get("mail.smtp.ssl.trust"));
                                 return true;
                             }), eq(message.getToMails()), eq(message.getCcMails()), eq(message.getBccMails()),
                             eq(message.getTitle()), eq(message.getContent()), eq(true), any()))

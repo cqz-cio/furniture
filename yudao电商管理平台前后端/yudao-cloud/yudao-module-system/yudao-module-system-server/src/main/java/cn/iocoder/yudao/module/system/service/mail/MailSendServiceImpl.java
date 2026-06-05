@@ -136,10 +136,14 @@ public class MailSendServiceImpl implements MailSendService {
 
     private MailAccount buildMailAccount(MailAccountDO account, String nickname) {
         String from = StrUtil.isNotEmpty(nickname) ? nickname + " <" + account.getMail() + ">" : account.getMail();
-        return new MailAccount().setFrom(from).setAuth(true)
+        MailAccount mailAccount = new MailAccount().setFrom(from).setAuth(true)
                 .setUser(account.getUsername()).setPass(account.getPassword())
                 .setHost(account.getHost()).setPort(account.getPort())
                 .setSslEnable(account.getSslEnable()).setStarttlsEnable(account.getStarttlsEnable());
+        if (Boolean.TRUE.equals(account.getSslEnable()) && StrUtil.isNotBlank(account.getHost())) {
+            mailAccount.setCustomProperty("mail.smtp.ssl.trust", account.getHost());
+        }
+        return mailAccount;
     }
 
     @VisibleForTesting

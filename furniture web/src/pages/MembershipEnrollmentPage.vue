@@ -1,19 +1,21 @@
 <script setup>
 import { ANNUAL_MEMBERSHIP_PRODUCT } from "../services/membershipCart.js";
 import { membershipRoutes } from "../services/membershipNavigation.js";
+import { useI18n } from "../i18n.js";
 
 const emit = defineEmits(["add-to-cart"]);
+const { t } = useI18n();
 
 const plans = [
   {
-    title: "Annual Membership",
-    price: "$200 / year",
-    description: "For individual customers who want account-based member savings and annual renewal management.",
+    titleKey: "membership.enrollment.annualTitle",
+    priceKey: "membership.enrollment.annualPrice",
+    descriptionKey: "membership.enrollment.annualDescription",
   },
   {
-    title: "Whole-Room Membership",
-    price: "Project based",
-    description: "For room-level furnishing projects that need whole-room benefits and service visibility.",
+    titleKey: "membership.enrollment.wholeRoomTitle",
+    priceKey: "membership.enrollment.wholeRoomPrice",
+    descriptionKey: "membership.enrollment.wholeRoomDescription",
   },
 ];
 
@@ -25,32 +27,34 @@ const addAnnualMembership = () => {
 <template>
   <section class="membership-page membership-narrow">
     <header class="membership-page-head">
-      <p class="eyebrow">Membership Enrollment</p>
-      <h1>Select a membership plan.</h1>
-      <p>Membership is treated as a purchasable service before checkout, with account sign-in required.</p>
+      <p class="eyebrow">{{ t("membership.enrollment.eyebrow") }}</p>
+      <h1>{{ t("membership.enrollment.title") }}</h1>
+      <p>{{ t("membership.enrollment.intro") }}</p>
     </header>
 
-    <section class="membership-plan-list" aria-label="Membership plans">
-      <article v-for="plan in plans" :key="plan.title">
+    <section class="membership-plan-list" :aria-label="t('membership.enrollment.plansAria')">
+      <article v-for="plan in plans" :key="plan.titleKey">
         <div>
-          <h2>{{ plan.title }}</h2>
-          <p>{{ plan.description }}</p>
+          <h2>{{ t(plan.titleKey) }}</h2>
+          <p>{{ t(plan.descriptionKey) }}</p>
         </div>
-        <strong>{{ plan.price }}</strong>
+        <strong>{{ t(plan.priceKey) }}</strong>
       </article>
     </section>
 
     <section class="membership-agreement">
       <label>
         <input type="checkbox" />
-        <span>I agree to the Members Program Terms &amp; Conditions.</span>
+        <span>{{ t("membership.enrollment.agreement") }}</span>
       </label>
-      <a :href="membershipRoutes.membershipTerms">Read Terms</a>
+      <a :href="membershipRoutes.membershipTerms">{{ t("membership.enrollment.readTerms") }}</a>
     </section>
 
     <div class="membership-actions">
-      <button class="membership-primary-button" type="button" @click="addAnnualMembership">Add Membership to Bag</button>
-      <a :href="membershipRoutes.checkoutAuth">Continue to Checkout</a>
+      <button class="membership-primary-button" type="button" @click="addAnnualMembership">
+        {{ t("membership.enrollment.addToBag") }}
+      </button>
+      <a :href="membershipRoutes.checkoutAuth">{{ t("membership.enrollment.continueCheckout") }}</a>
     </div>
   </section>
 </template>

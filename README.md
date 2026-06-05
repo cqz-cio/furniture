@@ -88,6 +88,12 @@ Yudao 管理后台要求：
 - 结算页、订单列表和订单详情
 - 与 Yudao App API 对接商品、购物车、地址、结算和订单接口
 
+## 工程标准
+
+- 多语言是家具 Web 的强制开发标准：所有新增模块、页面、弹窗、表单、按钮、提示、错误信息、placeholder、aria label 和其他用户可见文案，都必须先放进 `furniture web/src/i18n.js`，并同时补齐 `en`、`zh-CN`、`fr` 三套语言版本。组件里只允许通过 `t("...")` 使用文案，不要直接硬编码英文、中文或法文。
+- 新增模块必须补对应的结构测试或 i18n 测试，确保关键文案 key 在三种语言下都能取到值。
+- 详细规则见 [Yudao 集成开发指南](furniture%20web/docs/yudao-integration/development-guide.md) 的“多语言工程标准”章节。
+
 更多说明：
 
 - [家具 Web Phase B Harness](furniture%20web/harness/phase-b/README.md)

@@ -1,6 +1,7 @@
 <script setup>
 import { computed, ref } from "vue";
-import { requestEmailSignInLink } from "../services/yudaoClient.js";
+import { useI18n } from "../i18n.js";
+import { loginByEmailPassword, requestEmailSignInLink } from "../services/yudaoClient.js";
 
 const props = defineProps({
   variant: {
@@ -8,16 +9,19 @@ const props = defineProps({
     default: "signin",
   },
 });
-const emit = defineEmits(["secure-link", "create-account", "trade", "sign-in"]);
+const emit = defineEmits(["secure-link", "create-account", "trade", "sign-in", "authenticated"]);
+const { t } = useI18n();
 
 const email = ref("");
+const password = ref("");
 const busy = ref(false);
 const notice = ref("");
 const error = ref("");
 
 const isSecureLink = computed(() => props.variant === "secureLink");
-const isEmailValid = computed(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value));
-const canSubmit = computed(() => isEmailValid.value && !busy.value);
+const isEmailValid = computed(() => email.value.length <= 255 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value));
+const isPasswordValid = computed(() => password.value.length >= 4 && password.value.length <= 16);
+const canSubmit = computed(() => isEmailValid.value && (isSecureLink.value || isPasswordValid.value) && !busy.value);
 
 const submit = async () => {
   if (!canSubmit.value) return;
@@ -25,10 +29,21 @@ const submit = async () => {
   notice.value = "";
   error.value = "";
   try {
-    await requestEmailSignInLink(email.value);
-    notice.value = "If an RH account exists for this email, a secure sign-in link will be sent.";
+    if (isSecureLink.value) {
+      await requestEmailSignInLink(email.value);
+      notice.value = t("auth.secureLink.notice");
+      return;
+    }
+
+    const session = await loginByEmailPassword({
+      email: email.value,
+      password: password.value,
+    });
+    emit("authenticated", session);
   } catch {
-    error.value = "Authentication service is unavailable. Please try again later.";
+    error.value = isSecureLink.value
+      ? t("auth.secureLink.error")
+      : t("auth.signIn.error");
   } finally {
     busy.value = false;
   }
@@ -38,33 +53,55 @@ const submit = async () => {
 <template>
   <form class="auth-form account-email-form" @submit.prevent="submit">
     <p v-if="isSecureLink" class="auth-intro">
-      Enter your email address and you'll receive a link to sign in.
+      {{ t("auth.secureLink.intro") }}
     </p>
     <p v-else class="auth-intro">
-      Please enter your email address to sign in, or
-      <button class="auth-inline-link" type="button" @click="emit('create-account')">Create an Account</button>
+      {{ t("auth.signIn.intro") }}
+      <button class="auth-inline-link" type="button" @click="emit('create-account')">
+        {{ t("auth.create.title") }}
+      </button>
     </p>
 
     <label class="auth-field">
-      <span class="sr-only">Email</span>
-      <input v-model.trim="email" autocomplete="email" inputmode="email" placeholder="Email" type="email" />
+      <span class="sr-only">{{ t("auth.fields.email") }}</span>
+      <input
+        v-model.trim="email"
+        autocomplete="email"
+        inputmode="email"
+        maxlength="255"
+        :placeholder="t('auth.fields.email')"
+        type="email"
+      />
+    </label>
+    <label v-if="!isSecureLink" class="auth-field">
+      <span class="sr-only">{{ t("auth.fields.password") }}</span>
+      <input
+        v-model="password"
+        autocomplete="current-password"
+        maxlength="16"
+        minlength="4"
+        :placeholder="t('auth.fields.password')"
+        type="password"
+      />
     </label>
 
     <button class="auth-primary-button" type="submit" :disabled="!canSubmit">
-      {{ busy ? "WORKING..." : isSecureLink ? "CONTINUE" : "SIGN IN" }}
+      {{ busy ? t("common.working") : isSecureLink ? t("auth.secureLink.submit") : t("auth.signIn.submit") }}
     </button>
 
     <button v-if="!isSecureLink" class="forgot-password" type="button" @click="emit('secure-link')">
-      Forgot Password?
+      {{ t("auth.signIn.forgotPassword") }}
     </button>
 
     <p v-if="notice" class="auth-success">{{ notice }}</p>
     <p v-if="error" class="auth-error">{{ error }}</p>
 
     <div class="account-modal-links">
-      <button v-if="!isSecureLink" type="button" @click="emit('secure-link')">Sign In With a Secure Link</button>
-      <button v-else type="button" @click="emit('sign-in')">Return to Sign In</button>
-      <button type="button" @click="emit('trade')">Trade Program Sign In</button>
+      <button v-if="!isSecureLink" type="button" @click="emit('secure-link')">
+        {{ t("auth.secureLink.title") }}
+      </button>
+      <button v-else type="button" @click="emit('sign-in')">{{ t("auth.returnToSignIn") }}</button>
+      <button type="button" @click="emit('trade')">{{ t("auth.trade.title") }}</button>
     </div>
   </form>
 </template>

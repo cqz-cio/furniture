@@ -6,12 +6,16 @@ import {
 } from "./authSession.js";
 
 const DEFAULT_APP_API_BASE = "http://127.0.0.1:48080/app-api";
+const DEFAULT_APP_TENANT_ID = "121";
 export const AUTH_TOKEN_STORAGE_KEY = LEGACY_AUTH_TOKEN_STORAGE_KEY;
 
 const trimSlash = (value) => value.replace(/\/$/, "");
 
 export const getYudaoAppApiBase = () =>
   trimSlash(import.meta.env.VITE_YUDAO_APP_API_BASE || DEFAULT_APP_API_BASE);
+
+export const getYudaoAppTenantId = () =>
+  String(import.meta.env.VITE_YUDAO_APP_TENANT_ID || DEFAULT_APP_TENANT_ID).trim();
 
 export const readYudaoToken = (storage) =>
   readYudaoSession(storage)?.accessToken || "";
@@ -59,12 +63,29 @@ const readYudaoPayload = async (response) => {
   }
 };
 
+const createYudaoError = (payload) => {
+  const error = new Error(payload?.msg || payload?.message || `Yudao request failed: ${payload?.code}`);
+  error.code = Number(payload?.code);
+  error.data = payload?.data;
+  return error;
+};
+
 export const unwrapYudaoResult = (payload) => {
   if (!payload || typeof payload !== "object") return payload;
   if (payload.code !== undefined && payload.code !== 0) {
-    throw new Error(payload.msg || payload.message || `Yudao request failed: ${payload.code}`);
+    throw createYudaoError(payload);
   }
   return payload.data !== undefined ? payload.data : payload;
+};
+
+export const YUDAO_MEMBER_ERROR_CODES = {
+  USER_EMAIL_USED: 1004001004,
+  EMAIL_CREDENTIAL_NOT_FOUND: 1004003010,
+  EMAIL_CREDENTIAL_EXPIRED: 1004003011,
+  EMAIL_CREDENTIAL_USED: 1004003012,
+  EMAIL_CAPTCHA_REQUIRED: 1004003014,
+  EMAIL_CAPTCHA_INVALID: 1004003015,
+  EMAIL_CODE_VERIFY_TOO_MANY: 1004003016,
 };
 
 const fenToYuan = (value) => {
@@ -91,6 +112,8 @@ export const mapSpuToProduct = (spu) => {
     marketPrice: fenToYuan(sku.marketPrice ?? spu.marketPrice),
     stock: Number(sku.stock ?? spu.stock ?? 0),
     salesCount: Number(spu.salesCount ?? 0),
+    productType: spu.productType || spu.type || spu.categoryCode || spu.categoryName || "",
+    detailConfig: spu.detailConfig || null,
     source: "yudao",
     raw: spu,
   };
@@ -161,12 +184,22 @@ export const mapOrderPage = (page = {}) => ({
 });
 
 export const requestYudao = async (path, options = {}) => {
-  const { baseUrl, storage, token: optionToken, skipAuthRetry, headers: optionHeaders, ...fetchOptions } = options;
+  const {
+    baseUrl,
+    storage,
+    tenantId: optionTenantId,
+    token: optionToken,
+    skipAuthRetry,
+    headers: optionHeaders,
+    ...fetchOptions
+  } = options;
   const base = baseUrl || getYudaoAppApiBase();
   const session = readYudaoSession(storage);
   const token = hasOwn(options, "token") ? optionToken : session?.accessToken || "";
+  const tenantId = String(hasOwn(options, "tenantId") ? optionTenantId || "" : getYudaoAppTenantId()).trim();
   const headers = {
     "Content-Type": "application/json",
+    ...(tenantId ? { "tenant-id": tenantId } : {}),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...(optionHeaders || {}),
   };
@@ -235,6 +268,36 @@ export const requestEmailSignInLink = (email, options = {}) =>
     method: "POST",
     token: "",
     body: JSON.stringify({ email }),
+  });
+
+export const sendEmailRegistrationCode = (email, options = {}) => {
+  const { captchaVerification, ...requestOptions } = options;
+  return requestYudao("/member/auth/send-email-code", {
+    ...requestOptions,
+    method: "POST",
+    token: "",
+    body: JSON.stringify({
+      email,
+      scene: 5,
+      ...(captchaVerification ? { captchaVerification } : {}),
+    }),
+  });
+};
+
+export const createEmailCaptchaChallenge = (options = {}) =>
+  requestYudao("/member/auth/email-captcha/challenge", {
+    ...options,
+    method: "POST",
+    token: "",
+    body: JSON.stringify({}),
+  });
+
+export const verifyEmailCaptchaChallenge = (payload, options = {}) =>
+  requestYudao("/member/auth/email-captcha/verify", {
+    ...options,
+    method: "POST",
+    token: "",
+    body: JSON.stringify(payload),
   });
 
 export const loginBySms = async (payload, options = {}) => {

@@ -15,6 +15,7 @@ public interface ErrorCodeConstants {
     ErrorCode USER_MOBILE_USED = new ErrorCode(1_004_001_002, "修改手机失败，该手机号({})已经被使用");
     ErrorCode USER_POINT_NOT_ENOUGH = new ErrorCode(1_004_001_003, "用户积分余额不足");
     ErrorCode USER_EMAIL_USED = new ErrorCode(1_004_001_004, "该邮箱已经被使用");
+    ErrorCode USER_EMAIL_NOT_EXISTS = new ErrorCode(1_004_001_005, "邮箱未注册用户");
 
     // ========== AUTH 模块 1-004-003-000 ==========
     ErrorCode AUTH_LOGIN_BAD_CREDENTIALS = new ErrorCode(1_004_003_000, "登录失败，账号密码不正确");
@@ -22,6 +23,14 @@ public interface ErrorCodeConstants {
     ErrorCode AUTH_SOCIAL_USER_NOT_FOUND = new ErrorCode(1_004_003_005, "登录失败，解析不到三方登录信息");
     ErrorCode AUTH_MOBILE_USED = new ErrorCode(1_004_003_007, "手机号已经被使用");
     ErrorCode AUTH_TRADE_ACCOUNT_NOT_FOUND = new ErrorCode(1_004_003_008, "Trade 账号不存在或邮箱不匹配");
+    ErrorCode AUTH_EMAIL_CODE_SEND_TOO_FAST = new ErrorCode(1_004_003_009, "邮箱验证码发送过于频繁");
+    ErrorCode AUTH_EMAIL_CREDENTIAL_NOT_FOUND = new ErrorCode(1_004_003_010, "邮箱验证码或链接无效");
+    ErrorCode AUTH_EMAIL_CREDENTIAL_EXPIRED = new ErrorCode(1_004_003_011, "邮箱验证码或链接已过期");
+    ErrorCode AUTH_EMAIL_CREDENTIAL_USED = new ErrorCode(1_004_003_012, "邮箱验证码或链接已使用");
+    ErrorCode AUTH_EMAIL_SCENE_NOT_SUPPORTED = new ErrorCode(1_004_003_013, "邮箱验证场景不支持");
+    ErrorCode AUTH_EMAIL_CAPTCHA_REQUIRED = new ErrorCode(1_004_003_014, "发送过于频繁，请先完成图形验证码");
+    ErrorCode AUTH_EMAIL_CAPTCHA_INVALID = new ErrorCode(1_004_003_015, "图形验证码无效，请重新验证");
+    ErrorCode AUTH_EMAIL_CODE_VERIFY_TOO_MANY = new ErrorCode(1_004_003_016, "验证码错误次数过多，请完成图形验证码后重新获取");
 
     // ========== 用户收件地址 1-004-004-000 ==========
     ErrorCode ADDRESS_NOT_EXISTS = new ErrorCode(1_004_004_000, "用户收件地址不存在");

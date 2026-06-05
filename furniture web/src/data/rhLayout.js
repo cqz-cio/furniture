@@ -111,12 +111,26 @@ export const rhFooter = {
 };
 
 const footerHrefMap = {
+  "LOCATE A GALLERY": "/missing",
   "RH MEMBERS PROGRAM": "/membership",
   "GIFT REGISTRY": "/gift-registry",
   "MEMBERSHIP FAQS": "/membership/faqs",
 };
 
 export const footerLinkHref = (label) => footerHrefMap[label] || "#";
+
+const globalMenuHrefMap = {
+  RH: "/",
+  "RH Outdoor": "/outdoor",
+  "RH Baby & Child": "/baby-child",
+  "RH Teen": "/teen",
+  "RH Members Program": "/membership",
+  "Explore RH Interior Design": "/missing",
+  "RH Trade Program Sign-In": "/account",
+  "Join The RH Trade Program": "/account",
+};
+
+export const globalMenuLinkHref = (label) => globalMenuHrefMap[label] || "#";
 
 const legacyBabyChildPageSpecs = {
   url: "https://rhbabyandchild.rh.com/us/en/",
@@ -354,6 +368,110 @@ export const livingMegaMenu = [
   { label: "Shop By Room", href: "/us/en/rooms" },
   { label: "Sale", href: "/us/en/sale", accent: true },
 ];
+
+export const livingSeatingMegaMenu = [
+  { label: "Seating Collections", href: "/us/en/catalog/category/collections.jsp/cat160024" },
+  { label: "Sofas", href: "/sofas-plp" },
+  { label: "Sectionals", href: "/us/en/catalog/category/products.jsp/cat160024" },
+  { label: "Chairs", href: "/us/en/catalog/category/products.jsp/cat160024" },
+  { label: "Swivel Chairs", href: "/us/en/catalog/category/products.jsp/cat160024" },
+  { label: "Recliner Seating", href: "/us/en/catalog/category/products.jsp/cat160024" },
+  { label: "Sleeper Sofas", href: "/us/en/catalog/category/products.jsp/cat160024" },
+  { label: "Chaises & Daybeds", href: "/us/en/catalog/category/products.jsp/cat160024" },
+  { label: "Benches", href: "/us/en/catalog/category/products.jsp/cat160024" },
+  { label: "Ottomans & Stools", href: "/us/en/catalog/category/products.jsp/cat160024" },
+  { label: "Fabric By The Yard", href: "/us/en/catalog/category/products.jsp/cat160024" },
+  { label: "Fabric Care", href: "/us/en/catalog/category/products.jsp/cat160024" },
+  { label: "Upholstery Swatches", href: "/us/en/catalog/category/products.jsp/cat160024" },
+];
+
+export const livingMegaSubmenus = {
+  "Fabric Seating": livingSeatingMegaMenu,
+  "Leather Seating": [
+    { label: "Seating Collections", href: "/us/en/catalog/category/collections.jsp/cat160024" },
+    { label: "Sofas", href: "/sofas-plp" },
+    { label: "Sectionals", href: "/us/en/catalog/category/products.jsp/cat160024" },
+    { label: "Chairs", href: "/us/en/catalog/category/products.jsp/cat160024" },
+    { label: "Swivel Chairs", href: "/us/en/catalog/category/products.jsp/cat160024" },
+    { label: "Recliner Seating", href: "/us/en/catalog/category/products.jsp/cat160024" },
+    { label: "Sleeper Sofas", href: "/us/en/catalog/category/products.jsp/cat160024" },
+    { label: "Chaises & Daybeds", href: "/us/en/catalog/category/products.jsp/cat160024" },
+    { label: "Benches", href: "/us/en/catalog/category/products.jsp/cat160024" },
+    { label: "Ottomans & Stools", href: "/us/en/catalog/category/products.jsp/cat160024" },
+    { label: "Leather Care", href: "/us/en/catalog/category/products.jsp/cat160024" },
+    { label: "Leather Swatches", href: "/us/en/catalog/category/products.jsp/cat160024" },
+  ],
+  "The Cloud® Collection": [
+    { label: "Explore The Cloud® Collection", href: "/us/en/catalog/category/collections.jsp/cat14210079" },
+    { label: "Cloud Fabric Collection", href: "/us/en/catalog/category/collections.jsp/cat14210079" },
+    { label: "Cloud Leather Collection", href: "/us/en/catalog/category/collections.jsp/cat14210079" },
+    { label: "Cloud Modular Tables", href: "/us/en/catalog/category/collections.jsp/cat14210079" },
+    { label: "Upholstery Swatches", href: "/us/en/catalog/category/collections.jsp/cat14210079" },
+  ],
+  "Shelving & Cabinets": [
+    { label: "Cabinet Collections", href: "/us/en/catalog/category/products.jsp/cat160045" },
+    { label: "Shelving Collections", href: "/us/en/catalog/category/products.jsp/cat160045" },
+    { label: "Cabinets", href: "/us/en/catalog/category/products.jsp/cat160045" },
+    { label: "Shelving", href: "/us/en/catalog/category/products.jsp/cat160045" },
+    { label: "Sideboard & Hutches", href: "/us/en/catalog/category/products.jsp/cat160045" },
+    { label: "Sideboards & Consoles", href: "/us/en/catalog/category/products.jsp/cat160045" },
+    { label: "Bar Cabinets & Carts", href: "/us/en/catalog/category/products.jsp/cat160045" },
+  ],
+  Sideboards: [
+    { label: "Sideboard Collections", href: "/us/en/catalog/category/products.jsp/cat160038" },
+    { label: "All Sideboards", href: "/us/en/catalog/category/products.jsp/cat160038" },
+    { label: "Closed Sideboards", href: "/us/en/catalog/category/products.jsp/cat160038" },
+    { label: "Glass Sideboards", href: "/us/en/catalog/category/products.jsp/cat160038" },
+    { label: "Sideboard & Hutches", href: "/us/en/catalog/category/products.jsp/cat160038" },
+  ],
+  Media: [
+    { label: "Media Collections", href: "/us/en/catalog/category/products.jsp/cat160041" },
+    { label: "All Media Consoles", href: "/us/en/catalog/category/products.jsp/cat160041" },
+    { label: "Closed Media", href: "/us/en/catalog/category/products.jsp/cat160041" },
+    { label: "Glass Media", href: "/us/en/catalog/category/products.jsp/cat160041" },
+    { label: "Media Armoires", href: "/us/en/catalog/category/products.jsp/cat160041" },
+  ],
+  Tables: [
+    { label: "Coffee & Cocktail Table Collections", href: "/us/en/catalog/category/products.jsp/cat160033" },
+    { label: "Coffee & Cocktail Tables", href: "/us/en/catalog/category/products.jsp/cat160033" },
+    { label: "Console Tables", href: "/us/en/catalog/category/products.jsp/cat160033" },
+    { label: "Entry Tables", href: "/us/en/catalog/category/products.jsp/cat160033" },
+    { label: "Side Tables", href: "/us/en/catalog/category/products.jsp/cat160033" },
+    { label: "Drink Tables", href: "/us/en/catalog/category/products.jsp/cat160033" },
+  ],
+  Consoles: [
+    { label: "Console Tables", href: "/us/en/catalog/category/products.jsp/cat160044" },
+    { label: "Sofa Console Tables", href: "/us/en/catalog/category/products.jsp/cat160044" },
+  ],
+  Office: [
+    { label: "Office Collections", href: "/us/en/catalog/category/products.jsp/cat10210003" },
+    { label: "Desks", href: "/us/en/catalog/category/products.jsp/cat10210003" },
+    { label: "Office Seating", href: "/us/en/catalog/category/products.jsp/cat10210003" },
+    { label: "Shelving", href: "/us/en/catalog/category/products.jsp/cat10210003" },
+    { label: "Task Table Lighting", href: "/us/en/catalog/category/products.jsp/cat10210003" },
+    { label: "Office Accessories", href: "/us/en/catalog/category/products.jsp/cat10210003" },
+  ],
+  "Shop By Room": [
+    { label: "Living Rooms", href: "/us/en/rooms/living" },
+    { label: "Office", href: "/us/en/rooms/office" },
+  ],
+  Sale: [
+    { label: "All Living Sale", href: "/sale" },
+    { label: "Seating Collections", href: "/sofas-plp" },
+    { label: "Sofas", href: "/sofas-plp" },
+    { label: "Sectionals", href: "/us/en/sale" },
+    { label: "Fabric Chairs", href: "/us/en/sale" },
+    { label: "Leather Chairs", href: "/us/en/sale" },
+    { label: "Ottomans & Stools", href: "/us/en/sale" },
+    { label: "Coffee Tables", href: "/us/en/sale" },
+    { label: "Side Tables", href: "/us/en/sale" },
+    { label: "Console Tables", href: "/us/en/sale" },
+    { label: "Sideboards", href: "/us/en/sale" },
+    { label: "Media Consoles", href: "/us/en/sale" },
+    { label: "Cabinets", href: "/us/en/sale" },
+    { label: "Desks", href: "/us/en/sale" },
+  ],
+};
 
 export const mobileDrawerNavigation = primaryNavigation.map((item) => ({
   ...item,
@@ -750,6 +868,14 @@ export const saleQuickLinks = [
   saleCategories[8],
   saleCategories[9],
 ];
+
+const saleCategoryRouteMap = {
+  Living: "/sofas-plp",
+  Sofas: "/sofas-plp",
+  Outdoor: "/outdoor",
+};
+
+export const saleCategoryLinkHref = (category) => saleCategoryRouteMap[category.title] || "/missing";
 
 export const saleMegaMenu = primaryNavigation.filter(
   (item) => !["Sale", "Interior Design"].includes(item.label),

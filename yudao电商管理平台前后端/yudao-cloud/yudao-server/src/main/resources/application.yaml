@@ -288,6 +288,8 @@ yudao:
   web:
     admin-ui:
       url: http://dashboard.yudao.iocoder.cn # Admin 管理后台 UI 的地址
+    app-ui:
+      url: http://127.0.0.1:5173 # APP/商城前台 UI 的地址，用于邮箱验证、重置密码等邮件链接
   xss:
     enable: false
     exclude-urls: # 如下两个 url，仅仅是为了演示，去掉配置也没关系

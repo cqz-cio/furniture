@@ -11,6 +11,7 @@ export const demoProducts = [
     price: 3299,
     marketPrice: 4299,
     stock: 12,
+    productType: "sofa",
     source: "demo",
   },
   {
@@ -24,6 +25,7 @@ export const demoProducts = [
     price: 2599,
     marketPrice: 3199,
     stock: 7,
+    productType: "bed",
     source: "demo",
   },
   {
@@ -37,6 +39,7 @@ export const demoProducts = [
     price: 4899,
     marketPrice: 5599,
     stock: 4,
+    productType: "dining-table",
     source: "demo",
   },
   {
@@ -51,6 +54,22 @@ export const demoProducts = [
     price: 1299,
     marketPrice: 1699,
     stock: 18,
+    productType: "chair",
+    source: "demo",
+  },
+  {
+    id: 1005,
+    skuId: 100501,
+    name: "Lacquered Brass Pendant",
+    subtitle: "Architectural fixture with linen shade",
+    description:
+      "A warm pendant light template with fixed finish, shade, bulb and canopy parameters for later product expansion.",
+    cover: "",
+    gallery: [],
+    price: 899,
+    marketPrice: 1199,
+    stock: 9,
+    productType: "lighting",
     source: "demo",
   },
 ];

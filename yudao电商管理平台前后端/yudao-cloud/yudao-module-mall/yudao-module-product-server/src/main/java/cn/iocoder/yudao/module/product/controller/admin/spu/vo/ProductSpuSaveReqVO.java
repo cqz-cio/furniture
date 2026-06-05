@@ -7,6 +7,7 @@ import javax.validation.Valid;
 import javax.validation.constraints.NotEmpty;
 import javax.validation.constraints.NotNull;
 import java.util.List;
+import java.util.Map;
 
 @Schema(description = "管理后台 - 商品 SPU 新增/更新 Request VO")
 @Data
@@ -46,6 +47,9 @@ public class ProductSpuSaveReqVO {
     @Schema(description = "商品轮播图", requiredMode = Schema.RequiredMode.REQUIRED,
             example = "[https://www.iocoder.cn/xx.png, https://www.iocoder.cn/xxx.png]")
     private List<String> sliderPicUrls;
+
+    @Schema(description = "家具 Web 详情页配置")
+    private Map<String, Object> detailConfig;
 
     @Schema(description = "排序字段", requiredMode = Schema.RequiredMode.REQUIRED, example = "1")
     @NotNull(message = "商品排序字段不能为空")

@@ -29,4 +29,22 @@ describe("membership phase 1 pages", () => {
     expect(app).toContain('"checkout-auth": "/checkout/auth"');
     expect(app).toContain('"gift-registry": "/gift-registry"');
   });
+
+  it("renders membership journey pages through i18n keys instead of fixed English copy", () => {
+    [
+      "MembershipPage.vue",
+      "MembershipEnrollmentPage.vue",
+      "MembershipTermsPage.vue",
+      "MembershipFaqPage.vue",
+      "AccountMembershipPage.vue",
+      "CheckoutAuthPage.vue",
+    ].forEach((fileName) => {
+      const source = readFileSync(pagePath(fileName), "utf8");
+      expect(source, `${fileName} should use the i18n composable`).toContain("useI18n");
+      expect(source, `${fileName} should render membership translation keys`).toContain('t("membership.');
+    });
+
+    const termsSource = readFileSync(pagePath("MembershipTermsPage.vue"), "utf8");
+    expect(termsSource).not.toContain("Rules, renewal and benefit eligibility.");
+  });
 });

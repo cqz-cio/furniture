@@ -98,4 +98,49 @@ describe("i18n locale helper", () => {
     expect(t("home.heroEyebrow")).toBe("Bienvenue dans l'univers RH");
     expect(t("missing.key")).toBe("missing.key");
   });
+
+  it("provides auth modal translations across every supported locale", async () => {
+    const { availableLocales, getMessage } = await loadI18n();
+    const authKeys = [
+      "auth.account.title",
+      "auth.account.welcomeMember",
+      "auth.account.orderHistory",
+      "auth.signIn.submit",
+      "auth.secureLink.title",
+      "auth.create.submit",
+      "auth.emailCode.send",
+      "auth.trade.submit",
+      "auth.fields.email",
+    ];
+
+    for (const locale of availableLocales) {
+      for (const key of authKeys) {
+        expect(getMessage(key, locale.lang), `${key} missing for ${locale.lang}`).toBeTruthy();
+      }
+    }
+  });
+
+  it("provides membership journey translations across every supported locale", async () => {
+    const { availableLocales, getMessage } = await loadI18n();
+    const membershipKeys = [
+      "membership.landing.title",
+      "membership.landing.benefit1",
+      "membership.enrollment.title",
+      "membership.enrollment.annualTitle",
+      "membership.terms.title",
+      "membership.terms.emailBindingTitle",
+      "membership.faq.title",
+      "membership.faq.rulesAnswer",
+      "membership.account.title",
+      "membership.account.currentStatus",
+      "membership.checkoutAuth.title",
+      "membership.checkoutAuth.guestMembershipNote",
+    ];
+
+    for (const locale of availableLocales) {
+      for (const key of membershipKeys) {
+        expect(getMessage(key, locale.lang), `${key} missing for ${locale.lang}`).toBeTruthy();
+      }
+    }
+  });
 });

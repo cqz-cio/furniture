@@ -5,12 +5,15 @@ import cn.iocoder.yudao.framework.common.biz.system.oauth2.dto.OAuth2AccessToken
 import cn.iocoder.yudao.framework.common.enums.CommonStatusEnum;
 import cn.iocoder.yudao.framework.common.enums.UserTypeEnum;
 import cn.iocoder.yudao.framework.test.core.ut.BaseMockitoUnitTest;
+import cn.iocoder.yudao.module.member.controller.app.auth.vo.AppAuthEmailCodeSendReqVO;
 import cn.iocoder.yudao.module.member.controller.app.auth.vo.AppAuthEmailLoginReqVO;
+import cn.iocoder.yudao.module.member.controller.app.auth.vo.AppAuthEmailCodeValidateReqVO;
 import cn.iocoder.yudao.module.member.controller.app.auth.vo.AppAuthEmailRegisterReqVO;
 import cn.iocoder.yudao.module.member.controller.app.auth.vo.AppAuthEmailSecureLinkReqVO;
 import cn.iocoder.yudao.module.member.controller.app.auth.vo.AppAuthLoginRespVO;
 import cn.iocoder.yudao.module.member.controller.app.auth.vo.AppAuthTradeLoginReqVO;
 import cn.iocoder.yudao.module.member.dal.dataobject.user.MemberUserDO;
+import cn.iocoder.yudao.module.member.enums.auth.MemberEmailAuthSceneEnum;
 import cn.iocoder.yudao.module.member.service.user.MemberUserService;
 import cn.iocoder.yudao.module.system.api.logger.LoginLogApi;
 import cn.iocoder.yudao.module.system.api.logger.dto.LoginLogCreateReqDTO;
@@ -26,6 +29,8 @@ import org.mockito.Mock;
 import java.time.LocalDateTime;
 
 import static cn.iocoder.yudao.framework.common.pojo.CommonResult.success;
+import static cn.iocoder.yudao.framework.test.core.util.AssertUtils.assertServiceException;
+import static cn.iocoder.yudao.module.member.enums.ErrorCodeConstants.USER_EMAIL_USED;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
@@ -40,6 +45,8 @@ public class MemberAuthServiceImplTest extends BaseMockitoUnitTest {
 
     @Mock
     private MemberUserService userService;
+    @Mock
+    private MemberEmailAuthService memberEmailAuthService;
     @Mock
     private SmsCodeApi smsCodeApi;
     @Mock
@@ -83,12 +90,13 @@ public class MemberAuthServiceImplTest extends BaseMockitoUnitTest {
     public void testEmailRegister_success() {
         String email = "new-designer@example.com";
         String password = "admin123";
+        String code = "123456";
         AppAuthEmailRegisterReqVO reqVO = new AppAuthEmailRegisterReqVO(
-                "Black", "Furniture", email, password, true, true);
+                "Black", "Furniture", email, password, code, true, true);
         MemberUserDO user = new MemberUserDO().setId(11L).setEmail(email)
                 .setPassword("encoded").setStatus(CommonStatusEnum.ENABLE.getStatus());
         when(userService.createUserByEmail(eq(email), eq(password), eq("Black Furniture"),
-                eq(null), eq(null))).thenReturn(user);
+                eq(null), eq(0))).thenReturn(user);
         when(loginLogApi.createLoginLog(argThat(log -> {
             assertEquals(user.getId(), log.getUserId());
             assertEquals(email, log.getUsername());
@@ -102,8 +110,15 @@ public class MemberAuthServiceImplTest extends BaseMockitoUnitTest {
         AppAuthLoginRespVO respVO = authService.emailRegister(reqVO);
 
         assertEquals(user.getId(), respVO.getUserId());
+        verify(memberEmailAuthService).validateCode(eq(null), argThat(validateReq -> {
+            assertEquals(MemberEmailAuthSceneEnum.GENERAL_CODE.getScene(), validateReq.getScene());
+            assertEquals(email, validateReq.getEmail());
+            assertEquals(code, validateReq.getCode());
+            return true;
+        }));
         verify(userService).createUserByEmail(eq(email), eq(password), eq("Black Furniture"),
-                eq(null), eq(null));
+                eq(null), eq(0));
+        verify(memberEmailAuthService, never()).sendVerifyEmail(eq(user.getId()), eq(email));
     }
 
     @Test
@@ -112,7 +127,20 @@ public class MemberAuthServiceImplTest extends BaseMockitoUnitTest {
 
         authService.sendEmailSecureLink(new AppAuthEmailSecureLinkReqVO(email));
 
+        verify(memberEmailAuthService).sendLoginLink(eq(email));
         verify(userService, never()).getUserByMobile(eq(email));
+    }
+
+    @Test
+    public void testSendEmailCode_registerWhenEmailExists() {
+        String email = "member@example.com";
+        when(userService.getUserByEmail(eq(email))).thenReturn(new MemberUserDO().setId(20L).setEmail(email));
+
+        AppAuthEmailCodeSendReqVO reqVO = new AppAuthEmailCodeSendReqVO(
+                MemberEmailAuthSceneEnum.GENERAL_CODE.getScene(), email);
+
+        assertServiceException(() -> authService.sendEmailCode(null, reqVO), USER_EMAIL_USED);
+        verify(memberEmailAuthService, never()).sendCode(eq(null), eq(reqVO));
     }
 
     @Test

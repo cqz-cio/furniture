@@ -436,9 +436,9 @@ public class GlobalExceptionHandler {
         }
         // 10. 支付平台
         if (message.contains("pay_")) {
-            log.error("[支付模块 yudao-module-pay - 表结构未导入][参考 https://cloud.iocoder.cn/pay/build/ 开启]");
+            log.warn("[支付模块 yudao-module-pay - 表结构未导入][当前商品维护和下单测试可暂时忽略；需要支付时再导入支付模块表结构]");
             return CommonResult.error(NOT_IMPLEMENTED.getCode(),
-                    "[支付模块 yudao-module-pay - 表结构未导入][参考 https://cloud.iocoder.cn/pay/build/ 开启]");
+                    "支付模块暂未启用，当前商品维护和下单测试可暂时忽略；需要支付功能时再导入支付模块表结构。");
         }
         // 11. AI 大模型
         if (message.contains("ai_")) {

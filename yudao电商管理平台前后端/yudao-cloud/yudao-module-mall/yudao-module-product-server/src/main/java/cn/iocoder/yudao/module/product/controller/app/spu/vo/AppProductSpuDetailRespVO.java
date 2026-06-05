@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 import java.util.List;
+import java.util.Map;
 
 @Schema(description = "用户 App - 商品 SPU 明细 Response VO")
 @Data
@@ -32,6 +33,9 @@ public class AppProductSpuDetailRespVO {
 
     @Schema(description = "商品轮播图", requiredMode = Schema.RequiredMode.REQUIRED)
     private List<String> sliderPicUrls;
+
+    @Schema(description = "家具 Web 详情页配置")
+    private Map<String, Object> detailConfig;
 
     // ========== 营销相关字段 =========
 

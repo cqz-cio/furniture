@@ -44,6 +44,20 @@ public interface MemberAuthService {
      */
     void sendEmailSecureLink(@Valid AppAuthEmailSecureLinkReqVO reqVO);
 
+    AppAuthLoginRespVO emailSecureLogin(@Valid AppAuthEmailTokenReqVO reqVO);
+
+    void sendEmailVerifyLink(Long userId, @Valid AppAuthEmailSecureLinkReqVO reqVO);
+
+    void verifyEmail(@Valid AppAuthEmailTokenReqVO reqVO);
+
+    void sendEmailCode(Long userId, @Valid AppAuthEmailCodeSendReqVO reqVO);
+
+    void validateEmailCode(Long userId, @Valid AppAuthEmailCodeValidateReqVO reqVO);
+
+    void sendPasswordResetEmail(@Valid AppAuthEmailPasswordResetSendReqVO reqVO);
+
+    void resetPasswordByEmail(@Valid AppAuthEmailPasswordResetReqVO reqVO);
+
     /**
      * Trade Program 登录
      *

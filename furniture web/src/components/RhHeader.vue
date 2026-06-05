@@ -1,9 +1,11 @@
 <script setup>
-import { computed, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import {
   babyChildNavigation,
   globalMenuPanels,
+  globalMenuLinkHref,
   livingMegaMenu,
+  livingMegaSubmenus,
   mobileDrawerNavigation,
   primaryNavigation,
   saleMegaMenu,
@@ -30,21 +32,18 @@ defineProps({
 const emit = defineEmits(["open-cart", "auth-change"]);
 const page = defineModel("page", { type: String, default: "home" });
 const { availableLocales, currentLocale, setLocale, t } = useI18n();
+const headerRef = ref(null);
+const regionSwitcherRef = ref(null);
 const menuOpen = ref(false);
 const activeDropdown = ref("");
+const activeMegaItem = ref("");
 const regionOpen = ref(false);
 const accountOpen = ref(false);
 const navItems = computed(() => (page.value === "baby-child" ? babyChildNavigation : primaryNavigation));
 const hoverMenuItems = computed(() => (activeDropdown.value === "Sale" ? saleMegaMenu : livingMegaMenu));
-const regionOptions = [
-  { country: "BEL" },
-  { country: "CAN", languages: ["FR", "EN"] },
-  { country: "DEU" },
-  { country: "ESP" },
-  { country: "FRA", languages: ["FR", "EN"] },
-  { country: "GBR" },
-  { country: "ITA", languages: ["IT", "EN"] },
-];
+const hoverSecondaryMenuItems = computed(() =>
+  activeDropdown.value === "Living" && activeMegaItem.value ? livingMegaSubmenus[activeMegaItem.value] || [] : [],
+);
 
 const pageKey = (label) => {
   if (label === "Living") return "sofas-plp";
@@ -69,6 +68,7 @@ const isActive = (label) => {
 const toggleMenu = () => {
   menuOpen.value = !menuOpen.value;
   activeDropdown.value = "";
+  activeMegaItem.value = "";
   regionOpen.value = false;
   accountOpen.value = false;
 };
@@ -100,12 +100,14 @@ const closeAccount = () => {
   accountOpen.value = false;
 };
 
-const showDropdown = (label) => {
-  if (!menuOpen.value && ["Living", "Sale"].includes(label)) activeDropdown.value = label;
-};
-
 const hideDropdown = () => {
   activeDropdown.value = "";
+  activeMegaItem.value = "";
+};
+
+const setBodyMenuState = (isOpen) => {
+  if (typeof document === "undefined") return;
+  document.body.classList.toggle("rh-menu-open", isOpen);
 };
 
 const activatePage = (label) => {
@@ -115,13 +117,55 @@ const activatePage = (label) => {
   regionOpen.value = false;
   accountOpen.value = false;
 };
+
+const handleNavClick = (label) => {
+  if (!menuOpen.value && ["Living", "Sale"].includes(label)) {
+    activeDropdown.value = activeDropdown.value === label ? "" : label;
+    activeMegaItem.value = "";
+    regionOpen.value = false;
+    accountOpen.value = false;
+    return;
+  }
+
+  activatePage(label);
+};
+
+const activateMegaItem = (label) => {
+  activeMegaItem.value = label;
+};
+
+const handleDocumentPointerDown = (event) => {
+  if (regionOpen.value && !regionSwitcherRef.value?.contains(event.target)) {
+    regionOpen.value = false;
+  }
+
+  if (activeDropdown.value && !headerRef.value?.contains(event.target)) {
+    hideDropdown();
+  }
+};
+
+watch(menuOpen, setBodyMenuState);
+
+onMounted(() => {
+  document.addEventListener("pointerdown", handleDocumentPointerDown);
+});
+
+onBeforeUnmount(() => {
+  document.removeEventListener("pointerdown", handleDocumentPointerDown);
+  setBodyMenuState(false);
+});
 </script>
 
 <template>
   <header
+    ref="headerRef"
     class="rh-header"
-    :class="{ 'is-overlay': overlay, 'menu-is-open': menuOpen, 'is-baby-child': page === 'baby-child' }"
-    @mouseleave="hideDropdown"
+    :class="{
+      'is-overlay': overlay,
+      'menu-is-open': menuOpen,
+      'region-is-open': regionOpen,
+      'is-baby-child': page === 'baby-child',
+    }"
   >
     <div class="header-topline">
       <div class="header-left" :aria-label="`${t('header.menuOpen')} / ${t('common.search')}`">
@@ -162,7 +206,7 @@ const activatePage = (label) => {
       </button>
 
       <div class="header-actions" :aria-label="`${t('header.account')} / ${t('header.bag')}`">
-        <div class="region-switcher">
+        <div ref="regionSwitcherRef" class="region-switcher">
           <button
             class="country-button"
             type="button"
@@ -172,7 +216,7 @@ const activatePage = (label) => {
           >
             {{ localeButtonLabel }} <span aria-hidden="true">⌃</span>
           </button>
-          <section v-if="regionOpen" id="region-menu" class="region-menu" :aria-label="t('header.regionSelector')">
+          <section v-if="regionOpen" id="region-menu" class="region-menu" :aria-label="t('common.language')">
             <div class="region-language-list" :aria-label="t('common.language')">
               <button
                 v-for="locale in availableLocales"
@@ -185,16 +229,6 @@ const activatePage = (label) => {
                 {{ locale.label }}
               </button>
             </div>
-            <div class="region-input-row">
-              <input value="USA" :aria-label="t('header.selectedCountry')" />
-              <span aria-hidden="true">⌃</span>
-            </div>
-            <button v-for="item in regionOptions" :key="item.country" class="region-option" type="button">
-              <span>{{ item.country }}</span>
-              <span v-if="item.languages" class="region-languages">
-                <span v-for="language in item.languages" :key="language">{{ language }}</span>
-              </span>
-            </button>
           </section>
         </div>
         <button class="account-icon" type="button" :aria-label="t('header.account')" @click="openAccount"></button>
@@ -212,9 +246,8 @@ const activatePage = (label) => {
           class="nav-link"
           :class="{ active: isActive(item.label) }"
           type="button"
-          @mouseenter="showDropdown(item.label)"
-          @focus="showDropdown(item.label)"
-          @click="activatePage(item.label)"
+          :aria-expanded="['Living', 'Sale'].includes(item.label) ? activeDropdown === item.label : undefined"
+          @click="handleNavClick(item.label)"
         >
           {{ item.label }}
         </button>
@@ -229,10 +262,24 @@ const activatePage = (label) => {
     >
       <ul>
         <li v-for="item in hoverMenuItems" :key="item.label">
-          <a :class="{ accent: item.accent }" :href="item.href">{{ item.label }}</a>
+          <button
+            v-if="activeDropdown === 'Living'"
+            class="category-mega-link"
+            :class="{ accent: item.accent, active: activeMegaItem === item.label }"
+            type="button"
+            @click="activateMegaItem(item.label)"
+          >
+            {{ item.label }}
+          </button>
+          <a v-else :class="{ accent: item.accent }" :href="item.href" @click="hideDropdown">{{ item.label }}</a>
         </li>
       </ul>
-      <div class="category-mega-empty" aria-hidden="true"></div>
+      <ul v-if="hoverSecondaryMenuItems.length" class="category-mega-secondary">
+        <li v-for="item in hoverSecondaryMenuItems" :key="item.label">
+          <a :href="item.href" @click="hideDropdown">{{ item.label }}</a>
+        </li>
+      </ul>
+      <div v-else class="category-mega-empty" aria-hidden="true"></div>
     </section>
 
     <section v-if="menuOpen" class="global-menu" aria-label="RH menu">
@@ -252,11 +299,11 @@ const activatePage = (label) => {
         <template v-if="panel.groups">
           <div v-for="group in panel.groups" :key="group.heading" class="global-menu-group">
             <h3>{{ group.heading }}</h3>
-            <a v-for="link in group.links" :key="link" href="#">{{ link }}</a>
+            <a v-for="link in group.links" :key="link" :href="globalMenuLinkHref(link)" @click="closeMenu">{{ link }}</a>
           </div>
         </template>
         <template v-else>
-          <a v-for="link in panel.links" :key="link" href="#">{{ link }}</a>
+          <a v-for="link in panel.links" :key="link" :href="globalMenuLinkHref(link)" @click="closeMenu">{{ link }}</a>
         </template>
       </article>
     </section>

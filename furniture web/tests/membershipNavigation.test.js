@@ -15,6 +15,8 @@ describe("membership navigation model", () => {
     expect(membershipRoutes.membershipTerms).toBe("/membership/terms");
     expect(membershipRoutes.membershipFaqs).toBe("/membership/faqs");
     expect(membershipRoutes.accountMembership).toBe("/account/membership");
+    expect(membershipRoutes.accountOrders).toBe("/orders");
+    expect(membershipRoutes.accountGiftRegistry).toBe("/gift-registry");
     expect(membershipRoutes.checkoutAuth).toBe("/checkout/auth");
     expect(membershipRoutes.giftRegistry).toBe("/gift-registry");
   });
@@ -33,6 +35,11 @@ describe("membership navigation model", () => {
 
   it("uses three checkout auth choices and blocks guest membership purchase", () => {
     expect(checkoutAuthOptions.map((option) => option.key)).toEqual(["sign-in", "create-account", "guest"]);
+    expect(checkoutAuthOptions.find((option) => option.key === "sign-in").href).toBe("/account?return=/checkout");
+    expect(checkoutAuthOptions.find((option) => option.key === "create-account").href).toBe(
+      "/account?mode=create&return=/checkout",
+    );
+    expect(checkoutAuthOptions.find((option) => option.key === "guest").href).toBe("/checkout?guest=true");
     expect(checkoutAuthOptions.find((option) => option.key === "guest").disabledForMembership).toBe(true);
   });
 

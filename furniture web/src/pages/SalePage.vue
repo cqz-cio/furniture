@@ -1,7 +1,7 @@
 <script setup>
 import ImageSpecPlaceholder from "../components/ImageSpecPlaceholder.vue";
 import SaleCategoryTile from "../components/SaleCategoryTile.vue";
-import { saleCategories, saleHeroSpecs, saleMembershipSpec, saleQuickLinks } from "../data/rhLayout.js";
+import { saleCategories, saleCategoryLinkHref, saleHeroSpecs, saleMembershipSpec, saleQuickLinks } from "../data/rhLayout.js";
 </script>
 
 <template>
@@ -31,7 +31,7 @@ import { saleCategories, saleHeroSpecs, saleMembershipSpec, saleQuickLinks } fro
   </section>
 
   <section class="sale-links" aria-label="Sale quick links">
-    <a v-for="category in saleQuickLinks" :key="category.title" :href="category.href" target="_blank" rel="noreferrer">
+    <a v-for="category in saleQuickLinks" :key="category.title" :href="saleCategoryLinkHref(category)">
       {{ category.title }}
     </a>
   </section>

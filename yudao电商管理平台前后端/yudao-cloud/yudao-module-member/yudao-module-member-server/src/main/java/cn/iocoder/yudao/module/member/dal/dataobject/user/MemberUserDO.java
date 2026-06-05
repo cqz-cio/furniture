@@ -51,6 +51,14 @@ public class MemberUserDO extends TenantBaseDO {
      */
     private String email;
     /**
+     * 邮箱是否已验证
+     */
+    private Boolean emailVerified;
+    /**
+     * 邮箱验证时间
+     */
+    private LocalDateTime emailVerifiedTime;
+    /**
      * RH Trade Program 账号编号
      */
     private String tradeId;

@@ -9,42 +9,49 @@ import org.hibernate.validator.constraints.Length;
 
 import javax.validation.constraints.AssertTrue;
 import javax.validation.constraints.Email;
+import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotEmpty;
 import javax.validation.constraints.NotNull;
 
-@Schema(description = "用户 APP - 邮箱注册 Request VO")
+@Schema(description = "User APP - Email register Request VO")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class AppAuthEmailRegisterReqVO {
 
-    @Schema(description = "名", requiredMode = Schema.RequiredMode.REQUIRED, example = "Black")
-    @NotEmpty(message = "名不能为空")
-    @Length(max = 30, message = "名长度不能超过 30 位")
+    @Schema(description = "First name", requiredMode = Schema.RequiredMode.REQUIRED, example = "Black")
+    @NotEmpty(message = "First name cannot be empty")
+    @Length(max = 30, message = "First name cannot exceed 30 characters")
     private String firstName;
 
-    @Schema(description = "姓", requiredMode = Schema.RequiredMode.REQUIRED, example = "Furniture")
-    @NotEmpty(message = "姓不能为空")
-    @Length(max = 30, message = "姓长度不能超过 30 位")
+    @Schema(description = "Last name", requiredMode = Schema.RequiredMode.REQUIRED, example = "Furniture")
+    @NotEmpty(message = "Last name cannot be empty")
+    @Length(max = 30, message = "Last name cannot exceed 30 characters")
     private String lastName;
 
-    @Schema(description = "邮箱", requiredMode = Schema.RequiredMode.REQUIRED, example = "designer@example.com")
-    @NotEmpty(message = "邮箱不能为空")
-    @Email(message = "邮箱格式不正确")
+    @Schema(description = "Email", requiredMode = Schema.RequiredMode.REQUIRED, example = "designer@example.com")
+    @NotEmpty(message = "Email cannot be empty")
+    @Email(message = "Email format is incorrect")
+    @Length(max = 255, message = "Email cannot exceed 255 characters")
     private String email;
 
-    @Schema(description = "密码", requiredMode = Schema.RequiredMode.REQUIRED, example = "admin123")
-    @NotEmpty(message = "密码不能为空")
-    @Length(min = 4, max = 16, message = "密码长度为 4-16 位")
+    @Schema(description = "Password", requiredMode = Schema.RequiredMode.REQUIRED, example = "admin123")
+    @NotEmpty(message = "Password cannot be empty")
+    @Length(min = 4, max = 16, message = "Password length must be 4-16 characters")
     private String password;
 
-    @Schema(description = "是否订阅邮件", requiredMode = Schema.RequiredMode.REQUIRED, example = "true")
+    @Schema(description = "Email verification code", requiredMode = Schema.RequiredMode.REQUIRED, example = "123456")
+    @NotBlank(message = "Verification code cannot be empty")
+    @Length(min = 6, max = 6, message = "Verification code must be 6 characters")
+    private String code;
+
+    @Schema(description = "Email opt-in", requiredMode = Schema.RequiredMode.REQUIRED, example = "true")
     private Boolean emailOptIn;
 
-    @Schema(description = "是否同意隐私条款", requiredMode = Schema.RequiredMode.REQUIRED, example = "true")
-    @NotNull(message = "请先阅读并同意隐私条款")
-    @AssertTrue(message = "请先阅读并同意隐私条款")
+    @Schema(description = "Privacy accepted", requiredMode = Schema.RequiredMode.REQUIRED, example = "true")
+    @NotNull(message = "Please read and accept the privacy notice")
+    @AssertTrue(message = "Please read and accept the privacy notice")
     private Boolean privacyAccepted;
 
 }

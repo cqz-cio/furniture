@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { readYudaoSession, writeYudaoSession } from "../src/services/authSession.js";
 import {
+  createEmailCaptchaChallenge,
   getRemoteCartItems,
   loginByEmailPassword,
   loginByTradeAccount,
@@ -9,6 +10,8 @@ import {
   requestYudao,
   registerByEmail,
   requestEmailSignInLink,
+  sendEmailRegistrationCode,
+  verifyEmailCaptchaChallenge,
 } from "../src/services/yudaoClient.js";
 
 const API_BASE = "http://127.0.0.1:48080/app-api";
@@ -64,6 +67,7 @@ describe("Yudao member auth client", () => {
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toBe(`${API_BASE}/member/auth/email-secure-link`);
     expect(init.method).toBe("POST");
+    expect(init.headers["tenant-id"]).toBe("121");
     expect(init.headers).not.toHaveProperty("Authorization");
     expect(JSON.parse(init.body)).toEqual({ email: "buyer@example.com" });
   });
@@ -72,7 +76,7 @@ describe("Yudao member auth client", () => {
     fetchMock.mockResolvedValueOnce(mockYudaoResponse(newSession));
 
     const result = await loginByEmailPassword(
-      { email: "buyer@example.com", password: "fake-member-password" },
+      { email: "buyer@example.com", password: "fake-pass-123" },
       { storage }
     );
 
@@ -80,10 +84,11 @@ describe("Yudao member auth client", () => {
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toBe(`${API_BASE}/member/auth/email-login`);
     expect(init.method).toBe("POST");
+    expect(init.headers["tenant-id"]).toBe("121");
     expect(init.headers).not.toHaveProperty("Authorization");
     expect(JSON.parse(init.body)).toEqual({
       email: "buyer@example.com",
-      password: "fake-member-password",
+      password: "fake-pass-123",
     });
     expect(result).toEqual(newSession);
     expect(readYudaoSession(storage)).toEqual(newSession);
@@ -97,7 +102,8 @@ describe("Yudao member auth client", () => {
         firstName: "Ada",
         lastName: "Lovelace",
         email: "ada@example.com",
-        password: "fake-member-password",
+        password: "fake-pass-123",
+        code: "123456",
         emailOptIn: true,
         privacyAccepted: true,
       },
@@ -108,17 +114,81 @@ describe("Yudao member auth client", () => {
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toBe(`${API_BASE}/member/auth/email-register`);
     expect(init.method).toBe("POST");
+    expect(init.headers["tenant-id"]).toBe("121");
     expect(init.headers).not.toHaveProperty("Authorization");
     expect(JSON.parse(init.body)).toEqual({
       firstName: "Ada",
       lastName: "Lovelace",
       email: "ada@example.com",
-      password: "fake-member-password",
+      password: "fake-pass-123",
+      code: "123456",
       emailOptIn: true,
       privacyAccepted: true,
     });
     expect(result).toEqual(newSession);
     expect(readYudaoSession(storage)).toEqual(newSession);
+  });
+
+  it("sendEmailRegistrationCode posts a public email code request", async () => {
+    fetchMock.mockResolvedValueOnce(mockYudaoResponse(true));
+
+    await sendEmailRegistrationCode("ada@example.com", { storage });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe(`${API_BASE}/member/auth/send-email-code`);
+    expect(init.method).toBe("POST");
+    expect(init.headers["tenant-id"]).toBe("121");
+    expect(init.headers).not.toHaveProperty("Authorization");
+    expect(JSON.parse(init.body)).toEqual({
+      email: "ada@example.com",
+      scene: 5,
+    });
+  });
+
+  it("sendEmailRegistrationCode can include a captcha verification token", async () => {
+    fetchMock.mockResolvedValueOnce(mockYudaoResponse(true));
+
+    await sendEmailRegistrationCode("ada@example.com", {
+      storage,
+      captchaVerification: "captcha-token",
+    });
+
+    const [, init] = fetchMock.mock.calls[0];
+    expect(JSON.parse(init.body)).toEqual({
+      email: "ada@example.com",
+      scene: 5,
+      captchaVerification: "captcha-token",
+    });
+  });
+
+  it("creates and verifies the email captcha challenge without auth", async () => {
+    fetchMock.mockResolvedValueOnce(
+      mockYudaoResponse({
+        challengeId: "challenge-1",
+        instruction: "Enter the captcha",
+        imageBase64: "data:image/png;base64,fake",
+        captchaType: "MATH",
+      })
+    );
+    fetchMock.mockResolvedValueOnce(mockYudaoResponse({ captchaVerification: "captcha-token" }));
+
+    await expect(createEmailCaptchaChallenge({ storage })).resolves.toMatchObject({
+      challengeId: "challenge-1",
+      imageBase64: "data:image/png;base64,fake",
+    });
+    await expect(
+      verifyEmailCaptchaChallenge({ challengeId: "challenge-1", code: "8" }, { storage })
+    ).resolves.toEqual({ captchaVerification: "captcha-token" });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[0][0]).toBe(`${API_BASE}/member/auth/email-captcha/challenge`);
+    expect(fetchMock.mock.calls[0][1].headers).not.toHaveProperty("Authorization");
+    expect(fetchMock.mock.calls[1][0]).toBe(`${API_BASE}/member/auth/email-captcha/verify`);
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({
+      challengeId: "challenge-1",
+      code: "8",
+    });
   });
 
   it("loginByTradeAccount posts trade account details and persists the returned session", async () => {
@@ -133,6 +203,7 @@ describe("Yudao member auth client", () => {
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toBe(`${API_BASE}/member/auth/trade-login`);
     expect(init.method).toBe("POST");
+    expect(init.headers["tenant-id"]).toBe("121");
     expect(init.headers).not.toHaveProperty("Authorization");
     expect(JSON.parse(init.body)).toEqual({
       tradeId: "TRADE-100",
@@ -154,6 +225,7 @@ describe("Yudao member auth client", () => {
       `${API_BASE}/member/auth/refresh-token?refreshToken=${encodeURIComponent("old refresh/token")}`
     );
     expect(init.method).toBe("POST");
+    expect(init.headers["tenant-id"]).toBe("121");
     expect(init.headers).not.toHaveProperty("Authorization");
     expect(result).toEqual(newSession);
     expect(readYudaoSession(storage)).toEqual(newSession);
@@ -169,6 +241,7 @@ describe("Yudao member auth client", () => {
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toBe(`${API_BASE}/member/auth/logout`);
     expect(init.method).toBe("POST");
+    expect(init.headers["tenant-id"]).toBe("121");
     expect(init.headers.Authorization).toBe("Bearer fake-old-access-token");
     expect(readYudaoSession(storage)).toBe(null);
   });
@@ -206,6 +279,7 @@ describe("Yudao member auth client", () => {
 
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toBe(`${API_BASE}/example`);
+    expect(init.headers["tenant-id"]).toBe("121");
     expect(init.headers).not.toHaveProperty("Authorization");
   });
 
@@ -216,7 +290,19 @@ describe("Yudao member auth client", () => {
     await requestYudao("/example", { storage });
 
     const [, init] = fetchMock.mock.calls[0];
+    expect(init.headers["tenant-id"]).toBe("121");
     expect(init.headers.Authorization).toBe("Bearer fake-old-access-token");
+  });
+
+  it("allows callers to disable or override the app tenant header", async () => {
+    fetchMock.mockResolvedValueOnce(mockYudaoResponse({ ok: true }));
+    fetchMock.mockResolvedValueOnce(mockYudaoResponse({ ok: true }));
+
+    await requestYudao("/without-tenant", { tenantId: "", storage });
+    await requestYudao("/with-custom-tenant", { tenantId: "9", storage });
+
+    expect(fetchMock.mock.calls[0][1].headers).not.toHaveProperty("tenant-id");
+    expect(fetchMock.mock.calls[1][1].headers["tenant-id"]).toBe("9");
   });
 
   it("refreshes the token and retries once when Yudao returns an auth failure result", async () => {
@@ -236,7 +322,9 @@ describe("Yudao member auth client", () => {
     expect(fetchMock.mock.calls[1][0]).toBe(
       `${API_BASE}/member/auth/refresh-token?refreshToken=fake-old-refresh-token`
     );
+    expect(fetchMock.mock.calls[1][1].headers["tenant-id"]).toBe("121");
     expect(fetchMock.mock.calls[1][1].headers).not.toHaveProperty("Authorization");
+    expect(fetchMock.mock.calls[2][1].headers["tenant-id"]).toBe("121");
     expect(fetchMock.mock.calls[2][1].headers.Authorization).toBe("Bearer fake-new-access-token");
     expect(readYudaoSession(storage)).toEqual(newSession);
   });

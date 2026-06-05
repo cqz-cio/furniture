@@ -13,6 +13,17 @@ describe("checkout auth split flow", () => {
     expect(source).toContain("@continue-checkout");
   });
 
+  it("intercepts same-origin links for SPA navigation", () => {
+    const source = readSource("../src/App.vue");
+
+    expect(source).toContain("const handleInternalLinkClick = (event) => {");
+    expect(source).toContain('document.addEventListener("click", handleInternalLinkClick)');
+    expect(source).toContain('document.removeEventListener("click", handleInternalLinkClick)');
+    expect(source).toContain("routeAliases");
+    expect(source).toContain('"/account/orders": "orders"');
+    expect(source).toContain('url.pathname !== pageRoutes.missing');
+  });
+
   it("derives checkout auth options from cart items", () => {
     const source = readSource("../src/pages/CheckoutAuthPage.vue");
 

@@ -1,48 +1,39 @@
 <script setup>
 import { getMembershipJoinTarget, membershipRoutes } from "../services/membershipNavigation.js";
+import { useI18n } from "../i18n.js";
 
+const { t } = useI18n();
 const joinHref = getMembershipJoinTarget({ signedIn: false, memberStatus: "guest" });
 
-const benefits = [
-  "Member savings on eligible full-price and sale merchandise",
-  "Annual membership benefits and renewal management",
-  "Whole-room membership planning for larger furnishing projects",
-  "Account-based access to rules, member status and growth progress",
-];
+const benefits = ["benefit1", "benefit2", "benefit3", "benefit4"];
 </script>
 
 <template>
   <section class="membership-page service-page-shell">
     <header class="membership-hero">
-      <p class="eyebrow">Members Program</p>
-      <h1>Membership, planned like a core account service.</h1>
-      <p>
-        Join to access member savings, account-based benefits and whole-room services aligned with the furniture
-        purchase journey.
-      </p>
+      <p class="eyebrow">{{ t("membership.landing.eyebrow") }}</p>
+      <h1>{{ t("membership.landing.title") }}</h1>
+      <p>{{ t("membership.landing.intro") }}</p>
       <div class="membership-actions service-link-row">
-        <a class="membership-primary-link" :href="joinHref">Join Now</a>
-        <a :href="membershipRoutes.membershipTerms">See Terms</a>
+        <a class="membership-primary-link" :href="joinHref">{{ t("membership.landing.joinNow") }}</a>
+        <a :href="membershipRoutes.membershipTerms">{{ t("membership.landing.seeTerms") }}</a>
       </div>
     </header>
 
-    <section class="membership-section membership-benefits" aria-label="Membership benefits">
+    <section class="membership-section membership-benefits" :aria-label="t('membership.landing.benefitsAria')">
       <article v-for="benefit in benefits" :key="benefit">
         <span></span>
-        <p>{{ benefit }}</p>
+        <p>{{ t(`membership.landing.${benefit}`) }}</p>
       </article>
     </section>
 
     <section class="membership-section membership-two-column">
       <div>
-        <p class="eyebrow">Member Growth</p>
-        <h2>Growth belongs inside My Account.</h2>
+        <p class="eyebrow">{{ t("membership.landing.growthEyebrow") }}</p>
+        <h2>{{ t("membership.landing.growthTitle") }}</h2>
       </div>
-      <p>
-        The public page introduces the program. Detailed levels, points, renewal status and binding rules are managed
-        after sign in under Account Membership.
-      </p>
-      <a :href="membershipRoutes.accountMembership">View Account Membership</a>
+      <p>{{ t("membership.landing.growthIntro") }}</p>
+      <a :href="membershipRoutes.accountMembership">{{ t("membership.landing.viewAccountMembership") }}</a>
     </section>
   </section>
 </template>

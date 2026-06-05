@@ -22,6 +22,17 @@ describe("yudao integration models", () => {
     expect(() => unwrapYudaoResult({ code: 401, msg: "Unauthorized" })).toThrow("Unauthorized");
   });
 
+  it("keeps yudao business error metadata on thrown errors", () => {
+    try {
+      unwrapYudaoResult({ code: 1004003014, msg: "Captcha required", data: { reason: "ip" } });
+      throw new Error("Expected unwrapYudaoResult to throw");
+    } catch (error) {
+      expect(error.message).toBe("Captcha required");
+      expect(error.code).toBe(1004003014);
+      expect(error.data).toEqual({ reason: "ip" });
+    }
+  });
+
   it("maps product SPU records into furniture storefront products", () => {
     const product = mapSpuToProduct({
       id: 12,
@@ -32,6 +43,12 @@ describe("yudao integration models", () => {
       price: 259900,
       marketPrice: 329900,
       stock: 8,
+      productType: "sofa",
+      detailConfig: {
+        productType: "sofa",
+        collection: "ADMIN CLOUD COLLECTION",
+        heroNote: "Configured in admin",
+      },
       skus: [{ id: 99, price: 259900, stock: 8, picUrl: "https://cdn.example/sku.jpg" }],
     });
 
@@ -44,6 +61,12 @@ describe("yudao integration models", () => {
       cover: "https://cdn.example/cover.jpg",
       gallery: ["https://cdn.example/1.jpg"],
       stock: 8,
+      productType: "sofa",
+      detailConfig: {
+        productType: "sofa",
+        collection: "ADMIN CLOUD COLLECTION",
+        heroNote: "Configured in admin",
+      },
     });
   });
 

@@ -18,7 +18,11 @@ export interface WalletVO {
 
 /** 查询用户钱包详情 */
 export const getWallet = async (params: PayWalletUserReqVO) => {
-  return await request.get<WalletVO>({ url: `/pay/wallet/get`, params })
+  return await request.get<WalletVO>({
+    url: `/pay/wallet/get`,
+    params,
+    headers: { hideErrorMessage: true }
+  })
 }
 
 /** 查询会员钱包列表 */

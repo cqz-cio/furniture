@@ -1,5 +1,5 @@
 <template>
-  <div v-loading="loading">
+  <div v-if="memberId" v-loading="loading">
     <el-row :gutter="10">
       <!-- 左上角：基本信息 -->
       <el-col :span="14" class="detail-info-item">
@@ -31,34 +31,34 @@
         </template>
         <el-tabs>
           <el-tab-pane label="积分">
-            <UserPointList :user-id="id" />
+            <UserPointList :user-id="memberId" />
           </el-tab-pane>
           <el-tab-pane label="签到" lazy>
-            <UserSignList :user-id="id" />
+            <UserSignList :user-id="memberId" />
           </el-tab-pane>
           <el-tab-pane label="成长值" lazy>
-            <UserExperienceRecordList :user-id="id" />
+            <UserExperienceRecordList :user-id="memberId" />
           </el-tab-pane>
           <el-tab-pane label="余额" lazy>
-            <UserBalanceList :wallet-id="wallet.id" />
+            <UserBalanceList v-if="wallet.id" :wallet-id="wallet.id" />
           </el-tab-pane>
           <el-tab-pane label="收货地址" lazy>
-            <UserAddressList :user-id="id" />
+            <UserAddressList :user-id="memberId" />
           </el-tab-pane>
           <el-tab-pane label="订单管理" lazy>
-            <UserOrderList :user-id="id" />
+            <UserOrderList :user-id="memberId" />
           </el-tab-pane>
           <el-tab-pane label="售后管理" lazy>
-            <UserAfterSaleList :user-id="id" />
+            <UserAfterSaleList :user-id="memberId" />
           </el-tab-pane>
           <el-tab-pane label="收藏记录" lazy>
-            <UserFavoriteList :user-id="id" />
+            <UserFavoriteList :user-id="memberId" />
           </el-tab-pane>
           <el-tab-pane label="优惠劵" lazy>
-            <UserCouponList :user-id="id" />
+            <UserCouponList :user-id="memberId" />
           </el-tab-pane>
           <el-tab-pane label="推广用户" lazy>
-            <UserBrokerageList :bind-user-id="id" />
+            <UserBrokerageList :bind-user-id="memberId" />
           </el-tab-pane>
         </el-tabs>
       </el-card>
@@ -66,7 +66,7 @@
   </div>
 
   <!-- 表单弹窗：添加/修改 -->
-  <UserForm ref="formRef" @success="getUserData(id)" />
+  <UserForm ref="formRef" @success="getUserData(memberId)" />
 </template>
 <script lang="ts" setup>
 import * as WalletApi from '@/api/pay/wallet/balance'
@@ -87,6 +87,7 @@ import UserAfterSaleList from './UserAftersaleList.vue'
 import UserBalanceList from './UserBalanceList.vue'
 import { CardTitle } from '@/components/Card/index'
 import { ElMessage } from 'element-plus'
+import { normalizeMemberDetailId } from './memberDetailGuard.mjs'
 
 defineOptions({ name: 'MemberDetail' })
 
@@ -96,7 +97,7 @@ const user = ref<UserApi.UserVO>({} as UserApi.UserVO)
 /** 添加/修改操作 */
 const formRef = ref()
 const openForm = (type: string) => {
-  formRef.value.open(type, id)
+  formRef.value.open(type, memberId)
 }
 
 /** 获得用户 */
@@ -113,7 +114,7 @@ const getUserData = async (id: number) => {
 const { currentRoute } = useRouter() // 路由
 const { delView } = useTagsViewStore() // 视图操作
 const route = useRoute()
-const id = route.params.id
+const memberId = normalizeMemberDetailId(route.params.id)
 /* 用户钱包相关信息 */
 const WALLET_INIT_DATA = {
   balance: 0,
@@ -124,21 +125,25 @@ const wallet = ref<WalletApi.WalletVO>(WALLET_INIT_DATA) // 钱包信息
 
 /** 查询用户钱包信息 */
 const getUserWallet = async () => {
-  if (!id) {
+  if (!memberId) {
     wallet.value = WALLET_INIT_DATA
     return
   }
-  const params = { userId: id }
-  wallet.value = (await WalletApi.getWallet(params)) || WALLET_INIT_DATA
+  const params = { userId: memberId }
+  try {
+    wallet.value = (await WalletApi.getWallet(params)) || WALLET_INIT_DATA
+  } catch (error) {
+    wallet.value = WALLET_INIT_DATA
+  }
 }
 
 onMounted(() => {
-  if (!id) {
+  if (!memberId) {
     ElMessage.warning('参数错误，会员编号不能为空！')
     delView(unref(currentRoute))
     return
   }
-  getUserData(id)
+  getUserData(memberId)
   getUserWallet()
 })
 </script>

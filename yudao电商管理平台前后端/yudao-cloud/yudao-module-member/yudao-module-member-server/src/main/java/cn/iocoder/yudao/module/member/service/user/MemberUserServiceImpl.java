@@ -88,7 +88,7 @@ public class MemberUserServiceImpl implements MemberUserService {
             return user;
         }
         // 用户不存在，则进行创建
-        return createUser(mobile, null, IdUtil.fastSimpleUUID(), null, null, registerIp, terminal);
+        return createUser(mobile, null, IdUtil.fastSimpleUUID(), null, null, registerIp, terminal, false);
     }
 
     @Override
@@ -97,21 +97,25 @@ public class MemberUserServiceImpl implements MemberUserService {
                                           String registerIp, Integer terminal) {
         email = normalizeEmail(email);
         validateEmailUnique(null, email);
-        return createUser(null, email, password, nickname, null, registerIp, terminal);
+        return createUser(null, email, password, nickname, null, registerIp, terminal, true);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public MemberUserDO createUser(String nickname, String avtar, String registerIp, Integer terminal) {
-        return createUser(null, null, IdUtil.fastSimpleUUID(), nickname, avtar, registerIp, terminal);
+        return createUser(null, null, IdUtil.fastSimpleUUID(), nickname, avtar, registerIp, terminal, false);
     }
 
     private MemberUserDO createUser(String mobile, String email, String rawPassword, String nickname, String avtar,
-                                    String registerIp, Integer terminal) {
+                                    String registerIp, Integer terminal, boolean emailVerified) {
         // 插入用户
         MemberUserDO user = new MemberUserDO();
         user.setMobile(mobile);
         user.setEmail(email);
+        user.setEmailVerified(emailVerified);
+        if (emailVerified) {
+            user.setEmailVerifiedTime(LocalDateTime.now());
+        }
         user.setStatus(CommonStatusEnum.ENABLE.getStatus()); // 默认开启
         user.setPassword(encodePassword(rawPassword)); // 加密密码
         user.setRegisterIp(registerIp).setRegisterTerminal(terminal);

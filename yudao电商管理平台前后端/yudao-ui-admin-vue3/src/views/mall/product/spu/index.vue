@@ -179,9 +179,10 @@
         prop="createTime"
         width="180"
       />
-      <el-table-column align="center" fixed="right" label="操作" min-width="200">
+      <el-table-column align="center" fixed="right" label="操作" min-width="260">
         <template #default="{ row }">
           <el-button link type="primary" @click="openDetail(row.id)"> 详情 </el-button>
+          <el-button link type="primary" @click="openFrontendPreview(row.id)"> 前台预览 </el-button>
           <el-button
             v-hasPermi="['product:spu:update']"
             link
@@ -402,6 +403,14 @@ const openForm = (id?: number) => {
 /** 查看商品详情 */
 const openDetail = (id: number) => {
   push({ name: 'ProductSpuDetail', params: { id } })
+}
+
+const getFurnitureWebBaseUrl = () =>
+  String(import.meta.env.VITE_FURNITURE_WEB_URL || 'http://127.0.0.1:5173').replace(/\/+$/, '')
+
+/** Preview the product detail page in the furniture web app. */
+const openFrontendPreview = (id: number) => {
+  window.open(`${getFurnitureWebBaseUrl()}/product/${id}`, '_blank')
 }
 
 /** 导出按钮操作 */

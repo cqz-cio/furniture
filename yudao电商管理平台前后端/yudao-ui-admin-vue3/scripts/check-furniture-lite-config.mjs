@@ -33,12 +33,17 @@ const loginForm = readRequired(
   'src/views/Login/components/LoginForm.vue',
   'Task 2 should gate login developer links with showDevLinks.'
 )
+const productSpuList = readRequired(
+  'src/views/mall/product/spu/index.vue',
+  'The product list should expose a frontend product preview action for furniture operators.'
+)
 
 const requiredEnvLines = [
   'VITE_ADMIN_MODE=furniture-lite',
   'VITE_SHOW_DOC_ALERT=false',
   'VITE_SHOW_DEV_LINKS=false',
-  'VITE_APP_DOCALERT_ENABLE=false'
+  'VITE_APP_DOCALERT_ENABLE=false',
+  'VITE_FURNITURE_WEB_URL=http://127.0.0.1:5173'
 ]
 
 for (const line of requiredEnvLines) {
@@ -69,6 +74,9 @@ for (const exportName of requiredFurnitureLiteExports) {
 
 const requiredFurnitureLiteConfigTokens = [
   '/mall/product/category',
+  '/mall/product/comment',
+  '/mall/statistics',
+  '/mall/statistics/product',
   '/mall/trade/order',
   '/system/role',
   '/infra/file/file-config',
@@ -102,6 +110,12 @@ assert.ok(
 assert.ok(
   loginForm.includes('showDevLinks'),
   'src/views/Login/components/LoginForm.vue must reference showDevLinks'
+)
+assert.ok(
+  productSpuList.includes('openFrontendPreview') &&
+    productSpuList.includes('VITE_FURNITURE_WEB_URL') &&
+    productSpuList.includes('前台预览'),
+  'src/views/mall/product/spu/index.vue must provide a furniture web preview action'
 )
 
 console.log('Furniture lite config checks passed')

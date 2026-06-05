@@ -59,10 +59,25 @@ const pageRoutes = {
 };
 
 const routePages = Object.fromEntries(Object.entries(pageRoutes).map(([page, path]) => [path, page]));
+const routeAliases = {
+  "/account/orders": "orders",
+  "/account/address-book": "account",
+  "/account/payment-methods": "account",
+  "/account/wishlist": "account",
+  "/account/profile": "account",
+  "/account/gift-registry": "gift-registry",
+  "/account/sign-in": "account",
+  "/account/register": "account",
+  "/checkout/shipping": "checkout",
+};
 
 const pageFromPath = (path) => {
   const normalizedPath = path.replace(/\/$/, "") || "/";
-  return routePages[normalizedPath] || (normalizedPath.startsWith("/gift-registry/") ? "gift-registry" : "missing");
+  return (
+    routePages[normalizedPath] ||
+    routeAliases[normalizedPath] ||
+    (normalizedPath.startsWith("/gift-registry/") ? "gift-registry" : "missing")
+  );
 };
 
 const currentPage = ref(pageFromPath(window.location.pathname));
@@ -100,7 +115,38 @@ const syncPageFromLocation = () => {
   currentPage.value = pageFromPath(window.location.pathname);
 };
 
+const navigateToPath = (path) => {
+  const nextPath = path || "/";
+  const nextPage = pageFromPath(nextPath.split("?")[0].split("#")[0]);
+  currentPage.value = nextPage;
+  if (`${window.location.pathname}${window.location.search}${window.location.hash}` !== nextPath) {
+    window.history.pushState({ page: nextPage }, "", nextPath);
+  }
+};
+
+const handleInternalLinkClick = (event) => {
+  if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+    return;
+  }
+
+  const anchor = event.target.closest?.("a[href]");
+  if (!anchor || anchor.target || anchor.hasAttribute("download")) return;
+
+  const href = anchor.getAttribute("href") || "";
+  if (!href || href.startsWith("#") || href.startsWith("mailto:") || href.startsWith("tel:")) return;
+
+  const url = new URL(href, window.location.href);
+  if (url.origin !== window.location.origin) return;
+
+  const path = `${url.pathname}${url.search}${url.hash}`;
+  if (pageFromPath(url.pathname) === "missing" && url.pathname !== pageRoutes.missing) return;
+
+  event.preventDefault();
+  navigateToPath(path);
+};
+
 const cartQuantity = computed(() => cartItems.value.reduce((sum, item) => sum + item.quantity, 0));
+const usesOverlayHeader = computed(() => ["home", "sale"].includes(currentPage.value));
 
 const switchToLocalCart = () => {
   cartItems.value = readLocalCart();
@@ -202,11 +248,13 @@ watch(
 
 onMounted(() => {
   window.addEventListener("popstate", syncPageFromLocation);
+  document.addEventListener("click", handleInternalLinkClick);
   loadRemoteCart();
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener("popstate", syncPageFromLocation);
+  document.removeEventListener("click", handleInternalLinkClick);
 });
 </script>
 
@@ -215,6 +263,7 @@ onBeforeUnmount(() => {
     v-model:page="currentPage"
     :cart-count="cartQuantity"
     :cart-mode="cartMode"
+    :overlay="usesOverlayHeader"
     @auth-change="handleAuthChange"
     @open-cart="cartOpen = true"
   />

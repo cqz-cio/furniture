@@ -1,6 +1,8 @@
 <script setup>
 import { computed, onBeforeUnmount, ref, watch } from "vue";
 import { readYudaoSession } from "../services/authSession.js";
+import { useI18n } from "../i18n.js";
+import { membershipRoutes } from "../services/membershipNavigation.js";
 import { logoutMember } from "../services/yudaoClient.js";
 import AuthCreateAccountForm from "./AuthCreateAccountForm.vue";
 import AuthEmailSignInForm from "./AuthEmailSignInForm.vue";
@@ -14,6 +16,7 @@ const props = defineProps({
   },
 });
 const emit = defineEmits(["close", "auth-change"]);
+const { t } = useI18n();
 
 const mode = ref("signin");
 const session = ref(readYudaoSession());
@@ -23,13 +26,20 @@ const logoutNotice = ref("");
 const isAuthenticated = computed(() => Boolean(session.value?.accessToken));
 const showDeveloperToken = computed(() => import.meta.env.VITE_SHOW_AUTH_TOKEN_PANEL === "true");
 const modalTitle = computed(() => {
-  if (isAuthenticated.value) return "MY ACCOUNT";
-  if (mode.value === "secureLink") return "SIGN IN WITH A SECURE LINK";
-  if (mode.value === "create") return "CREATE AN ACCOUNT";
-  if (mode.value === "trade") return "TRADE PROGRAM SIGN IN";
-  return "SIGN IN";
+  if (isAuthenticated.value) return t("auth.account.title");
+  if (mode.value === "secureLink") return t("auth.secureLink.title");
+  if (mode.value === "create") return t("auth.create.title");
+  if (mode.value === "trade") return t("auth.trade.title");
+  return t("auth.signIn.title");
 });
 const modalClass = computed(() => (mode.value === "create" ? "is-create-account" : ""));
+const accountLinks = [
+  { labelKey: "auth.account.orderHistory", href: membershipRoutes.accountOrders },
+  { labelKey: "auth.account.wishlist", href: membershipRoutes.accountWishlist },
+  { labelKey: "auth.account.membership", href: membershipRoutes.accountMembership },
+  { labelKey: "auth.account.giftRegistry", href: membershipRoutes.accountGiftRegistry },
+  { labelKey: "auth.account.profile", href: membershipRoutes.accountProfile },
+];
 
 const refreshSession = () => {
   session.value = readYudaoSession();
@@ -72,7 +82,7 @@ const logout = async () => {
   try {
     await logoutMember();
   } catch {
-    logoutNotice.value = "Signed out locally. Remote logout could not be confirmed.";
+    logoutNotice.value = t("auth.account.logoutLocalNotice");
   } finally {
     session.value = null;
     logoutBusy.value = false;
@@ -107,24 +117,24 @@ onBeforeUnmount(() => setBodyModalState(false));
         aria-modal="true"
         aria-labelledby="account-modal-title"
       >
-        <button class="account-modal-close" type="button" aria-label="Close sign in" @click="emit('close')">
+        <button class="account-modal-close" type="button" :aria-label="t('common.close')" @click="emit('close')">
           <span></span>
           <span></span>
         </button>
 
         <template v-if="isAuthenticated">
           <h2 id="account-modal-title">{{ modalTitle }}</h2>
-          <p class="account-welcome">WELCOME BACK {{ session.userId ? `MEMBER ${session.userId}` : "FURNITURE" }}</p>
+          <p class="account-welcome">
+            {{ session.userId ? t("auth.account.welcomeMember", { id: session.userId }) : t("auth.account.welcomeGuest") }}
+          </p>
           <p v-if="error" class="auth-error">{{ error }}</p>
-          <nav class="account-menu" aria-label="Account links">
-            <a href="#">ORDER HISTORY</a>
-            <a href="#">WISHLIST</a>
-            <a href="#">MEMBERSHIP</a>
-            <a href="#">GIFT REGISTRY</a>
-            <a href="#">PROFILE</a>
+          <nav class="account-menu" :aria-label="t('auth.account.linksAria')">
+            <a v-for="link in accountLinks" :key="link.labelKey" :href="link.href" @click="emit('close')">
+              {{ t(link.labelKey) }}
+            </a>
           </nav>
           <button class="auth-primary-button" type="button" :disabled="logoutBusy" @click="logout">
-            {{ logoutBusy ? "Working..." : "SIGN OUT" }}
+            {{ logoutBusy ? t("common.working") : t("auth.account.signOut") }}
           </button>
         </template>
 
@@ -133,6 +143,7 @@ onBeforeUnmount(() => setBodyModalState(false));
           <p v-if="logoutNotice" class="auth-error">{{ logoutNotice }}</p>
           <AuthEmailSignInForm
             v-if="mode === 'signin'"
+            @authenticated="handleAuthenticated"
             @secure-link="showSecureLink"
             @create-account="showCreate"
             @trade="showTrade"
@@ -152,7 +163,7 @@ onBeforeUnmount(() => setBodyModalState(false));
           />
           <AuthTradeSignInForm v-else @authenticated="handleAuthenticated" @sign-in="showSignIn" />
           <details v-if="showDeveloperToken" class="auth-developer-token">
-            <summary>Developer token</summary>
+            <summary>{{ t("auth.developerToken") }}</summary>
             <AuthTokenPanel @token-change="refreshSession" />
           </details>
         </template>

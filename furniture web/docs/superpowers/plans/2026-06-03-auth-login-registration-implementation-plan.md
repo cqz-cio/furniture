@@ -1,969 +1,241 @@
-# Auth Login Registration Implementation Plan
+# Email Auth Login Registration Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **Direction update:** The Furniture Web auth plan is email-first and email-only for customer login and registration. Do not plan or build mobile-number login, SMS-code login, or mobile-number registration for this project unless the product direction changes again.
 
-**Goal:** Build a real Yudao App API backed member login/register session for Furniture Web, replacing the current manual-token-only path with SMS login/register, optional password login, logout, refresh token, and protected-flow refresh behavior.
+## Goal
 
-**Architecture:** Keep Furniture Web as a Vue/Vite frontend that talks only to Yudao App API. Centralize auth session persistence in a small service, centralize auth requests and token refresh in `src/services/yudaoClient.js`, and keep UI state in focused auth components wired through `RhHeader.vue` and `App.vue`.
+Build a real Yudao App API backed member session for Furniture Web using:
 
-**Tech Stack:** Vue 3, Vite, browser `fetch`, Vitest, existing localStorage-based Yudao token support, Yudao App API at `/app-api/member/auth/*`.
+- Email + password sign in.
+- Email + password account creation.
+- Optional email secure-link request as a secondary recovery/help flow.
+- Trade Program email + Trade ID sign in.
+- Logout.
+- Refresh token retry for protected commerce flows.
+- Compatibility with the existing developer token panel during local integration.
 
----
+This replaces the old manual-token-only path without introducing phone-number/SMS auth as a product flow.
 
-## Required Reading
+## Architecture
 
-- `docs/yudao-integration/auth-development-prerequisites-and-constraints.md`
-- `docs/yudao-integration/auth-api-contract-and-e2e-checklist.md`
-- `docs/yudao-integration/local-auth-backend-db-safety-runbook.md`
-- `src/services/yudaoClient.js`
-- `src/components/RhHeader.vue`
-- `src/components/AuthTokenPanel.vue`
-- `src/App.vue`
-- `src/pages/CheckoutPage.vue`
-- `src/pages/OrdersPage.vue`
+Keep Furniture Web as a Vue/Vite frontend that talks only to Yudao App API. Centralize session persistence in `src/services/authSession.js`, centralize all Yudao App API calls and token refresh behavior in `src/services/yudaoClient.js`, and keep auth UI state in focused components wired through `RhHeader.vue` and `App.vue`.
+
+The customer auth UI should use RH-style account patterns:
+
+- Default state: email + password sign in.
+- Create account: first name, last name, email, password, email opt-in, privacy acceptance.
+- Forgot password / secure link: request secure link by email, but do not treat it as a completed login unless the backend later provides a real magic-link callback flow.
+- Trade: Trade ID + email.
+- Developer token panel: hidden behind `VITE_SHOW_AUTH_TOKEN_PANEL === "true"`.
+
+## Non-Goals
+
+- Do not create `AuthSmsForm.vue`.
+- Do not create phone-number login or phone-number registration UI.
+- Do not make SMS-code login the primary path.
+- Do not use `sendMemberSmsCode` or `loginBySms` from UI.
+- Do not introduce a phone-number password form.
+- Do not modify Yudao Java backend unless explicitly approved.
+- Do not call Yudao Admin API from Furniture Web.
+- Do not store passwords, verification codes, real tokens, database credentials, or database connection strings in frontend code, docs, fixtures, logs, or screenshots.
+
+## Current Backend Contract
+
+Yudao App API base:
+
+```text
+http://127.0.0.1:48080/app-api
+```
+
+Local Yudao App API also requires a tenant header. Furniture Web should send `tenant-id: 1` by default for local development and allow overriding it with:
+
+```powershell
+$env:VITE_YUDAO_APP_TENANT_ID="1"
+```
+
+Primary endpoints for this plan:
+
+- `POST /member/auth/email-login`
+- `POST /member/auth/email-register`
+- `POST /member/auth/email-secure-link`
+- `POST /member/auth/trade-login`
+- `POST /member/auth/refresh-token?refreshToken=<refreshToken>`
+- `POST /member/auth/logout`
+
+Protected commerce APIs must continue to send:
+
+```http
+Authorization: Bearer <accessToken>
+```
 
 ## File Map
 
-- Create `src/services/authSession.js`: localStorage session read/write/clear helpers, compatibility with old `YUDAO_APP_TOKEN`, redaction helpers.
-- Modify `src/services/yudaoClient.js`: auth API wrappers, request auth header, refresh-token retry, logout.
-- Create `src/components/AuthSmsForm.vue`: mobile + SMS code login/register form.
-- Create `src/components/AuthPasswordForm.vue`: optional mobile + password login form.
-- Create `src/components/AuthModal.vue`: owns auth mode, success/error/loading state, emits auth changes.
-- Modify `src/components/AuthTokenPanel.vue`: keep developer-token entry but route through unified session helpers.
-- Modify `src/components/RhHeader.vue`: replace static account modal with `AuthModal`, show logged-in state and logout.
-- Modify `src/App.vue`: track auth session version, refresh remote cart on login/logout.
-- Modify `src/pages/CheckoutPage.vue`: reload auth-dependent data when session changes.
-- Modify `src/pages/OrdersPage.vue`: reload auth-dependent data when session changes.
-- Create `tests/authSession.test.js`: session storage compatibility and redaction tests.
-- Create or extend `tests/yudaoAuthClient.test.js`: auth API payloads, refresh retry, logout cleanup.
+- `src/services/authSession.js`: session read/write/clear helpers, compatibility with legacy `YUDAO_APP_TOKEN`, redaction helpers.
+- `src/services/yudaoClient.js`: email auth wrappers, request auth header, refresh-token retry, logout, commerce APIs.
+- `src/components/AuthEmailSignInForm.vue`: email + password sign-in form, plus secure-link mode.
+- `src/components/AuthCreateAccountForm.vue`: email account creation form.
+- `src/components/AuthTradeSignInForm.vue`: Trade Program sign-in form.
+- `src/components/AuthModal.vue`: owns auth mode, success/error/loading state, logged-in account view, logout, auth-change events.
+- `src/components/AuthTokenPanel.vue`: developer token fallback routed through unified session helpers.
+- `src/components/RhHeader.vue`: account icon opens `AuthModal`, forwards auth-change.
+- `src/App.vue`: tracks auth session version and refreshes remote cart after login/logout.
+- `src/pages/CheckoutPage.vue`: reloads auth-dependent checkout data when session changes.
+- `src/pages/OrdersPage.vue`: reloads auth-dependent order data when session changes.
+- `tests/authSession.test.js`: session storage compatibility and redaction tests.
+- `tests/yudaoAuthClient.test.js`: email auth API payloads, refresh retry, logout cleanup.
+- `tests/authUiStructure.test.js`: verifies email auth UI structure and rejects SMS/phone auth UI.
+- `tests/authCommerceRefresh.test.js`: verifies auth-change commerce refresh wiring.
 
-## Task 1: Auth Session Service
+## Task 1: Session Storage
 
 **Files:**
-- Create: `src/services/authSession.js`
-- Test: `tests/authSession.test.js`
 
-- [ ] **Step 1: Write failing session tests**
+- `src/services/authSession.js`
+- `tests/authSession.test.js`
 
-Create `tests/authSession.test.js`:
+Steps:
 
-```js
-import { describe, expect, it, beforeEach } from "vitest";
-import {
-  AUTH_SESSION_STORAGE_KEY,
-  LEGACY_AUTH_TOKEN_STORAGE_KEY,
-  clearYudaoSession,
-  isYudaoSessionAuthenticated,
-  readYudaoSession,
-  redactSecret,
-  writeYudaoSession,
-} from "../src/services/authSession.js";
+- [x] Store `userId`, `accessToken`, `refreshToken`, and `expiresTime` in `YUDAO_APP_SESSION`.
+- [x] Keep compatibility with existing `YUDAO_APP_TOKEN`.
+- [x] Clear both session keys on logout or invalid session.
+- [x] Tolerate blocked or failing `localStorage`.
+- [x] Redact token-like values for UI and tests.
 
-const createStorage = () => {
-  const store = new Map();
-  return {
-    getItem: (key) => store.get(key) || null,
-    setItem: (key, value) => store.set(key, String(value)),
-    removeItem: (key) => store.delete(key),
-  };
-};
-
-describe("authSession", () => {
-  let storage;
-
-  beforeEach(() => {
-    storage = createStorage();
-  });
-
-  it("writes and reads the Yudao auth session", () => {
-    writeYudaoSession(
-      {
-        userId: 1024,
-        accessToken: "access-token-value",
-        refreshToken: "refresh-token-value",
-        expiresTime: "2026-06-03T18:00:00",
-      },
-      storage
-    );
-
-    expect(readYudaoSession(storage)).toEqual({
-      userId: 1024,
-      accessToken: "access-token-value",
-      refreshToken: "refresh-token-value",
-      expiresTime: "2026-06-03T18:00:00",
-    });
-    expect(storage.getItem(LEGACY_AUTH_TOKEN_STORAGE_KEY)).toBe("access-token-value");
-  });
-
-  it("reads the legacy manual token as an authenticated session", () => {
-    storage.setItem(LEGACY_AUTH_TOKEN_STORAGE_KEY, "manual-token");
-
-    expect(readYudaoSession(storage)).toEqual({
-      userId: null,
-      accessToken: "manual-token",
-      refreshToken: "",
-      expiresTime: "",
-    });
-    expect(isYudaoSessionAuthenticated(storage)).toBe(true);
-  });
-
-  it("clears both session and legacy token", () => {
-    storage.setItem(AUTH_SESSION_STORAGE_KEY, "{\"accessToken\":\"token\"}");
-    storage.setItem(LEGACY_AUTH_TOKEN_STORAGE_KEY, "token");
-
-    clearYudaoSession(storage);
-
-    expect(readYudaoSession(storage)).toBe(null);
-    expect(storage.getItem(LEGACY_AUTH_TOKEN_STORAGE_KEY)).toBe(null);
-  });
-
-  it("redacts secrets for logs and test output", () => {
-    expect(redactSecret("abcdef123456")).toBe("abcd...3456");
-    expect(redactSecret("abc")).toBe("***");
-    expect(redactSecret("")).toBe("");
-  });
-});
-```
-
-- [ ] **Step 2: Run test to verify it fails**
-
-Run:
+Verification:
 
 ```powershell
 cd "D:\code\furniture web"
 npm.cmd test -- tests/authSession.test.js
 ```
 
-Expected: FAIL because `src/services/authSession.js` does not exist.
-
-- [ ] **Step 3: Implement `authSession.js`**
-
-Create `src/services/authSession.js`:
-
-```js
-export const AUTH_SESSION_STORAGE_KEY = "YUDAO_APP_SESSION";
-export const LEGACY_AUTH_TOKEN_STORAGE_KEY = "YUDAO_APP_TOKEN";
-
-const safeStorage = (storage = globalThis.localStorage) => storage;
-
-const normalizeSession = (session) => {
-  if (!session || typeof session !== "object") return null;
-  const accessToken = String(session.accessToken || "").trim();
-  if (!accessToken) return null;
-  return {
-    userId: session.userId ?? null,
-    accessToken,
-    refreshToken: String(session.refreshToken || "").trim(),
-    expiresTime: String(session.expiresTime || "").trim(),
-  };
-};
-
-export const readYudaoSession = (storage = safeStorage()) => {
-  if (!storage) return null;
-  const rawSession = storage.getItem(AUTH_SESSION_STORAGE_KEY);
-  if (rawSession) {
-    try {
-      const parsed = normalizeSession(JSON.parse(rawSession));
-      if (parsed) return parsed;
-    } catch {
-      storage.removeItem(AUTH_SESSION_STORAGE_KEY);
-    }
-  }
-  const legacyToken = String(storage.getItem(LEGACY_AUTH_TOKEN_STORAGE_KEY) || "").trim();
-  return legacyToken
-    ? { userId: null, accessToken: legacyToken, refreshToken: "", expiresTime: "" }
-    : null;
-};
-
-export const writeYudaoSession = (session, storage = safeStorage()) => {
-  if (!storage) return null;
-  const normalized = normalizeSession(session);
-  if (!normalized) {
-    clearYudaoSession(storage);
-    return null;
-  }
-  storage.setItem(AUTH_SESSION_STORAGE_KEY, JSON.stringify(normalized));
-  storage.setItem(LEGACY_AUTH_TOKEN_STORAGE_KEY, normalized.accessToken);
-  return normalized;
-};
-
-export const clearYudaoSession = (storage = safeStorage()) => {
-  if (!storage) return;
-  storage.removeItem(AUTH_SESSION_STORAGE_KEY);
-  storage.removeItem(LEGACY_AUTH_TOKEN_STORAGE_KEY);
-};
-
-export const isYudaoSessionAuthenticated = (storage = safeStorage()) =>
-  Boolean(readYudaoSession(storage)?.accessToken);
-
-export const redactSecret = (value) => {
-  const text = String(value || "");
-  if (!text) return "";
-  if (text.length <= 8) return "***";
-  return `${text.slice(0, 4)}...${text.slice(-4)}`;
-};
-```
-
-- [ ] **Step 4: Run test to verify it passes**
-
-Run:
-
-```powershell
-npm.cmd test -- tests/authSession.test.js
-```
-
-Expected: PASS for all `authSession` tests.
-
-- [ ] **Step 5: Commit**
-
-```powershell
-git add "furniture web/src/services/authSession.js" "furniture web/tests/authSession.test.js"
-git commit -m "feat: add yudao auth session storage"
-```
-
-## Task 2: Yudao Auth API Wrappers
+## Task 2: Email Auth API Wrappers
 
 **Files:**
-- Modify: `src/services/yudaoClient.js`
-- Test: `tests/yudaoAuthClient.test.js`
 
-- [ ] **Step 1: Write failing auth API tests**
+- `src/services/yudaoClient.js`
+- `tests/yudaoAuthClient.test.js`
 
-Create `tests/yudaoAuthClient.test.js`:
+Required wrappers:
 
-```js
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  loginByPassword,
-  loginBySms,
-  logoutMember,
-  refreshMemberToken,
-  sendMemberSmsCode,
-} from "../src/services/yudaoClient.js";
-import { readYudaoSession } from "../src/services/authSession.js";
+- `loginByEmailPassword(payload, options)`
+- `registerByEmail(payload, options)`
+- `requestEmailSignInLink(email, options)`
+- `loginByTradeAccount(payload, options)`
+- `refreshMemberToken(refreshToken, options)`
+- `logoutMember(options)`
 
-const ok = (data) => ({
-  ok: true,
-  json: async () => ({ code: 0, data }),
-});
+Requirements:
 
-describe("yudao auth client", () => {
-  let calls;
-  let storage;
+- Email login posts to `/member/auth/email-login`.
+- Email registration posts to `/member/auth/email-register`.
+- Secure-link request posts to `/member/auth/email-secure-link`.
+- Trade login posts to `/member/auth/trade-login`.
+- Successful login/register/trade responses persist the unified session.
+- Public auth requests must not send stale `Authorization` headers.
+- Public auth requests must send the configured `tenant-id` header.
+- Protected requests use the stored access token when no explicit token override is provided.
+- Protected requests must keep sending the configured `tenant-id` header during refresh and retry.
 
-  beforeEach(() => {
-    calls = [];
-    storage = new Map();
-    globalThis.fetch = vi.fn(async (url, options = {}) => {
-      calls.push({ url, options });
-      return ok({
-        userId: 7,
-        accessToken: "access-token",
-        refreshToken: "refresh-token",
-        expiresTime: "2026-06-03T18:00:00",
-      });
-    });
-  });
-
-  const storageAdapter = {
-    getItem: (key) => storage.get(key) || null,
-    setItem: (key, value) => storage.set(key, String(value)),
-    removeItem: (key) => storage.delete(key),
-  };
-
-  it("sends member sms code with scene 1", async () => {
-    await sendMemberSmsCode("15601691300", { storage: storageAdapter });
-
-    expect(calls[0].url).toContain("/member/auth/send-sms-code");
-    expect(JSON.parse(calls[0].options.body)).toEqual({
-      mobile: "15601691300",
-      scene: 1,
-    });
-  });
-
-  it("logs in by sms and stores session", async () => {
-    await loginBySms({ mobile: "15601691300", code: "1234" }, { storage: storageAdapter });
-
-    expect(calls[0].url).toContain("/member/auth/sms-login");
-    expect(readYudaoSession(storageAdapter).accessToken).toBe("access-token");
-  });
-
-  it("logs in by password and stores session", async () => {
-    await loginByPassword({ mobile: "15601691300", password: "admin123" }, { storage: storageAdapter });
-
-    expect(calls[0].url).toContain("/member/auth/login");
-    expect(JSON.parse(calls[0].options.body)).toEqual({
-      mobile: "15601691300",
-      password: "admin123",
-    });
-    expect(readYudaoSession(storageAdapter).refreshToken).toBe("refresh-token");
-  });
-
-  it("refreshes member token and stores the new session", async () => {
-    await refreshMemberToken("old-refresh", { storage: storageAdapter });
-
-    expect(calls[0].url).toContain("/member/auth/refresh-token?refreshToken=old-refresh");
-    expect(readYudaoSession(storageAdapter).accessToken).toBe("access-token");
-  });
-
-  it("logs out and clears session even when backend succeeds", async () => {
-    storageAdapter.setItem("YUDAO_APP_TOKEN", "access-token");
-    await logoutMember({ storage: storageAdapter });
-
-    expect(calls[0].url).toContain("/member/auth/logout");
-    expect(calls[0].options.headers.Authorization).toBe("Bearer access-token");
-    expect(readYudaoSession(storageAdapter)).toBe(null);
-  });
-});
-```
-
-- [ ] **Step 2: Run test to verify it fails**
-
-Run:
+Verification:
 
 ```powershell
 npm.cmd test -- tests/yudaoAuthClient.test.js
 ```
 
-Expected: FAIL because auth wrapper exports do not exist.
-
-- [ ] **Step 3: Add auth wrappers to `yudaoClient.js`**
-
-Modify `src/services/yudaoClient.js` to import session helpers:
-
-```js
-import {
-  clearYudaoSession,
-  readYudaoSession,
-  writeYudaoSession,
-  LEGACY_AUTH_TOKEN_STORAGE_KEY,
-} from "./authSession.js";
-```
-
-Replace the old token key export with compatibility:
-
-```js
-export const AUTH_TOKEN_STORAGE_KEY = LEGACY_AUTH_TOKEN_STORAGE_KEY;
-```
-
-Add auth functions:
-
-```js
-const authStorage = (options = {}) => options.storage || globalThis.localStorage;
-
-export const sendMemberSmsCode = (mobile, options = {}) =>
-  requestYudao("/member/auth/send-sms-code", {
-    ...options,
-    method: "POST",
-    body: JSON.stringify({ mobile, scene: 1 }),
-  });
-
-const persistLoginResponse = (data, options = {}) => writeYudaoSession(data, authStorage(options));
-
-export const loginBySms = async (payload, options = {}) => {
-  const data = await requestYudao("/member/auth/sms-login", {
-    ...options,
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-  return persistLoginResponse(data, options);
-};
-
-export const loginByPassword = async (payload, options = {}) => {
-  const data = await requestYudao("/member/auth/login", {
-    ...options,
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-  return persistLoginResponse(data, options);
-};
-
-export const refreshMemberToken = async (refreshToken, options = {}) => {
-  const data = await requestYudao(`/member/auth/refresh-token?refreshToken=${encodeURIComponent(refreshToken)}`, {
-    ...options,
-    method: "POST",
-    token: "",
-  });
-  return persistLoginResponse(data, options);
-};
-
-export const logoutMember = async (options = {}) => {
-  try {
-    await requestYudao("/member/auth/logout", {
-      ...options,
-      method: "POST",
-    });
-  } finally {
-    clearYudaoSession(authStorage(options));
-  }
-};
-```
-
-- [ ] **Step 4: Update token read/write compatibility**
-
-Keep these exports but route through unified session:
-
-```js
-export const readYudaoToken = (storage = globalThis.localStorage) =>
-  readYudaoSession(storage)?.accessToken || "";
-
-export const writeYudaoToken = (token, storage = globalThis.localStorage) => {
-  const nextToken = String(token || "").trim();
-  if (nextToken) {
-    writeYudaoSession({ accessToken: nextToken, refreshToken: "", expiresTime: "", userId: null }, storage);
-  } else {
-    clearYudaoSession(storage);
-  }
-};
-```
-
-- [ ] **Step 5: Run tests**
-
-Run:
-
-```powershell
-npm.cmd test -- tests/authSession.test.js tests/yudaoAuthClient.test.js
-```
-
-Expected: PASS.
-
-- [ ] **Step 6: Commit**
-
-```powershell
-git add "furniture web/src/services/yudaoClient.js" "furniture web/tests/yudaoAuthClient.test.js"
-git commit -m "feat: add yudao member auth api"
-```
-
-## Task 3: Token Refresh Retry
+## Task 3: Refresh Token Retry
 
 **Files:**
-- Modify: `src/services/yudaoClient.js`
-- Test: `tests/yudaoAuthClient.test.js`
 
-- [ ] **Step 1: Add failing refresh retry test**
+- `src/services/yudaoClient.js`
+- `tests/yudaoAuthClient.test.js`
 
-Append to `tests/yudaoAuthClient.test.js`:
+Requirements:
 
-```js
-it("refreshes token and retries once when an authenticated request fails with 401 result", async () => {
-  storageAdapter.setItem(
-    "YUDAO_APP_SESSION",
-    JSON.stringify({
-      userId: 7,
-      accessToken: "expired-token",
-      refreshToken: "refresh-token",
-      expiresTime: "2026-06-03T18:00:00",
-    })
-  );
+- If a protected Yudao response indicates auth failure and a refresh token exists, call `/member/auth/refresh-token`.
+- Persist the refreshed session.
+- Retry the original request once with the new access token.
+- Remove stale caller-provided `Authorization` headers during refresh/retry.
+- If refresh fails, clear local session and surface the backend error.
+- Never retry indefinitely.
 
-  globalThis.fetch = vi
-    .fn()
-    .mockResolvedValueOnce({ ok: true, json: async () => ({ code: 401, msg: "未登录" }) })
-    .mockResolvedValueOnce(ok({
-      userId: 7,
-      accessToken: "new-token",
-      refreshToken: "new-refresh",
-      expiresTime: "2026-06-03T19:00:00",
-    }))
-    .mockResolvedValueOnce(ok({ validList: [], invalidList: [] }));
-
-  const { getRemoteCartItems } = await import("../src/services/yudaoClient.js");
-  await expect(getRemoteCartItems({ storage: storageAdapter })).resolves.toEqual([]);
-
-  expect(globalThis.fetch).toHaveBeenCalledTimes(3);
-  expect(readYudaoSession(storageAdapter).accessToken).toBe("new-token");
-});
-```
-
-- [ ] **Step 2: Run test to verify it fails**
-
-Run:
+Verification:
 
 ```powershell
 npm.cmd test -- tests/yudaoAuthClient.test.js
 ```
 
-Expected: FAIL because `requestYudao` does not refresh and retry.
-
-- [ ] **Step 3: Implement single retry in `requestYudao`**
-
-Refactor `requestYudao`:
-
-```js
-const AUTH_FAILURE_CODES = new Set([401, 1002011000]);
-
-const isAuthFailurePayload = (payload) =>
-  payload && typeof payload === "object" && AUTH_FAILURE_CODES.has(Number(payload.code));
-
-export const requestYudao = async (path, options = {}) => {
-  const base = options.baseUrl || getYudaoAppApiBase();
-  const session = readYudaoSession(authStorage(options));
-  const token = options.token !== undefined ? options.token : session?.accessToken;
-  const headers = {
-    "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...(options.headers || {}),
-  };
-
-  const response = await fetch(`${base}${path}`, {
-    ...options,
-    headers,
-  });
-
-  if (!response.ok) {
-    throw new Error(`Yudao HTTP ${response.status}`);
-  }
-
-  const payload = await response.json();
-  if (isAuthFailurePayload(payload) && session?.refreshToken && !options.skipAuthRetry) {
-    await refreshMemberToken(session.refreshToken, options);
-    return requestYudao(path, { ...options, skipAuthRetry: true });
-  }
-
-  return unwrapYudaoResult(payload);
-};
-```
-
-- [ ] **Step 4: Run tests**
-
-Run:
-
-```powershell
-npm.cmd test -- tests/yudaoAuthClient.test.js
-```
-
-Expected: PASS.
-
-- [ ] **Step 5: Commit**
-
-```powershell
-git add "furniture web/src/services/yudaoClient.js" "furniture web/tests/yudaoAuthClient.test.js"
-git commit -m "feat: refresh yudao member token on auth failure"
-```
-
-## Task 4: Auth UI Components
+## Task 4: Email Auth UI
 
 **Files:**
-- Create: `src/components/AuthSmsForm.vue`
-- Create: `src/components/AuthPasswordForm.vue`
-- Create: `src/components/AuthModal.vue`
-- Modify: `src/components/RhHeader.vue`
-- Modify: `src/styles.css`
 
-- [ ] **Step 1: Create `AuthSmsForm.vue`**
+- `src/components/AuthEmailSignInForm.vue`
+- `src/components/AuthCreateAccountForm.vue`
+- `src/components/AuthTradeSignInForm.vue`
+- `src/components/AuthModal.vue`
+- `src/components/RhHeader.vue`
+- `src/styles.css`
+- `tests/authUiStructure.test.js`
 
-Create a focused SMS form:
+Required behavior:
 
-```vue
-<script setup>
-import { computed, ref } from "vue";
-import { loginBySms, sendMemberSmsCode } from "../services/yudaoClient.js";
+- Default sign-in mode accepts email and password.
+- Submit calls `loginByEmailPassword` and emits `authenticated` on success.
+- Create Account calls `registerByEmail` and emits `authenticated` on success.
+- Secure-link mode remains a secondary request flow and must clearly show that a link was requested; it must not fake a logged-in session.
+- Trade mode calls `loginByTradeAccount` and emits `authenticated` on success.
+- Logged-in mode shows account navigation and a sign-out action.
+- Logout calls `logoutMember`, clears local session even when remote logout cannot be confirmed, and emits `auth-change`.
+- Developer token panel remains hidden unless `VITE_SHOW_AUTH_TOKEN_PANEL === "true"`.
+- UI tests should assert that `AuthSmsForm` and phone-number password forms are not used.
 
-const emit = defineEmits(["authenticated"]);
-const mobile = ref("");
-const code = ref("");
-const error = ref("");
-const busy = ref(false);
-const sending = ref(false);
-const cooldown = ref(0);
+Important validation alignment:
 
-const canSend = computed(() => /^1\d{10}$/.test(mobile.value) && !sending.value && cooldown.value === 0);
-const canSubmit = computed(() => /^1\d{10}$/.test(mobile.value) && /^\d{4,6}$/.test(code.value) && !busy.value);
+- Backend email password validation is 4-16 characters.
+- Frontend create-account and email sign-in validation should match backend password length constraints.
+- Frontend should show general credential errors for login failure and avoid account enumeration copy.
 
-const startCooldown = () => {
-  cooldown.value = 60;
-  const timer = window.setInterval(() => {
-    cooldown.value -= 1;
-    if (cooldown.value <= 0) window.clearInterval(timer);
-  }, 1000);
-};
-
-const sendCode = async () => {
-  if (!canSend.value) return;
-  sending.value = true;
-  error.value = "";
-  try {
-    await sendMemberSmsCode(mobile.value);
-    startCooldown();
-  } catch (err) {
-    error.value = err.message || "Unable to send verification code.";
-  } finally {
-    sending.value = false;
-  }
-};
-
-const submit = async () => {
-  if (!canSubmit.value) return;
-  busy.value = true;
-  error.value = "";
-  try {
-    const session = await loginBySms({ mobile: mobile.value, code: code.value });
-    emit("authenticated", session);
-  } catch (err) {
-    error.value = err.message || "Unable to sign in.";
-  } finally {
-    busy.value = false;
-  }
-};
-</script>
-
-<template>
-  <form class="auth-form" @submit.prevent="submit">
-    <label>
-      <span>Mobile</span>
-      <input v-model.trim="mobile" autocomplete="tel" inputmode="tel" type="tel" />
-    </label>
-    <label>
-      <span>Verification Code</span>
-      <div class="auth-code-row">
-        <input v-model.trim="code" autocomplete="one-time-code" inputmode="numeric" type="text" />
-        <button type="button" :disabled="!canSend" @click="sendCode">
-          {{ cooldown ? `${cooldown}s` : sending ? "Sending..." : "Send" }}
-        </button>
-      </div>
-    </label>
-    <p v-if="error" class="auth-error">{{ error }}</p>
-    <button type="submit" :disabled="!canSubmit">{{ busy ? "Working..." : "SIGN IN / REGISTER" }}</button>
-  </form>
-</template>
-```
-
-- [ ] **Step 2: Create `AuthPasswordForm.vue`**
-
-Create optional password login:
-
-```vue
-<script setup>
-import { computed, ref } from "vue";
-import { loginByPassword } from "../services/yudaoClient.js";
-
-const emit = defineEmits(["authenticated"]);
-const mobile = ref("");
-const password = ref("");
-const error = ref("");
-const busy = ref(false);
-const canSubmit = computed(() => /^1\d{10}$/.test(mobile.value) && password.value.length >= 4 && password.value.length <= 16 && !busy.value);
-
-const submit = async () => {
-  if (!canSubmit.value) return;
-  busy.value = true;
-  error.value = "";
-  try {
-    const session = await loginByPassword({ mobile: mobile.value, password: password.value });
-    emit("authenticated", session);
-  } catch {
-    error.value = "Mobile or password is incorrect.";
-  } finally {
-    busy.value = false;
-  }
-};
-</script>
-
-<template>
-  <form class="auth-form" @submit.prevent="submit">
-    <label>
-      <span>Mobile</span>
-      <input v-model.trim="mobile" autocomplete="tel" inputmode="tel" type="tel" />
-    </label>
-    <label>
-      <span>Password</span>
-      <input v-model="password" autocomplete="current-password" type="password" />
-    </label>
-    <p v-if="error" class="auth-error">{{ error }}</p>
-    <button type="submit" :disabled="!canSubmit">{{ busy ? "Working..." : "SIGN IN" }}</button>
-  </form>
-</template>
-```
-
-- [ ] **Step 3: Create `AuthModal.vue`**
-
-Create modal shell:
-
-```vue
-<script setup>
-import { computed, ref } from "vue";
-import { clearYudaoSession, readYudaoSession } from "../services/authSession.js";
-import { logoutMember } from "../services/yudaoClient.js";
-import AuthPasswordForm from "./AuthPasswordForm.vue";
-import AuthSmsForm from "./AuthSmsForm.vue";
-import AuthTokenPanel from "./AuthTokenPanel.vue";
-
-const props = defineProps({
-  open: { type: Boolean, default: false },
-});
-const emit = defineEmits(["close", "auth-change"]);
-const mode = ref("sms");
-const session = ref(readYudaoSession());
-const isAuthenticated = computed(() => Boolean(session.value?.accessToken));
-
-const handleAuthenticated = (nextSession) => {
-  session.value = nextSession;
-  emit("auth-change", nextSession);
-};
-
-const logout = async () => {
-  await logoutMember();
-  clearYudaoSession();
-  session.value = null;
-  emit("auth-change", null);
-};
-</script>
-
-<template>
-  <div v-if="open" class="account-modal-layer" role="presentation">
-    <section class="account-modal" role="dialog" aria-modal="true" aria-labelledby="account-modal-title">
-      <button class="account-modal-close" type="button" aria-label="Close sign in" @click="emit('close')">
-        <span></span>
-        <span></span>
-      </button>
-      <h2 id="account-modal-title">{{ isAuthenticated ? "ACCOUNT" : "SIGN IN" }}</h2>
-      <template v-if="isAuthenticated">
-        <p>Signed in as member {{ session.userId || "with developer token" }}</p>
-        <button type="button" @click="logout">SIGN OUT</button>
-      </template>
-      <template v-else>
-        <p>Use your mobile number to sign in. First-time mobile numbers are registered automatically after verification.</p>
-        <div class="auth-mode-tabs">
-          <button type="button" :class="{ active: mode === 'sms' }" @click="mode = 'sms'">Code</button>
-          <button type="button" :class="{ active: mode === 'password' }" @click="mode = 'password'">Password</button>
-        </div>
-        <AuthSmsForm v-if="mode === 'sms'" @authenticated="handleAuthenticated" />
-        <AuthPasswordForm v-else @authenticated="handleAuthenticated" />
-        <AuthTokenPanel @token-change="session = readYudaoSession(); emit('auth-change', session)" />
-      </template>
-    </section>
-  </div>
-</template>
-```
-
-- [ ] **Step 4: Wire `RhHeader.vue`**
-
-Import `AuthModal` and replace inline modal block:
-
-```js
-import AuthModal from "./AuthModal.vue";
-```
-
-Add emit:
-
-```js
-const emit = defineEmits(["open-cart", "auth-change"]);
-```
-
-Replace the old account modal template with:
-
-```vue
-<AuthModal
-  :open="accountOpen"
-  @close="closeAccount"
-  @auth-change="emit('auth-change', $event)"
-/>
-```
-
-- [ ] **Step 5: Add CSS**
-
-Add styles to `src/styles.css`:
-
-```css
-.auth-form {
-  display: grid;
-  gap: 14px;
-}
-
-.auth-form label {
-  display: grid;
-  gap: 6px;
-  font-size: 11px;
-  letter-spacing: 0;
-  text-transform: uppercase;
-}
-
-.auth-code-row {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 8px;
-}
-
-.auth-error {
-  color: #8f1d1d;
-  font-size: 12px;
-}
-
-.auth-mode-tabs {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  margin: 16px 0;
-}
-
-.auth-mode-tabs button.active {
-  border-color: #111;
-  background: #111;
-  color: #fff;
-}
-```
-
-- [ ] **Step 6: Run tests and manual smoke**
-
-Run:
+Verification:
 
 ```powershell
-npm.cmd test
-npm.cmd run build -- --outDir harness/phase-b/.tmp-dist --emptyOutDir
+npm.cmd test -- tests/authUiStructure.test.js
 ```
 
-Expected: tests pass and build succeeds.
-
-- [ ] **Step 7: Commit**
-
-```powershell
-git add "furniture web/src/components/AuthSmsForm.vue" "furniture web/src/components/AuthPasswordForm.vue" "furniture web/src/components/AuthModal.vue" "furniture web/src/components/RhHeader.vue" "furniture web/src/styles.css"
-git commit -m "feat: add member auth modal"
-```
-
-## Task 5: App-Level Auth Refresh Hooks
+## Task 5: Commerce Refresh Wiring
 
 **Files:**
-- Modify: `src/App.vue`
-- Modify: `src/pages/CheckoutPage.vue`
-- Modify: `src/pages/OrdersPage.vue`
 
-- [ ] **Step 1: Wire auth change in `App.vue`**
+- `src/App.vue`
+- `src/pages/CheckoutPage.vue`
+- `src/pages/OrdersPage.vue`
+- `tests/authCommerceRefresh.test.js`
 
-Add:
+Requirements:
 
-```js
-const authVersion = ref(0);
+- `RhHeader` forwards `auth-change` from `AuthModal`.
+- `App.vue` reloads remote cart after login/logout.
+- `App.vue` increments `authVersion` after auth changes.
+- `CheckoutPage.vue` reloads address and settlement data when `authVersion` changes.
+- `OrdersPage.vue` reloads order data when `authVersion` changes.
+- Remote cart failures fall back to the local cart without breaking local browsing.
 
-const handleAuthChange = async () => {
-  authVersion.value += 1;
-  await loadRemoteCart();
-};
-```
-
-Update template:
-
-```vue
-<RhHeader
-  v-model:page="currentPage"
-  :cart-count="cartQuantity"
-  :cart-mode="cartMode"
-  @auth-change="handleAuthChange"
-  @open-cart="cartOpen = true"
-/>
-```
-
-Pass auth version:
-
-```vue
-<component
-  :is="pageComponent"
-  :auth-version="authVersion"
-  :items="cartItems"
-  @add-to-cart="addToCart"
-  @order-created="openOrderDetail"
-/>
-```
-
-- [ ] **Step 2: Reload checkout on auth changes**
-
-In `CheckoutPage.vue`, add prop:
-
-```js
-authVersion: {
-  type: Number,
-  default: 0,
-},
-```
-
-Add watcher:
-
-```js
-watch(() => props.authVersion, loadCheckoutData);
-```
-
-Update imports:
-
-```js
-import { computed, onMounted, ref, watch } from "vue";
-```
-
-- [ ] **Step 3: Reload orders on auth changes**
-
-In `OrdersPage.vue`, add prop:
-
-```js
-const props = defineProps({
-  authVersion: {
-    type: Number,
-    default: 0,
-  },
-});
-```
-
-Add watcher:
-
-```js
-watch(() => props.authVersion, loadOrders);
-```
-
-Update imports:
-
-```js
-import { computed, onMounted, ref, watch } from "vue";
-```
-
-- [ ] **Step 4: Run tests**
-
-Run:
+Verification:
 
 ```powershell
-npm.cmd test
-```
-
-Expected: PASS.
-
-- [ ] **Step 5: Commit**
-
-```powershell
-git add "furniture web/src/App.vue" "furniture web/src/pages/CheckoutPage.vue" "furniture web/src/pages/OrdersPage.vue"
-git commit -m "feat: refresh commerce data after auth changes"
+npm.cmd test -- tests/authCommerceRefresh.test.js
 ```
 
 ## Task 6: Security and Boundary Verification
 
-**Files:**
-- Modify: `harness/phase-b/boundary-allowlist.txt` if new files need allowlisting
-- No business code changes unless checks reveal a defect
-
-- [ ] **Step 1: Run unit tests**
+Run before considering the auth work ready:
 
 ```powershell
 cd "D:\code\furniture web"
 npm.cmd test
-```
-
-Expected: all tests pass.
-
-- [ ] **Step 2: Run build**
-
-```powershell
 npm.cmd run build -- --outDir harness/phase-b/.tmp-dist --emptyOutDir
-```
-
-Expected: build succeeds.
-
-- [ ] **Step 3: Run boundary harness**
-
-```powershell
 powershell -ExecutionPolicy Bypass -File harness/phase-b/run-harness.ps1
 ```
 
-Expected: harness passes. If it fails because new auth files are not allowlisted, update `harness/phase-b/boundary-allowlist.txt` with exact new paths and rerun.
-
-- [ ] **Step 4: Search for forbidden database and secret strings**
-
-Run:
+Search for unsafe additions:
 
 ```powershell
 rg -n "jdbc:|mysql://|redis://|MYSQL_ROOT_PASSWORD|NACOS_PASSWORD|password=|accessToken|refreshToken" src tests docs/yudao-integration
@@ -971,37 +243,63 @@ rg -n "jdbc:|mysql://|redis://|MYSQL_ROOT_PASSWORD|NACOS_PASSWORD|password=|acce
 
 Expected:
 
-- No database connection strings in `src/` or `tests/`.
-- `accessToken` and `refreshToken` appear only in auth service code, test fake data, and docs.
-- No real token values.
+- No database connection strings in frontend source or tests.
+- No database credentials in `VITE_*` variables.
+- No real access tokens or refresh tokens.
+- Test token values are obvious fake values.
+- No passwords or verification codes in logs, fixtures, screenshots, or browser storage beyond user-entered password fields during form submission.
 
-- [ ] **Step 5: Manual E2E checklist**
+## Manual E2E Checklist
 
-Use `docs/yudao-integration/auth-api-contract-and-e2e-checklist.md` and record:
+Backend available:
 
-- SMS send request appears in Network.
-- SMS login request appears in Network.
-- Token saves to localStorage.
-- `/trade/cart/list` sends `Authorization`.
-- Logout clears localStorage.
-- Backend 48080 stopped produces auth service unavailable.
+- [ ] Open homepage.
+- [ ] Click account icon.
+- [ ] Sign in with email + password.
+- [ ] Network shows `/member/auth/email-login`.
+- [ ] Local storage contains `YUDAO_APP_SESSION`.
+- [ ] Header/account modal shows logged-in state.
+- [ ] `/trade/cart/list` sends `Authorization`.
+- [ ] Checkout reloads address/settlement data.
+- [ ] Orders reloads current-user orders.
+- [ ] Sign out clears `YUDAO_APP_SESSION` and `YUDAO_APP_TOKEN`.
 
-- [ ] **Step 6: Commit final verification changes**
+Registration:
 
-```powershell
-git add "furniture web/harness/phase-b/boundary-allowlist.txt"
-git commit -m "test: allow auth files in phase b harness"
-```
+- [ ] Open Create Account.
+- [ ] Submit first name, last name, email, password, privacy acceptance.
+- [ ] Network shows `/member/auth/email-register`.
+- [ ] Successful response creates a local session.
+- [ ] Password validation matches backend 4-16 character constraint.
 
-Only run this commit step if the allowlist actually changed.
+Secure link:
+
+- [ ] Open secure-link flow.
+- [ ] Submit email.
+- [ ] Network shows `/member/auth/email-secure-link`.
+- [ ] UI confirms link request.
+- [ ] UI does not mark the user as logged in unless a future backend callback flow is completed.
+
+Backend unavailable:
+
+- [ ] Stop local backend on 48080.
+- [ ] Email login shows auth service unavailable or a safe general error.
+- [ ] Registration shows a safe general error.
+- [ ] Local demo browsing still works.
+- [ ] Local cart still works.
+- [ ] Checkout and Orders show login/service-required states instead of fake success.
 
 ## Final Acceptance
 
-The implementation is ready for review when:
+Email auth is ready for review when:
 
+- Email login creates a real Yudao member session.
+- Email registration creates a real Yudao member session.
+- Refresh-token retry works for protected commerce APIs.
+- Logout clears local session even if backend logout fails.
+- Remote cart, checkout, and orders react to auth changes.
 - `npm.cmd test` passes.
-- Temporary build passes.
+- Vite build passes.
 - Phase B harness passes.
-- Manual auth API checklist is complete.
-- No frontend code or tests contain database credentials or direct database clients.
-- No logs, screenshots, fixtures, or docs contain real tokens, real passwords, real verification codes, or production member data.
+- The plan and tests do not require phone-number login, SMS-code login, or phone-number registration.
+- No frontend code or tests contain database credentials, real tokens, real passwords, real verification codes, or direct database clients.

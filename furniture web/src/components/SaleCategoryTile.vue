@@ -1,5 +1,5 @@
 <script setup>
-import { categoryImageSpec } from "../data/rhLayout.js";
+import { categoryImageSpec, saleCategoryLinkHref } from "../data/rhLayout.js";
 import ImageSpecPlaceholder from "./ImageSpecPlaceholder.vue";
 
 defineProps({
@@ -11,7 +11,7 @@ defineProps({
 </script>
 
 <template>
-  <a class="sale-tile" :href="category.href" target="_blank" rel="noreferrer" :aria-label="`${category.title} 图片区域`">
+  <a class="sale-tile" :href="saleCategoryLinkHref(category)" :aria-label="`${category.title} 图片区域`">
     <ImageSpecPlaceholder
       class="desktop-category-spec"
       :label="`${category.title} 图片区域 | ${category.imageId}`"

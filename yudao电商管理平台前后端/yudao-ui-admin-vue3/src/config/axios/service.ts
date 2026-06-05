@@ -146,6 +146,7 @@ service.interceptors.response.use(
     const code = data.code ?? result_code
     // 获取错误信息
     const msg = data.msg || errorCode[code] || errorCode['default']
+    const hideErrorMessage = (config!.headers || {}).hideErrorMessage === true
     if (ignoreMsgs.indexOf(msg) !== -1) {
       // 如果是忽略的错误码，直接返回 msg 异常
       return Promise.reject(msg)
@@ -193,7 +194,9 @@ service.interceptors.response.use(
         })
       }
     } else if (code === 500) {
-      ElMessage.error(t('sys.api.errMsg500'))
+      if (!hideErrorMessage) {
+        ElMessage.error(t('sys.api.errMsg500'))
+      }
       return Promise.reject(new Error(msg))
     } else if (code === 901) {
       ElMessage.error({
@@ -215,7 +218,9 @@ service.interceptors.response.use(
         console.log(msg)
         return handleAuthorized()
       } else {
-        ElNotification.error({ title: msg })
+        if (!hideErrorMessage) {
+          ElNotification.error({ title: msg })
+        }
       }
       return Promise.reject('error')
     } else {
@@ -226,6 +231,7 @@ service.interceptors.response.use(
     console.log('err' + error) // for debug
     let { message } = error
     const { t } = useI18n()
+    const hideErrorMessage = (error.config?.headers || {}).hideErrorMessage === true
     if (message === 'Network Error') {
       message = t('sys.api.errorMessage')
     } else if (message.includes('timeout')) {
@@ -233,7 +239,9 @@ service.interceptors.response.use(
     } else if (message.includes('Request failed with status code')) {
       message = t('sys.api.apiRequestFailed') + message.substr(message.length - 3)
     }
-    ElMessage.error(message)
+    if (!hideErrorMessage) {
+      ElMessage.error(message)
+    }
     return Promise.reject(error)
   }
 )
