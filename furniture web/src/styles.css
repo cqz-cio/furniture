@@ -317,22 +317,22 @@ button {
   position: fixed;
   inset: 0;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
   background: rgba(30, 29, 27, 0.2);
-  padding: clamp(20px, 6vh, 56px) 20px 32px;
+  padding: 32px 20px;
   z-index: 200;
   overflow-y: auto;
 }
 
 .account-modal {
   position: relative;
-  width: min(520px, calc(100vw - 40px));
+  width: min(560px, calc(100vw - 40px));
   max-height: calc(100dvh - 40px);
   overflow-y: auto;
   background: var(--paper);
   color: #1b1b1b;
-  padding: 42px 46px 34px;
+  padding: 42px 46px 36px;
   text-align: left;
   box-shadow: 0 18px 55px rgba(0, 0, 0, 0.14);
 }
@@ -413,14 +413,19 @@ button {
 
 .forgot-password {
   justify-self: end;
+  width: fit-content;
+  min-height: auto;
   border: 0;
   border-bottom: 1px solid currentColor;
   background: transparent;
   color: #111;
   cursor: pointer;
   margin: 2px 0 4px;
-  padding: 0;
+  padding: 0 0 3px;
   font-size: 11px;
+  line-height: 1.35;
+  text-align: right;
+  text-transform: uppercase;
 }
 
 .account-signin-form button {
@@ -443,14 +448,19 @@ button {
 }
 
 .account-modal-links button {
+  min-height: auto;
+  max-width: 100%;
   border: 0;
   border-bottom: 1px solid currentColor;
   background: transparent;
   color: #111;
   cursor: pointer;
   font: inherit;
-  padding: 0;
+  padding: 0 0 4px;
   text-align: left;
+  line-height: 1.4;
+  text-transform: uppercase;
+  white-space: normal;
 }
 
 .account-modal-links.is-centered {
@@ -493,27 +503,31 @@ button {
 }
 
 .auth-mode-tabs button,
-.auth-primary-button,
-.auth-form button {
+.auth-primary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-height: 44px;
   border: 1px solid #211f1b;
   background: transparent;
   color: #211f1b;
   cursor: pointer;
+  padding: 0 18px;
+  text-align: center;
   text-transform: uppercase;
   font-size: 11px;
+  line-height: 1.25;
+  white-space: normal;
 }
 
 .auth-mode-tabs button.active,
-.auth-primary-button,
-.auth-form button[type="submit"] {
+.auth-primary-button {
   background: #211f1b;
   color: #fff;
 }
 
 .auth-mode-tabs button:disabled,
-.auth-primary-button:disabled,
-.auth-form button:disabled {
+.auth-primary-button:disabled {
   border-color: #c8c2b9;
   background: #d9d4cc;
   color: #fff;
@@ -531,16 +545,22 @@ button {
 
 .auth-intro {
   text-align: center;
+  text-wrap: pretty;
 }
 
 .auth-inline-link {
+  display: inline;
+  min-height: auto;
   border: 0;
   border-bottom: 1px solid currentColor;
   background: transparent;
   color: #111;
   cursor: pointer;
   font: inherit;
-  padding: 0;
+  padding: 0 0 2px;
+  line-height: inherit;
+  text-transform: none;
+  white-space: normal;
 }
 
 .auth-form label {
@@ -3486,6 +3506,29 @@ button {
 
   .checkout-summary {
     position: static;
+  }
+}
+
+@media (max-width: 540px) {
+  .account-modal-layer {
+    align-items: flex-start;
+    padding: 14px;
+  }
+
+  .account-modal {
+    width: 100%;
+    max-height: calc(100dvh - 28px);
+    padding: 34px 18px 24px;
+  }
+
+  .account-modal h2 {
+    font-size: 28px;
+  }
+
+  .forgot-password,
+  .account-modal-links button {
+    justify-self: start;
+    text-align: left;
   }
 }
 
