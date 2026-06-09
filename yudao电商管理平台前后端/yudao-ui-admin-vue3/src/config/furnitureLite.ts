@@ -25,6 +25,7 @@ const allowedMenuPaths = new Set([
   '/mall/trade/delivery/pick-up-store',
   '/member',
   '/member/user',
+  '/member/trade-application',
   '/member/level',
   '/member/tag',
   '/member/group',

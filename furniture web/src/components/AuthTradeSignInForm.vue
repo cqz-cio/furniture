@@ -10,7 +10,7 @@ import {
 } from "../services/yudaoClient.js";
 import { tradeRoutes } from "../services/tradeProgram.js";
 
-const emit = defineEmits(["authenticated", "sign-in"]);
+const emit = defineEmits(["authenticated", "sign-in", "close"]);
 defineProps({
   showReturnLink: {
     type: Boolean,
@@ -256,8 +256,8 @@ onUnmounted(() => {
       {{ busy ? t("common.working") : t("auth.trade.submit") }}
     </button>
     <div class="account-modal-links is-stacked">
-      <a :href="tradeRoutes.apply">{{ t("auth.trade.apply") }}</a>
-      <a :href="tradeRoutes.faq">{{ t("auth.trade.faq") }}</a>
+      <a :href="tradeRoutes.apply" @click="emit('close')">{{ t("auth.trade.apply") }}</a>
+      <a :href="tradeRoutes.faq" @click="emit('close')">{{ t("auth.trade.faq") }}</a>
       <button v-if="showReturnLink" type="button" @click="emit('sign-in')">{{ t("auth.returnToSignIn") }}</button>
     </div>
   </form>

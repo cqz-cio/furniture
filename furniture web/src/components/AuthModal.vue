@@ -161,7 +161,7 @@ onBeforeUnmount(() => setBodyModalState(false));
             @sign-in="showSignIn"
             @trade="showTrade"
           />
-          <AuthTradeSignInForm v-else @authenticated="handleAuthenticated" @sign-in="showSignIn" />
+          <AuthTradeSignInForm v-else @authenticated="handleAuthenticated" @sign-in="showSignIn" @close="emit('close')" />
           <details v-if="showDeveloperToken" class="auth-developer-token">
             <summary>{{ t("auth.developerToken") }}</summary>
             <AuthTokenPanel @token-change="refreshSession" />

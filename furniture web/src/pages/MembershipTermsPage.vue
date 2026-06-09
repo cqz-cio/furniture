@@ -3,6 +3,7 @@ import { useI18n } from "../i18n.js";
 
 const { t } = useI18n();
 const sections = ["eligibility", "renewal", "emailBinding", "checkoutRules"];
+const ruleRows = ["merchandise", "services", "giftCards", "renewal", "wholeRoom"];
 </script>
 
 <template>
@@ -17,6 +18,19 @@ const sections = ["eligibility", "renewal", "emailBinding", "checkoutRules"];
       <article v-for="section in sections" :key="section">
         <h2>{{ t(`membership.terms.${section}Title`) }}</h2>
         <p>{{ t(`membership.terms.${section}Description`) }}</p>
+      </article>
+    </section>
+
+    <section class="membership-rule-matrix" :aria-label="t('membership.terms.ruleMatrixAria')">
+      <header>
+        <p class="eyebrow">{{ t("membership.terms.ruleMatrixEyebrow") }}</p>
+        <h2>{{ t("membership.terms.ruleMatrixTitle") }}</h2>
+        <p>{{ t("membership.terms.ruleMatrixIntro") }}</p>
+      </header>
+      <article v-for="row in ruleRows" :key="row">
+        <span>{{ t(`membership.terms.rules.${row}.label`) }}</span>
+        <h3>{{ t(`membership.terms.rules.${row}.title`) }}</h3>
+        <p>{{ t(`membership.terms.rules.${row}.description`) }}</p>
       </article>
     </section>
   </section>

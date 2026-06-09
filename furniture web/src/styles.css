@@ -4232,6 +4232,49 @@ a.home-entry {
   line-height: 1.6;
 }
 
+.membership-flow-panel {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.9fr) repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--line);
+}
+
+.membership-flow-panel > * {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  background: var(--page);
+  padding: 24px 0;
+}
+
+.membership-flow-panel h2,
+.membership-flow-panel h3 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 400;
+}
+
+.membership-flow-panel h2 {
+  font-size: 28px;
+}
+
+.membership-flow-panel h3 {
+  font-size: 22px;
+}
+
+.membership-flow-panel span {
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.membership-flow-panel p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
 .membership-two-column {
   display: grid;
   grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1fr);
@@ -4291,6 +4334,150 @@ a.home-entry {
   max-width: 620px;
   color: var(--muted);
   line-height: 1.6;
+}
+
+.membership-rule-matrix {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.85fr) minmax(0, 1fr);
+  gap: 1px;
+  background: var(--line);
+}
+
+.membership-rule-matrix > * {
+  background: var(--page);
+  padding: 24px 0;
+}
+
+.membership-rule-matrix header {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  grid-row: span 5;
+}
+
+.membership-rule-matrix h2,
+.membership-rule-matrix h3 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 400;
+}
+
+.membership-rule-matrix h2 {
+  font-size: 28px;
+}
+
+.membership-rule-matrix h3 {
+  font-size: 22px;
+}
+
+.membership-rule-matrix article {
+  display: grid;
+  grid-template-columns: 92px minmax(170px, 0.42fr) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.membership-rule-matrix span {
+  width: max-content;
+  border: 1px solid var(--line);
+  color: var(--soft-ink);
+  padding: 5px 8px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.membership-rule-matrix p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.membership-faq-layout {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.72fr) minmax(0, 1fr);
+  gap: 1px;
+  background: var(--line);
+}
+
+.membership-faq-topics,
+.membership-faq-list,
+.membership-faq-topics article,
+.membership-faq-list details {
+  background: var(--page);
+}
+
+.membership-faq-topics {
+  display: grid;
+  align-content: start;
+  gap: 1px;
+}
+
+.membership-faq-topics header,
+.membership-faq-topics article {
+  display: grid;
+  gap: 10px;
+  padding: 24px 0;
+}
+
+.membership-faq-topics h2 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 28px;
+  font-weight: 400;
+}
+
+.membership-faq-topics span,
+.membership-faq-list summary span {
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.membership-faq-topics p,
+.membership-faq-list p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.membership-faq-list {
+  display: grid;
+  gap: 1px;
+}
+
+.membership-faq-list details {
+  padding: 0;
+}
+
+.membership-faq-list summary {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 18px;
+  align-items: center;
+  cursor: pointer;
+  list-style: none;
+  padding: 24px 0;
+}
+
+.membership-faq-list summary::-webkit-details-marker {
+  display: none;
+}
+
+.membership-faq-list summary strong {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 24px;
+  font-weight: 400;
+}
+
+.membership-faq-list details[open] summary {
+  padding-bottom: 14px;
+}
+
+.membership-faq-list details p {
+  max-width: 720px;
+  padding: 0 0 24px 114px;
 }
 
 .membership-agreement {
@@ -5260,21 +5447,37 @@ a.home-entry {
   white-space: nowrap;
 }
 
-.trade-file-field strong {
+.trade-file-field strong,
+.trade-file-button {
   height: 100%;
   border-left: 1px solid var(--line);
   align-content: center;
+  background: #fff;
   color: var(--ink);
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
 }
 
-.trade-file-field input {
+.trade-file-button {
+  border-top: 0;
+  border-right: 0;
+  border-bottom: 0;
+}
+
+.trade-file-button:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.trade-file-input {
   position: absolute;
-  inset: 0;
-  cursor: pointer;
+  width: 1px;
+  height: 1px;
   opacity: 0;
+  pointer-events: none;
 }
 
 .trade-consent-section {
@@ -5356,7 +5559,12 @@ a.home-entry {
 
   .membership-benefits,
   .membership-two-column,
+  .membership-flow-panel,
   .membership-plan-list article,
+  .membership-rule-matrix,
+  .membership-rule-matrix article,
+  .membership-faq-layout,
+  .membership-faq-list summary,
   .account-page,
   .membership-account-state-strip,
   .membership-state-card,
@@ -5391,6 +5599,14 @@ a.home-entry {
   .registry-search-panel,
   .registry-result-list article {
     grid-template-columns: 1fr;
+  }
+
+  .membership-rule-matrix header {
+    grid-row: auto;
+  }
+
+  .membership-faq-list details p {
+    padding-left: 0;
   }
 
   .trade-form-grid {

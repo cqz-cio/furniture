@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref } from "vue";
-import { accountMenuItems, membershipRoutes } from "../services/membershipNavigation.js";
+import { accountMenuItems, accountMenuLabelKeys, membershipRoutes } from "../services/membershipNavigation.js";
 import {
   MEMBERSHIP_ACCOUNT_SCENARIOS,
   MEMBERSHIP_STATUSES,
@@ -17,15 +17,6 @@ const { t } = useI18n();
 const selectedScenarioKey = ref("activeAnnual");
 const statePreviewKeys = Object.keys(MEMBERSHIP_ACCOUNT_SCENARIOS);
 
-const accountMenuLabelKeys = {
-  Membership: "membership.account.menuMembership",
-  "Payment Methods": "membership.account.menuPaymentMethods",
-  "Order History": "membership.account.menuOrderHistory",
-  "Wish List": "membership.account.menuWishlist",
-  "Address Book": "membership.account.menuAddressBook",
-  "Account Profile": "membership.account.menuProfile",
-  "Gift Registry": "membership.account.menuGiftRegistry",
-};
 const statusLabelKeys = {
   [MEMBERSHIP_STATUSES.notMember]: "membership.account.statusNotMember",
   [MEMBERSHIP_STATUSES.activeAnnual]: "membership.account.statusActiveAnnual",
@@ -262,15 +253,15 @@ const money = (value) => `$${Number(value || 0).toLocaleString("en-US", { minimu
           </div>
           <dl>
             <div>
-              <dt>{{ t("membership.account.eligibility.eligible") }}</dt>
+              <dt>{{ t("membership.account.eligibility.summary.eligible") }}</dt>
               <dd>{{ eligibilityReview.eligibleCount }}</dd>
             </div>
             <div>
-              <dt>{{ t("membership.account.eligibility.excluded") }}</dt>
+              <dt>{{ t("membership.account.eligibility.summary.ineligible") }}</dt>
               <dd>{{ eligibilityReview.ineligibleCount }}</dd>
             </div>
             <div>
-              <dt>{{ t("membership.account.eligibility.savings") }}</dt>
+              <dt>{{ t("membership.account.eligibility.summary.savings") }}</dt>
               <dd>{{ money(eligibilityReview.savingsTotal) }}</dd>
             </div>
           </dl>
@@ -289,15 +280,15 @@ const money = (value) => `$${Number(value || 0).toLocaleString("en-US", { minimu
           </div>
           <dl>
             <div>
-              <dt>{{ t("membership.account.eligibility.regular") }}</dt>
+              <dt>{{ t("membership.account.eligibility.line.regular") }}</dt>
               <dd>{{ money(line.regularPrice) }}</dd>
             </div>
             <div>
-              <dt>{{ t("membership.account.eligibility.member") }}</dt>
+              <dt>{{ t("membership.account.eligibility.line.member") }}</dt>
               <dd>{{ money(line.memberPrice) }}</dd>
             </div>
             <div>
-              <dt>{{ t("membership.account.eligibility.lineSavings") }}</dt>
+              <dt>{{ t("membership.account.eligibility.line.savings") }}</dt>
               <dd>{{ money(line.savings) }}</dd>
             </div>
           </dl>

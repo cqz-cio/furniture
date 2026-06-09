@@ -214,6 +214,33 @@ const messages = {
         benefit2: "Annual membership benefits and renewal management",
         benefit3: "Whole-room membership planning for larger furnishing projects",
         benefit4: "Account-based access to rules, member status and growth progress",
+        flowAria: "How membership works",
+        flowEyebrow: "How It Works",
+        flowTitle: "A membership service connected across the purchase path.",
+        flowIntro:
+          "The membership experience should stay visible before checkout, during price review and after the order is placed.",
+        flow: {
+          join: {
+            step: "01",
+            title: "Join with an account",
+            description: "Membership enrollment routes through sign-in so benefits can attach to a durable customer profile.",
+          },
+          bind: {
+            step: "02",
+            title: "Bind email and status",
+            description: "Existing offline memberships are linked by email match or verification before online benefits appear.",
+          },
+          price: {
+            step: "03",
+            title: "Review eligible pricing",
+            description: "Cart, checkout and order detail surfaces explain which items receive member pricing and which are excluded.",
+          },
+          manage: {
+            step: "04",
+            title: "Manage after purchase",
+            description: "My Account keeps renewal, billing, member status, growth progress and rule access in one service area.",
+          },
+        },
         growthEyebrow: "Member Growth",
         growthTitle: "Growth belongs inside My Account.",
         growthIntro:
@@ -252,16 +279,86 @@ const messages = {
           "Offline memberships can be linked online when the registration email is matched or verified.",
         checkoutRulesTitle: "Checkout Rules",
         checkoutRulesDescription: "Membership purchases require account sign-in and cannot continue through guest checkout.",
+        ruleMatrixAria: "Membership rule matrix",
+        ruleMatrixEyebrow: "Rule Matrix",
+        ruleMatrixTitle: "How membership rules are applied.",
+        ruleMatrixIntro:
+          "Use this table to understand which account, item and checkout conditions affect member pricing.",
+        rules: {
+          merchandise: {
+            label: "Eligible",
+            title: "Furniture and decor merchandise",
+            description:
+              "Eligible merchandise can receive member pricing when the account has an active membership and the item carries a member price.",
+          },
+          services: {
+            label: "Excluded",
+            title: "Delivery, protection and service fees",
+            description:
+              "Service charges remain visible in checkout, but they do not create member price savings unless a specific service benefit is listed.",
+          },
+          giftCards: {
+            label: "Excluded",
+            title: "Gift cards and stored-value products",
+            description:
+              "Gift cards are tracked as tender or stored value and are not counted as eligible merchandise spend.",
+          },
+          renewal: {
+            label: "Account",
+            title: "Renewal and cancellation controls",
+            description:
+              "Renewal timing, auto-renew status, reminders and cancellation actions stay in My Account so the rule is visible after purchase.",
+          },
+          wholeRoom: {
+            label: "Project",
+            title: "Whole-room membership benefits",
+            description:
+              "Room-level benefits can add planning visibility, but excluded services and gift cards still remain outside member price savings.",
+          },
+        },
       },
       faq: {
         eyebrow: "Membership FAQs",
         title: "Common membership questions.",
         intro: "Short explanations for joining, binding an existing membership, renewal and how member pricing appears.",
         aria: "Membership frequently asked questions",
+        topicsAria: "Membership FAQ topics",
+        topicsEyebrow: "Topics",
+        topicsTitle: "Where to look first.",
+        topics: {
+          account: {
+            label: "Account",
+            description: "Sign-in, email binding, status and renewal questions belong in My Account.",
+          },
+          pricing: {
+            label: "Pricing",
+            description: "Member price questions are answered by item eligibility and order-level savings.",
+          },
+          support: {
+            label: "Rules",
+            description: "Full terms explain exclusions, guest checkout limits and whole-room project rules.",
+          },
+        },
+        listAria: "Membership FAQ answers",
+        joinBadge: "Join",
         joinQuestion: "Where do I join?",
         joinAnswer: "Start from the Membership page, then sign in or create an account before enrollment.",
+        bindBadge: "Bind",
+        bindQuestion: "How do I link an existing membership?",
+        bindAnswer:
+          "Use the same email when possible. If the membership email differs from the account email, My Account should request verification before benefits appear online.",
+        pricingBadge: "Price",
+        pricingQuestion: "Why does one item show a member price and another does not?",
+        pricingAnswer:
+          "Member prices depend on item eligibility, category exclusions and active account status. Services, gift cards and unreduced items can show no member savings.",
+        renewalBadge: "Renewal",
+        renewalQuestion: "Where are renewal and cancellation controls?",
+        renewalAnswer:
+          "Renewal timing, auto-renew status, reminders and cancellation actions stay in My Account so the rules remain visible after purchase.",
+        growthBadge: "Growth",
         growthQuestion: "Where do I see growth progress?",
         growthAnswer: "Growth level, points and next actions belong in My Account under Membership.",
+        rulesBadge: "Rules",
         rulesQuestion: "Where are rules shown?",
         rulesAnswer: "Brief rules appear near prices and CTAs. Full rules live on the Members Program Terms page.",
       },
@@ -447,6 +544,16 @@ const messages = {
           regular: "Regular",
           member: "Member",
           lineSavings: "Line savings",
+          summary: {
+            eligible: "Eligible",
+            ineligible: "Excluded",
+            savings: "Savings",
+          },
+          line: {
+            regular: "Regular",
+            member: "Member",
+            savings: "Line savings",
+          },
           reasons: {
             eligible: {
               label: "Member price applied",
@@ -902,6 +1009,32 @@ const messages = {
         benefit2: "年费会员权益与续费管理",
         benefit3: "面向大型家居项目的整屋会员规划",
         benefit4: "通过账户查看规则、会员状态和成长进度",
+        flowAria: "会员如何运转",
+        flowEyebrow: "如何运转",
+        flowTitle: "贯穿购买路径的会员服务。",
+        flowIntro: "会员体验应在结账前、价格核对中和下单后持续可见。",
+        flow: {
+          join: {
+            step: "01",
+            title: "通过账户加入",
+            description: "加入会员会先进入登录流程，确保权益绑定到稳定的客户账户。",
+          },
+          bind: {
+            step: "02",
+            title: "绑定邮箱和状态",
+            description: "已有线下会员需通过邮箱匹配或验证后，线上权益才会显示。",
+          },
+          price: {
+            step: "03",
+            title: "核对适用会员价",
+            description: "购物车、结账和订单详情会解释哪些商品享会员价，哪些按规则排除。",
+          },
+          manage: {
+            step: "04",
+            title: "购买后管理",
+            description: "我的账户集中保留续费、账单、会员状态、成长进度和规则入口。",
+          },
+        },
         growthEyebrow: "会员成长",
         growthTitle: "成长体系放在我的账户中管理。",
         growthIntro: "公开页面负责介绍会员计划。详细等级、积分、续费状态和绑定规则会在登录后的账户会员页管理。",
@@ -936,16 +1069,77 @@ const messages = {
         emailBindingDescription: "线下会员可在注册邮箱匹配或验证后绑定到线上账户。",
         checkoutRulesTitle: "结账规则",
         checkoutRulesDescription: "购买会员服务必须先登录账户，不能使用游客结账。",
+        ruleMatrixAria: "会员规则矩阵",
+        ruleMatrixEyebrow: "规则矩阵",
+        ruleMatrixTitle: "会员规则如何生效。",
+        ruleMatrixIntro: "通过这张表查看账户、商品和结账条件如何影响会员价。",
+        rules: {
+          merchandise: {
+            label: "适用",
+            title: "家具与家居商品",
+            description: "账户会员状态有效，且商品带有会员价时，符合条件的商品可享会员价。",
+          },
+          services: {
+            label: "不适用",
+            title: "配送、保护计划与服务费",
+            description: "服务费用会在结账中清楚显示，但除非有单独列明的服务权益，否则不计入会员价节省。",
+          },
+          giftCards: {
+            label: "不适用",
+            title: "礼品卡与储值类商品",
+            description: "礼品卡按支付或储值工具管理，不计入符合条件的商品消费。",
+          },
+          renewal: {
+            label: "账户",
+            title: "续费与取消控制",
+            description: "续费时间、自动续费状态、提醒和取消操作保留在我的账户中，购买后仍可查看。",
+          },
+          wholeRoom: {
+            label: "项目",
+            title: "整屋会员权益",
+            description: "整屋级权益可提供项目规划可见性，但服务费用和礼品卡仍不计入会员价节省。",
+          },
+        },
       },
       faq: {
         eyebrow: "会员常见问题",
         title: "常见会员问题。",
         intro: "这里用简短说明解释如何加入、如何绑定已有会员、如何续费，以及会员价如何显示。",
         aria: "会员常见问题",
+        topicsAria: "会员常见问题主题",
+        topicsEyebrow: "主题",
+        topicsTitle: "先从哪里查看。",
+        topics: {
+          account: {
+            label: "账户",
+            description: "登录、邮箱绑定、会员状态和续费问题都应回到我的账户查看。",
+          },
+          pricing: {
+            label: "价格",
+            description: "会员价问题通过商品适用性和订单级节省金额解释。",
+          },
+          support: {
+            label: "规则",
+            description: "完整条款说明不适用范围、游客结账限制和整屋项目规则。",
+          },
+        },
+        listAria: "会员常见问题答案",
+        joinBadge: "加入",
         joinQuestion: "在哪里加入会员？",
         joinAnswer: "从会员页面开始，先登录或创建账户，然后进入入会页面。",
+        bindBadge: "绑定",
+        bindQuestion: "如何绑定已有会员？",
+        bindAnswer: "尽量使用同一个邮箱。如果会员邮箱与账户邮箱不同，我的账户应先完成验证后再显示线上权益。",
+        pricingBadge: "价格",
+        pricingQuestion: "为什么有些商品显示会员价，有些没有？",
+        pricingAnswer: "会员价取决于商品适用性、品类排除规则和账户会员状态。服务、礼品卡和未降价商品可能没有会员节省。",
+        renewalBadge: "续费",
+        renewalQuestion: "续费和取消在哪里管理？",
+        renewalAnswer: "续费时间、自动续费状态、提醒和取消操作保留在我的账户中，购买后仍可查看。",
+        growthBadge: "成长",
         growthQuestion: "在哪里查看成长进度？",
         growthAnswer: "成长等级、积分和下一步操作会显示在我的账户的会员页面中。",
+        rulesBadge: "规则",
         rulesQuestion: "规则在哪里查看？",
         rulesAnswer: "简要规则会出现在价格和按钮附近，完整规则在会员计划条款页查看。",
       },
@@ -1130,6 +1324,16 @@ const messages = {
           regular: "常规价",
           member: "会员价",
           lineSavings: "本项节省",
+          summary: {
+            eligible: "适用",
+            ineligible: "排除",
+            savings: "节省",
+          },
+          line: {
+            regular: "常规价",
+            member: "会员价",
+            savings: "本项节省",
+          },
           reasons: {
             eligible: {
               label: "已应用会员价",
@@ -1569,6 +1773,37 @@ const messages = {
         benefit2: "Avantages de l'adhésion annuelle et gestion du renouvellement",
         benefit3: "Planification d'adhésion pièce complète pour les grands projets d'ameublement",
         benefit4: "Accès via le compte aux règles, au statut membre et à la progression",
+        flowAria: "Fonctionnement de l'adhésion",
+        flowEyebrow: "Fonctionnement",
+        flowTitle: "Un service membre relié à tout le parcours d'achat.",
+        flowIntro:
+          "L'expérience membre doit rester visible avant le paiement, pendant la vérification des prix et après la commande.",
+        flow: {
+          join: {
+            step: "01",
+            title: "Adhérer avec un compte",
+            description:
+              "L'inscription passe par la connexion afin que les avantages soient liés à un profil client durable.",
+          },
+          bind: {
+            step: "02",
+            title: "Lier e-mail et statut",
+            description:
+              "Les adhésions existantes sont reliées par correspondance ou vérification e-mail avant l'affichage des avantages.",
+          },
+          price: {
+            step: "03",
+            title: "Vérifier les prix éligibles",
+            description:
+              "Panier, paiement et détail de commande expliquent quels articles reçoivent le prix membre et lesquels sont exclus.",
+          },
+          manage: {
+            step: "04",
+            title: "Gérer après achat",
+            description:
+              "Mon compte rassemble renouvellement, facturation, statut membre, progression et accès aux règles.",
+          },
+        },
         growthEyebrow: "Progression membre",
         growthTitle: "La progression se gère dans Mon compte.",
         growthIntro:
@@ -1609,6 +1844,43 @@ const messages = {
           "Les adhésions hors ligne peuvent être liées en ligne lorsque l'e-mail d'inscription correspond ou est vérifié.",
         checkoutRulesTitle: "Règles de paiement",
         checkoutRulesDescription: "L'achat d'une adhésion exige une connexion au compte et ne peut pas passer par le paiement invité.",
+        ruleMatrixAria: "Matrice des règles d'adhésion",
+        ruleMatrixEyebrow: "Matrice des règles",
+        ruleMatrixTitle: "Application des règles d'adhésion.",
+        ruleMatrixIntro:
+          "Ce tableau explique quelles conditions de compte, d'article et de paiement influencent le prix membre.",
+        rules: {
+          merchandise: {
+            label: "Éligible",
+            title: "Mobilier et décoration",
+            description:
+              "Les articles éligibles peuvent recevoir le prix membre lorsque le compte est actif et que l'article porte un prix membre.",
+          },
+          services: {
+            label: "Exclu",
+            title: "Livraison, protection et frais de service",
+            description:
+              "Les frais de service restent visibles au paiement, mais ne créent pas d'économies membre sauf avantage de service indiqué.",
+          },
+          giftCards: {
+            label: "Exclu",
+            title: "Cartes cadeaux et valeur stockée",
+            description:
+              "Les cartes cadeaux sont suivies comme moyen de paiement ou valeur stockée et ne comptent pas comme dépense éligible.",
+          },
+          renewal: {
+            label: "Compte",
+            title: "Renouvellement et annulation",
+            description:
+              "Le calendrier, le renouvellement automatique, les rappels et l'annulation restent dans Mon compte après l'achat.",
+          },
+          wholeRoom: {
+            label: "Projet",
+            title: "Avantages whole-room",
+            description:
+              "Les avantages par pièce peuvent ajouter de la visibilité de planification, mais services et cartes cadeaux restent exclus.",
+          },
+        },
       },
       faq: {
         eyebrow: "FAQ adhésion",
@@ -1616,10 +1888,44 @@ const messages = {
         intro:
           "Des réponses courtes sur l'inscription, la liaison d'une adhésion existante, le renouvellement et l'affichage des prix membres.",
         aria: "Questions fréquentes sur l'adhésion",
+        topicsAria: "Thèmes de FAQ adhésion",
+        topicsEyebrow: "Thèmes",
+        topicsTitle: "Où commencer.",
+        topics: {
+          account: {
+            label: "Compte",
+            description: "Connexion, liaison e-mail, statut et renouvellement se consultent dans Mon compte.",
+          },
+          pricing: {
+            label: "Prix",
+            description: "Les questions de prix membre se lisent via l'éligibilité des articles et les économies de commande.",
+          },
+          support: {
+            label: "Règles",
+            description:
+              "Les conditions complètes expliquent les exclusions, les limites du paiement invité et les règles whole-room.",
+          },
+        },
+        listAria: "Réponses FAQ adhésion",
+        joinBadge: "Adhérer",
         joinQuestion: "Où puis-je adhérer ?",
         joinAnswer: "Commencez depuis la page Membership, puis connectez-vous ou créez un compte avant l'inscription.",
+        bindBadge: "Lier",
+        bindQuestion: "Comment lier une adhésion existante ?",
+        bindAnswer:
+          "Utilisez le même e-mail si possible. Si l'e-mail membre diffère de l'e-mail du compte, Mon compte doit demander une vérification avant d'afficher les avantages.",
+        pricingBadge: "Prix",
+        pricingQuestion: "Pourquoi certains articles affichent-ils un prix membre et d'autres non ?",
+        pricingAnswer:
+          "Les prix membres dépendent de l'éligibilité de l'article, des exclusions de catégorie et du statut du compte. Services, cartes cadeaux et articles non réduits peuvent ne générer aucune économie.",
+        renewalBadge: "Renouv.",
+        renewalQuestion: "Où gérer le renouvellement et l'annulation ?",
+        renewalAnswer:
+          "Le calendrier, le renouvellement automatique, les rappels et l'annulation restent dans Mon compte après l'achat.",
+        growthBadge: "Progression",
         growthQuestion: "Où voir ma progression ?",
         growthAnswer: "Le niveau, les points et les prochaines actions se trouvent dans Mon compte, sous Adhésion.",
+        rulesBadge: "Règles",
         rulesQuestion: "Où les règles sont-elles affichées ?",
         rulesAnswer:
           "Les règles courtes apparaissent près des prix et des appels à l'action. Les règles complètes sont sur la page des conditions du Programme membres.",
@@ -1806,6 +2112,16 @@ const messages = {
           regular: "Standard",
           member: "Membre",
           lineSavings: "Économie ligne",
+          summary: {
+            eligible: "Éligible",
+            ineligible: "Exclu",
+            savings: "Économies",
+          },
+          line: {
+            regular: "Standard",
+            member: "Membre",
+            savings: "Économie ligne",
+          },
           reasons: {
             eligible: {
               label: "Prix membre appliqué",
@@ -2185,12 +2501,14 @@ const tradeProgramMessages = {
           "If you intend to purchase merchandise for resale, provide tax exemption documentation for review.",
         addAttachment: "Add Attachment",
         chooseFile: "CHOOSE FILE",
+        uploading: "UPLOADING",
         reviewTiming: "After submitting your RH Trade application, please allow two business days to receive notification.",
         emailOptIn: "I agree to receive email updates from RH.",
         privacy: "I have read and acknowledge the RH Privacy Notice.",
         submit: "SUBMIT",
-        successNotice: "Your Trade application has been submitted for review.",
+        successNotice: "Your Trade application #{id} has been submitted for review.",
         submitError: "Trade application submission is unavailable. Please try again later.",
+        uploadError: "Attachment upload failed. Please choose the file again.",
         fields: {
           businessName: "Business Name*",
           country: "Country*",
@@ -2265,12 +2583,14 @@ const tradeProgramMessages = {
         taxDocumentsHelp: "如果你计划为转售采购商品，请提供免税证明文件以供审核。",
         addAttachment: "添加附件",
         chooseFile: "选择文件",
+        uploading: "上传中",
         reviewTiming: "提交 RH Trade 申请后，请预留两个工作日接收审核通知。",
         emailOptIn: "我同意接收 RH 的邮件更新。",
         privacy: "我已阅读并确认 RH 隐私声明。",
         submit: "提交",
-        successNotice: "你的 Trade 申请已提交审核。",
+        successNotice: "你的 Trade 申请 #{id} 已提交审核。",
         submitError: "暂时无法提交 Trade 申请，请稍后重试。",
+        uploadError: "附件上传失败，请重新选择文件。",
         fields: {
           businessName: "企业名称*",
           country: "国家/地区*",
@@ -2349,12 +2669,14 @@ const tradeProgramMessages = {
           "Si vous achetez pour revente, fournissez les documents d'exonération fiscale pour examen.",
         addAttachment: "Ajouter une pièce jointe",
         chooseFile: "CHOISIR UN FICHIER",
+        uploading: "ENVOI",
         reviewTiming: "Après l'envoi de votre demande RH Trade, prévoyez deux jours ouvrés pour la notification.",
         emailOptIn: "J'accepte de recevoir les actualités RH par e-mail.",
         privacy: "J'ai lu et j'accepte l'avis de confidentialité RH.",
         submit: "ENVOYER",
-        successNotice: "Votre demande Trade a été envoyée pour examen.",
+        successNotice: "Votre demande Trade #{id} a été envoyée pour examen.",
         submitError: "L'envoi de la demande Trade est indisponible. Réessayez plus tard.",
+        uploadError: "L'envoi de la pièce jointe a échoué. Choisissez à nouveau le fichier.",
         fields: {
           businessName: "Nom de l'entreprise*",
           country: "Pays*",

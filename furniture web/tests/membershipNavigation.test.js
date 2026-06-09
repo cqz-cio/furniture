@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   getCheckoutAuthOptions,
   getCheckoutEntryRoute,
+  accountMenuLabelKeys,
   accountMenuItems,
   checkoutAuthOptions,
   getMembershipJoinTarget,
@@ -32,6 +33,12 @@ describe("membership navigation model", () => {
       "Wish List",
       "Gift Registry",
     ]);
+  });
+
+  it("keeps every account menu item connected to a translation key", () => {
+    for (const item of accountMenuItems) {
+      expect(accountMenuLabelKeys[item.label], `${item.label} should have a label key`).toMatch(/^membership\.account\./);
+    }
   });
 
   it("uses three checkout auth choices and blocks guest membership purchase", () => {

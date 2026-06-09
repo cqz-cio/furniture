@@ -26,6 +26,7 @@ describe("auth UI structure", () => {
     expect(source).toContain('@authenticated="handleAuthenticated"');
     expect(source).toContain('<AuthCreateAccountForm');
     expect(source).toContain('<AuthTradeSignInForm');
+    expect(source).toContain('@close="emit(\'close\')"');
     expect(source).toContain('mode.value = "secureLink"');
     expect(source).toContain('mode.value = "create"');
     expect(source).toContain('mode.value = "trade"');
@@ -111,9 +112,12 @@ describe("auth UI structure", () => {
     expect(createSource).toContain('minlength="4"');
 
     expect(tradeSource).toContain("loginByTradeAccount");
+    expect(tradeSource).toContain('defineEmits(["authenticated", "sign-in", "close"])');
     expect(tradeSource).toContain('t("auth.fields.tradeId")');
     expect(tradeSource).toContain('t("auth.fields.emailAddress")');
     expect(tradeSource).toContain('t("auth.trade.apply")');
+    expect(tradeSource).toContain(`:href="tradeRoutes.apply" @click="emit('close')"`);
+    expect(tradeSource).toContain(`:href="tradeRoutes.faq" @click="emit('close')"`);
   });
 
   it("opens the image captcha recovery flow when registration code attempts are exhausted", () => {

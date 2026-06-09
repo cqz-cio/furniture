@@ -13,6 +13,7 @@ import {
   sendEmailRegistrationCode,
   sendTradeLoginCode,
   submitTradeApplication,
+  uploadTradeApplicationAttachment,
   verifyEmailCaptchaChallenge,
 } from "../src/services/yudaoClient.js";
 
@@ -258,6 +259,28 @@ describe("Yudao member auth client", () => {
     expect(init.headers).not.toHaveProperty("Authorization");
     expect(JSON.parse(init.body)).toEqual(payload);
     expect(result).toEqual({ id: 88, status: 0 });
+  });
+
+  it("uploadTradeApplicationAttachment posts a public multipart file upload", async () => {
+    fetchMock.mockResolvedValueOnce(mockYudaoResponse("https://cdn.example/license.pdf"));
+    const file = new File(["fake-license"], "license.pdf", { type: "application/pdf" });
+
+    const result = await uploadTradeApplicationAttachment(file, { storage });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe(`${API_BASE}/infra/file/upload`);
+    expect(init.method).toBe("POST");
+    expect(init.headers["tenant-id"]).toBe("121");
+    expect(init.headers).not.toHaveProperty("Authorization");
+    expect(init.headers).not.toHaveProperty("Content-Type");
+    expect(init.body).toBeInstanceOf(FormData);
+    expect(init.body.get("file")).toBe(file);
+    expect(init.body.get("directory")).toBe("trade/application");
+    expect(result).toEqual({
+      name: "license.pdf",
+      url: "https://cdn.example/license.pdf",
+    });
   });
 
   it("refreshMemberToken posts the encoded refresh token without Authorization and persists the new session", async () => {

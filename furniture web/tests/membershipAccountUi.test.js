@@ -8,6 +8,7 @@ describe("account membership UI integration", () => {
     const source = readSource("../src/pages/AccountMembershipPage.vue");
 
     expect(source).toContain("MEMBERSHIP_ACCOUNT_SCENARIOS");
+    expect(source).toContain("accountMenuLabelKeys");
     expect(source).toContain("getMembershipAccountScenario");
     expect(source).toContain("getMembershipStatusView");
     expect(source).toContain("getMembershipGrowth");
@@ -33,6 +34,8 @@ describe("account membership UI integration", () => {
     expect(source).toContain("membership-eligibility-panel");
     expect(source).toContain("membership-eligibility-row");
     expect(source).toContain("membership.account.eligibility");
+    expect(source).toContain("membership.account.eligibility.summary.eligible");
+    expect(source).toContain("membership.account.eligibility.line.savings");
     expect(styles).toContain(".membership-eligibility-panel");
     expect(styles).toContain(".membership-eligibility-row");
   });

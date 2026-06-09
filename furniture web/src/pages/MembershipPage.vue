@@ -6,6 +6,7 @@ const { t } = useI18n();
 const joinHref = getMembershipJoinTarget({ signedIn: false, memberStatus: "guest" });
 
 const benefits = ["benefit1", "benefit2", "benefit3", "benefit4"];
+const flowSteps = ["join", "bind", "price", "manage"];
 </script>
 
 <template>
@@ -24,6 +25,19 @@ const benefits = ["benefit1", "benefit2", "benefit3", "benefit4"];
       <article v-for="benefit in benefits" :key="benefit">
         <span></span>
         <p>{{ t(`membership.landing.${benefit}`) }}</p>
+      </article>
+    </section>
+
+    <section class="membership-section membership-flow-panel" :aria-label="t('membership.landing.flowAria')">
+      <header>
+        <p class="eyebrow">{{ t("membership.landing.flowEyebrow") }}</p>
+        <h2>{{ t("membership.landing.flowTitle") }}</h2>
+        <p>{{ t("membership.landing.flowIntro") }}</p>
+      </header>
+      <article v-for="step in flowSteps" :key="step">
+        <span>{{ t(`membership.landing.flow.${step}.step`) }}</span>
+        <h3>{{ t(`membership.landing.flow.${step}.title`) }}</h3>
+        <p>{{ t(`membership.landing.flow.${step}.description`) }}</p>
       </article>
     </section>
 

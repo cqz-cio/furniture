@@ -25,7 +25,7 @@ const addAnnualMembership = () => {
 </script>
 
 <template>
-  <section class="membership-page membership-narrow">
+  <section class="membership-page membership-narrow service-page-shell">
     <header class="membership-page-head">
       <p class="eyebrow">{{ t("membership.enrollment.eyebrow") }}</p>
       <h1>{{ t("membership.enrollment.title") }}</h1>

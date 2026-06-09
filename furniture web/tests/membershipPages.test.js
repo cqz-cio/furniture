@@ -46,5 +46,19 @@ describe("membership phase 1 pages", () => {
 
     const termsSource = readFileSync(pagePath("MembershipTermsPage.vue"), "utf8");
     expect(termsSource).not.toContain("Rules, renewal and benefit eligibility.");
+    expect(termsSource).toContain("ruleRows");
+    expect(termsSource).toContain("membership-rule-matrix");
+    expect(termsSource).toContain("membership.terms.rules");
+
+    const landingSource = readFileSync(pagePath("MembershipPage.vue"), "utf8");
+    expect(landingSource).toContain("flowSteps");
+    expect(landingSource).toContain("membership-flow-panel");
+    expect(landingSource).toContain("membership.landing.flow");
+
+    const faqSource = readFileSync(pagePath("MembershipFaqPage.vue"), "utf8");
+    expect(faqSource).toContain("topics");
+    expect(faqSource).toContain("membership-faq-layout");
+    expect(faqSource).toContain("<details");
+    expect(faqSource).toContain("membership.faq.topics");
   });
 });

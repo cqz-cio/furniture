@@ -30,10 +30,41 @@ describe("trade program pages", () => {
     const application = readSource("../src/pages/TradeApplicationPage.vue");
 
     expect(application).toContain("submitTradeApplication");
+    expect(application).toContain("uploadTradeApplicationAttachment");
     expect(application).toContain("authorizedUsers");
     expect(application).toContain("businessDocuments");
     expect(application).toContain("taxDocuments");
-    expect(application).toContain('t("tradeProgram.application.successNotice")');
+    expect(application).toContain("uploadDocumentFiles");
+    expect(application).toContain("openDocumentPicker");
+    expect(application).toContain("handleDocumentFileChange");
+    expect(application).toContain('event.target.value = ""');
+    expect(application).toContain("openBusinessDocumentPicker");
+    expect(application).toContain("handleBusinessDocumentFileChange");
+    expect(application).toContain('@click="openBusinessDocumentPicker"');
+    expect(application).toContain("target.value = selectedFiles.map((file) => ({");
+    expect(application).toContain("await uploadAllDocuments()");
+    expect(application).toContain("const result = await submitTradeApplication(buildPayload())");
+    expect(application).toContain('t("tradeProgram.application.successNotice", { id: result?.id ?? "-" })');
     expect(application).toContain('t("tradeProgram.application.submitError")');
+    expect(application).toContain('t("tradeProgram.application.uploadError")');
+  });
+
+  it("aligns the public trade application with admin review wiring", () => {
+    const yudaoRoot = "../../yudao电商管理平台前后端";
+    const client = readSource("../src/services/yudaoClient.js");
+    const adminApi = readSource(`${yudaoRoot}/yudao-ui-admin-vue3/src/api/member/trade/application/index.ts`);
+    const adminView = readSource(`${yudaoRoot}/yudao-ui-admin-vue3/src/views/member/trade/application/index.vue`);
+    const menuSql = readSource(`${yudaoRoot}/yudao-cloud/sql/mysql/member-trade-application.sql`);
+
+    expect(client).toContain('/member/auth/trade-application');
+    expect(adminApi).toContain('/member/trade-application/page');
+    expect(adminApi).toContain('/member/trade-application/approve');
+    expect(adminApi).toContain('/member/trade-application/reject');
+    expect(adminView).toContain("MemberTradeApplication");
+    expect(adminView).toContain("member:trade-application:review");
+    expect(menuSql).toContain("member/trade/application/index");
+    expect(menuSql).toContain("MemberTradeApplication");
+    expect(menuSql).toContain("member:trade-application:query");
+    expect(menuSql).toContain("member:trade-application:review");
   });
 });

@@ -225,12 +225,12 @@ export const requestYudao = async (path, options = {}) => {
   const session = readYudaoSession(storage);
   const token = hasOwn(options, "token") ? optionToken : session?.accessToken || "";
   const tenantId = String(hasOwn(options, "tenantId") ? optionTenantId || "" : getYudaoAppTenantId()).trim();
-  const headers = {
+  const headers = Object.fromEntries(Object.entries({
     "Content-Type": "application/json",
     ...(tenantId ? { "tenant-id": tenantId } : {}),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...(optionHeaders || {}),
-  };
+  }).filter(([, value]) => value !== undefined));
 
   const response = await fetch(`${base}${path}`, {
     ...fetchOptions,
@@ -400,6 +400,27 @@ export const submitTradeApplication = (payload, options = {}) =>
     token: "",
     body: JSON.stringify(payload),
   });
+
+export const uploadTradeApplicationAttachment = async (file, options = {}) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("directory", options.directory || "trade/application");
+
+  const data = await requestYudao("/infra/file/upload", {
+    ...options,
+    method: "POST",
+    token: "",
+    headers: {
+      ...(options.headers || {}),
+      "Content-Type": undefined,
+    },
+    body: formData,
+  });
+  return {
+    name: file.name,
+    url: data,
+  };
+};
 
 export const refreshMemberToken = async (refreshToken, options = {}) => {
   const data = await requestYudao(
