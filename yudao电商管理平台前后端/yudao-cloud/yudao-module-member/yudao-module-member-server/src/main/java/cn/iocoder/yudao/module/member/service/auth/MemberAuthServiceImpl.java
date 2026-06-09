@@ -156,14 +156,19 @@ public class MemberAuthServiceImpl implements MemberAuthService {
     }
 
     @Override
+    public void sendTradeLoginCode(AppAuthTradeLoginCodeSendReqVO reqVO) {
+        String email = normalizeEmail(reqVO.getEmail());
+        MemberUserDO user = getMatchedTradeUser(reqVO.getTradeId(), email);
+        memberEmailAuthService.sendCode(user.getId(), new AppAuthEmailCodeSendReqVO(
+                MemberEmailAuthSceneEnum.TRADE_LOGIN_CODE.getScene(), email, reqVO.getCaptchaVerification()));
+    }
+
+    @Override
     public AppAuthLoginRespVO tradeLogin(AppAuthTradeLoginReqVO reqVO) {
         String email = normalizeEmail(reqVO.getEmail());
-        MemberUserDO user = userService.getUserByEmail(email);
-        if (user == null || !StrUtil.equals(StrUtil.trim(reqVO.getTradeId()), user.getTradeId())) {
-            createLoginLog(user != null ? user.getId() : null, email, LoginLogTypeEnum.LOGIN_USERNAME,
-                    LoginResultEnum.BAD_CREDENTIALS);
-            throw exception(AUTH_TRADE_ACCOUNT_NOT_FOUND);
-        }
+        MemberUserDO user = getMatchedTradeUser(reqVO.getTradeId(), email);
+        memberEmailAuthService.validateCode(user.getId(), new AppAuthEmailCodeValidateReqVO(
+                MemberEmailAuthSceneEnum.TRADE_LOGIN_CODE.getScene(), email, reqVO.getCode()));
         validateUserEnabled(user, email, LoginLogTypeEnum.LOGIN_USERNAME);
         return createTokenAfterLoginSuccess(user, email, LoginLogTypeEnum.LOGIN_USERNAME, null);
     }
@@ -289,6 +294,16 @@ public class MemberAuthServiceImpl implements MemberAuthService {
             throw exception(AUTH_LOGIN_BAD_CREDENTIALS);
         }
         validateUserEnabled(user, email, logTypeEnum);
+        return user;
+    }
+
+    private MemberUserDO getMatchedTradeUser(String tradeId, String email) {
+        MemberUserDO user = userService.getUserByEmail(email);
+        if (user == null || !StrUtil.equals(StrUtil.trim(tradeId), user.getTradeId())) {
+            createLoginLog(user != null ? user.getId() : null, email, LoginLogTypeEnum.LOGIN_USERNAME,
+                    LoginResultEnum.BAD_CREDENTIALS);
+            throw exception(AUTH_TRADE_ACCOUNT_NOT_FOUND);
+        }
         return user;
     }
 

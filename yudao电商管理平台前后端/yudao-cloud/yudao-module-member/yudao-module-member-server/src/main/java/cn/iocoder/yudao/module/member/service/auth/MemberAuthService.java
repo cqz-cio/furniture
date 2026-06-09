@@ -58,6 +58,8 @@ public interface MemberAuthService {
 
     void resetPasswordByEmail(@Valid AppAuthEmailPasswordResetReqVO reqVO);
 
+    void sendTradeLoginCode(@Valid AppAuthTradeLoginCodeSendReqVO reqVO);
+
     /**
      * Trade Program 登录
      *

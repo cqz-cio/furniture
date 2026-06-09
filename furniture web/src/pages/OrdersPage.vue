@@ -1,6 +1,10 @@
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
 import ProductImage from "../components/ProductImage.vue";
+import {
+  getMembershipEligibilityItemsFromOrderItems,
+  getMembershipEligibilityReview,
+} from "../services/membershipAccount.js";
 import { getOrderDetail, getOrderPage, readYudaoToken } from "../services/yudaoClient.js";
 import { useI18n } from "../i18n.js";
 
@@ -19,8 +23,19 @@ const total = ref(0);
 const detail = ref(null);
 const orderId = computed(() => new URLSearchParams(window.location.search).get("id"));
 const { t } = useI18n();
-const money = (value) => `$${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const money = (value) =>
+  `$${Number(value || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const statusLabel = (status) => t("orders.status", { status: status ?? "Pending" });
+const orderMembershipEligibilityItems = computed(() =>
+  getMembershipEligibilityItemsFromOrderItems(detail.value?.items || []),
+);
+const orderMembershipEligibilityReview = computed(() =>
+  getMembershipEligibilityReview(orderMembershipEligibilityItems.value),
+);
+const getOrderMembershipReview = (order) =>
+  getMembershipEligibilityReview(getMembershipEligibilityItemsFromOrderItems(order.items || []));
+const getOrderMembershipSavingsLabel = (order) =>
+  order.items?.length ? money(getOrderMembershipReview(order).savingsTotal) : t("orders.memberSavingsUnavailable");
 let ordersRequestId = 0;
 
 const clearOrderData = () => {
@@ -90,6 +105,59 @@ watch(() => props.authVersion, loadOrders);
           <p>{{ item.count }} x {{ money(item.price) }}</p>
         </div>
       </div>
+      <section
+        v-if="orderMembershipEligibilityReview.lines.length"
+        class="membership-eligibility-panel order-membership-eligibility"
+        :aria-label="t('membership.account.eligibility.aria')"
+      >
+        <header>
+          <div>
+            <p class="eyebrow">{{ t("membership.account.eligibility.eyebrow") }}</p>
+            <h2>{{ t("membership.account.eligibility.title") }}</h2>
+            <p>{{ t("membership.account.eligibility.intro") }}</p>
+          </div>
+          <dl>
+            <div>
+              <dt>{{ t("membership.account.eligibility.summary.eligible") }}</dt>
+              <dd>{{ orderMembershipEligibilityReview.eligibleCount }}</dd>
+            </div>
+            <div>
+              <dt>{{ t("membership.account.eligibility.summary.ineligible") }}</dt>
+              <dd>{{ orderMembershipEligibilityReview.ineligibleCount }}</dd>
+            </div>
+            <div>
+              <dt>{{ t("membership.account.eligibility.summary.savings") }}</dt>
+              <dd>{{ money(orderMembershipEligibilityReview.savingsTotal) }}</dd>
+            </div>
+          </dl>
+        </header>
+        <article
+          v-for="line in orderMembershipEligibilityReview.lines"
+          :key="`${line.name}-${line.key}`"
+          class="membership-eligibility-row"
+          :class="{ 'is-eligible': line.eligible }"
+        >
+          <div>
+            <span>{{ t(`membership.account.eligibility.reasons.${line.key}.label`) }}</span>
+            <h3>{{ line.name }}</h3>
+            <p>{{ t(`membership.account.eligibility.reasons.${line.key}.description`) }}</p>
+          </div>
+          <dl>
+            <div>
+              <dt>{{ t("membership.account.eligibility.line.regular") }}</dt>
+              <dd>{{ money(line.regularPrice) }}</dd>
+            </div>
+            <div>
+              <dt>{{ t("membership.account.eligibility.line.member") }}</dt>
+              <dd>{{ money(line.memberPrice) }}</dd>
+            </div>
+            <div>
+              <dt>{{ t("membership.account.eligibility.line.savings") }}</dt>
+              <dd>{{ money(line.savings) }}</dd>
+            </div>
+          </dl>
+        </article>
+      </section>
     </article>
 
     <section class="order-list">
@@ -99,6 +167,10 @@ watch(() => props.authVersion, loadOrders);
           {{ order.no }}
         </span>
         <span>{{ statusLabel(order.status) }}</span>
+        <span class="order-member-savings">
+          <small>{{ t("orders.memberSavings") }}</small>
+          {{ getOrderMembershipSavingsLabel(order) }}
+        </span>
         <strong>{{ money(order.payPrice) }}</strong>
         <em>{{ t("orders.view") }}</em>
       </a>

@@ -10,12 +10,12 @@ import org.hibernate.validator.constraints.Length;
 import javax.validation.constraints.Email;
 import javax.validation.constraints.NotEmpty;
 
-@Schema(description = "User App - Trade Program login request")
+@Schema(description = "User App - Trade Program login code send request")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class AppAuthTradeLoginReqVO {
+public class AppAuthTradeLoginCodeSendReqVO {
 
     @Schema(description = "Trade ID", requiredMode = Schema.RequiredMode.REQUIRED, example = "RH-TRADE-10086")
     @NotEmpty(message = "Trade ID cannot be empty")
@@ -28,9 +28,7 @@ public class AppAuthTradeLoginReqVO {
     @Length(max = 255, message = "Email length cannot exceed 255")
     private String email;
 
-    @Schema(description = "Email verification code", requiredMode = Schema.RequiredMode.REQUIRED, example = "123456")
-    @NotEmpty(message = "Verification code cannot be empty")
-    @Length(min = 6, max = 6, message = "Verification code must be 6 digits")
-    private String code;
+    @Schema(description = "Captcha verification token", example = "captcha-token")
+    private String captchaVerification;
 
 }

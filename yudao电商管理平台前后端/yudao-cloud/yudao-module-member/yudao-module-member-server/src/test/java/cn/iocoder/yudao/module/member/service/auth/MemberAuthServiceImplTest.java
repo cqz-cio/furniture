@@ -11,6 +11,7 @@ import cn.iocoder.yudao.module.member.controller.app.auth.vo.AppAuthEmailCodeVal
 import cn.iocoder.yudao.module.member.controller.app.auth.vo.AppAuthEmailRegisterReqVO;
 import cn.iocoder.yudao.module.member.controller.app.auth.vo.AppAuthEmailSecureLinkReqVO;
 import cn.iocoder.yudao.module.member.controller.app.auth.vo.AppAuthLoginRespVO;
+import cn.iocoder.yudao.module.member.controller.app.auth.vo.AppAuthTradeLoginCodeSendReqVO;
 import cn.iocoder.yudao.module.member.controller.app.auth.vo.AppAuthTradeLoginReqVO;
 import cn.iocoder.yudao.module.member.dal.dataobject.user.MemberUserDO;
 import cn.iocoder.yudao.module.member.enums.auth.MemberEmailAuthSceneEnum;
@@ -147,6 +148,7 @@ public class MemberAuthServiceImplTest extends BaseMockitoUnitTest {
     public void testTradeLogin_success() {
         String tradeId = "RH-TRADE-10086";
         String email = "trade@example.com";
+        String code = "123456";
         MemberUserDO user = new MemberUserDO().setId(12L).setEmail(email)
                 .setStatus(CommonStatusEnum.ENABLE.getStatus()).setTradeId(tradeId);
         when(userService.getUserByEmail(eq(email))).thenReturn(user);
@@ -160,9 +162,33 @@ public class MemberAuthServiceImplTest extends BaseMockitoUnitTest {
         when(oauth2TokenApi.createAccessToken(argThat(reqDTO -> reqDTO.getUserId().equals(user.getId()))))
                 .thenReturn(success(buildToken(user.getId())));
 
-        AppAuthLoginRespVO respVO = authService.tradeLogin(new AppAuthTradeLoginReqVO(tradeId, email));
+        AppAuthLoginRespVO respVO = authService.tradeLogin(new AppAuthTradeLoginReqVO(tradeId, email, code));
 
         assertEquals(user.getId(), respVO.getUserId());
+        verify(memberEmailAuthService).validateCode(eq(user.getId()), argThat(validateReq -> {
+            assertEquals(MemberEmailAuthSceneEnum.TRADE_LOGIN_CODE.getScene(), validateReq.getScene());
+            assertEquals(email, validateReq.getEmail());
+            assertEquals(code, validateReq.getCode());
+            return true;
+        }));
+    }
+
+    @Test
+    public void testSendTradeLoginCode_success() {
+        String tradeId = "RH-TRADE-10086";
+        String email = "trade@example.com";
+        MemberUserDO user = new MemberUserDO().setId(12L).setEmail(email)
+                .setStatus(CommonStatusEnum.ENABLE.getStatus()).setTradeId(tradeId);
+        when(userService.getUserByEmail(eq(email))).thenReturn(user);
+
+        authService.sendTradeLoginCode(new AppAuthTradeLoginCodeSendReqVO(tradeId, email, "captcha-token"));
+
+        verify(memberEmailAuthService).sendCode(eq(user.getId()), argThat(sendReq -> {
+            assertEquals(MemberEmailAuthSceneEnum.TRADE_LOGIN_CODE.getScene(), sendReq.getScene());
+            assertEquals(email, sendReq.getEmail());
+            assertEquals("captcha-token", sendReq.getCaptchaVerification());
+            return true;
+        }));
     }
 
     private static OAuth2AccessTokenRespDTO buildToken(Long userId) {

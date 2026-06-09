@@ -133,12 +133,35 @@ describe("i18n locale helper", () => {
       "membership.faq.rulesAnswer",
       "membership.account.title",
       "membership.account.currentStatus",
+      "membership.account.overview.values.email",
+      "membership.account.states.title",
+      "membership.account.states.pendingLink.description",
+      "membership.account.states.activeWholeRoom.title",
+      "membership.account.emptyStates.notMember.title",
+      "membership.account.emptyStates.expired.description",
+      "membership.account.planWholeRoom",
+      "membership.account.billingTitle",
+      "membership.account.actions.shopEligible.label",
+      "membership.account.eligibility.title",
+      "membership.account.eligibility.reasons.eligible.description",
+      "membership.account.eligibility.reasons.serviceExcluded.label",
       "membership.checkoutAuth.title",
       "membership.checkoutAuth.guestMembershipNote",
     ];
 
     for (const locale of availableLocales) {
       for (const key of membershipKeys) {
+        expect(getMessage(key, locale.lang), `${key} missing for ${locale.lang}`).toBeTruthy();
+      }
+    }
+  });
+
+  it("provides order history membership value labels across every supported locale", async () => {
+    const { availableLocales, getMessage } = await loadI18n();
+    const orderKeys = ["orders.memberSavings", "orders.memberSavingsUnavailable"];
+
+    for (const locale of availableLocales) {
+      for (const key of orderKeys) {
         expect(getMessage(key, locale.lang), `${key} missing for ${locale.lang}`).toBeTruthy();
       }
     }

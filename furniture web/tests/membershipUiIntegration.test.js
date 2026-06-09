@@ -35,4 +35,23 @@ describe("membership UI integration", () => {
     expect(source).toContain("memberDiscount");
     expect(source).toContain("displayEstimatedTotal");
   });
+
+  it("adds membership eligibility review to account order detail", () => {
+    const source = readSource("../src/pages/OrdersPage.vue");
+
+    expect(source).toContain("getMembershipEligibilityItemsFromOrderItems");
+    expect(source).toContain("getMembershipEligibilityReview");
+    expect(source).toContain("orderMembershipEligibilityReview");
+    expect(source).toContain("order-membership-eligibility");
+    expect(source).toContain("membership-eligibility-row");
+  });
+
+  it("surfaces member savings in the order history list", () => {
+    const source = readSource("../src/pages/OrdersPage.vue");
+
+    expect(source).toContain("getOrderMembershipReview");
+    expect(source).toContain("getOrderMembershipSavingsLabel");
+    expect(source).toContain("orders.memberSavings");
+    expect(source).toContain("order-member-savings");
+  });
 });

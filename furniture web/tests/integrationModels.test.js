@@ -120,13 +120,28 @@ describe("yudao integration models", () => {
 
   it("maps order page and detail responses into storefront orders", () => {
     const page = mapOrderPage({
-      list: [{ id: 1, no: "O1", status: 10, payPrice: 120000, items: [{ spuName: "Sofa" }] }],
+      list: [
+        {
+          id: 1,
+          no: "O1",
+          status: 10,
+          payPrice: 120000,
+          items: [{ spuName: "Sofa", price: 90000, originalPrice: 120000, productType: "merchandise" }],
+        },
+      ],
       total: 1,
     });
     const detail = mapOrderDetail({ id: 1, no: "O1", status: 10, payPrice: 120000, payOrderId: 99, items: [] });
 
     expect(page.total).toBe(1);
     expect(page.list[0]).toMatchObject({ id: 1, no: "O1", payPrice: 1200 });
+    expect(page.list[0].items[0]).toMatchObject({
+      name: "Sofa",
+      price: 900,
+      regularPrice: 1200,
+      memberPrice: 900,
+      category: "merchandise",
+    });
     expect(detail).toMatchObject({ id: 1, no: "O1", payPrice: 1200, payOrderId: 99 });
   });
 

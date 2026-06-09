@@ -144,6 +144,14 @@ public class AppAuthController {
         return success(true);
     }
 
+    @PostMapping("/trade-login-code")
+    @Operation(summary = "Send Trade Program login email code")
+    @PermitAll
+    public CommonResult<Boolean> sendTradeLoginCode(@RequestBody @Valid AppAuthTradeLoginCodeSendReqVO reqVO) {
+        authService.sendTradeLoginCode(reqVO);
+        return success(true);
+    }
+
     @PostMapping("/trade-login")
     @Operation(summary = "Trade Program 登录")
     @PermitAll

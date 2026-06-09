@@ -7,11 +7,12 @@ export const membershipRoutes = {
   membershipFaqs: "/membership/faqs",
   account: "/account",
   accountMembership: "/account/membership",
-  accountOrders: "/orders",
-  accountAddressBook: "/account",
+  accountOrders: "/account/orders",
+  accountAddressBook: "/account/address-book",
+  accountBilling: "/account/billing",
   accountPaymentMethods: "/account",
   accountWishlist: "/account",
-  accountProfile: "/account",
+  accountProfile: "/account/profile",
   accountGiftRegistry: "/gift-registry",
   checkoutAuth: "/checkout/auth",
   giftRegistry: "/gift-registry",
@@ -21,14 +22,26 @@ export const membershipRoutes = {
 };
 
 export const accountMenuItems = [
-  { label: "Membership", href: membershipRoutes.accountMembership },
-  { label: "Payment Methods", href: membershipRoutes.accountPaymentMethods },
-  { label: "Order History", href: membershipRoutes.accountOrders },
-  { label: "Wish List", href: membershipRoutes.accountWishlist },
-  { label: "Address Book", href: membershipRoutes.accountAddressBook },
   { label: "Account Profile", href: membershipRoutes.accountProfile },
+  { label: "Address Book", href: membershipRoutes.accountAddressBook },
+  { label: "Membership", href: membershipRoutes.accountMembership },
+  { label: "Order History", href: membershipRoutes.accountOrders },
+  { label: "Billing History", href: membershipRoutes.accountBilling },
+  { label: "Payment Methods", href: membershipRoutes.accountPaymentMethods },
+  { label: "Wish List", href: membershipRoutes.accountWishlist },
   { label: "Gift Registry", href: membershipRoutes.accountGiftRegistry },
 ];
+
+export const accountMenuLabelKeys = {
+  Membership: "membership.account.menuMembership",
+  "Payment Methods": "membership.account.menuPaymentMethods",
+  "Order History": "membership.account.menuOrderHistory",
+  "Billing History": "membership.account.menuBillingHistory",
+  "Wish List": "membership.account.menuWishlist",
+  "Address Book": "membership.account.menuAddressBook",
+  "Account Profile": "membership.account.menuProfile",
+  "Gift Registry": "membership.account.menuGiftRegistry",
+};
 
 export const checkoutAuthOptions = [
   {

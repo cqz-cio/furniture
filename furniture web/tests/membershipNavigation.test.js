@@ -15,7 +15,7 @@ describe("membership navigation model", () => {
     expect(membershipRoutes.membershipTerms).toBe("/membership/terms");
     expect(membershipRoutes.membershipFaqs).toBe("/membership/faqs");
     expect(membershipRoutes.accountMembership).toBe("/account/membership");
-    expect(membershipRoutes.accountOrders).toBe("/orders");
+    expect(membershipRoutes.accountOrders).toBe("/account/orders");
     expect(membershipRoutes.accountGiftRegistry).toBe("/gift-registry");
     expect(membershipRoutes.checkoutAuth).toBe("/checkout/auth");
     expect(membershipRoutes.giftRegistry).toBe("/gift-registry");
@@ -23,12 +23,13 @@ describe("membership navigation model", () => {
 
   it("keeps the My Account menu order aligned with RH", () => {
     expect(accountMenuItems.map((item) => item.label)).toEqual([
-      "Membership",
-      "Payment Methods",
-      "Order History",
-      "Wish List",
-      "Address Book",
       "Account Profile",
+      "Address Book",
+      "Membership",
+      "Order History",
+      "Billing History",
+      "Payment Methods",
+      "Wish List",
       "Gift Registry",
     ]);
   });

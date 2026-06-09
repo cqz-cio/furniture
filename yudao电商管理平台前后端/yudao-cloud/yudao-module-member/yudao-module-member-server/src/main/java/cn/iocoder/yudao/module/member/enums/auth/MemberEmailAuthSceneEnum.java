@@ -16,7 +16,8 @@ public enum MemberEmailAuthSceneEnum implements ArrayValuable<Integer> {
     SECURE_LOGIN(2, "member-email-secure-login-link", "/auth/email-login", Duration.ofMinutes(30), true),
     RESET_PASSWORD(3, "member-email-reset-password-link", "/auth/reset-password", Duration.ofMinutes(30), true),
     UPDATE_PASSWORD(4, "member-email-update-password-code", null, Duration.ofMinutes(10), false),
-    GENERAL_CODE(5, "member-email-code", null, Duration.ofMinutes(10), false);
+    GENERAL_CODE(5, "member-email-code", null, Duration.ofMinutes(10), false),
+    TRADE_LOGIN_CODE(6, "member-email-code", null, Duration.ofMinutes(10), false);
 
     public static final Integer[] ARRAYS = Arrays.stream(values())
             .map(MemberEmailAuthSceneEnum::getScene).toArray(Integer[]::new);

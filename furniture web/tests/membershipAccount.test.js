@@ -3,6 +3,8 @@ import {
   MEMBERSHIP_STATUSES,
   createMembershipProfile,
   getEmailBindingState,
+  getMembershipEligibilityReview,
+  getMembershipEligibilityItemsFromOrderItems,
   getMembershipBenefits,
   getMembershipGrowth,
   getMembershipStatusView,
@@ -53,5 +55,42 @@ describe("membership account model", () => {
     expect(getMembershipBenefits(createMembershipProfile())).toEqual([]);
     expect(getMembershipBenefits(createMembershipProfile({ status: MEMBERSHIP_STATUSES.activeAnnual }))).toHaveLength(2);
     expect(getMembershipBenefits(createMembershipProfile({ status: MEMBERSHIP_STATUSES.activeWholeRoom }))).toHaveLength(3);
+  });
+
+  it("summarizes member price eligibility review lines", () => {
+    const review = getMembershipEligibilityReview([
+      { name: "Cloud Sofa", category: "merchandise", regularPrice: 4000, memberPrice: 3000 },
+      { name: "Delivery Service", category: "service", regularPrice: 299, memberPrice: 299 },
+    ]);
+
+    expect(review).toMatchObject({
+      eligibleCount: 1,
+      ineligibleCount: 1,
+      savingsTotal: 1000,
+    });
+    expect(review.lines[0]).toMatchObject({
+      key: "eligible",
+      eligible: true,
+      savings: 1000,
+    });
+    expect(review.lines[1]).toMatchObject({
+      key: "serviceExcluded",
+      eligible: false,
+      savings: 0,
+    });
+  });
+
+  it("normalizes order line items for eligibility review", () => {
+    expect(
+      getMembershipEligibilityItemsFromOrderItems([
+        { name: "Cloud Sofa", price: 3000, originalPrice: 4000, count: 2 },
+        { name: "White Glove Delivery Service", price: 299 },
+        { name: "Gift Card", price: 100 },
+      ]),
+    ).toEqual([
+      { name: "Cloud Sofa", category: "merchandise", regularPrice: 8000, memberPrice: 6000 },
+      { name: "White Glove Delivery Service", category: "service", regularPrice: 299, memberPrice: 299 },
+      { name: "Gift Card", category: "gift_card", regularPrice: 100, memberPrice: 100 },
+    ]);
   });
 });

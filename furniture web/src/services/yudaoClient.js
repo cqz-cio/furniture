@@ -79,7 +79,10 @@ export const unwrapYudaoResult = (payload) => {
 };
 
 export const YUDAO_MEMBER_ERROR_CODES = {
+  USER_EMAIL_NOT_EXISTS: 1004001005,
   USER_EMAIL_USED: 1004001004,
+  TRADE_ACCOUNT_NOT_FOUND: 1004003008,
+  EMAIL_CODE_SEND_TOO_FAST: 1004003009,
   EMAIL_CREDENTIAL_NOT_FOUND: 1004003010,
   EMAIL_CREDENTIAL_EXPIRED: 1004003011,
   EMAIL_CREDENTIAL_USED: 1004003012,
@@ -87,6 +90,9 @@ export const YUDAO_MEMBER_ERROR_CODES = {
   EMAIL_CAPTCHA_INVALID: 1004003015,
   EMAIL_CODE_VERIFY_TOO_MANY: 1004003016,
 };
+
+export const EMAIL_REGISTRATION_CODE_SCENE = 5;
+export const TRADE_LOGIN_EMAIL_CODE_SCENE = 6;
 
 const fenToYuan = (value) => {
   const amount = Number(value);
@@ -145,6 +151,19 @@ export const mapAddressResponse = (address = {}) => ({
   raw: address,
 });
 
+export const mapMemberProfile = (profile = {}) => ({
+  id: profile.id,
+  nickname: profile.nickname || "",
+  name: profile.name || "",
+  email: profile.email || "",
+  mobile: profile.mobile || "",
+  areaId: profile.areaId,
+  areaName: profile.areaName || "",
+  sex: profile.sex,
+  emailVerified: Boolean(profile.emailVerified),
+  raw: profile,
+});
+
 export const mapSettlementResponse = (settlement = {}) => ({
   payPrice: fenToYuan(settlement.price?.payPrice ?? settlement.payPrice),
   totalPrice: fenToYuan(settlement.price?.totalPrice ?? settlement.totalPrice),
@@ -174,6 +193,15 @@ export const mapOrderDetail = (order = {}) => ({
     cover: item.picUrl || item.cover || "",
     count: Number(item.count) || 1,
     price: fenToYuan(item.price ?? item.payPrice),
+    regularPrice: fenToYuan(item.regularPrice ?? item.originalPrice ?? item.marketPrice ?? item.price ?? item.payPrice),
+    memberPrice: fenToYuan(item.memberPrice ?? item.vipPrice ?? item.price ?? item.payPrice),
+    category:
+      item.categoryCode ||
+      item.categoryName ||
+      item.productType ||
+      item.spuType ||
+      item.type ||
+      "",
   })),
   raw: order,
 });
@@ -254,13 +282,15 @@ export const requestYudao = async (path, options = {}) => {
   return unwrapYudaoResult(payload);
 };
 
-export const sendMemberSmsCode = (mobile, options = {}) =>
-  requestYudao("/member/auth/send-sms-code", {
-    ...options,
+export const sendMemberSmsCode = (mobile, options = {}) => {
+  const { scene = 2, withAuth = true, ...requestOptions } = options;
+  return requestYudao("/member/auth/send-sms-code", {
+    ...requestOptions,
     method: "POST",
-    token: "",
-    body: JSON.stringify({ mobile, scene: 1 }),
+    ...(withAuth ? {} : { token: "" }),
+    body: JSON.stringify({ mobile, scene }),
   });
+};
 
 export const requestEmailSignInLink = (email, options = {}) =>
   requestYudao("/member/auth/email-secure-link", {
@@ -278,7 +308,20 @@ export const sendEmailRegistrationCode = (email, options = {}) => {
     token: "",
     body: JSON.stringify({
       email,
-      scene: 5,
+      scene: EMAIL_REGISTRATION_CODE_SCENE,
+      ...(captchaVerification ? { captchaVerification } : {}),
+    }),
+  });
+};
+
+export const sendTradeLoginCode = (payload, options = {}) => {
+  const { captchaVerification, ...tradePayload } = payload || {};
+  return requestYudao("/member/auth/trade-login-code", {
+    ...options,
+    method: "POST",
+    token: "",
+    body: JSON.stringify({
+      ...tradePayload,
       ...(captchaVerification ? { captchaVerification } : {}),
     }),
   });
@@ -349,6 +392,14 @@ export const loginByTradeAccount = async (payload, options = {}) => {
   });
   return persistLoginResponse(data, options);
 };
+
+export const submitTradeApplication = (payload, options = {}) =>
+  requestYudao("/member/auth/trade-application", {
+    ...options,
+    method: "POST",
+    token: "",
+    body: JSON.stringify(payload),
+  });
 
 export const refreshMemberToken = async (refreshToken, options = {}) => {
   const data = await requestYudao(
@@ -428,6 +479,54 @@ export const getAddressList = async (options = {}) => {
   const data = await requestYudao("/member/address/list", options);
   return (data || []).map(mapAddressResponse);
 };
+
+export const createMemberAddress = (payload, options = {}) =>
+  requestYudao("/member/address/create", {
+    ...options,
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+
+export const updateMemberAddress = (payload, options = {}) =>
+  requestYudao("/member/address/update", {
+    ...options,
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+
+export const deleteMemberAddress = (id, options = {}) =>
+  requestYudao(`/member/address/delete?id=${encodeURIComponent(id)}`, {
+    ...options,
+    method: "DELETE",
+  });
+
+export const getAreaTree = (options = {}) => requestYudao("/system/area/tree", options);
+
+export const getMemberProfile = async (options = {}) => {
+  const data = await requestYudao("/member/user/get", options);
+  return mapMemberProfile(data);
+};
+
+export const updateMemberProfile = (payload, options = {}) =>
+  requestYudao("/member/user/update", {
+    ...options,
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+
+export const updateMemberMobile = (payload, options = {}) =>
+  requestYudao("/member/user/update-mobile", {
+    ...options,
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+
+export const requestEmailVerificationLink = (email, options = {}) =>
+  requestYudao("/member/user/send-email-verify-link", {
+    ...options,
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
 
 export const settleOrder = async (payload, options = {}) => {
   const search = new URLSearchParams();

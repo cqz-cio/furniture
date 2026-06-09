@@ -3,8 +3,11 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import CartDrawer from "./components/CartDrawer.vue";
 import RhFooter from "./components/RhFooter.vue";
 import RhHeader from "./components/RhHeader.vue";
+import AccountAddressBookPage from "./pages/AccountAddressBookPage.vue";
+import AccountBillingPage from "./pages/AccountBillingPage.vue";
 import AccountMembershipPage from "./pages/AccountMembershipPage.vue";
 import AccountPage from "./pages/AccountPage.vue";
+import AccountProfilePage from "./pages/AccountProfilePage.vue";
 import BabyChildPage from "./pages/BabyChildPage.vue";
 import CheckoutAuthPage from "./pages/CheckoutAuthPage.vue";
 import CheckoutPage from "./pages/CheckoutPage.vue";
@@ -24,6 +27,9 @@ import SalePage from "./pages/SalePage.vue";
 import SofaPdpPage from "./pages/SofaPdpPage.vue";
 import SofasPlpPage from "./pages/SofasPlpPage.vue";
 import TeenPage from "./pages/TeenPage.vue";
+import TradeApplicationPage from "./pages/TradeApplicationPage.vue";
+import TradeFaqPage from "./pages/TradeFaqPage.vue";
+import TradeSignInPage from "./pages/TradeSignInPage.vue";
 import {
   addLocalCartItem,
   readLocalCart,
@@ -48,6 +54,10 @@ const pageRoutes = {
   "membership-faqs": "/membership/faqs",
   account: "/account",
   "account-membership": "/account/membership",
+  "account-profile": "/account/profile",
+  "account-address-book": "/account/address-book",
+  "account-orders": "/account/orders",
+  "account-billing": "/account/billing",
   "checkout-auth": "/checkout/auth",
   "gift-registry": "/gift-registry",
   "gift-registry-create": "/gift-registry/create",
@@ -55,19 +65,23 @@ const pageRoutes = {
   "gift-registry-manage": "/gift-registry/manage",
   checkout: "/checkout",
   orders: "/orders",
+  "trade-sign-in": "/trade/sign-in",
+  "trade-application": "/trade/apply",
+  "trade-faq": "/trade/faq",
   missing: "/missing",
 };
 
 const routePages = Object.fromEntries(Object.entries(pageRoutes).map(([page, path]) => [path, page]));
 const routeAliases = {
-  "/account/orders": "orders",
-  "/account/address-book": "account",
+  "/orders": "account-orders",
   "/account/payment-methods": "account",
   "/account/wishlist": "account",
-  "/account/profile": "account",
   "/account/gift-registry": "gift-registry",
   "/account/sign-in": "account",
   "/account/register": "account",
+  "/us/en/trade/membership-application": "trade-application",
+  "/us/en/trade/faq": "trade-faq",
+  "/us/en/trade/login": "trade-sign-in",
   "/checkout/shipping": "checkout",
 };
 
@@ -101,6 +115,10 @@ const pageComponent = computed(() => {
   if (currentPage.value === "membership-faqs") return MembershipFaqPage;
   if (currentPage.value === "account") return AccountPage;
   if (currentPage.value === "account-membership") return AccountMembershipPage;
+  if (currentPage.value === "account-profile") return AccountProfilePage;
+  if (currentPage.value === "account-address-book") return AccountAddressBookPage;
+  if (currentPage.value === "account-billing") return AccountBillingPage;
+  if (currentPage.value === "account-orders") return OrdersPage;
   if (currentPage.value === "checkout-auth") return CheckoutAuthPage;
   if (currentPage.value === "gift-registry") return GiftRegistryPage;
   if (currentPage.value === "gift-registry-create") return GiftRegistryCreatePage;
@@ -108,6 +126,9 @@ const pageComponent = computed(() => {
   if (currentPage.value === "gift-registry-manage") return GiftRegistryManagePage;
   if (currentPage.value === "checkout") return CheckoutPage;
   if (currentPage.value === "orders") return OrdersPage;
+  if (currentPage.value === "trade-sign-in") return TradeSignInPage;
+  if (currentPage.value === "trade-application") return TradeApplicationPage;
+  if (currentPage.value === "trade-faq") return TradeFaqPage;
   return MissingExtractionPage;
 });
 
@@ -216,8 +237,8 @@ const removeFromCart = async (item) => {
 };
 
 const openOrderDetail = (orderId) => {
-  currentPage.value = "orders";
-  window.history.pushState({ page: "orders" }, "", `/orders?id=${orderId}`);
+  currentPage.value = "account-orders";
+  window.history.pushState({ page: "account-orders" }, "", `/account/orders?id=${orderId}`);
 };
 
 const startCheckout = () => {

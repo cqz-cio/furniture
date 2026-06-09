@@ -113,6 +113,7 @@ export const rhFooter = {
 const footerHrefMap = {
   "LOCATE A GALLERY": "/missing",
   "RH MEMBERS PROGRAM": "/membership",
+  "RH TRADE": "/trade/sign-in",
   "GIFT REGISTRY": "/gift-registry",
   "MEMBERSHIP FAQS": "/membership/faqs",
 };
@@ -126,8 +127,8 @@ const globalMenuHrefMap = {
   "RH Teen": "/teen",
   "RH Members Program": "/membership",
   "Explore RH Interior Design": "/missing",
-  "RH Trade Program Sign-In": "/account",
-  "Join The RH Trade Program": "/account",
+  "RH Trade Program Sign-In": "/trade/sign-in",
+  "Join The RH Trade Program": "/trade/apply",
 };
 
 export const globalMenuLinkHref = (label) => globalMenuHrefMap[label] || "#";

@@ -11,6 +11,8 @@ import {
   registerByEmail,
   requestEmailSignInLink,
   sendEmailRegistrationCode,
+  sendTradeLoginCode,
+  submitTradeApplication,
   verifyEmailCaptchaChallenge,
 } from "../src/services/yudaoClient.js";
 
@@ -195,7 +197,7 @@ describe("Yudao member auth client", () => {
     fetchMock.mockResolvedValueOnce(mockYudaoResponse(newSession));
 
     const result = await loginByTradeAccount(
-      { tradeId: "TRADE-100", email: "designer@example.com" },
+      { tradeId: "TRADE-100", email: "designer@example.com", code: "123456" },
       { storage }
     );
 
@@ -208,9 +210,54 @@ describe("Yudao member auth client", () => {
     expect(JSON.parse(init.body)).toEqual({
       tradeId: "TRADE-100",
       email: "designer@example.com",
+      code: "123456",
     });
     expect(result).toEqual(newSession);
     expect(readYudaoSession(storage)).toEqual(newSession);
+  });
+
+  it("sendTradeLoginCode posts trade account details without auth", async () => {
+    fetchMock.mockResolvedValueOnce(mockYudaoResponse(true));
+
+    await sendTradeLoginCode(
+      { tradeId: "TRADE-100", email: "designer@example.com", captchaVerification: "captcha-token" },
+      { storage }
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe(`${API_BASE}/member/auth/trade-login-code`);
+    expect(init.method).toBe("POST");
+    expect(init.headers["tenant-id"]).toBe("121");
+    expect(init.headers).not.toHaveProperty("Authorization");
+    expect(JSON.parse(init.body)).toEqual({
+      tradeId: "TRADE-100",
+      email: "designer@example.com",
+      captchaVerification: "captcha-token",
+    });
+  });
+
+  it("submitTradeApplication posts a public trade application payload", async () => {
+    fetchMock.mockResolvedValueOnce(mockYudaoResponse({ id: 88, status: 0 }));
+
+    const payload = {
+      businessName: "Studio Ada",
+      country: "United States",
+      primaryEmail: "designer@example.com",
+      authorizedUsers: [{ firstName: "Ada", lastName: "Lovelace", email: "designer@example.com" }],
+      businessDocuments: [{ name: "license.pdf", url: "https://cdn.example/license.pdf" }],
+      taxDocuments: [],
+    };
+    const result = await submitTradeApplication(payload, { storage });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe(`${API_BASE}/member/auth/trade-application`);
+    expect(init.method).toBe("POST");
+    expect(init.headers["tenant-id"]).toBe("121");
+    expect(init.headers).not.toHaveProperty("Authorization");
+    expect(JSON.parse(init.body)).toEqual(payload);
+    expect(result).toEqual({ id: 88, status: 0 });
   });
 
   it("refreshMemberToken posts the encoded refresh token without Authorization and persists the new session", async () => {
