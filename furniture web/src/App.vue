@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import CartDrawer from "./components/CartDrawer.vue";
+import FurnitureAssistantPanel from "./components/FurnitureAssistantPanel.vue";
 import RhFooter from "./components/RhFooter.vue";
 import RhHeader from "./components/RhHeader.vue";
 import AccountAddressBookPage from "./pages/AccountAddressBookPage.vue";
@@ -307,4 +308,5 @@ onBeforeUnmount(() => {
     @remove="removeFromCart"
     @update-quantity="updateCartQuantity"
   />
+  <FurnitureAssistantPanel @add-to-cart="addToCart" />
 </template>

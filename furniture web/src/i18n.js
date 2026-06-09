@@ -2391,6 +2391,63 @@ tradeProgramMessages.fr.tradeProgram.application.options = tradeProgramMessages.
 Object.entries(tradeProgramMessages).forEach(([lang, value]) => {
   Object.assign(messages[lang], value);
 });
+
+const assistantMessages = {
+  en: {
+    assistant: {
+      launcherLabel: "Open furniture assistant",
+      eyebrow: "Furniture Assistant",
+      title: "Room planning, product search and cart help",
+      agentLabel: "Assistant",
+      welcome: "Tell me about a room, material, budget or style. I can suggest matching pieces and prepare a cart preview.",
+      recommendationsLabel: "Assistant product recommendations",
+      reasonSofa: "Best for a relaxed living room starter set.",
+      reasonBed: "Pairs with warm wood and quiet bedroom layouts.",
+      reasonTable: "Useful when the room needs one sculptural anchor.",
+      addToBag: "Add to bag",
+      askPlaceholder: "Ask about sofas, rooms, materials or budget",
+      send: "Send",
+    },
+  },
+  "zh-CN": {
+    assistant: {
+      launcherLabel: "\u6253\u5f00\u5bb6\u5177\u52a9\u624b",
+      eyebrow: "\u5bb6\u5177\u52a9\u624b",
+      title: "\u623f\u95f4\u89c4\u5212\u3001\u5546\u54c1\u641c\u7d22\u548c\u8d2d\u7269\u8f66\u5efa\u8bae",
+      agentLabel: "\u52a9\u624b",
+      welcome:
+        "\u544a\u8bc9\u6211\u623f\u95f4\u3001\u6750\u8d28\u3001\u9884\u7b97\u6216\u98ce\u683c\uff0c\u6211\u53ef\u4ee5\u5148\u7ed9\u51fa\u642d\u914d\u5efa\u8bae\u548c\u8d2d\u7269\u8f66\u9884\u89c8\u3002",
+      recommendationsLabel: "\u52a9\u624b\u63a8\u8350\u5546\u54c1",
+      reasonSofa: "\u9002\u5408\u5ba2\u5385\u653e\u677e\u578b\u642d\u914d\u7684\u8d77\u70b9\u3002",
+      reasonBed: "\u9002\u5408\u539f\u6728\u8272\u548c\u5b89\u9759\u5367\u5ba4\u98ce\u683c\u3002",
+      reasonTable: "\u9002\u5408\u9700\u8981\u89c6\u89c9\u4e3b\u89d2\u7684\u9910\u5385\u3002",
+      addToBag: "\u52a0\u5165\u8d2d\u7269\u8f66",
+      askPlaceholder: "\u8be2\u95ee\u6c99\u53d1\u3001\u623f\u95f4\u3001\u6750\u8d28\u6216\u9884\u7b97",
+      send: "\u53d1\u9001",
+    },
+  },
+  fr: {
+    assistant: {
+      launcherLabel: "Ouvrir l'assistant mobilier",
+      eyebrow: "Assistant mobilier",
+      title: "Planification de pieces, recherche produit et panier",
+      agentLabel: "Assistant",
+      welcome:
+        "Decrivez une piece, une matiere, un budget ou un style. Je peux proposer des articles assortis et preparer un panier.",
+      recommendationsLabel: "Recommandations de l'assistant",
+      reasonSofa: "Ideal pour commencer un salon detendu.",
+      reasonBed: "Associe bois chaud et chambre calme.",
+      reasonTable: "Utile quand la piece a besoin d'un point focal.",
+      addToBag: "Ajouter au panier",
+      askPlaceholder: "Demandez des canapes, pieces, matieres ou budgets",
+      send: "Envoyer",
+    },
+  },
+};
+
+Object.entries(assistantMessages).forEach(([lang, value]) => {
+  Object.assign(messages[lang], value);
+});
 messages.en.auth.trade.notFound = "Trade ID, email or verification code is incorrect.";
 messages["zh-CN"].auth.trade.notFound = "Trade ID、邮箱或验证码不正确。";
 messages.fr.auth.trade.notFound = "Le Trade ID, l'e-mail ou le code de vérification est incorrect.";
