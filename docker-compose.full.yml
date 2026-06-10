@@ -1,0 +1,99 @@
+version: "2.4"
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: furniture-demo-mysql
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-time-zone=+08:00
+    environment:
+      MYSQL_ROOT_PASSWORD: "123456"
+      MYSQL_DATABASE: "ruoyi-vue-pro"
+      TZ: Asia/Shanghai
+    ports:
+      - "3306:3306"
+    volumes:
+      - furniture_demo_mysql_data:/var/lib/mysql
+      - ./sql/ruoyi-vue-pro.sql:/docker-entrypoint-initdb.d/01-ruoyi-vue-pro.sql:ro
+      - ./sql/quartz.sql:/docker-entrypoint-initdb.d/02-quartz.sql:ro
+      - ./sql/yudao-module-tables.sql:/docker-entrypoint-initdb.d/03-yudao-module-tables.sql:ro
+      - ./sql/member-email-auth.sql:/docker-entrypoint-initdb.d/04-member-email-auth.sql:ro
+      - ./sql/member-trade-application.sql:/docker-entrypoint-initdb.d/05-member-trade-application.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysql --protocol=TCP -h127.0.0.1 -P3306 -uroot -p$${MYSQL_ROOT_PASSWORD} $${MYSQL_DATABASE} -e 'SELECT 1' >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 5s
+      retries: 40
+      start_period: 40s
+
+  redis:
+    image: redis:7-alpine
+    container_name: furniture-demo-redis
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - furniture_demo_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+
+  libretranslate:
+    image: libretranslate/libretranslate:latest
+    container_name: furniture-demo-libretranslate
+    command: ["--threads", "4", "--load-only", "en,zh"]
+    ports:
+      - "127.0.0.1:5000:5000"
+    volumes:
+      - furniture_demo_libretranslate_models:/home/libretranslate/.local/share/argos-translate
+    restart: unless-stopped
+
+  yudao-server:
+    image: furniture-yudao-server:main
+    container_name: furniture-yudao-server
+    environment:
+      TZ: Asia/Shanghai
+      ARGS: "--spring.profiles.active=local"
+      SPRING_DATASOURCE_DYNAMIC_DATASOURCE_MASTER_URL: "jdbc:mysql://mysql:3306/ruoyi-vue-pro?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&nullCatalogMeansCurrent=true&rewriteBatchedStatements=true"
+      SPRING_DATASOURCE_DYNAMIC_DATASOURCE_SLAVE_URL: "jdbc:mysql://mysql:3306/ruoyi-vue-pro?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true&nullCatalogMeansCurrent=true"
+      SPRING_DATASOURCE_DYNAMIC_DATASOURCE_MASTER_USERNAME: root
+      SPRING_DATASOURCE_DYNAMIC_DATASOURCE_MASTER_PASSWORD: "123456"
+      SPRING_DATASOURCE_DYNAMIC_DATASOURCE_SLAVE_USERNAME: root
+      SPRING_DATASOURCE_DYNAMIC_DATASOURCE_SLAVE_PASSWORD: "123456"
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: "6379"
+      ROCKETMQ_NAME_SERVER: "127.0.0.1:9876"
+      SPRING_RABBITMQ_HOST: "127.0.0.1"
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: "127.0.0.1:9092"
+    ports:
+      - "48080:48080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  furniture-web:
+    image: furniture-web:main
+    container_name: furniture-web
+    ports:
+      - "80:80"
+    restart: unless-stopped
+
+  furniture-admin:
+    image: furniture-admin:main
+    container_name: furniture-admin
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+
+volumes:
+  furniture_demo_mysql_data:
+  furniture_demo_redis_data:
+  furniture_demo_libretranslate_models:

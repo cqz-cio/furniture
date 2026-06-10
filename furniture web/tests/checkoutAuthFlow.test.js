@@ -20,7 +20,8 @@ describe("checkout auth split flow", () => {
     expect(source).toContain('document.addEventListener("click", handleInternalLinkClick)');
     expect(source).toContain('document.removeEventListener("click", handleInternalLinkClick)');
     expect(source).toContain("routeAliases");
-    expect(source).toContain('"/account/orders": "orders"');
+    expect(source).toContain('"account-orders": "/account/orders"');
+    expect(source).toContain('"/orders": "account-orders"');
     expect(source).toContain('url.pathname !== pageRoutes.missing');
   });
 

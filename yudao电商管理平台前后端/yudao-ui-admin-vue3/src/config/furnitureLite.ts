@@ -36,6 +36,11 @@ const allowedMenuPaths = new Set([
   '/infra/file',
   '/infra/file-config',
   '/infra/file/file-config',
+  '/system/messages',
+  '/system/messages/mail',
+  '/system/messages/mail/mail-account',
+  '/system/messages/mail/mail-template',
+  '/system/messages/mail/mail-log',
   '/system/user',
   '/system/role',
   '/system/menu'

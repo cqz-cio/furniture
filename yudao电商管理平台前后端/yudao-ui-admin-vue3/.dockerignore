@@ -1,0 +1,8 @@
+node_modules
+dist
+dist-dev
+dist-test
+dist-stage
+.image
+docs
+*.log

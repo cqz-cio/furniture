@@ -1,0 +1,6 @@
+node_modules
+logs
+captures
+tests
+docs
+*.log
