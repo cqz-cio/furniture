@@ -1,20 +1,20 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
-import { demoProducts } from "../data/demoProducts.js";
 import { useI18n } from "../i18n.js";
+import { createMockAssistantResponse, sendFurnitureAssistantMessage } from "../services/furnitureAssistant.js";
 
 const emit = defineEmits(["add-to-cart"]);
 
 const { t } = useI18n();
 const LAUNCHER_STORAGE_KEY = "furniture-assistant-position";
-const PANEL_STORAGE_KEY = "furniture-assistant-panel-state";
 const LAUNCHER_SIZE = 60;
 const LAUNCHER_MARGIN = 20;
-const PANEL_DEFAULT_WIDTH = 420;
-const PANEL_DEFAULT_HEIGHT = 560;
+const PANEL_DEFAULT_WIDTH = 520;
+const PANEL_DEFAULT_HEIGHT = 640;
 const PANEL_MIN_WIDTH = 320;
 const PANEL_MIN_HEIGHT = 420;
 const PANEL_MARGIN = 16;
+const resizeDirections = ["top", "right", "bottom", "left", "top-left", "top-right", "bottom-right", "bottom-left"];
 
 const open = ref(false);
 const launcherPosition = ref({ left: 0, top: 0 });
@@ -23,13 +23,29 @@ const launcherDragState = ref(null);
 const panelDragState = ref(null);
 const panelResizeState = ref(null);
 const draftMessage = ref("");
+const chatMessages = ref([
+  {
+    id: "assistant-welcome",
+    sender: "assistant",
+    content: t("assistant.welcome"),
+  },
+]);
+const assistantResponse = ref(createMockAssistantResponse(""));
+const isSubmitting = ref(false);
+const assistantError = ref("");
+const activeProductIndex = ref(0);
+const previousProductIndex = ref(null);
+const productTransitionDirection = ref("forward");
+const productAnimationTimer = ref(null);
 
-const assistantProductCards = computed(() =>
-  demoProducts.slice(0, 3).map((product, index) => ({
-    ...product,
-    assistantReason: [t("assistant.reasonSofa"), t("assistant.reasonBed"), t("assistant.reasonTable")][index],
-  }))
-);
+const assistantProducts = computed(() => assistantResponse.value?.products || []);
+const assistantSources = computed(() => assistantResponse.value?.sources || []);
+const productCount = computed(() => assistantProducts.value.length);
+const assistantDisplayName = "AI小导购";
+const userDisplayName = "我";
+const assistantPresenceLabel = "在线服务";
+const composerModeLabel = "家具顾问";
+const messageTimeLabel = "刚刚";
 
 const launcherStyle = computed(() => ({
   left: `${launcherPosition.value.left}px`,
@@ -138,29 +154,8 @@ const loadLauncherPosition = () => {
   };
 };
 
-const loadPanelState = () => {
-  const savedPanelState = safeJsonRead(PANEL_STORAGE_KEY);
-
-  if (
-    savedPanelState &&
-    Number.isFinite(savedPanelState.left) &&
-    Number.isFinite(savedPanelState.top) &&
-    Number.isFinite(savedPanelState.width) &&
-    Number.isFinite(savedPanelState.height)
-  ) {
-    setPanelState(savedPanelState);
-    return;
-  }
-
-  setPanelState(defaultPanelState());
-};
-
 const persistLauncherPosition = () => {
   safeJsonWrite(LAUNCHER_STORAGE_KEY, launcherPosition.value);
-};
-
-const persistPanelState = () => {
-  safeJsonWrite(PANEL_STORAGE_KEY, panelState.value);
 };
 
 const startDrag = (event) => {
@@ -222,19 +217,21 @@ const movePanelDrag = (event) => {
 const endPanelDrag = () => {
   if (!panelDragState.value) return;
 
-  persistPanelState();
   panelDragState.value = null;
   window.removeEventListener("pointermove", movePanelDrag);
   window.removeEventListener("pointerup", endPanelDrag);
   window.removeEventListener("pointercancel", endPanelDrag);
 };
 
-const startPanelResize = (event) => {
+const startPanelResize = (direction, event) => {
   event.preventDefault();
   event.stopPropagation();
   panelResizeState.value = {
+    direction,
     startX: event.clientX,
     startY: event.clientY,
+    left: panelState.value.left,
+    top: panelState.value.top,
     width: panelState.value.width,
     height: panelState.value.height,
   };
@@ -247,17 +244,50 @@ const startPanelResize = (event) => {
 const movePanelResize = (event) => {
   if (!panelResizeState.value) return;
 
+  const { direction, startX, startY, left, top, width, height } = panelResizeState.value;
+  const deltaX = event.clientX - startX;
+  const deltaY = event.clientY - startY;
+  const viewport = viewportSize();
+  const resizesLeft = direction.includes("left");
+  const resizesRight = direction.includes("right");
+  const resizesTop = direction.includes("top");
+  const resizesBottom = direction.includes("bottom");
+  const right = left + width;
+  const bottom = top + height;
+  let nextLeft = left;
+  let nextTop = top;
+  let nextWidth = width;
+  let nextHeight = height;
+
+  if (resizesLeft) {
+    nextLeft = clamp(left + deltaX, PANEL_MARGIN, right - PANEL_MIN_WIDTH);
+    nextWidth = right - nextLeft;
+  }
+
+  if (resizesRight) {
+    nextWidth = clamp(width + deltaX, PANEL_MIN_WIDTH, viewport.width - left - PANEL_MARGIN);
+  }
+
+  if (resizesTop) {
+    nextTop = clamp(top + deltaY, PANEL_MARGIN, bottom - PANEL_MIN_HEIGHT);
+    nextHeight = bottom - nextTop;
+  }
+
+  if (resizesBottom) {
+    nextHeight = clamp(height + deltaY, PANEL_MIN_HEIGHT, viewport.height - top - PANEL_MARGIN);
+  }
+
   setPanelState({
-    ...panelState.value,
-    width: panelResizeState.value.width + event.clientX - panelResizeState.value.startX,
-    height: panelResizeState.value.height + event.clientY - panelResizeState.value.startY,
+    left: nextLeft,
+    top: nextTop,
+    width: nextWidth,
+    height: nextHeight,
   });
 };
 
 const endPanelResize = () => {
   if (!panelResizeState.value) return;
 
-  persistPanelState();
   panelResizeState.value = null;
   window.removeEventListener("pointermove", movePanelResize);
   window.removeEventListener("pointerup", endPanelResize);
@@ -265,7 +295,7 @@ const endPanelResize = () => {
 };
 
 const openPanel = () => {
-  loadPanelState();
+  setPanelState(defaultPanelState());
   open.value = true;
 };
 
@@ -282,8 +312,77 @@ const addProduct = (product) => {
   emit("add-to-cart", product, 1);
 };
 
-const submitDraft = () => {
+const formatAssistantPrice = (price) => `$${Number(price || 0).toLocaleString()}`;
+
+const clearProductAnimationTimer = () => {
+  if (!productAnimationTimer.value) return;
+
+  window.clearTimeout(productAnimationTimer.value);
+  productAnimationTimer.value = null;
+};
+
+const finishProductAnimation = () => {
+  previousProductIndex.value = null;
+  productAnimationTimer.value = null;
+};
+
+const setActiveProduct = (index, direction = "forward") => {
+  if (!productCount.value) return;
+
+  const nextIndex = (index + productCount.value) % productCount.value;
+  if (nextIndex === activeProductIndex.value) return;
+
+  clearProductAnimationTimer();
+  previousProductIndex.value = activeProductIndex.value;
+  productTransitionDirection.value = direction;
+  activeProductIndex.value = nextIndex;
+  productAnimationTimer.value = window.setTimeout(finishProductAnimation, 280);
+};
+
+const showPreviousProduct = () => {
+  setActiveProduct(activeProductIndex.value - 1, "backward");
+};
+
+const showNextProduct = () => {
+  setActiveProduct(activeProductIndex.value + 1, "forward");
+};
+
+const selectProduct = (index) => {
+  const direction = index < activeProductIndex.value ? "backward" : "forward";
+  setActiveProduct(index, direction);
+};
+
+const submitDraft = async () => {
+  const message = draftMessage.value.trim();
+  if (!message || isSubmitting.value) return;
+
+  chatMessages.value.push({
+    id: `user-${Date.now()}`,
+    sender: "user",
+    content: message,
+  });
   draftMessage.value = "";
+  assistantError.value = "";
+  isSubmitting.value = true;
+
+  try {
+    const response = await sendFurnitureAssistantMessage(message);
+    assistantResponse.value = response;
+    clearProductAnimationTimer();
+    activeProductIndex.value = 0;
+    previousProductIndex.value = null;
+    if (response.answer) {
+      chatMessages.value.push({
+        id: `assistant-${Date.now()}`,
+        sender: "assistant",
+        content: response.answer,
+      });
+    }
+  } catch (caught) {
+    assistantError.value = caught.message || t("assistant.error");
+  } finally {
+    isSubmitting.value = false;
+  }
 };
 
 const handleViewportResize = () => {
@@ -293,11 +392,12 @@ const handleViewportResize = () => {
 
 onMounted(() => {
   loadLauncherPosition();
-  loadPanelState();
+  setPanelState(defaultPanelState());
   window.addEventListener("resize", handleViewportResize);
 });
 
 onBeforeUnmount(() => {
+  clearProductAnimationTimer();
   window.removeEventListener("resize", handleViewportResize);
   window.removeEventListener("pointermove", movePanelDrag);
   window.removeEventListener("pointerup", endPanelDrag);
@@ -356,44 +456,329 @@ onBeforeUnmount(() => {
         class="furniture-assistant-header"
         @pointerdown="startPanelDrag"
       >
-        <div>
-          <p>{{ t("assistant.eyebrow") }}</p>
-          <h2 id="furniture-assistant-title">{{ t("assistant.title") }}</h2>
+        <div class="assistant-panel-identity">
+          <div class="assistant-panel-avatar" aria-hidden="true">
+            <svg
+              class="assistant-avatar-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M12 8V5" />
+              <path d="M9 5h6" />
+              <rect width="14" height="11" x="5" y="8" rx="3" />
+              <path d="M3 13h2" />
+              <path d="M19 13h2" />
+              <path d="M9.5 13.5h.01" />
+              <path d="M14.5 13.5h.01" />
+              <path d="M10 17c1.2.7 2.8.7 4 0" />
+            </svg>
+          </div>
+          <div class="assistant-panel-copy">
+            <p>{{ t("assistant.eyebrow") }}</p>
+            <h2 id="furniture-assistant-title">{{ t("assistant.title") }}</h2>
+            <span class="assistant-panel-presence">
+              <span class="assistant-presence-dot" aria-hidden="true"></span>
+              {{ assistantPresenceLabel }}
+            </span>
+          </div>
         </div>
-        <button type="button" :aria-label="t('common.close')" @click="open = false">x</button>
+        <button class="assistant-panel-close" type="button" :aria-label="t('common.close')" @click="open = false">×</button>
       </header>
 
       <div class="furniture-assistant-thread">
-        <article class="assistant-message assistant-message-agent">
-          <span>{{ t("assistant.agentLabel") }}</span>
-          <p>{{ t("assistant.welcome") }}</p>
+        <article
+          v-for="message in chatMessages"
+          :key="message.id"
+          class="assistant-chat-row"
+          :class="message.sender === 'user' ? 'assistant-chat-user' : 'assistant-chat-assistant'"
+        >
+          <div class="assistant-chat-avatar" aria-hidden="true">
+            <svg
+              v-if="message.sender === 'assistant'"
+              class="assistant-avatar-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M12 8V5" />
+              <path d="M9 5h6" />
+              <rect width="14" height="11" x="5" y="8" rx="3" />
+              <path d="M3 13h2" />
+              <path d="M19 13h2" />
+              <path d="M9.5 13.5h.01" />
+              <path d="M14.5 13.5h.01" />
+              <path d="M10 17c1.2.7 2.8.7 4 0" />
+            </svg>
+            <span v-else>{{ userDisplayName }}</span>
+          </div>
+          <div class="assistant-chat-content">
+            <div class="assistant-chat-meta">
+              <span class="assistant-chat-name">{{ message.sender === "user" ? userDisplayName : assistantDisplayName }}</span>
+              <span class="assistant-message-time">{{ messageTimeLabel }}</span>
+            </div>
+            <p class="assistant-chat-bubble">{{ message.content }}</p>
+          </div>
         </article>
 
-        <div class="assistant-product-list" :aria-label="t('assistant.recommendationsLabel')">
-          <article v-for="product in assistantProductCards" :key="product.skuId" class="assistant-product-card">
-            <div class="assistant-product-swatch"></div>
-            <div>
-              <p>{{ product.subtitle }}</p>
-              <h3>{{ product.name }}</h3>
-              <strong>${{ product.price.toLocaleString() }}</strong>
-              <span>{{ product.assistantReason }}</span>
+        <article v-if="isSubmitting" class="assistant-chat-row assistant-chat-assistant assistant-chat-loading">
+          <div class="assistant-chat-avatar" aria-hidden="true">
+            <svg
+              class="assistant-avatar-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M12 8V5" />
+              <path d="M9 5h6" />
+              <rect width="14" height="11" x="5" y="8" rx="3" />
+              <path d="M3 13h2" />
+              <path d="M19 13h2" />
+              <path d="M9.5 13.5h.01" />
+              <path d="M14.5 13.5h.01" />
+              <path d="M10 17c1.2.7 2.8.7 4 0" />
+            </svg>
+          </div>
+          <div class="assistant-chat-content">
+            <div class="assistant-chat-meta">
+              <span class="assistant-chat-name">{{ assistantDisplayName }}</span>
+              <span class="assistant-message-time">{{ messageTimeLabel }}</span>
             </div>
-            <button type="button" @click="addProduct(product)">{{ t("assistant.addToBag") }}</button>
-          </article>
-        </div>
+            <p class="assistant-chat-bubble">{{ t("assistant.loading") }}</p>
+          </div>
+        </article>
+
+        <article v-if="assistantError" class="assistant-chat-row assistant-chat-assistant assistant-chat-error">
+          <div class="assistant-chat-avatar" aria-hidden="true">
+            <svg
+              class="assistant-avatar-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M12 8V5" />
+              <path d="M9 5h6" />
+              <rect width="14" height="11" x="5" y="8" rx="3" />
+              <path d="M3 13h2" />
+              <path d="M19 13h2" />
+              <path d="M9.5 13.5h.01" />
+              <path d="M14.5 13.5h.01" />
+              <path d="M10 17c1.2.7 2.8.7 4 0" />
+            </svg>
+          </div>
+          <div class="assistant-chat-content">
+            <div class="assistant-chat-meta">
+              <span class="assistant-chat-name">{{ t("assistant.errorTitle") }}</span>
+              <span class="assistant-message-time">{{ messageTimeLabel }}</span>
+            </div>
+            <p class="assistant-chat-bubble">{{ assistantError }}</p>
+          </div>
+        </article>
+
+        <article v-if="assistantSources.length" class="assistant-chat-row assistant-chat-assistant assistant-chat-sources">
+          <div class="assistant-chat-avatar" aria-hidden="true">
+            <svg
+              class="assistant-avatar-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M12 8V5" />
+              <path d="M9 5h6" />
+              <rect width="14" height="11" x="5" y="8" rx="3" />
+              <path d="M3 13h2" />
+              <path d="M19 13h2" />
+              <path d="M9.5 13.5h.01" />
+              <path d="M14.5 13.5h.01" />
+              <path d="M10 17c1.2.7 2.8.7 4 0" />
+            </svg>
+          </div>
+          <div class="assistant-chat-content">
+            <div class="assistant-chat-meta">
+              <span class="assistant-chat-name">{{ t("assistant.sourcesLabel") }}</span>
+              <span class="assistant-message-time">{{ messageTimeLabel }}</span>
+            </div>
+            <div class="assistant-chat-bubble assistant-source-list">
+              <span
+                v-for="source in assistantSources"
+                :key="`${source.type}-${source.name}`"
+                class="assistant-source-chip"
+              >
+                <span>{{ source.type }}</span>
+                {{ source.name }}
+              </span>
+            </div>
+          </div>
+        </article>
+
+        <article v-if="assistantProducts.length" class="assistant-chat-row assistant-chat-assistant assistant-chat-recommendations">
+          <div class="assistant-chat-avatar" aria-hidden="true">
+            <svg
+              class="assistant-avatar-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M12 8V5" />
+              <path d="M9 5h6" />
+              <rect width="14" height="11" x="5" y="8" rx="3" />
+              <path d="M3 13h2" />
+              <path d="M19 13h2" />
+              <path d="M9.5 13.5h.01" />
+              <path d="M14.5 13.5h.01" />
+              <path d="M10 17c1.2.7 2.8.7 4 0" />
+            </svg>
+          </div>
+          <div class="assistant-chat-content">
+            <div class="assistant-chat-meta">
+              <span class="assistant-chat-name">{{ assistantDisplayName }}</span>
+              <span class="assistant-message-time">{{ messageTimeLabel }}</span>
+            </div>
+            <div class="assistant-chat-bubble">
+              <div
+                class="assistant-product-carousel"
+                :class="productTransitionDirection === 'forward' ? 'assistant-carousel-forward' : 'assistant-carousel-backward'"
+                :aria-label="t('assistant.recommendationsLabel')"
+              >
+                <div v-if="productCount > 1" class="assistant-carousel-counter">
+                  {{ activeProductIndex + 1 }} / {{ productCount }}
+                </div>
+                <div class="assistant-product-list">
+                  <article
+                    v-for="(product, index) in assistantProducts"
+                    :key="product.skuId"
+                    class="assistant-product-slide"
+                    :class="{
+                      'assistant-product-slide-active': index === activeProductIndex,
+                      'assistant-product-slide-exiting': index === previousProductIndex,
+                    }"
+                    :aria-hidden="index !== activeProductIndex && index !== previousProductIndex"
+                  >
+                    <div class="assistant-product-card">
+                      <div class="assistant-product-swatch">
+                        <img v-if="product.cover" :src="product.cover" :alt="product.name" />
+                      </div>
+                      <div class="assistant-product-copy">
+                        <p>{{ product.subtitle }}</p>
+                        <h3>{{ product.name }}</h3>
+                        <strong>{{ formatAssistantPrice(product.price) }}</strong>
+                        <span>{{ product.reason }}</span>
+                      </div>
+                      <div class="assistant-product-actions">
+                        <a class="assistant-product-link" :href="product.detailUrl">{{ t("assistant.viewDetails") }}</a>
+                        <button type="button" @click="addProduct(product)">{{ t("assistant.addToBag") }}</button>
+                      </div>
+                    </div>
+                  </article>
+                </div>
+
+                <button
+                  v-if="productCount > 1"
+                  class="assistant-carousel-control assistant-carousel-control-prev"
+                  type="button"
+                  aria-label="Previous recommendation"
+                  @click="showPreviousProduct"
+                >
+                  <svg
+                    class="assistant-carousel-arrow-icon"
+                    aria-hidden="true"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M14.5 6.5 9 12l5.5 5.5" />
+                  </svg>
+                </button>
+                <button
+                  v-if="productCount > 1"
+                  class="assistant-carousel-control assistant-carousel-control-next"
+                  type="button"
+                  aria-label="Next recommendation"
+                  @click="showNextProduct"
+                >
+                  <svg
+                    class="assistant-carousel-arrow-icon"
+                    aria-hidden="true"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M9.5 6.5 15 12l-5.5 5.5" />
+                  </svg>
+                </button>
+
+                <div v-if="productCount > 1" class="assistant-carousel-indicators">
+                  <button
+                    v-for="(_, index) in assistantProducts"
+                    :key="`assistant-product-indicator-${index}`"
+                    class="assistant-carousel-indicator"
+                    :class="{ 'assistant-carousel-indicator-active': index === activeProductIndex }"
+                    type="button"
+                    :aria-label="`Show recommendation ${index + 1}`"
+                    :aria-pressed="index === activeProductIndex"
+                    @click="selectProduct(index)"
+                  ></button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
       </div>
 
       <form class="furniture-assistant-composer" @submit.prevent="submitDraft">
         <label class="sr-only" for="furniture-assistant-input">{{ t("assistant.askPlaceholder") }}</label>
-        <input id="furniture-assistant-input" v-model="draftMessage" type="text" :placeholder="t('assistant.askPlaceholder')" />
-        <button type="submit">{{ t("assistant.send") }}</button>
+        <div class="assistant-composer-shell">
+          <span class="assistant-composer-mode">{{ composerModeLabel }}</span>
+          <input id="furniture-assistant-input" v-model="draftMessage" type="text" :placeholder="t('assistant.askPlaceholder')" />
+        </div>
+        <button class="assistant-send-button" type="submit" :disabled="isSubmitting || !draftMessage.trim()">
+          <span class="sr-only">{{ t("assistant.send") }}</span>
+          <svg
+            class="assistant-send-icon"
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M5 12h13" />
+            <path d="m13 6 6 6-6 6" />
+          </svg>
+        </button>
       </form>
 
       <button
+        v-for="direction in resizeDirections"
+        :key="direction"
         class="furniture-assistant-resize-handle"
         type="button"
-        aria-label="Resize assistant"
-        @pointerdown="startPanelResize"
+        :data-resize-direction="direction"
+        :aria-label="`Resize assistant ${direction}`"
+        @pointerdown="startPanelResize(direction, $event)"
       ></button>
     </section>
   </aside>

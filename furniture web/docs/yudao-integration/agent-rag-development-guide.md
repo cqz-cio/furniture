@@ -324,6 +324,52 @@ Phase 1 can start with mock response parsing if the backend cannot yet return st
 
 Long term, prefer structured output from the backend so the frontend does not parse free-form model text.
 
+Current integration handoff:
+
+```text
+Frontend client:
+furniture web/src/services/furnitureAssistant.js
+
+Default mode:
+mock contract response
+
+Live API mode:
+set VITE_FURNITURE_ASSISTANT_MODE=api
+
+Backend endpoint:
+POST /app-api/ai/furniture-assistant/chat
+
+Request:
+{ "message": "cream fabric sofa under 8000" }
+
+Response:
+{ "answer": "...", "products": [...], "sources": [...] }
+```
+
+The first backend implementation is a thin product-search facade. It does not call the LLM yet. It extracts a simple furniture keyword such as `sofa`, `bed`, `table`, `chair` or `lighting`, calls the Yudao Product SPU API, applies a simple `under <amount>` budget filter, and returns structured product cards. This keeps Phase 1 grounded in real product data before RAG and model orchestration are added.
+
+Deployment note: the Phase 1 facade currently lives in `yudao-module-product-server` because the current `yudao-server` package includes the commerce modules but does not package `yudao-module-ai-server`. Keep the public path as `/app-api/ai/furniture-assistant/chat`. When LLM/RAG orchestration is enabled in the packaged backend, move orchestration back into the AI module and keep product, price and stock reads sourced from product services.
+
+Phase 2 foundation: `yudao-module-product-server` now includes a replaceable `FurnitureAssistantKnowledgeService` that returns structured knowledge snippets for membership, delivery/installation, and returns/after-sales questions. Pure knowledge questions skip product search and return an empty `products` array plus `sources[type=knowledge]`. Mixed shopping questions can include both product and knowledge sources. This is intentionally keyword-based for the deployable MVP; later RAG work should replace the provider implementation with the AI module knowledge/vector retrieval without changing the frontend response contract.
+
+Real AI handoff point:
+
+```yaml
+yudao:
+  furniture-assistant:
+    brand-name: Trendz
+    tone: luxury
+    knowledge-provider: keyword
+    provider: deepseek
+    base-url: https://api.deepseek.com
+    model: deepseek-v4-flash
+    api-key-env-name: DEEPSEEK_API_KEY
+```
+
+`keyword` is the default and requires no model API key. `provider`, `base-url`, `model`, brand and tone are prefilled for the Trendz high-end storefront assistant. The API key value itself must be supplied only at deploy/runtime through `DEEPSEEK_API_KEY`; do not put it in frontend env files, Java source, YAML committed to Git, or chat messages.
+
+Do not set `knowledge-provider: ai` yet; the current AI mode intentionally fails with `Furniture assistant real AI provider is not wired yet` so accidental production configuration does not silently behave like a real AI integration. The next implementation step is to replace the `ai` branch in `FurnitureAssistantKnowledgeServiceImpl` with a provider backed by `yudao-module-ai` chat/RAG services, using the prefilled DeepSeek settings and the runtime `DEEPSEEK_API_KEY`.
+
 ## 11. Backend Safety Rules
 
 - Never trust model-generated product IDs, prices or stock.
