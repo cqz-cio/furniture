@@ -76,6 +76,7 @@ describe("furniture assistant client", () => {
     const request = vi.fn().mockResolvedValue({
       answer: "Here are live Yudao products.",
       products: [{ id: 8, skuId: 80, name: "Live Sofa", price: 8000, stock: 5 }],
+      sources: [{ type: "model", name: "DeepSeek deepseek-v4-flash" }],
     });
 
     const response = await sendFurnitureAssistantMessage("live sofa", {
@@ -89,5 +90,23 @@ describe("furniture assistant client", () => {
     });
     expect(response.answer).toBe("Here are live Yudao products.");
     expect(response.products[0]).toMatchObject({ id: 8, skuId: 80, detailUrl: "/sofa-pdp?id=8" });
+    expect(response.sources).toEqual([{ type: "model", name: "DeepSeek deepseek-v4-flash" }]);
+  });
+
+  it("normalizes Yudao CommonResult data for model-backed assistant responses", () => {
+    const response = normalizeAssistantResponse({
+      code: 0,
+      data: {
+        answer: "Model-backed answer",
+        products: [],
+        sources: [{ type: "model", name: "DeepSeek deepseek-v4-flash" }],
+      },
+    });
+
+    expect(response).toEqual({
+      answer: "Model-backed answer",
+      products: [],
+      sources: [{ type: "model", name: "DeepSeek deepseek-v4-flash" }],
+    });
   });
 });

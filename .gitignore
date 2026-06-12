@@ -8,6 +8,8 @@ _git-backups/
 .pnpm-store/
 .worktrees/
 .local/
+.env
+.env.local
 
 tools/
 /furniture web/captures/local/

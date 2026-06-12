@@ -32,7 +32,7 @@ yudao-module-ai
 Spring AI based module with chat, model configuration, knowledge bases, vector retrieval, tool calling, MCP and workflow support.
 ```
 
-The Agent/RAG feature should reuse the existing Yudao AI module instead of creating a separate AI backend.
+The long-term Agent/RAG feature should reuse the existing Yudao AI module instead of creating a separate AI backend. The current deployable MVP stays inside the JDK8 commerce product module, so it uses a JDK8-compatible DeepSeek HTTP client instead of adding Spring AI directly to `yudao-module-product-server`.
 
 ## 3. Branch And Workspace Rules
 
@@ -45,7 +45,7 @@ codex/agent-rag
 Current isolated worktree:
 
 ```text
-C:\Users\admin\.codex\worktrees\d3ec\code
+D:\code\.worktrees\codex-permanent-agent
 ```
 
 Main branch workspace:
@@ -346,7 +346,36 @@ Response:
 { "answer": "...", "products": [...], "sources": [...] }
 ```
 
-The first backend implementation is a thin product-search facade. It does not call the LLM yet. It extracts a simple furniture keyword such as `sofa`, `bed`, `table`, `chair` or `lighting`, calls the Yudao Product SPU API, applies a simple `under <amount>` budget filter, and returns structured product cards. This keeps Phase 1 grounded in real product data before RAG and model orchestration are added.
+Local MVP run-through:
+
+```powershell
+# Backend without model key:
+# The endpoint should still return deterministic answer + product cards.
+
+# Backend with model key:
+$env:DEEPSEEK_API_KEY="<runtime-secret>"
+
+# Storefront API mode:
+.\start-furniture-agent-web.cmd
+```
+
+Backend smoke requests:
+
+```text
+yudao-cloud/yudao-module-mall/yudao-module-product-server/src/main/java/cn/iocoder/yudao/module/product/controller/app/furniture/AppFurnitureAssistantController.http
+```
+
+Expected smoke-test behavior:
+
+- Without `DEEPSEEK_API_KEY`, `POST /app-api/ai/furniture-assistant/chat` returns the deterministic answer and product cards.
+- With `DEEPSEEK_API_KEY`, the answer can be model-written and `sources` includes `type=model`, while `products` still come from the Yudao-backed `FurnitureProductSearchTool`.
+- Policy questions such as membership, delivery and returns can return knowledge snippets without product cards.
+
+The first backend implementation started as a thin product-search facade. It extracts a simple furniture keyword such as `sofa`, `bed`, `table`, `chair` or `lighting`, calls the Yudao Product SPU API, applies a simple `under <amount>` budget filter, and returns structured product cards. This keeps Phase 1 grounded in real product data before RAG and model orchestration are added.
+
+Current AI handoff: the product module now has a minimal DeepSeek HTTP answer client that compiles under the current JDK8 backend. When a runtime API key is available through `DEEPSEEK_API_KEY` or the backend-only `yudao.furniture-assistant.api-key` property, the assistant asks DeepSeek to rewrite the deterministic answer using the real product cards and knowledge snippets as grounded context. Product search is extracted into `FurnitureProductSearchTool` and runs before the model call when product intent is detected. Product IDs, prices, stock and images still come only from Yudao commerce services. If the API key is missing or the model call fails, the endpoint falls back to the deterministic answer instead of failing the storefront request. Successful model-backed answers include a `model` source so the storefront can show whether the AI path was used.
+
+Spring AI/MCP note: `yudao-module-ai` already contains Spring AI, tool calling, MCP and RAG foundations, but the root JDK8 build keeps that module disabled because Spring AI 1.1.x requires Java 17. Do not add Spring AI dependencies directly to `yudao-module-product-server` while it is compiled as JDK8. Move orchestration into the JDK17 AI module or an isolated AI service when Phase 2 RAG/tool-calling work begins.
 
 Deployment note: the Phase 1 facade currently lives in `yudao-module-product-server` because the current `yudao-server` package includes the commerce modules but does not package `yudao-module-ai-server`. Keep the public path as `/app-api/ai/furniture-assistant/chat`. When LLM/RAG orchestration is enabled in the packaged backend, move orchestration back into the AI module and keep product, price and stock reads sourced from product services.
 
@@ -368,7 +397,7 @@ yudao:
 
 `keyword` is the default and requires no model API key. `provider`, `base-url`, `model`, brand and tone are prefilled for the Trendz high-end storefront assistant. The API key value itself must be supplied only at deploy/runtime through `DEEPSEEK_API_KEY`; do not put it in frontend env files, Java source, YAML committed to Git, or chat messages.
 
-Do not set `knowledge-provider: ai` yet; the current AI mode intentionally fails with `Furniture assistant real AI provider is not wired yet` so accidental production configuration does not silently behave like a real AI integration. The next implementation step is to replace the `ai` branch in `FurnitureAssistantKnowledgeServiceImpl` with a provider backed by `yudao-module-ai` chat/RAG services, using the prefilled DeepSeek settings and the runtime `DEEPSEEK_API_KEY`.
+Do not set `knowledge-provider: ai` yet; answer generation and pre-model ProductSearchTool lookup are wired, but RAG knowledge retrieval is not. The current knowledge AI mode intentionally fails with `Furniture assistant real AI provider is not wired yet` so accidental production configuration does not silently behave like real RAG. The next implementation step is to replace the `ai` branch in `FurnitureAssistantKnowledgeServiceImpl` with a provider backed by `yudao-module-ai` chat/RAG services, using the prefilled DeepSeek settings and the runtime `DEEPSEEK_API_KEY`.
 
 ## 11. Backend Safety Rules
 
@@ -392,6 +421,26 @@ Do not set `knowledge-provider: ai` yet; the current AI mode intentionally fails
 
 ## 13. Testing Checklist
 
+Backend regression script:
+
+```powershell
+# Stable commerce + knowledge smoke tests.
+.\test-furniture-agent.cmd
+
+# Also require every case to include a model source.
+.\test-furniture-agent.cmd -RequireModel
+```
+
+The script covers:
+
+- `8000以内的米白色布艺沙发`
+- `不超过8000元的布艺沙发`
+- `会员价能和优惠券叠加吗？`
+- `cream fabric sofa under 8000`
+- `找一张黑色岩板餐桌`
+
+It checks non-empty answers, expected source types, product-card counts and optional model-backed answers.
+
 Frontend tests:
 
 - Assistant button renders.
@@ -408,7 +457,7 @@ Backend tests:
 - ProductSearchTool maps request filters correctly.
 - ProductSearchTool does not return disabled or out-of-scope products.
 - ProductDetailTool returns existing product data.
-- Agent prompt includes tool and safety constraints.
+- Agent prompt includes product grounding and safety constraints.
 - RAG retrieval returns relevant segments for policy questions.
 - Tool failure returns a safe fallback message.
 

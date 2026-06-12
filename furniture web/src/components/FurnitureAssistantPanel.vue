@@ -313,6 +313,30 @@ const addProduct = (product) => {
 };
 
 const formatAssistantPrice = (price) => `$${Number(price || 0).toLocaleString()}`;
+const MAX_ASSISTANT_BUBBLE_CHARS = 180;
+
+const cleanAssistantDisplayText = (value) => {
+  const cleaned = String(value || "")
+    .replaceAll("**", "")
+    .replaceAll("__", "")
+    .replaceAll("`", "")
+    .replace(/(^|\n)\s*(?:\d+[.、)]|[-*•])\s*/g, "$1")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (cleaned.length > MAX_ASSISTANT_BUBBLE_CHARS) {
+    const sentenceEnd = Math.max(
+      cleaned.lastIndexOf("。", MAX_ASSISTANT_BUBBLE_CHARS),
+      cleaned.lastIndexOf("！", MAX_ASSISTANT_BUBBLE_CHARS),
+      cleaned.lastIndexOf("？", MAX_ASSISTANT_BUBBLE_CHARS),
+      cleaned.lastIndexOf(".", MAX_ASSISTANT_BUBBLE_CHARS),
+    );
+    if (sentenceEnd >= 60) return cleaned.slice(0, sentenceEnd + 1).trim();
+
+    return `${cleaned.slice(0, MAX_ASSISTANT_BUBBLE_CHARS - 1).trim()}…`;
+  }
+
+  return cleaned;
+};
 
 const clearProductAnimationTimer = () => {
   if (!productAnimationTimer.value) return;
@@ -375,10 +399,14 @@ const submitDraft = async () => {
       chatMessages.value.push({
         id: `assistant-${Date.now()}`,
         sender: "assistant",
-        content: response.answer,
+        content: cleanAssistantDisplayText(response.answer),
       });
     }
   } catch (caught) {
+    assistantResponse.value = { answer: "", products: [], sources: [] };
+    clearProductAnimationTimer();
+    activeProductIndex.value = 0;
+    previousProductIndex.value = null;
     assistantError.value = caught.message || t("assistant.error");
   } finally {
     isSubmitting.value = false;

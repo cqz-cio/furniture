@@ -52,6 +52,7 @@ describe("furniture assistant panel", () => {
     expect(source).toContain('sender: "user"');
     expect(source).toContain('sender: "assistant"');
     expect(source).toContain("assistantResponse.value = response");
+    expect(source).toContain('assistantResponse.value = { answer: "", products: [], sources: [] }');
     expect(source).toContain("assistantError.value = caught.message");
     expect(source).toContain("assistantSources");
     expect(source).toContain('v-if="isSubmitting"');
@@ -61,6 +62,17 @@ describe("furniture assistant panel", () => {
     expect(source).toContain('v-for="source in assistantSources"');
     expect(source).toContain(':href="product.detailUrl"');
     expect(source).toContain(':disabled="isSubmitting || !draftMessage.trim()"');
+  });
+
+  it("sanitizes model markdown before rendering assistant answers", () => {
+    const source = readSource("../src/components/FurnitureAssistantPanel.vue");
+
+    expect(source).toContain("const MAX_ASSISTANT_BUBBLE_CHARS = 180");
+    expect(source).toContain("const cleanAssistantDisplayText = (value) =>");
+    expect(source).toContain('.replaceAll("**", "")');
+    expect(source).toContain("cleaned.length > MAX_ASSISTANT_BUBBLE_CHARS");
+    expect(source).toContain("content: cleanAssistantDisplayText(response.answer)");
+    expect(source).not.toContain("content: response.answer,");
   });
 
   it("keeps product recommendations as the assistant's automatic second message", () => {

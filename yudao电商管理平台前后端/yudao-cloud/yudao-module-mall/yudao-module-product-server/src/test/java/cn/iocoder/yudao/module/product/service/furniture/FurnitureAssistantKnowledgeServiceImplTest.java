@@ -24,6 +24,16 @@ class FurnitureAssistantKnowledgeServiceImplTest {
     }
 
     @Test
+    void search_shouldReturnChineseMembershipKnowledge() {
+        List<FurnitureAssistantKnowledgeMatch> matches = service.search("会员价能和优惠券叠加吗？");
+
+        assertEquals(1, matches.size());
+        assertEquals("knowledge", matches.get(0).getType());
+        assertEquals("会员权益规则", matches.get(0).getName());
+        assertTrue(matches.get(0).getContent().contains("优惠券"));
+    }
+
+    @Test
     void search_shouldReturnDeliveryKnowledge() {
         List<FurnitureAssistantKnowledgeMatch> matches = service.search("How does delivery work for large furniture?");
 

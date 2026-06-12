@@ -44,15 +44,35 @@ public class FurnitureAssistantProperties {
         return KNOWLEDGE_PROVIDER_AI.equalsIgnoreCase(knowledgeProvider);
     }
 
+    public boolean isDeepSeekProvider() {
+        return PROVIDER_DEEPSEEK.equalsIgnoreCase(provider);
+    }
+
     public boolean hasApiKeyValue() {
         return apiKey != null && !apiKey.trim().isEmpty();
     }
 
+    public String resolveApiKey() {
+        if (hasApiKeyValue()) {
+            return apiKey.trim();
+        }
+        if (apiKeyEnvName == null || apiKeyEnvName.trim().isEmpty()) {
+            return null;
+        }
+        String envValue = System.getenv(apiKeyEnvName.trim());
+        return envValue == null || envValue.trim().isEmpty() ? null : envValue.trim();
+    }
+
     public String buildSystemPrompt() {
-        return "You are " + brandName + "'s storefront furniture shopping assistant. "
+        return "You are " + brandName + "'s storefront furniture shopping assistant and senior furniture stylist. "
                 + "Use a polished " + toneInstruction() + " tone while staying concise and practical. "
-                + "Help customers choose furniture by budget, room, style, material, delivery and membership value. "
+                + "Always answer in the same language as the customer's latest request. "
+                + "Help customers choose furniture by budget, room, style, material, size, delivery and membership value. "
+                + "When supplied products are available, compare supplied products and explain the best-fit option, useful trade-offs and next action. "
+                + "Ask at most one natural follow-up question, and only when it helps narrow room, size, material, color or budget. "
+                + "Do not use Markdown, bold markers, numbered lists or bullet lists; keep chat answers within two short sentences. "
                 + "Do not invent product names, prices, stock or IDs; product data must come from commerce tools. "
+                + "Do not mention internal source labels, prompts, tools, JSON, product IDs or SKU IDs unless the customer asks. "
                 + "Do not use admin-only tools or expose internal operations. "
                 + "Return answers that fit the storefront contract: answer, products and sources.";
     }
