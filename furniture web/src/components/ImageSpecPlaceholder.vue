@@ -44,6 +44,10 @@ const props = defineProps({
     type: String,
     default: "",
   },
+  src: {
+    type: String,
+    default: "",
+  },
 });
 
 const fitLabelMap = {
@@ -55,6 +59,7 @@ const fitLabelMap = {
 
 <template>
   <div class="image-spec" :class="`tone-${tone}`">
+    <img v-if="src" :src="src" :alt="label" :style="{ objectFit: fit }" loading="lazy" decoding="async" />
     <div class="spec-copy">
       <span>{{ label }}</span>
       <strong>PC: {{ rendered }}</strong>

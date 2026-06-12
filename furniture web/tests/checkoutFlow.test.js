@@ -85,4 +85,14 @@ describe("checkout flow model", () => {
       issue: "",
     });
   });
+
+  it("treats a null checkout address as missing instead of throwing", () => {
+    expect(getAddressVerification(null)).toMatchObject({
+      status: "missing",
+      issue: "Shipping address is required before payment.",
+      suggestedAddress: null,
+    });
+
+    expect(buildCheckoutFlow([regularItem], { address: null }).readyForPayment).toBe(false);
+  });
 });

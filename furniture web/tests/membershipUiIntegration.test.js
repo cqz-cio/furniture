@@ -28,15 +28,15 @@ describe("membership UI integration", () => {
     expect(source).toContain("memberDiscount");
   });
 
-  it("animates the cart drawer as a slow right-side slide-out panel", () => {
+  it("animates the cart drawer as a quick right-side slide-out panel", () => {
     const drawerSource = readSource("../src/components/CartDrawer.vue");
     const styles = readSource("../src/styles.css");
 
     expect(drawerSource).toContain('<Transition name="cart-drawer-slide">');
     expect(styles).toContain(".cart-drawer-slide-enter-active");
-    expect(styles).toContain("transition: opacity 720ms ease");
+    expect(styles).toContain("transition: opacity 260ms ease");
     expect(styles).toContain("transform: translateX(100%)");
-    expect(styles).toContain("transition: transform 720ms cubic-bezier");
+    expect(styles).toContain("transition: transform 260ms cubic-bezier");
   });
 
   it("uses membership pricing in checkout summary totals", () => {

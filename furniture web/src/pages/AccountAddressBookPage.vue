@@ -1,14 +1,14 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from "vue";
-import { accountMenuItems, accountMenuLabelKeys } from "../services/membershipNavigation.js";
+import { accountMenuItems, accountMenuLabelKeys, membershipRoutes } from "../services/membershipNavigation.js";
 import {
   createMemberAddress,
   deleteMemberAddress,
   getAddressList,
   getAreaTree,
-  readYudaoToken,
   updateMemberAddress,
-} from "../services/yudaoClient.js";
+} from "../services/yudaoMemberApi.js";
+import { readYudaoToken } from "../services/yudaoRequest.js";
 import { useI18n } from "../i18n.js";
 
 const props = defineProps({
@@ -186,11 +186,25 @@ watch(() => props.authVersion, loadAddresses);
       <p class="eyebrow">{{ t("membership.account.addressBook.eyebrow") }}</p>
       <h1>{{ t("membership.account.addressBook.title") }}</h1>
       <p v-if="loading" class="product-loading">{{ t("membership.account.addressBook.loading") }}</p>
-      <p v-if="tokenRequired" class="checkout-error">{{ t("membership.account.addressBook.signInRequired") }}</p>
-      <p v-else-if="error" class="checkout-error">{{ error }}</p>
+      <div v-if="tokenRequired" class="checkout-error">
+        <p>{{ t("membership.account.addressBook.signInRequired") }}</p>
+        <div class="orders-recovery-actions">
+          <a class="orders-recovery-action" :href="membershipRoutes.checkoutAuth">
+            {{ t("membership.account.addressBook.actions.connectAccount") }}
+          </a>
+        </div>
+      </div>
+      <div v-else-if="error" class="checkout-error">
+        <p>{{ error }}</p>
+        <div class="orders-recovery-actions">
+          <button class="orders-recovery-action" type="button" @click="loadAddresses">
+            {{ t("membership.account.addressBook.actions.retry") }}
+          </button>
+        </div>
+      </div>
       <p v-if="notice" class="auth-success">{{ notice }}</p>
 
-      <form v-if="!loading && !tokenRequired" class="address-book-form account-form-panel" @submit.prevent="submitAddress">
+      <form v-if="!loading && !tokenRequired" id="address-book-form" class="address-book-form account-form-panel" @submit.prevent="submitAddress">
         <header class="account-form-toolbar">
           <div>
             <p class="eyebrow">{{ t("membership.account.addressBook.eyebrow") }}</p>
@@ -247,9 +261,12 @@ watch(() => props.authVersion, loadAddresses);
           </div>
         </article>
       </section>
-      <p v-else-if="!loading && !tokenRequired && !error" class="orders-empty">
-        {{ t("membership.account.addressBook.empty") }}
-      </p>
+      <div v-else-if="!loading && !tokenRequired && !error" class="orders-empty">
+        <p>{{ t("membership.account.addressBook.empty") }}</p>
+        <a class="orders-recovery-action" href="#address-book-form">
+          {{ t("membership.account.addressBook.actions.addFirstAddress") }}
+        </a>
+      </div>
     </section>
   </section>
 </template>

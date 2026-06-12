@@ -1,6 +1,8 @@
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
 import ProductImage from "../components/ProductImage.vue";
+import { getCheckoutErrorKey } from "../services/checkoutErrors.js";
+import { getCheckoutRecoveryAction } from "../services/checkoutRecovery.js";
 import { buildCheckoutFlow, canPlaceCheckoutOrder } from "../services/checkoutFlow.js";
 import {
   buildLocalCheckoutSummary,
@@ -10,16 +12,13 @@ import {
   getSelectedAddressId,
 } from "../services/checkoutSession.js";
 import { getMembershipPricing, isMembershipItem } from "../services/membershipCart.js";
-import {
-  createOrder,
-  getAddressList,
-  getDefaultAddress,
-  readYudaoToken,
-  settleOrder,
-} from "../services/yudaoClient.js";
+import { membershipRoutes } from "../services/membershipNavigation.js";
+import { getAddressList, getDefaultAddress } from "../services/yudaoMemberApi.js";
+import { createOrder, settleOrder } from "../services/yudaoOrderApi.js";
+import { readYudaoToken } from "../services/yudaoRequest.js";
 import { useI18n } from "../i18n.js";
 
-const emit = defineEmits(["order-created"]);
+const emit = defineEmits(["order-created", "open-cart"]);
 
 const props = defineProps({
   items: {
@@ -36,8 +35,30 @@ const addresses = ref([]);
 const defaultAddress = ref(null);
 const selectedAddressId = ref(undefined);
 const settlement = ref(null);
-const error = ref("");
+const errorKey = ref("");
 const busy = ref(false);
+const customNoticeAccepted = ref(false);
+const useSuggestedAddress = ref(false);
+const paymentMethod = ref("card");
+const cardComplete = ref(false);
+const termsAccepted = ref(false);
+const paymentMethodOptions = [
+  {
+    value: "card",
+    labelKey: "checkout.payment.methods.card.label",
+    descriptionKey: "checkout.payment.methods.card.description",
+  },
+  {
+    value: "gift-card",
+    labelKey: "checkout.payment.methods.giftCard.label",
+    descriptionKey: "checkout.payment.methods.giftCard.description",
+  },
+  {
+    value: "member-credit",
+    labelKey: "checkout.payment.methods.memberCredit.label",
+    descriptionKey: "checkout.payment.methods.memberCredit.description",
+  },
+];
 const summary = computed(() => buildLocalCheckoutSummary(props.items));
 const membershipPricing = computed(() => getMembershipPricing(props.items));
 const mode = computed(() => getCheckoutMode(props.items, readYudaoToken()));
@@ -46,17 +67,20 @@ const displaySubtotal = computed(() => settlement.value?.payPrice ?? membershipP
 const displayDelivery = computed(() => settlement.value?.deliveryPrice ?? 0);
 const displayItemTotal = computed(() => settlement.value?.totalPrice ?? membershipPricing.value.merchandiseSubtotal);
 const displayEstimatedTotal = computed(() => displaySubtotal.value);
+const error = computed(() => (errorKey.value ? t(errorKey.value) : ""));
+const checkoutRecoveryAction = computed(() =>
+  getCheckoutRecoveryAction(errorKey.value, {
+    addressBook: membershipRoutes.accountAddressBook,
+    checkoutAuth: membershipRoutes.checkoutAuth,
+  }),
+);
 const selectedAddress = computed(() => addresses.value.find((address) => address.id === selectedAddressId.value));
+const hasCheckoutAddress = computed(() => Boolean(selectedAddress.value || defaultAddress.value));
 const checkoutAddress = computed(() => {
   const address = selectedAddress.value || defaultAddress.value;
 
   if (!address) {
-    return {
-      line1: "12 Main",
-      city: "Boston",
-      region: "MA",
-      postalCode: "02116",
-    };
+    return null;
   }
 
   return {
@@ -69,28 +93,52 @@ const checkoutAddress = computed(() => {
 const checkoutFlow = computed(() =>
   buildCheckoutFlow(props.items, {
     address: checkoutAddress.value,
-    customNoticeAccepted: true,
-    paymentMethod: "card",
-    cardComplete: true,
-    termsAccepted: true,
+    customNoticeAccepted: customNoticeAccepted.value,
+    useSuggestedAddress: useSuggestedAddress.value,
+    paymentMethod: paymentMethod.value,
+    cardComplete: cardComplete.value,
+    termsAccepted: termsAccepted.value,
   }),
 );
-const checkoutStepLabels = {
-  details: "Checkout Details",
-  "custom-check": "Custom Item Check",
-  "shipping-address": "Shipping Address",
-  "address-verification": "Address Verification",
-  payment: "Payment",
-  review: "Terms & Agreements",
-  "place-order": "Place Order",
-  "delivery-notes": "Delivery & Assembly Notes",
+const selectedPaymentOption = computed(
+  () => paymentMethodOptions.find((option) => option.value === paymentMethod.value) || paymentMethodOptions[0],
+);
+const checkoutStepLabelKeys = {
+  details: "checkout.steps.details",
+  "custom-check": "checkout.steps.customCheck",
+  "shipping-address": "checkout.steps.shippingAddress",
+  "address-verification": "checkout.steps.addressVerification",
+  payment: "checkout.steps.payment",
+  review: "checkout.steps.review",
+  "place-order": "checkout.steps.placeOrder",
+  "delivery-notes": "checkout.steps.deliveryNotes",
 };
+const customNoticeTitleKey = computed(() =>
+  checkoutFlow.value.customNotice.required ? "checkout.customNotice.requiredTitle" : "checkout.customNotice.clearTitle",
+);
+const customNoticeMessageKey = computed(() =>
+  checkoutFlow.value.customNotice.required ? "checkout.customNotice.requiredMessage" : "checkout.customNotice.clearMessage",
+);
+const addressVerificationMessage = computed(() => {
+  if (checkoutFlow.value.addressVerification.status === "missing") return t("checkout.address.required");
+  if (checkoutFlow.value.addressVerification.status === "issue") return t("checkout.address.needsVerification");
+  return t("checkout.address.verified");
+});
+const canReviewPayment = computed(() => mode.value === "yudao" && hasCheckoutAddress.value && checkoutFlow.value.readyForPayment);
 const primaryActionDisabled = computed(
   () => busy.value || (mode.value !== "yudao" && mode.value !== "empty") || (mode.value === "yudao" && !canPlaceCheckoutOrder(checkoutFlow.value)),
 );
 const { t } = useI18n();
 const money = (value) => `$${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 let checkoutRequestId = 0;
+
+const resetCheckoutConfirmations = () => {
+  customNoticeAccepted.value = false;
+  useSuggestedAddress.value = false;
+  paymentMethod.value = "card";
+  cardComplete.value = false;
+  termsAccepted.value = false;
+};
 
 const clearRemoteCheckoutData = ({ preserveAddressSelection = false } = {}) => {
   const previousAddressId = selectedAddressId.value;
@@ -103,7 +151,8 @@ const clearRemoteCheckoutData = ({ preserveAddressSelection = false } = {}) => {
 const loadCheckoutData = async (options = {}) => {
   const requestId = ++checkoutRequestId;
   clearRemoteCheckoutData(options);
-  error.value = "";
+  resetCheckoutConfirmations();
+  errorKey.value = "";
   if (!canUseYudaoCheckout(props.items) || !readYudaoToken()) return;
   busy.value = true;
   try {
@@ -114,15 +163,19 @@ const loadCheckoutData = async (options = {}) => {
     addresses.value = nextAddresses;
     defaultAddress.value = nextDefaultAddress;
     selectedAddressId.value = getSelectedAddressId(selectedAddressId.value, nextDefaultAddress);
+    if (!selectedAddressId.value) {
+      errorKey.value = "checkout.errors.noAddress";
+      return;
+    }
     if (selectedAddressId.value) {
       const payload = buildYudaoOrderPayload(props.items, { addressId: selectedAddressId.value });
       const nextSettlement = await settleOrder(payload);
       if (requestId !== checkoutRequestId) return;
       settlement.value = nextSettlement;
     }
-  } catch {
+  } catch (caught) {
     if (requestId !== checkoutRequestId) return;
-    error.value = "Checkout service is unavailable. Please try again later.";
+    errorKey.value = getCheckoutErrorKey(caught, "checkout.errors.loadUnavailable");
   } finally {
     if (requestId === checkoutRequestId) busy.value = false;
   }
@@ -131,17 +184,17 @@ const loadCheckoutData = async (options = {}) => {
 const submitOrder = async () => {
   const addressId = getSelectedAddressId(selectedAddressId.value, defaultAddress.value);
   if (!addressId) {
-    error.value = "No Yudao address is available for this user.";
+    errorKey.value = "checkout.errors.noAddress";
     return;
   }
   busy.value = true;
-  error.value = "";
+  errorKey.value = "";
   try {
     const payload = buildYudaoOrderPayload(props.items, { addressId });
     const result = await createOrder(payload);
     emit("order-created", result.id);
-  } catch {
-    error.value = "Order service is unavailable. Please try again later.";
+  } catch (caught) {
+    errorKey.value = getCheckoutErrorKey(caught, "checkout.errors.orderUnavailable");
   } finally {
     busy.value = false;
   }
@@ -155,9 +208,23 @@ const handlePrimaryAction = () => {
   submitOrder();
 };
 
+const handleCheckoutRecoveryAction = () => {
+  if (!checkoutRecoveryAction.value) return;
+  if (checkoutRecoveryAction.value.type === "emit") {
+    emit(checkoutRecoveryAction.value.event);
+    return;
+  }
+  if (checkoutRecoveryAction.value.type === "retry") {
+    loadCheckoutData({ preserveAddressSelection: true });
+  }
+};
+
 onMounted(loadCheckoutData);
 watch(() => props.authVersion, loadCheckoutData);
 watch(() => props.items, () => loadCheckoutData({ preserveAddressSelection: true }), { deep: true });
+watch(paymentMethod, () => {
+  cardComplete.value = false;
+});
 </script>
 
 <template>
@@ -168,7 +235,17 @@ watch(() => props.items, () => loadCheckoutData({ preserveAddressSelection: true
       <p>{{ t(`${checkoutModeKey}.message`) }}</p>
     </header>
 
-    <p v-if="error" class="checkout-error">{{ error }}</p>
+    <div v-if="error" class="checkout-error">
+      <p>{{ error }}</p>
+      <div v-if="checkoutRecoveryAction" class="checkout-error-actions">
+        <a v-if="checkoutRecoveryAction.type === 'link'" class="checkout-recovery-action" :href="checkoutRecoveryAction.href">
+          {{ t(checkoutRecoveryAction.labelKey) }}
+        </a>
+        <button v-else type="button" class="checkout-recovery-action" @click="handleCheckoutRecoveryAction">
+          {{ t(checkoutRecoveryAction.labelKey) }}
+        </button>
+      </div>
+    </div>
 
     <section class="checkout-grid">
       <div class="checkout-main">
@@ -183,7 +260,7 @@ watch(() => props.items, () => loadCheckoutData({ preserveAddressSelection: true
         <section class="checkout-flow-rail" aria-label="Checkout flow">
           <article v-for="(step, index) in checkoutFlow.steps" :key="step.key" class="checkout-flow-card" :class="`is-${step.status}`">
             <span>{{ String(index + 1).padStart(2, "0") }}</span>
-            <strong>{{ checkoutStepLabels[step.key] }}</strong>
+            <strong>{{ t(checkoutStepLabelKeys[step.key]) }}</strong>
             <small>{{ step.status }}</small>
           </article>
         </section>
@@ -192,10 +269,14 @@ watch(() => props.items, () => loadCheckoutData({ preserveAddressSelection: true
           <div class="checkout-section-title">
             <span>02</span>
             <div>
-              <h2>{{ checkoutFlow.customNotice.title }}</h2>
-              <p>{{ checkoutFlow.customNotice.message }}</p>
+              <h2>{{ t(customNoticeTitleKey) }}</h2>
+              <p>{{ t(customNoticeMessageKey) }}</p>
             </div>
           </div>
+          <label v-if="checkoutFlow.customNotice.required" class="checkout-confirm-row">
+            <input v-model="customNoticeAccepted" type="checkbox" />
+            <span>{{ t("checkout.confirm.customNotice") }}</span>
+          </label>
         </section>
 
         <section v-if="addresses.length" class="checkout-addresses">
@@ -218,14 +299,18 @@ watch(() => props.items, () => loadCheckoutData({ preserveAddressSelection: true
           <div class="checkout-section-title">
             <span>04</span>
             <div>
-              <h2>Address Verification</h2>
-              <p>{{ checkoutFlow.addressVerification.issue || "Shipping address is verified for payment." }}</p>
+              <h2>{{ t("checkout.steps.addressVerification") }}</h2>
+              <p>{{ addressVerificationMessage }}</p>
             </div>
           </div>
           <article v-if="checkoutFlow.addressVerification.suggestedAddress">
-            <p class="eyebrow">Suggested Address</p>
+            <p class="eyebrow">{{ t("checkout.address.suggested") }}</p>
             <strong>{{ checkoutFlow.addressVerification.suggestedAddress.line1 }}</strong>
             <span>{{ checkoutFlow.addressVerification.suggestedAddress.postalCode }}</span>
+            <label class="checkout-confirm-row">
+              <input v-model="useSuggestedAddress" type="checkbox" />
+              <span>{{ t("checkout.confirm.useSuggestedAddress") }}</span>
+            </label>
           </article>
         </section>
 
@@ -238,10 +323,10 @@ watch(() => props.items, () => loadCheckoutData({ preserveAddressSelection: true
             </div>
           </div>
           <article v-for="item in items" :key="item.skuId" class="checkout-item">
-            <ProductImage :src="item.cover" :label="item.name" />
+              <ProductImage :src="item.cover" :label="item.name" />
             <div>
               <p class="checkout-item-kicker">
-                {{ isMembershipItem(item) ? "Membership" : item.source === "yudao" ? t("checkout.itemKickerYudao") : t("checkout.itemKickerPreview") }}
+                {{ isMembershipItem(item) ? t("checkout.itemKickerMembership") : item.source === "yudao" ? t("checkout.itemKickerYudao") : t("checkout.itemKickerPreview") }}
               </p>
               <h3>{{ item.name }}</h3>
               <p>{{ item.subtitle }}</p>
@@ -251,42 +336,64 @@ watch(() => props.items, () => loadCheckoutData({ preserveAddressSelection: true
           <p v-if="items.length === 0" class="checkout-empty-note">{{ t("checkout.emptyNote") }}</p>
         </section>
 
-        <section class="checkout-payment-panel">
+        <section v-if="canReviewPayment" class="checkout-payment-panel">
           <div class="checkout-section-title">
             <span>06</span>
             <div>
-              <h2>Payment Method</h2>
-              <p>Card payment, member credit and gift card rules are reviewed before order placement.</p>
+              <h2>{{ t("checkout.payment.title") }}</h2>
+              <p>{{ t("checkout.payment.intro") }}</p>
             </div>
+          </div>
+          <div class="checkout-payment-options" :aria-label="t('checkout.payment.method')">
+            <label
+              v-for="option in paymentMethodOptions"
+              :key="option.value"
+              class="checkout-payment-option"
+              :class="{ 'is-selected': paymentMethod === option.value }"
+            >
+              <input v-model="paymentMethod" name="checkout-payment-method" :value="option.value" type="radio" />
+              <span>
+                <strong>{{ t(option.labelKey) }}</strong>
+                <small>{{ t(option.descriptionKey) }}</small>
+              </span>
+            </label>
           </div>
           <dl>
             <div>
-              <dt>Method</dt>
-              <dd>{{ checkoutFlow.payment.method === "card" ? "Credit Card" : checkoutFlow.payment.method }}</dd>
+              <dt>{{ t("checkout.payment.method") }}</dt>
+              <dd>{{ t(selectedPaymentOption.labelKey) }}</dd>
             </div>
             <div>
-              <dt>Card Details</dt>
-              <dd>{{ checkoutFlow.payment.cardComplete ? "Ready for secure entry" : "Required before placing order" }}</dd>
+              <dt>{{ t("checkout.payment.cardDetails") }}</dt>
+              <dd>{{ checkoutFlow.payment.cardComplete ? t("checkout.payment.ready") : t("checkout.payment.required") }}</dd>
             </div>
           </dl>
+          <label class="checkout-confirm-row">
+            <input v-model="cardComplete" :disabled="mode !== 'yudao' || !checkoutFlow.readyForPayment" type="checkbox" />
+            <span>{{ t("checkout.confirm.paymentReady") }}</span>
+          </label>
         </section>
 
-        <section class="checkout-terms-panel">
+        <section v-if="canReviewPayment" class="checkout-terms-panel">
           <div class="checkout-section-title">
             <span>07</span>
             <div>
-              <h2>Terms & Agreements</h2>
-              <p>Custom order notices, membership renewal language and checkout terms stay visible before submission.</p>
+              <h2>{{ t("checkout.terms.title") }}</h2>
+              <p>{{ t("checkout.terms.intro") }}</p>
             </div>
           </div>
+          <label class="checkout-confirm-row">
+            <input v-model="termsAccepted" :disabled="mode !== 'yudao' || !checkoutFlow.readyForPayment" type="checkbox" />
+            <span>{{ t("checkout.confirm.termsAccepted") }}</span>
+          </label>
         </section>
 
-        <section class="checkout-delivery-notes">
+        <section v-if="canReviewPayment" class="checkout-delivery-notes">
           <div class="checkout-section-title">
             <span>08</span>
             <div>
-              <h2>Delivery & Assembly Notes</h2>
-              <p>Large furniture, lighting installation and final delivery notes are collected after order placement.</p>
+              <h2>{{ t("checkout.deliveryNotes.title") }}</h2>
+              <p>{{ t("checkout.deliveryNotes.intro") }}</p>
             </div>
           </div>
         </section>
@@ -302,11 +409,11 @@ watch(() => props.items, () => loadCheckoutData({ preserveAddressSelection: true
           <strong>{{ money(displayItemTotal) }}</strong>
         </div>
         <div v-if="membershipPricing.membershipSubtotal" class="summary-row">
-          <span>Membership</span>
+          <span>{{ t("checkout.membership") }}</span>
           <strong>{{ money(membershipPricing.membershipSubtotal) }}</strong>
         </div>
         <div v-if="membershipPricing.memberDiscount" class="summary-row">
-          <span>Member Savings</span>
+          <span>{{ t("checkout.memberSavings") }}</span>
           <strong>-{{ money(membershipPricing.memberDiscount) }}</strong>
         </div>
         <div class="summary-row">

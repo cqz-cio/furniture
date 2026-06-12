@@ -2,12 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { readYudaoSession, writeYudaoSession } from "../src/services/authSession.js";
 import {
   createEmailCaptchaChallenge,
-  getRemoteCartItems,
   loginByEmailPassword,
   loginByTradeAccount,
   logoutMember,
-  refreshMemberToken,
-  requestYudao,
   registerByEmail,
   requestEmailSignInLink,
   sendEmailRegistrationCode,
@@ -15,7 +12,15 @@ import {
   submitTradeApplication,
   uploadTradeApplicationAttachment,
   verifyEmailCaptchaChallenge,
-} from "../src/services/yudaoClient.js";
+} from "../src/services/yudaoAuthApi.js";
+import { getRemoteCartItems } from "../src/services/yudaoCartApi.js";
+import {
+  isYudaoAuthError,
+  isYudaoBusinessError,
+  isYudaoNetworkError,
+  refreshMemberToken,
+  requestYudao,
+} from "../src/services/yudaoRequest.js";
 
 const API_BASE = "http://127.0.0.1:48080/app-api";
 
@@ -470,5 +475,49 @@ describe("Yudao member auth client", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(3);
     expect(readYudaoSession(storage)).toEqual(newSession);
+  });
+
+  it("classifies Yudao business, auth, and network errors", async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ code: 500, msg: "fake business failure", data: { field: "sku" } }),
+    });
+    await expect(requestYudao("/business", { storage })).rejects.toMatchObject({
+      kind: "business",
+      code: 500,
+      data: { field: "sku" },
+    });
+
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      status: 401,
+      json: async () => ({ code: 401, msg: "fake auth failure" }),
+    });
+    await expect(requestYudao("/auth", { storage })).rejects.toMatchObject({
+      kind: "auth",
+      code: 401,
+      status: 401,
+    });
+
+    fetchMock.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    await expect(requestYudao("/network", { storage })).rejects.toMatchObject({
+      kind: "network",
+    });
+  });
+
+  it("exposes Yudao error type guards", async () => {
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ code: 500, msg: "fake business failure" }),
+      })
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"));
+
+    const businessError = await requestYudao("/business", { storage }).catch((error) => error);
+    const networkError = await requestYudao("/network", { storage }).catch((error) => error);
+
+    expect(isYudaoBusinessError(businessError)).toBe(true);
+    expect(isYudaoNetworkError(networkError)).toBe(true);
+    expect(isYudaoAuthError({ kind: "auth", code: 401 })).toBe(true);
   });
 });

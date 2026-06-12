@@ -1,48 +1,60 @@
 <script setup>
-import ImageSpecPlaceholder from "../components/ImageSpecPlaceholder.vue";
-import { homeFullPageModules, homeHeroAssets } from "../data/rhLayout.js";
+import { generatedFurnitureAssets } from "../data/generatedFurnitureAssets.js";
+import { homeFullPageModules } from "../data/rhLayout.js";
 import { useI18n } from "../i18n.js";
 
 const { t } = useI18n();
-
-const specHeight = (rendered) => {
-  const match = rendered.match(/x\s*([0-9.]+)/);
-  return match ? `${match[1]}px` : undefined;
-};
 
 const homeModuleHref = (title) => {
   if (title.includes("Outdoor")) return "/outdoor";
   if (title.includes("RH Members Program")) return "/membership";
   return "";
 };
+
+const homeModuleKeys = [
+  "bedroom",
+  "dining",
+  "outdoorLiving",
+  "sourcebooks",
+  "milan",
+  "sourcebooks",
+  "interiors",
+  "outdoorLiving",
+  "interiors",
+  "sourcebooks",
+  "members",
+  "founder",
+  "architecture",
+  "hospitality",
+  "guesthouse",
+  "aviation",
+  "yachting",
+  "services",
+];
+
+const homeModuleKey = (index) => homeModuleKeys[index] || "interiors";
+const homeModuleCopy = (index, field) => t(`home.modules.${homeModuleKey(index)}.${field}`);
+
+const generatedHomeModuleAssets = [
+  generatedFurnitureAssets.home.modules["002"],
+  generatedFurnitureAssets.home.modules["003"],
+  generatedFurnitureAssets.home.modules["004"],
+  generatedFurnitureAssets.home.modules["005"],
+];
+
+const generatedHomeModuleAsset = (index) => generatedHomeModuleAssets[index % generatedHomeModuleAssets.length];
 </script>
 
 <template>
   <section class="home-hero">
-    <div class="home-hero-media">
-      <ImageSpecPlaceholder
-        class="desktop-home-image"
-        :label="homeHeroAssets.desktop.label"
-        :rendered="homeHeroAssets.desktop.rendered"
-        recommended2x="2700 x 1816"
-        file-size="WebP 320-620KB"
-        :fit="homeHeroAssets.desktop.fit"
-        ratio="1.49:1"
-        :natural="homeHeroAssets.desktop.natural"
-        tone="dark"
+    <picture class="home-hero-picture">
+      <source media="(max-width: 760px)" :srcset="generatedFurnitureAssets.home.hero.mobile" />
+      <img
+        class="home-hero-image"
+        :src="generatedFurnitureAssets.home.hero.desktop"
+        alt="RH interiors with layered neutral furniture and architectural lighting"
       />
-      <ImageSpecPlaceholder
-        class="mobile-home-image"
-        :label="homeHeroAssets.mobile.label"
-        :rendered="homeHeroAssets.mobile.rendered"
-        recommended2x="780 x 1200"
-        file-size="WebP 220-420KB"
-        :fit="homeHeroAssets.mobile.fit"
-        ratio="0.65:1"
-        :natural="homeHeroAssets.mobile.natural"
-        tone="dark"
-      />
-    </div>
+    </picture>
     <div class="home-hero-copy">
       <p class="eyebrow">{{ t("home.heroEyebrow") }}</p>
       <h1>RH</h1>
@@ -53,47 +65,25 @@ const homeModuleHref = (title) => {
   <section class="home-grid" :aria-label="t('home.gridAria')">
     <component
       :is="homeModuleHref(item.title) ? 'a' : 'article'"
-      v-for="item in homeFullPageModules"
+      v-for="(item, index) in homeFullPageModules"
       :key="item.title"
       :href="homeModuleHref(item.title) || undefined"
       class="home-entry"
-      :class="{ 'is-screenshot-inferred': item.sourceLevel.includes('截图推断') }"
     >
-      <div class="home-media-frame" :class="{ 'has-overlays': item.overlays }">
-        <ImageSpecPlaceholder
-          class="desktop-home-slot"
-          :style="{ minHeight: specHeight(item.desktopRendered) }"
-          :label="item.label"
-          :rendered="item.desktopRendered"
-          :recommended2x="item.recommended2x"
-          :file-size="item.fileSize"
-          :fit="item.fit"
-          :ratio="item.ratio"
-          :natural="item.desktopNatural"
+      <picture class="home-entry-picture">
+        <source media="(max-width: 760px)" :srcset="generatedHomeModuleAsset(index).mobile" />
+        <img
+          class="home-entry-image"
+          :src="generatedHomeModuleAsset(index).desktop"
+          :alt="homeModuleCopy(index, 'title')"
         />
-        <ImageSpecPlaceholder
-          class="mobile-home-slot"
-          :style="{ minHeight: specHeight(item.mobileRendered) }"
-          :label="item.label"
-          :rendered="item.mobileRendered"
-          :recommended2x="item.mobileRecommended2x"
-          :file-size="item.fileSize"
-          :fit="item.fit"
-          :ratio="item.ratio"
-          :natural="item.mobileNatural"
-        />
-        <div v-if="item.overlays" class="sourcebook-overlay-slots" aria-label="Sourcebook layered cover slots">
-          <div v-for="overlay in item.overlays" :key="overlay.label" class="sourcebook-cover-slot">
-            <strong>{{ overlay.label }}</strong>
-            <span>PC: {{ overlay.desktopRendered }}</span>
-            <span>Mobile: {{ overlay.mobileRendered }}</span>
-            <small>{{ overlay.sourceLevel }}</small>
-          </div>
-        </div>
-      </div>
-      <div>
-        <h2>{{ item.title }}</h2>
-        <small>{{ item.sourceLevel }}</small>
+        <span class="home-entry-shade" aria-hidden="true"></span>
+      </picture>
+      <div class="home-entry-copy">
+        <p class="eyebrow">{{ homeModuleCopy(index, "eyebrow") }}</p>
+        <h2>{{ homeModuleCopy(index, "title") }}</h2>
+        <p>{{ homeModuleCopy(index, "subtitle") }}</p>
+        <span>{{ homeModuleCopy(index, "cta") }}</span>
       </div>
     </component>
   </section>

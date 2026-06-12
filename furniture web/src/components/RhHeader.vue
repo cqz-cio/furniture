@@ -10,9 +10,9 @@ import {
   primaryNavigation,
   saleMegaMenu,
 } from "../data/rhLayout.js";
+import { generatedFurnitureAssets } from "../data/generatedFurnitureAssets.js";
 import { useI18n } from "../i18n.js";
 import AuthModal from "./AuthModal.vue";
-import ImageSpecPlaceholder from "./ImageSpecPlaceholder.vue";
 
 defineProps({
   overlay: {
@@ -39,11 +39,18 @@ const activeDropdown = ref("");
 const activeMegaItem = ref("");
 const regionOpen = ref(false);
 const accountOpen = ref(false);
+const searchOpen = ref(false);
 const navItems = computed(() => (page.value === "baby-child" ? babyChildNavigation : primaryNavigation));
 const hoverMenuItems = computed(() => (activeDropdown.value === "Sale" ? saleMegaMenu : livingMegaMenu));
 const hoverSecondaryMenuItems = computed(() =>
   activeDropdown.value === "Living" && activeMegaItem.value ? livingMegaSubmenus[activeMegaItem.value] || [] : [],
 );
+const generatedGlobalMenuImages = [
+  generatedFurnitureAssets.products.sofa.cover,
+  generatedFurnitureAssets.home.modules["004"].desktop,
+  generatedFurnitureAssets.home.modules["002"].desktop,
+  generatedFurnitureAssets.products.pendant.gallery,
+];
 
 const pageKey = (label) => {
   if (label === "Living") return "sofas-plp";
@@ -71,16 +78,27 @@ const toggleMenu = () => {
   activeMegaItem.value = "";
   regionOpen.value = false;
   accountOpen.value = false;
+  searchOpen.value = false;
 };
 
 const closeMenu = () => {
   menuOpen.value = false;
 };
 
+const toggleSearch = () => {
+  searchOpen.value = !searchOpen.value;
+  menuOpen.value = false;
+  activeDropdown.value = "";
+  activeMegaItem.value = "";
+  regionOpen.value = false;
+  accountOpen.value = false;
+};
+
 const toggleRegion = () => {
   regionOpen.value = !regionOpen.value;
   activeDropdown.value = "";
   accountOpen.value = false;
+  searchOpen.value = false;
   closeMenu();
 };
 
@@ -93,6 +111,7 @@ const openAccount = () => {
   accountOpen.value = true;
   regionOpen.value = false;
   activeDropdown.value = "";
+  searchOpen.value = false;
   closeMenu();
 };
 
@@ -116,6 +135,7 @@ const activatePage = (label) => {
   hideDropdown();
   regionOpen.value = false;
   accountOpen.value = false;
+  searchOpen.value = false;
 };
 
 const handleNavClick = (label) => {
@@ -133,6 +153,8 @@ const handleNavClick = (label) => {
 const activateMegaItem = (label) => {
   activeMegaItem.value = label;
 };
+
+const generatedGlobalMenuImage = (index) => generatedGlobalMenuImages[index % generatedGlobalMenuImages.length];
 
 const handleDocumentPointerDown = (event) => {
   if (regionOpen.value && !regionSwitcherRef.value?.contains(event.target)) {
@@ -182,7 +204,14 @@ onBeforeUnmount(() => {
           <span></span>
         </button>
         <div class="header-search">
-          <button class="icon-button search-icon" type="button" :aria-label="t('common.search')"></button>
+          <button
+            class="icon-button search-icon"
+            type="button"
+            :aria-label="t('common.search')"
+            :aria-expanded="searchOpen"
+            aria-controls="mobile-search-panel"
+            @click="toggleSearch"
+          ></button>
           <input class="search-input" :aria-label="t('common.search')" type="search" />
         </div>
       </div>
@@ -238,6 +267,10 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
+    <div v-if="searchOpen" id="mobile-search-panel" class="mobile-search-panel" role="search">
+      <input :aria-label="t('common.search')" type="search" />
+    </div>
+
     <nav class="primary-nav" aria-label="Primary navigation">
       <div class="primary-nav-inner">
         <button
@@ -283,16 +316,11 @@ onBeforeUnmount(() => {
     </section>
 
     <section v-if="menuOpen" class="global-menu" aria-label="RH menu">
-      <article v-for="panel in globalMenuPanels" :key="panel.heading" class="global-menu-panel">
-        <ImageSpecPlaceholder
-          class="global-menu-spec"
-          :label="panel.spec.label"
-          :rendered="panel.spec.rendered"
-          :recommended2x="panel.spec.recommended2x"
-          :file-size="panel.spec.fileSize"
-          :fit="panel.spec.fit"
-          :ratio="panel.spec.ratio"
-          :natural="panel.spec.natural"
+      <article v-for="(panel, index) in globalMenuPanels" :key="panel.heading" class="global-menu-panel">
+        <img
+          class="global-menu-image"
+          :src="generatedGlobalMenuImage(index)"
+          :alt="`${panel.heading} menu collection`"
         />
         <p>Our</p>
         <h2>{{ panel.heading }}</h2>

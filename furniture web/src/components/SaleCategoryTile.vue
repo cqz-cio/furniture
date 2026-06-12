@@ -1,6 +1,6 @@
 <script setup>
-import { categoryImageSpec, saleCategoryLinkHref } from "../data/rhLayout.js";
-import ImageSpecPlaceholder from "./ImageSpecPlaceholder.vue";
+import { generatedFurnitureAssets } from "../data/generatedFurnitureAssets.js";
+import { saleCategoryLinkHref } from "../data/rhLayout.js";
 
 defineProps({
   category: {
@@ -8,29 +8,20 @@ defineProps({
     required: true,
   },
 });
+
+const categoryAsset = (category, device) => generatedFurnitureAssets.sale.categories[category.title]?.[device] || "";
 </script>
 
 <template>
-  <a class="sale-tile" :href="saleCategoryLinkHref(category)" :aria-label="`${category.title} 图片区域`">
-    <ImageSpecPlaceholder
-      class="desktop-category-spec"
-      :label="`${category.title} 图片区域 | ${category.imageId}`"
-      :rendered="categoryImageSpec.rendered"
-      :recommended2x="categoryImageSpec.recommended2x"
-      :file-size="categoryImageSpec.fileSize"
-      :fit="categoryImageSpec.fit"
-      :ratio="categoryImageSpec.ratio"
-      :natural="categoryImageSpec.natural"
-    />
-    <ImageSpecPlaceholder
-      class="mobile-category-spec"
-      :label="`${category.title} 图片区域（手机端） | ${category.imageId}`"
-      :rendered="categoryImageSpec.mobileRendered"
-      :recommended2x="categoryImageSpec.mobileRecommended2x"
-      :file-size="categoryImageSpec.fileSize"
-      :fit="categoryImageSpec.fit"
-      :ratio="categoryImageSpec.ratio"
-      :natural="categoryImageSpec.mobileNatural"
-    />
+  <a class="sale-tile" :href="saleCategoryLinkHref(category)" :aria-label="`Shop ${category.title} sale`">
+    <picture class="sale-tile-picture">
+      <source media="(max-width: 760px)" :srcset="categoryAsset(category, 'mobile')" />
+      <img
+        class="sale-tile-image"
+        :src="categoryAsset(category, 'desktop')"
+        :alt="`${category.title} sale furniture collection`"
+      />
+    </picture>
+    <span class="sale-tile-title">{{ category.title }}</span>
   </a>
 </template>

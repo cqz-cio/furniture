@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, ref, watch } from "vue";
 import { readYudaoSession } from "../services/authSession.js";
 import { useI18n } from "../i18n.js";
 import { membershipRoutes } from "../services/membershipNavigation.js";
-import { logoutMember } from "../services/yudaoClient.js";
+import { logoutMember } from "../services/yudaoAuthApi.js";
 import AuthCreateAccountForm from "./AuthCreateAccountForm.vue";
 import AuthEmailSignInForm from "./AuthEmailSignInForm.vue";
 import AuthTradeSignInForm from "./AuthTradeSignInForm.vue";

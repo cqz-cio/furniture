@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from "vue";
 import { demoProducts } from "../data/demoProducts.js";
 import { useI18n } from "../i18n.js";
 import { buildProductDetailModel } from "../services/productDetailModel.js";
-import { getProductDetail } from "../services/yudaoClient.js";
+import { getProductDetail } from "../services/yudaoProductApi.js";
 
 const emit = defineEmits(["add-to-cart"]);
 const { t } = useI18n();
@@ -19,6 +19,18 @@ const money = (value) => `$${value.toLocaleString("en-US", { maximumFractionDigi
 const activeGalleryIndex = ref(0);
 const detail = computed(() => buildProductDetailModel(product.value));
 const activeGalleryItem = computed(() => detail.value.gallery[activeGalleryIndex.value] || detail.value.gallery[0]);
+const maxPurchaseQuantity = computed(() => Math.max(0, Number(product.value.stock) || 0));
+const canPurchase = computed(() => maxPurchaseQuantity.value > 0);
+const normalizedPurchaseQuantity = computed(() => {
+  if (!canPurchase.value) return 0;
+  return Math.max(1, Math.min(Math.floor(Number(quantity.value) || 1), maxPurchaseQuantity.value));
+});
+
+const handleAddToCart = () => {
+  quantity.value = normalizedPurchaseQuantity.value;
+  if (!canPurchase.value) return;
+  emit("add-to-cart", product.value, normalizedPurchaseQuantity.value);
+};
 
 onMounted(async () => {
   const id = productId.value;
@@ -81,6 +93,26 @@ onMounted(async () => {
         </div>
         <p class="product-savings-label">{{ detail.price.savingsLabel }}</p>
         <p class="product-price-context">{{ detail.price.context }}</p>
+        <div class="product-mobile-purchase-bar" aria-label="Mobile purchase actions">
+          <div>
+            <small>{{ detail.price.memberLabel }}</small>
+            <strong>{{ money(detail.price.member) }}</strong>
+          </div>
+          <label>
+            {{ t("quantity") }}
+            <input
+              v-model.number="quantity"
+              min="1"
+              :max="maxPurchaseQuantity"
+              :disabled="!canPurchase"
+              type="number"
+              @change="quantity = normalizedPurchaseQuantity"
+            />
+          </label>
+          <button type="button" :disabled="!canPurchase" @click="handleAddToCart">
+            {{ canPurchase ? t("addToCart") : t("product.unavailable") }}
+          </button>
+        </div>
         <nav class="product-related-links" aria-label="Related product options">
           <a v-for="link in detail.relatedLinks" :key="link.label" :href="link.href">{{ link.label }}</a>
         </nav>
@@ -128,10 +160,17 @@ onMounted(async () => {
         <div class="product-purchase-row">
           <label>
             {{ t("quantity") }}
-            <input v-model.number="quantity" min="1" type="number" />
+            <input
+              v-model.number="quantity"
+              min="1"
+              :max="maxPurchaseQuantity"
+              :disabled="!canPurchase"
+              type="number"
+              @change="quantity = normalizedPurchaseQuantity"
+            />
           </label>
-          <button type="button" @click="emit('add-to-cart', product, quantity)">
-            {{ t("addToCart") }}
+          <button type="button" :disabled="!canPurchase" @click="handleAddToCart">
+            {{ canPurchase ? t("addToCart") : t("product.unavailable") }}
           </button>
         </div>
 

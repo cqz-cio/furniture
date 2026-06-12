@@ -2,6 +2,7 @@
 import { computed, reactive, ref } from "vue";
 import TradeProgramNav from "../components/TradeProgramNav.vue";
 import { useI18n } from "../i18n.js";
+import { isEmailAddress } from "../services/formValidation.js";
 import {
   businessDescriptionOptions,
   businessInfoFields,
@@ -10,7 +11,7 @@ import {
   stateOptions,
   tradeRoutes,
 } from "../services/tradeProgram.js";
-import { submitTradeApplication, uploadTradeApplicationAttachment } from "../services/yudaoClient.js";
+import { submitTradeApplication, uploadTradeApplicationAttachment } from "../services/yudaoAuthApi.js";
 
 const { t } = useI18n();
 
@@ -51,14 +52,13 @@ const busy = ref(false);
 const uploadBusy = ref(false);
 const successNotice = ref("");
 const error = ref("");
+const errorAction = ref("");
 
 const optionMap = {
   country: countryOptions,
   state: stateOptions,
   businessDescription: businessDescriptionOptions,
 };
-
-const isEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
 const canSubmit = computed(() => {
   const requiredBusinessFields = businessInfoFields
@@ -70,7 +70,7 @@ const canSubmit = computed(() => {
       user.lastName.trim() &&
       user.title.trim() &&
       user.phone.trim() &&
-      isEmail(user.email) &&
+      isEmailAddress(user.email) &&
       user.email === user.confirmEmail,
   );
   return requiredBusinessFields && hasAuthorizedUser && businessDocuments.value.length > 0 && form.privacyAccepted && !busy.value && !uploadBusy.value;
@@ -96,6 +96,7 @@ const uploadDocumentFiles = (target, files) => {
   const selectedFiles = Array.from(files || []);
   if (selectedFiles.length === 0) return;
   error.value = "";
+  errorAction.value = "";
   target.value = selectedFiles.map((file) => ({
     name: file.name,
     file,
@@ -167,6 +168,7 @@ const submit = async () => {
   busy.value = true;
   successNotice.value = "";
   error.value = "";
+  errorAction.value = "";
   try {
     await uploadAllDocuments();
     const result = await submitTradeApplication(buildPayload());
@@ -174,6 +176,11 @@ const submit = async () => {
   } catch (caught) {
     error.value =
       caught?.stage === "upload" ? t("tradeProgram.application.uploadError") : t("tradeProgram.application.submitError");
+    if (caught?.stage === "upload") {
+      errorAction.value = "attachments";
+    } else {
+      errorAction.value = "retry";
+    }
   } finally {
     busy.value = false;
   }
@@ -249,7 +256,7 @@ const submit = async () => {
         </button>
       </section>
 
-      <section class="trade-form-section">
+      <section id="trade-application-documents" class="trade-form-section">
         <h2>{{ t("tradeProgram.application.businessDocuments") }}</h2>
         <p>{{ t("tradeProgram.application.businessDocumentsHelp") }}</p>
         <div class="trade-file-field">
@@ -287,6 +294,14 @@ const submit = async () => {
 
       <p v-if="successNotice" class="auth-success">{{ successNotice }}</p>
       <p v-if="error" class="auth-error">{{ error }}</p>
+      <div v-if="errorAction" class="trade-application-recovery">
+        <a v-if="errorAction === 'attachments'" href="#trade-application-documents">
+          {{ t("tradeProgram.application.fixAttachments") }}
+        </a>
+        <button v-else type="button" :disabled="!canSubmit" @click="submit">
+          {{ t("tradeProgram.application.retrySubmit") }}
+        </button>
+      </div>
       <button class="trade-submit-button" type="submit" :disabled="!canSubmit">
         {{ busy ? t("common.working") : t("tradeProgram.application.submit") }}
       </button>

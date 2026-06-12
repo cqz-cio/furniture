@@ -15,7 +15,9 @@ export const hasCustomItems = (items = []) =>
 const hasText = (value) => Boolean(String(value || "").trim());
 
 export const getAddressVerification = (address = {}) => {
-  if (!hasText(address.line1) || !hasText(address.postalCode)) {
+  const safeAddress = address || {};
+
+  if (!hasText(safeAddress.line1) || !hasText(safeAddress.postalCode)) {
     return {
       status: "missing",
       issue: "Shipping address is required before payment.",
@@ -23,13 +25,13 @@ export const getAddressVerification = (address = {}) => {
     };
   }
 
-  if (!String(address.postalCode).includes("-")) {
+  if (!String(safeAddress.postalCode).includes("-")) {
     return {
       status: "issue",
       issue: "Address needs verification before payment.",
       suggestedAddress: {
-        ...address,
-        postalCode: `${address.postalCode}-0000`,
+        ...safeAddress,
+        postalCode: `${safeAddress.postalCode}-0000`,
       },
     };
   }

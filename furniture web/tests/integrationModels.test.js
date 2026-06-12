@@ -2,15 +2,17 @@ import { describe, expect, it } from "vitest";
 import { addLocalCartItem, removeLocalCartItem, updateLocalCartItemQuantity } from "../src/services/localCart.js";
 import {
   AUTH_TOKEN_STORAGE_KEY,
+  readYudaoToken,
+  unwrapYudaoResult,
+  writeYudaoToken,
+} from "../src/services/yudaoRequest.js";
+import {
   mapAddressResponse,
   mapOrderDetail,
   mapOrderPage,
   mapSettlementResponse,
   mapSpuToProduct,
-  readYudaoToken,
-  unwrapYudaoResult,
-  writeYudaoToken,
-} from "../src/services/yudaoClient.js";
+} from "../src/services/yudaoMappers.js";
 
 describe("yudao integration models", () => {
   it("unwraps successful yudao CommonResult responses", () => {

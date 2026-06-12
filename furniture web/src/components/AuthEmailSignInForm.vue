@@ -1,7 +1,8 @@
 <script setup>
 import { computed, ref } from "vue";
 import { useI18n } from "../i18n.js";
-import { loginByEmailPassword, requestEmailSignInLink } from "../services/yudaoClient.js";
+import { isEmailAddress, isPasswordInRange } from "../services/formValidation.js";
+import { loginByEmailPassword, requestEmailSignInLink } from "../services/yudaoAuthApi.js";
 
 const props = defineProps({
   variant: {
@@ -19,8 +20,8 @@ const notice = ref("");
 const error = ref("");
 
 const isSecureLink = computed(() => props.variant === "secureLink");
-const isEmailValid = computed(() => email.value.length <= 255 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value));
-const isPasswordValid = computed(() => password.value.length >= 4 && password.value.length <= 16);
+const isEmailValid = computed(() => isEmailAddress(email.value));
+const isPasswordValid = computed(() => isPasswordInRange(password.value));
 const canSubmit = computed(() => isEmailValid.value && (isSecureLink.value || isPasswordValid.value) && !busy.value);
 
 const submit = async () => {
@@ -95,6 +96,19 @@ const submit = async () => {
 
     <p v-if="notice" class="auth-success">{{ notice }}</p>
     <p v-if="error" class="auth-error">{{ error }}</p>
+    <div v-if="error" class="auth-recovery-actions">
+      <template v-if="!isSecureLink">
+        <button type="button" @click="emit('secure-link')">
+          {{ t("auth.recovery.useSecureLink") }}
+        </button>
+        <button type="button" @click="emit('create-account')">
+          {{ t("auth.recovery.createAccount") }}
+        </button>
+      </template>
+      <button v-else type="button" @click="emit('sign-in')">
+        {{ t("auth.recovery.passwordSignIn") }}
+      </button>
+    </div>
 
     <div class="account-modal-links">
       <button v-if="!isSecureLink" type="button" @click="emit('secure-link')">

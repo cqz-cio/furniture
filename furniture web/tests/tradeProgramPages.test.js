@@ -49,14 +49,32 @@ describe("trade program pages", () => {
     expect(application).toContain('t("tradeProgram.application.uploadError")');
   });
 
+  it("offers recovery actions after trade application upload or submit errors", () => {
+    const application = readSource("../src/pages/TradeApplicationPage.vue");
+    const styles = readSource("../src/styles.css");
+    const i18n = readSource("../src/i18n.js");
+
+    expect(application).toContain('errorAction = ref("")');
+    expect(application).toContain('errorAction.value = "attachments"');
+    expect(application).toContain('errorAction.value = "retry"');
+    expect(application).toContain("trade-application-recovery");
+    expect(application).toContain('href="#trade-application-documents"');
+    expect(application).toContain('@click="submit"');
+    expect(application).toContain('t("tradeProgram.application.fixAttachments")');
+    expect(application).toContain('t("tradeProgram.application.retrySubmit")');
+    expect(styles).toContain(".trade-application-recovery");
+    expect(i18n).toContain("fixAttachments");
+    expect(i18n).toContain("retrySubmit");
+  });
+
   it("aligns the public trade application with admin review wiring", () => {
     const yudaoRoot = "../../yudao电商管理平台前后端";
-    const client = readSource("../src/services/yudaoClient.js");
+    const authApi = readSource("../src/services/yudaoAuthApi.js");
     const adminApi = readSource(`${yudaoRoot}/yudao-ui-admin-vue3/src/api/member/trade/application/index.ts`);
     const adminView = readSource(`${yudaoRoot}/yudao-ui-admin-vue3/src/views/member/trade/application/index.vue`);
     const menuSql = readSource(`${yudaoRoot}/yudao-cloud/sql/mysql/member-trade-application.sql`);
 
-    expect(client).toContain('/member/auth/trade-application');
+    expect(authApi).toContain('/member/auth/trade-application');
     expect(adminApi).toContain('/member/trade-application/page');
     expect(adminApi).toContain('/member/trade-application/approve');
     expect(adminApi).toContain('/member/trade-application/reject');

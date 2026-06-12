@@ -256,10 +256,14 @@ describe("RH layout extraction data", () => {
     expect(saleHeroSpecs.mobile.src).toContain("Sale%20Mobile");
   });
 
-  it("keeps the Sale mobile hero hidden on desktop with a specific CSS rule", () => {
+  it("keeps the Sale hero responsive with picture-based image rules", () => {
     const css = readFileSync(new URL("../src/styles.css", import.meta.url), "utf8").replace(/\r\n/g, "\n");
-    expect(css).toContain(".sale-hero .sale-hero-image-mobile {\n  display: none;");
-    expect(css).toContain(".sale-hero .sale-hero-image-mobile {\n    display: flex;");
+    const salePageSource = readFileSync(new URL("../src/pages/SalePage.vue", import.meta.url), "utf8");
+
+    expect(salePageSource).toContain('<picture class="sale-hero-picture">');
+    expect(salePageSource).toContain('media="(max-width: 760px)"');
+    expect(css).toContain(".sale-hero-picture {\n  display: block;");
+    expect(css).toContain(".sale-hero-image {\n    height: 244.77px;");
   });
 
   it("defines measured homepage image slots from desktop and mobile exports", () => {

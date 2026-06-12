@@ -1,14 +1,83 @@
 <script setup>
-import SpecGroup from "../components/SpecGroup.vue";
-import { outdoorCollectionSpecs } from "../data/rhLayout.js";
+import { generatedFurnitureAssets } from "../data/generatedFurnitureAssets.js";
 
-const groups = [
-  { key: "banner", title: "系列横幅大图区域", desktop: outdoorCollectionSpecs.desktop.banner, mobile: outdoorCollectionSpecs.mobile.banner },
-  { key: "product", title: "子分类商品图区域", desktop: outdoorCollectionSpecs.desktop.product, mobile: outdoorCollectionSpecs.mobile.product },
-  { key: "swatch", title: "材质 / 颜色小样区域", desktop: outdoorCollectionSpecs.desktop.swatch, mobile: outdoorCollectionSpecs.mobile.swatch },
+const heroImage = generatedFurnitureAssets.home.modules["004"].desktop;
+
+const edits = ["Lounge", "Dining", "Poolside", "Lighting"];
+
+const collections = [
+  {
+    id: "lounge",
+    title: "Outdoor Lounge",
+    description: "Deep seating, low tables, and weather-ready silhouettes for open-air rooms.",
+    image: generatedFurnitureAssets.sale.categories.Outdoor.desktop,
+    href: "/sofas-plp",
+  },
+  {
+    id: "dining",
+    title: "Dining",
+    description: "Tables and chairs scaled for long meals, easy hosting, and everyday use outside.",
+    image: generatedFurnitureAssets.products.table.gallery,
+    href: "/missing",
+  },
+  {
+    id: "shade",
+    title: "Shade & Texture",
+    description: "Layered materials, woven accents, and soft neutrals that bring depth to the patio.",
+    image: generatedFurnitureAssets.products.chair.gallery,
+    href: "/missing",
+  },
+  {
+    id: "lighting",
+    title: "Lighting",
+    description: "Pendants and ambient pieces that keep outdoor spaces warm after sunset.",
+    image: generatedFurnitureAssets.products.pendant.cover,
+    href: "/missing",
+  },
 ];
 </script>
 
 <template>
-  <SpecGroup title="Outdoor 分类页面" :desktop="outdoorCollectionSpecs.desktop" :mobile="outdoorCollectionSpecs.mobile" :groups="groups" />
+  <section class="outdoor-landing-page">
+    <section class="outdoor-landing-hero" aria-labelledby="outdoor-landing-title">
+      <img :src="heroImage" alt="Outdoor living terrace with layered neutral furniture" />
+      <div class="landing-hero-copy outdoor-landing-copy">
+        <p class="eyebrow">RH Outdoor</p>
+        <h1 id="outdoor-landing-title">Open-air rooms, fully composed.</h1>
+        <p>
+          Furniture, lighting, and materials for terraces, gardens, pool decks, and dining under the sky.
+        </p>
+        <div class="landing-actions">
+          <a href="/sofas-plp">Shop Outdoor</a>
+          <a href="/membership">Join RH Members</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="landing-edit-row outdoor-edit-row" aria-label="Outdoor room edits">
+      <a v-for="edit in edits" :key="edit" href="/sofas-plp">{{ edit }}</a>
+    </section>
+
+    <section class="landing-feature-grid outdoor-feature-grid" aria-label="Outdoor collections">
+      <a v-for="collection in collections" :key="collection.id" :href="collection.href" class="landing-feature-card">
+        <img :src="collection.image" :alt="`${collection.title} outdoor collection`" />
+        <span class="eyebrow">Collection</span>
+        <h2>{{ collection.title }}</h2>
+        <p>{{ collection.description }}</p>
+      </a>
+    </section>
+
+    <section class="landing-service-band outdoor-service-band" aria-label="Outdoor design services">
+      <div>
+        <p class="eyebrow">Design Services</p>
+        <h2>Plan an exterior room with the same care as the interior.</h2>
+      </div>
+      <ul>
+        <li>Outdoor furniture planning</li>
+        <li>Material and finish guidance</li>
+        <li>Member savings</li>
+      </ul>
+      <a href="/membership">Explore services</a>
+    </section>
+  </section>
 </template>

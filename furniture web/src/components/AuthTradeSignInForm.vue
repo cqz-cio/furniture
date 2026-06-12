@@ -1,13 +1,14 @@
 <script setup>
 import { computed, onUnmounted, ref } from "vue";
 import { useI18n } from "../i18n.js";
+import { isEmailAddress, isSixDigitCode } from "../services/formValidation.js";
 import {
   createEmailCaptchaChallenge,
   loginByTradeAccount,
   sendTradeLoginCode,
   verifyEmailCaptchaChallenge,
   YUDAO_MEMBER_ERROR_CODES,
-} from "../services/yudaoClient.js";
+} from "../services/yudaoAuthApi.js";
 import { tradeRoutes } from "../services/tradeProgram.js";
 
 const emit = defineEmits(["authenticated", "sign-in", "close"]);
@@ -34,8 +35,8 @@ const captchaError = ref("");
 let cooldownTimer = null;
 
 const isTradeReady = computed(() => tradeId.value.trim().length > 0);
-const isEmailValid = computed(() => email.value.length <= 255 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value));
-const isCodeValid = computed(() => /^\d{6}$/.test(verificationCode.value));
+const isEmailValid = computed(() => isEmailAddress(email.value));
+const isCodeValid = computed(() => isSixDigitCode(verificationCode.value));
 const canSendCode = computed(
   () => isTradeReady.value && isEmailValid.value && !busy.value && !codeBusy.value && !captchaChallenge.value && codeCooldown.value === 0,
 );

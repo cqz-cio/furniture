@@ -1,3 +1,5 @@
+import { generatedFurnitureAssets } from "./generatedFurnitureAssets.js";
+
 export const demoProducts = [
   {
     id: 1001,
@@ -6,8 +8,8 @@ export const demoProducts = [
     subtitle: "Low, deep seating with down-blend cushions",
     description:
       "A generous modular sofa designed for relaxed rooms, with broad proportions and a soft linen-texture finish.",
-    cover: "",
-    gallery: [],
+    cover: generatedFurnitureAssets.products.sofa.cover,
+    gallery: [generatedFurnitureAssets.products.sofa.gallery, generatedFurnitureAssets.home.hero.desktop],
     price: 3299,
     marketPrice: 4299,
     stock: 12,
@@ -20,8 +22,8 @@ export const demoProducts = [
     name: "Oak Shelter Bed",
     subtitle: "Architectural frame in smoked oak",
     description: "A quiet bedroom centerpiece with a sheltering headboard, warm wood grain and restrained detailing.",
-    cover: "",
-    gallery: [],
+    cover: generatedFurnitureAssets.products.bed.cover,
+    gallery: [generatedFurnitureAssets.products.bed.gallery, generatedFurnitureAssets.home.modules["002"].desktop],
     price: 2599,
     marketPrice: 3199,
     stock: 7,
@@ -34,8 +36,8 @@ export const demoProducts = [
     name: "Marble Dining Table",
     subtitle: "Stone top with sculptural pedestal base",
     description: "A statement table for dining rooms, pairing cool marble movement with a grounded geometric base.",
-    cover: "",
-    gallery: [],
+    cover: generatedFurnitureAssets.products.table.cover,
+    gallery: [generatedFurnitureAssets.products.table.gallery, generatedFurnitureAssets.home.modules["003"].desktop],
     price: 4899,
     marketPrice: 5599,
     stock: 4,
@@ -49,8 +51,8 @@ export const demoProducts = [
     subtitle: "Weathered teak frame with performance cushions",
     description:
       "A durable outdoor chair for terraces and garden rooms, built around relaxed angles and easy-clean upholstery.",
-    cover: "",
-    gallery: [],
+    cover: generatedFurnitureAssets.products.chair.cover,
+    gallery: [generatedFurnitureAssets.products.chair.gallery, generatedFurnitureAssets.home.modules["004"].desktop],
     price: 1299,
     marketPrice: 1699,
     stock: 18,
@@ -64,8 +66,8 @@ export const demoProducts = [
     subtitle: "Architectural fixture with linen shade",
     description:
       "A warm pendant light template with fixed finish, shade, bulb and canopy parameters for later product expansion.",
-    cover: "",
-    gallery: [],
+    cover: generatedFurnitureAssets.products.pendant.cover,
+    gallery: [generatedFurnitureAssets.products.pendant.gallery, generatedFurnitureAssets.sale.categories.Lighting.desktop],
     price: 899,
     marketPrice: 1199,
     stock: 9,

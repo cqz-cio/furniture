@@ -1,7 +1,7 @@
 <script setup>
 import { computed } from "vue";
 import ProductImage from "./ProductImage.vue";
-import { getCartTotals } from "../services/localCart.js";
+import { getCartTotals, normalizeCartQuantity } from "../services/localCart.js";
 import { getMembershipCartNotice, getMembershipPricing, isMembershipItem } from "../services/membershipCart.js";
 import { useI18n } from "../i18n.js";
 
@@ -14,15 +14,25 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  noticeKey: {
+    type: String,
+    default: "",
+  },
 });
 
-const emit = defineEmits(["checkout", "close", "update-quantity", "remove"]);
+const emit = defineEmits(["checkout", "close", "resync", "update-quantity", "remove"]);
 const { t } = useI18n();
 const totals = computed(() => getCartTotals(props.items));
 const membershipPricing = computed(() => getMembershipPricing(props.items));
 const membershipNotice = computed(() => getMembershipCartNotice(props.items));
 const hasRemoteItems = computed(() => props.items.some((item) => item.source === "yudao"));
+const canResyncCart = computed(() =>
+  ["cart.remoteUnavailable", "cart.remoteMutationUnavailable"].includes(props.noticeKey),
+);
 const money = (value) => `$${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const handleQuantityChange = (item, value) => {
+  emit("update-quantity", item, normalizeCartQuantity(value));
+};
 </script>
 
 <template>
@@ -42,6 +52,13 @@ const money = (value) => `$${value.toLocaleString("en-US", { minimumFractionDigi
           </button>
         </header>
 
+        <div v-if="noticeKey" class="cart-drawer-notice">
+          <p>{{ t(noticeKey) }}</p>
+          <button v-if="canResyncCart" type="button" @click="emit('resync')">
+            {{ t("cart.retrySync") }}
+          </button>
+        </div>
+
         <div v-if="items.length === 0" class="cart-empty">
           <p>{{ t("cart.empty") }}</p>
           <span>{{ t("cart.emptyHelp") }}</span>
@@ -60,6 +77,7 @@ const money = (value) => `$${value.toLocaleString("en-US", { minimumFractionDigi
               </span>
               <h3>{{ item.name }}</h3>
               <p>{{ item.subtitle }}</p>
+              <small v-if="item.cartProblemKey" class="cart-item-problem">{{ t(item.cartProblemKey) }}</small>
               <strong>{{ money(item.price) }}</strong>
               <div class="cart-item-controls">
                 <label>
@@ -68,7 +86,7 @@ const money = (value) => `$${value.toLocaleString("en-US", { minimumFractionDigi
                     :value="item.quantity"
                     min="1"
                     type="number"
-                    @change="emit('update-quantity', item, Number($event.target.value))"
+                    @change="handleQuantityChange(item, $event.target.value)"
                   />
                 </label>
                 <button type="button" @click="emit('remove', item)">{{ t("cart.remove") }}</button>

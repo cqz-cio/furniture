@@ -22,8 +22,9 @@ describe("auth commerce refresh wiring", () => {
     expect(source).toContain("cartItems.value = readLocalCart()");
     expect(source).toContain("cartMode.value = \"local\"");
     expect(source).toContain("if (cartMode.value !== \"yudao\") writeLocalCart(items)");
-    expect(source).toContain("const switchToLocalCart = () =>");
-    expect(source).toContain("switchToLocalCart()");
+    expect(source).toContain("const switchToLocalCart = ({ noticeKey = \"\" } = {}) =>");
+    expect(source).toContain("cartNoticeKey.value = noticeKey");
+    expect(source).toContain('switchToLocalCart({ noticeKey: "cart.remoteUnavailable" })');
   });
 
   it("reloads and clears checkout data when authVersion changes", () => {

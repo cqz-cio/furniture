@@ -111,11 +111,44 @@ describe("i18n locale helper", () => {
       "auth.emailCode.send",
       "auth.trade.submit",
       "auth.fields.email",
+      "auth.recovery.useSecureLink",
+      "auth.recovery.createAccount",
+      "auth.recovery.passwordSignIn",
+      "auth.recovery.signIn",
     ];
 
     for (const locale of availableLocales) {
       for (const key of authKeys) {
         expect(getMessage(key, locale.lang), `${key} missing for ${locale.lang}`).toBeTruthy();
+      }
+    }
+  });
+
+  it("provides homepage image overlay copy across every supported locale", async () => {
+    const { availableLocales, getMessage } = await loadI18n();
+    const moduleKeys = [
+      "bedroom",
+      "dining",
+      "outdoorLiving",
+      "sourcebooks",
+      "milan",
+      "interiors",
+      "members",
+      "founder",
+      "architecture",
+      "hospitality",
+      "guesthouse",
+      "aviation",
+      "yachting",
+      "services",
+    ];
+
+    for (const locale of availableLocales) {
+      for (const moduleKey of moduleKeys) {
+        expect(getMessage(`home.modules.${moduleKey}.eyebrow`, locale.lang), `${moduleKey} eyebrow missing`).toBeTruthy();
+        expect(getMessage(`home.modules.${moduleKey}.title`, locale.lang), `${moduleKey} title missing`).toBeTruthy();
+        expect(getMessage(`home.modules.${moduleKey}.subtitle`, locale.lang), `${moduleKey} subtitle missing`).toBeTruthy();
+        expect(getMessage(`home.modules.${moduleKey}.cta`, locale.lang), `${moduleKey} cta missing`).toBeTruthy();
       }
     }
   });
@@ -152,6 +185,16 @@ describe("i18n locale helper", () => {
       "membership.account.emptyStates.expired.description",
       "membership.account.planWholeRoom",
       "membership.account.billingTitle",
+      "membership.account.billingHistory.actions.connectAccount",
+      "membership.account.billingHistory.actions.retry",
+      "membership.account.billingHistory.actions.createOrder",
+      "membership.account.addressBook.actions.connectAccount",
+      "membership.account.addressBook.actions.retry",
+      "membership.account.addressBook.actions.addFirstAddress",
+      "membership.account.profile.actions.connectAccount",
+      "membership.account.profile.actions.retry",
+      "membership.account.profile.actions.reviewProfile",
+      "membership.account.profile.actions.reviewPhone",
       "membership.account.actions.shopEligible.label",
       "membership.account.eligibility.title",
       "membership.account.eligibility.summary.eligible",
@@ -172,10 +215,87 @@ describe("i18n locale helper", () => {
 
   it("provides order history membership value labels across every supported locale", async () => {
     const { availableLocales, getMessage } = await loadI18n();
-    const orderKeys = ["orders.memberSavings", "orders.memberSavingsUnavailable"];
+    const orderKeys = [
+      "orders.memberSavings",
+      "orders.memberSavingsUnavailable",
+      "orders.error",
+      "orders.actions.connectAccount",
+      "orders.actions.retry",
+      "orders.actions.shop",
+    ];
 
     for (const locale of availableLocales) {
       for (const key of orderKeys) {
+        expect(getMessage(key, locale.lang), `${key} missing for ${locale.lang}`).toBeTruthy();
+      }
+    }
+  });
+
+  it("provides cart recovery notices across every supported locale", async () => {
+    const { availableLocales, getMessage } = await loadI18n();
+    const cartKeys = [
+      "cart.remoteUnavailable",
+      "cart.remoteMutationUnavailable",
+      "cart.retrySync",
+      "cart.itemUnavailable",
+    ];
+
+    for (const locale of availableLocales) {
+      for (const key of cartKeys) {
+        expect(getMessage(key, locale.lang), `${key} missing for ${locale.lang}`).toBeTruthy();
+      }
+    }
+  });
+
+  it("provides checkout confirmation translations across every supported locale", async () => {
+    const { availableLocales, getMessage } = await loadI18n();
+    const checkoutKeys = [
+      "checkout.steps.details",
+      "checkout.steps.customCheck",
+      "checkout.steps.shippingAddress",
+      "checkout.steps.addressVerification",
+      "checkout.steps.payment",
+      "checkout.steps.review",
+      "checkout.steps.placeOrder",
+      "checkout.steps.deliveryNotes",
+      "checkout.confirm.customNotice",
+      "checkout.confirm.useSuggestedAddress",
+      "checkout.confirm.paymentReady",
+      "checkout.confirm.termsAccepted",
+      "checkout.address.verified",
+      "checkout.address.suggested",
+      "checkout.payment.title",
+      "checkout.payment.intro",
+      "checkout.payment.method",
+      "checkout.payment.cardDetails",
+      "checkout.payment.card",
+      "checkout.payment.methods.card.label",
+      "checkout.payment.methods.card.description",
+      "checkout.payment.methods.giftCard.label",
+      "checkout.payment.methods.giftCard.description",
+      "checkout.payment.methods.memberCredit.label",
+      "checkout.payment.methods.memberCredit.description",
+      "checkout.payment.ready",
+      "checkout.payment.required",
+      "checkout.terms.title",
+      "checkout.terms.intro",
+      "checkout.deliveryNotes.title",
+      "checkout.deliveryNotes.intro",
+      "checkout.errors.loadUnavailable",
+      "checkout.errors.orderUnavailable",
+      "checkout.errors.noAddress",
+      "checkout.errors.stockUnavailable",
+      "checkout.errors.addressUnavailable",
+      "checkout.errors.priceChanged",
+      "checkout.errors.sessionExpired",
+      "checkout.actions.manageAddresses",
+      "checkout.actions.reviewBag",
+      "checkout.actions.signIn",
+      "checkout.actions.refreshSettlement",
+    ];
+
+    for (const locale of availableLocales) {
+      for (const key of checkoutKeys) {
         expect(getMessage(key, locale.lang), `${key} missing for ${locale.lang}`).toBeTruthy();
       }
     }

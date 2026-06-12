@@ -32,13 +32,14 @@ import TradeFaqPage from "./pages/TradeFaqPage.vue";
 import TradeSignInPage from "./pages/TradeSignInPage.vue";
 import {
   addLocalCartItem,
+  normalizeCartQuantity,
   readLocalCart,
   removeLocalCartItem,
   updateLocalCartItemQuantity,
   writeLocalCart,
 } from "./services/localCart.js";
 import { getCheckoutEntryRoute } from "./services/membershipNavigation.js";
-import { addCartItem, deleteCartItems, getRemoteCartItems, updateCartItemCount } from "./services/yudaoClient.js";
+import { addCartItem, deleteCartItems, getRemoteCartItems, updateCartItemCount } from "./services/yudaoCartApi.js";
 
 const pageRoutes = {
   home: "/",
@@ -98,6 +99,7 @@ const currentPage = ref(pageFromPath(window.location.pathname));
 const cartOpen = ref(false);
 const cartItems = ref(readLocalCart());
 const cartMode = ref("local");
+const cartNoticeKey = ref("");
 const authVersion = ref(0);
 let remoteCartRequestId = 0;
 
@@ -169,9 +171,10 @@ const handleInternalLinkClick = (event) => {
 const cartQuantity = computed(() => cartItems.value.reduce((sum, item) => sum + item.quantity, 0));
 const usesOverlayHeader = computed(() => ["home", "sale"].includes(currentPage.value));
 
-const switchToLocalCart = () => {
+const switchToLocalCart = ({ noticeKey = "" } = {}) => {
   cartItems.value = readLocalCart();
   cartMode.value = "local";
+  cartNoticeKey.value = noticeKey;
 };
 
 const loadRemoteCart = async () => {
@@ -181,10 +184,11 @@ const loadRemoteCart = async () => {
     if (requestId !== remoteCartRequestId) return false;
     cartMode.value = "yudao";
     cartItems.value = remoteItems;
+    cartNoticeKey.value = "";
     return true;
   } catch {
     if (requestId !== remoteCartRequestId) return false;
-    switchToLocalCart();
+    switchToLocalCart({ noticeKey: "cart.remoteUnavailable" });
     return true;
   }
 };
@@ -202,7 +206,7 @@ const addToCart = async (product, quantity = 1) => {
       cartOpen.value = true;
       return;
     } catch {
-      switchToLocalCart();
+      switchToLocalCart({ noticeKey: "cart.remoteMutationUnavailable" });
     }
   }
 
@@ -211,16 +215,17 @@ const addToCart = async (product, quantity = 1) => {
 };
 
 const updateCartQuantity = async (item, quantity) => {
+  const nextQuantity = normalizeCartQuantity(quantity);
   if (item.source === "yudao" && item.cartId) {
     try {
-      await updateCartItemCount(item.cartId, quantity);
+      await updateCartItemCount(item.cartId, nextQuantity);
       await loadRemoteCart();
       return;
     } catch {
-      switchToLocalCart();
+      switchToLocalCart({ noticeKey: "cart.remoteMutationUnavailable" });
     }
   }
-  cartItems.value = updateLocalCartItemQuantity(cartItems.value, item.skuId, quantity);
+  cartItems.value = updateLocalCartItemQuantity(cartItems.value, item.skuId, nextQuantity);
 };
 
 const removeFromCart = async (item) => {
@@ -230,7 +235,7 @@ const removeFromCart = async (item) => {
       await loadRemoteCart();
       return;
     } catch {
-      switchToLocalCart();
+      switchToLocalCart({ noticeKey: "cart.remoteMutationUnavailable" });
     }
   }
   cartItems.value = removeLocalCartItem(cartItems.value, item.skuId);
@@ -239,6 +244,11 @@ const removeFromCart = async (item) => {
 const openOrderDetail = (orderId) => {
   currentPage.value = "account-orders";
   window.history.pushState({ page: "account-orders" }, "", `/account/orders?id=${orderId}`);
+};
+
+const handleOrderCreated = async (orderId) => {
+  await loadRemoteCart();
+  openOrderDetail(orderId);
 };
 
 const startCheckout = () => {
@@ -295,16 +305,19 @@ onBeforeUnmount(() => {
       :items="cartItems"
       @add-to-cart="addToCart"
       @continue-checkout="continueCheckout"
-      @order-created="openOrderDetail"
+      @open-cart="cartOpen = true"
+      @order-created="handleOrderCreated"
     />
   </main>
   <RhFooter />
   <CartDrawer
     :items="cartItems"
+    :notice-key="cartNoticeKey"
     :open="cartOpen"
     @checkout="startCheckout"
     @close="cartOpen = false"
     @remove="removeFromCart"
+    @resync="loadRemoteCart"
     @update-quantity="updateCartQuantity"
   />
 </template>

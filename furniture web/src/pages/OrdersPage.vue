@@ -5,7 +5,9 @@ import {
   getMembershipEligibilityItemsFromOrderItems,
   getMembershipEligibilityReview,
 } from "../services/membershipAccount.js";
-import { getOrderDetail, getOrderPage, readYudaoToken } from "../services/yudaoClient.js";
+import { membershipRoutes } from "../services/membershipNavigation.js";
+import { getOrderDetail, getOrderPage } from "../services/yudaoOrderApi.js";
+import { readYudaoToken } from "../services/yudaoRequest.js";
 import { useI18n } from "../i18n.js";
 
 const props = defineProps({
@@ -66,7 +68,7 @@ const loadOrders = async () => {
     total.value = page.total;
   } catch {
     if (requestId !== ordersRequestId) return;
-    error.value = "Order service is unavailable. Please try again later.";
+    error.value = t("orders.error");
   } finally {
     if (requestId === ordersRequestId) loading.value = false;
   }
@@ -86,8 +88,18 @@ watch(() => props.authVersion, loadOrders);
     </header>
 
     <p v-if="loading" class="product-loading">{{ t("orders.loading") }}</p>
-    <p v-if="tokenRequired" class="checkout-error">{{ t("orders.tokenRequired") }}</p>
-    <p v-else-if="error" class="checkout-error">{{ error }}</p>
+    <div v-if="tokenRequired" class="checkout-error">
+      <p>{{ t("orders.tokenRequired") }}</p>
+      <div class="orders-recovery-actions">
+        <a class="orders-recovery-action" :href="membershipRoutes.checkoutAuth">{{ t("orders.actions.connectAccount") }}</a>
+      </div>
+    </div>
+    <div v-else-if="error" class="checkout-error">
+      <p>{{ error }}</p>
+      <div class="orders-recovery-actions">
+        <button class="orders-recovery-action" type="button" @click="loadOrders">{{ t("orders.actions.retry") }}</button>
+      </div>
+    </div>
 
     <article v-if="detail" class="order-detail-card">
       <div class="order-detail-head">
@@ -174,9 +186,10 @@ watch(() => props.authVersion, loadOrders);
         <strong>{{ money(order.payPrice) }}</strong>
         <em>{{ t("orders.view") }}</em>
       </a>
-      <p v-if="!loading && !tokenRequired && !error && orders.length === 0" class="orders-empty">
-        {{ t("orders.empty") }}
-      </p>
+      <div v-if="!loading && !tokenRequired && !error && orders.length === 0" class="orders-empty">
+        <p>{{ t("orders.empty") }}</p>
+        <a class="orders-recovery-action" href="/">{{ t("orders.actions.shop") }}</a>
+      </div>
     </section>
   </section>
 </template>
