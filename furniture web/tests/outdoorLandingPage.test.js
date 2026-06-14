@@ -10,6 +10,11 @@ describe("outdoor landing page", () => {
 
     expect(page).toContain("outdoor-landing-page");
     expect(page).toContain("outdoor-landing-hero");
+    expect(page).toContain("heroImage.mobile");
+    expect(page).toContain("generatedFurnitureAssets.outdoor.hero");
+    expect(page).toContain("generatedFurnitureAssets.sale.categories.Outdoor.desktop");
+    expect(page).not.toContain('generatedFurnitureAssets.home.modules["004"].desktop');
+    expect(page).not.toContain("generatedFurnitureAssets.products.pendant.cover");
     expect(page).toContain("landing-feature-grid");
     expect(page).toContain("generatedFurnitureAssets");
     expect(page).not.toContain("SpecGroup");

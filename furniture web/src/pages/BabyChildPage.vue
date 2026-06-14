@@ -1,35 +1,35 @@
 <script setup>
 import { generatedFurnitureAssets } from "../data/generatedFurnitureAssets.js";
 
-const heroImage = generatedFurnitureAssets.products.bed.cover;
+const heroImage = generatedFurnitureAssets.babyChild.hero;
 
 const collections = [
   {
     id: "nursery",
     title: "Nursery",
     description: "Soft upholstered beds, quiet storage, and layered lighting for the earliest routines.",
-    image: generatedFurnitureAssets.products.bed.gallery,
+    image: generatedFurnitureAssets.babyChild.collections.nursery,
     href: "/sofas-plp",
   },
   {
     id: "playroom",
     title: "Playroom",
     description: "Durable silhouettes and warm wood tones arranged for reading, play, and reset.",
-    image: generatedFurnitureAssets.products.chair.cover,
+    image: generatedFurnitureAssets.babyChild.collections.playroom,
     href: "/sofas-plp",
   },
   {
     id: "study",
     title: "Study",
     description: "Scaled desks, shelves, and seating that make homework corners feel considered.",
-    image: generatedFurnitureAssets.products.table.cover,
+    image: generatedFurnitureAssets.babyChild.collections.study,
     href: "/sofas-plp",
   },
   {
     id: "lighting",
     title: "Lighting",
     description: "A softer glow for bedtime stories, morning routines, and every little pause between.",
-    image: generatedFurnitureAssets.products.pendant.cover,
+    image: generatedFurnitureAssets.babyChild.collections.lighting,
     href: "/sofas-plp",
   },
 ];
@@ -45,7 +45,10 @@ const services = [
 <template>
   <section class="child-landing-page">
     <section class="child-landing-hero" aria-labelledby="child-landing-title">
-      <img :src="heroImage" alt="Layered child bedroom with upholstered bed and warm neutral furnishings" />
+      <picture>
+        <source media="(max-width: 760px)" :srcset="heroImage.mobile" />
+        <img :src="heroImage.desktop" alt="Layered child bedroom with upholstered bed and warm neutral furnishings" />
+      </picture>
       <div class="landing-hero-copy child-landing-copy">
         <p class="eyebrow">RH Baby &amp; Child</p>
         <h1 id="child-landing-title">Rooms for first chapters.</h1>

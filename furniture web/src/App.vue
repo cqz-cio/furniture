@@ -8,6 +8,7 @@ import AccountBillingPage from "./pages/AccountBillingPage.vue";
 import AccountMembershipPage from "./pages/AccountMembershipPage.vue";
 import AccountPage from "./pages/AccountPage.vue";
 import AccountProfilePage from "./pages/AccountProfilePage.vue";
+import BabyChildCategoryPage from "./pages/BabyChildCategoryPage.vue";
 import BabyChildPage from "./pages/BabyChildPage.vue";
 import CheckoutAuthPage from "./pages/CheckoutAuthPage.vue";
 import CheckoutPage from "./pages/CheckoutPage.vue";
@@ -49,6 +50,19 @@ const pageRoutes = {
   "sofa-pdp": "/sofa-pdp",
   teen: "/teen",
   "baby-child": "/baby-child",
+  "baby-child-furniture": "/baby-child/furniture",
+  "baby-child-bedding": "/baby-child/bedding",
+  "baby-child-nursery": "/baby-child/nursery",
+  "baby-child-decor": "/baby-child/decor",
+  "baby-child-lighting": "/baby-child/lighting",
+  "baby-child-rugs": "/baby-child/rugs",
+  "baby-child-windows": "/baby-child/windows",
+  "baby-child-storage": "/baby-child/storage",
+  "baby-child-playroom": "/baby-child/playroom",
+  "baby-child-gifts": "/baby-child/gifts",
+  "baby-child-teen": "/baby-child/teen",
+  "baby-child-sale": "/baby-child/sale",
+  "baby-child-registry": "/baby-child/registry",
   membership: "/membership",
   "membership-enrollment": "/membership/enrollment",
   "membership-terms": "/membership/terms",
@@ -111,6 +125,7 @@ const pageComponent = computed(() => {
   if (currentPage.value === "sofa-pdp") return SofaPdpPage;
   if (currentPage.value === "teen") return TeenPage;
   if (currentPage.value === "baby-child") return BabyChildPage;
+  if (currentPage.value.startsWith("baby-child-")) return BabyChildCategoryPage;
   if (currentPage.value === "membership") return MembershipPage;
   if (currentPage.value === "membership-enrollment") return MembershipEnrollmentPage;
   if (currentPage.value === "membership-terms") return MembershipTermsPage;
@@ -301,6 +316,7 @@ onBeforeUnmount(() => {
   <main class="app-main">
     <component
       :is="pageComponent"
+      :page-key="currentPage"
       :auth-version="authVersion"
       :items="cartItems"
       @add-to-cart="addToCart"

@@ -28,7 +28,7 @@ describe("mobile purchase polish", () => {
     expect(homePage).not.toContain("sourcebook-overlay-slots");
     expect(source).toContain(".nav-link {\n  display: inline-flex;");
     expect(source).toContain("min-height: 36px;");
-    expect(source).toContain(".home-hero-picture,\n  .home-hero-image {\n    height: 600.08px;");
+    expect(source).toContain(".home-hero-picture,\n  .home-hero-image {\n    height: min(600.08px, 153.87vw);");
     expect(source).toContain("margin: 0 auto;");
   });
 
@@ -45,7 +45,7 @@ describe("mobile purchase polish", () => {
     expect(saleTile).not.toContain("ImageSpecPlaceholder");
     expect(source).toContain(".sale-hero-copy");
     expect(source).toContain(".sale-tile-title");
-    expect(source).toContain(".sale-tile-picture {\n    height: 228px;");
+    expect(source).toContain(".sale-tile-picture {\n    height: min(228px, 58.47vw);");
   });
 
   it("makes mobile purchase controls thumb-friendly and keeps add-to-cart visible", () => {
@@ -116,14 +116,45 @@ describe("mobile purchase polish", () => {
   it("polishes tablet navigation, body links, and purchase bar spacing", () => {
     const source = css();
     const desktopGlobalMenu = source.indexOf(".global-menu {\n  position: static;");
-    const tabletGlobalMenuOverride = source.lastIndexOf(".global-menu,\n  .category-mega-menu {\n    display: none;");
+    const tabletMedia = source.indexOf("@media (min-width: 761px) and (max-width: 900px)");
+    const generalMobileMedia = source.indexOf("@media (max-width: 900px)");
+    const tabletGlobalMenuOverride = source.indexOf(".global-menu,\n  .category-mega-menu {\n    display: none;", tabletMedia);
 
-    expect(source).toContain("@media (max-width: 900px) {\n  .primary-nav,\n  .global-menu,\n  .category-mega-menu {\n    display: none;");
+    expect(source).toContain("@media (min-width: 761px) and (max-width: 900px) {\n  .primary-nav,\n  .global-menu,\n  .category-mega-menu {\n    display: none;");
     expect(source).toContain(".global-menu,\n  .category-mega-menu {\n    display: none;");
+    expect(source).toContain(".country-button,\n  .search-input {\n    display: none;");
+    expect(source).toContain(".mobile-search-panel {\n    display: grid;");
     expect(tabletGlobalMenuOverride).toBeGreaterThan(desktopGlobalMenu);
+    expect(tabletMedia).toBeLessThan(generalMobileMedia);
     expect(source).toContain(".trade-page-header a,\n  .membership-page p a,\n  .registry-workflow-page p a {\n    min-height: 44px;");
     expect(source).toContain(".product-mobile-purchase-bar {\n    max-width: 640px;");
     expect(source).toContain("left: 50%;\n    right: auto;\n    transform: translateX(-50%);");
     expect(source).toContain("@media (max-width: 540px) {\n  .product-mobile-purchase-bar {\n    max-width: none;");
+  });
+
+  it("keeps phone drawer geometry separate from tablet navigation", () => {
+    const source = css();
+    const phoneMedia = source.indexOf("@media (max-width: 760px)");
+    const tabletMedia = source.indexOf("@media (min-width: 761px) and (max-width: 900px)");
+    const generalMobileMedia = source.indexOf("@media (max-width: 900px)");
+    const phoneBlock = source.slice(phoneMedia, tabletMedia);
+    const tabletBlock = source.slice(tabletMedia, generalMobileMedia);
+    const generalBlock = source.slice(generalMobileMedia);
+
+    expect(phoneBlock).toContain(".mobile-drawer-layer {\n    position: fixed;\n    left: 0;\n    right: 0;\n    top: 76px;");
+    expect(phoneBlock).toContain("min-height: calc(100vh - 76px);");
+    expect(tabletBlock).toContain(".mobile-drawer-layer {\n    position: fixed;\n    left: 0;\n    right: 0;\n    top: 82px;");
+    expect(tabletBlock).toContain("min-height: calc(100vh - 82px);");
+    expect(generalBlock).not.toContain(".mobile-drawer-layer {\n    position: fixed;");
+  });
+
+  it("caps measured mobile imagery at the 390px reference while scaling down on narrow phones", () => {
+    const source = css();
+
+    expect(source).toContain("height: min(600.08px, 153.87vw);");
+    expect(source).toContain("min-height: min(600.08px, 153.87vw);");
+    expect(source).toContain("height: min(600.08px, 153.87vw);");
+    expect(source).toContain("height: min(228px, 58.47vw);");
+    expect(source).toContain("height: min(523.42px, 134.21vw);");
   });
 });

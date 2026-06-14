@@ -17,6 +17,15 @@ describe("generated furniture image assets", () => {
     expect(generatedFurnitureAssets.sale.categories["Bath Towels"].mobile).toBe(
       "/assets/generated-furniture/sale-category-bath-towels-mobile.webp",
     );
+    expect(generatedFurnitureAssets.outdoor.hero.desktop).toBe(
+      "/assets/generated-furniture/outdoor-landing-hero-desktop.webp",
+    );
+    expect(generatedFurnitureAssets.babyChild.collections.nursery).toBe(
+      "/assets/generated-furniture/baby-child-nursery.webp",
+    );
+    expect(generatedFurnitureAssets.teen.collections.lounge).toBe(
+      "/assets/generated-furniture/teen-lounge.webp",
+    );
 
     const paths = [
       generatedFurnitureAssets.home.hero.desktop,
@@ -24,6 +33,11 @@ describe("generated furniture image assets", () => {
       generatedFurnitureAssets.sale.hero.desktop,
       generatedFurnitureAssets.sale.membership.mobile,
       generatedFurnitureAssets.sale.categories.Lighting.desktop,
+      generatedFurnitureAssets.outdoor.hero.mobile,
+      generatedFurnitureAssets.babyChild.hero.desktop,
+      generatedFurnitureAssets.babyChild.collections.playroom,
+      generatedFurnitureAssets.teen.hero.mobile,
+      generatedFurnitureAssets.teen.collections.study,
     ];
     expect(paths.every(publicAssetExists)).toBe(true);
   });

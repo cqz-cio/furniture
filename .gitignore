@@ -10,3 +10,6 @@ _git-backups/
 
 tools/
 /furniture web/captures/local/
+
+# package files
+*.tar

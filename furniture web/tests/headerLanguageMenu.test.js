@@ -93,4 +93,29 @@ describe("header language menu", () => {
     expect(source).not.toContain("@focus=\"showDropdown");
     expect(source).not.toContain("const showDropdown");
   });
+
+  it("opens Baby & Child from the primary nav in a new page without replacing the current page", () => {
+    const source = readSource("../src/components/RhHeader.vue");
+
+    expect(source).toContain('if (!isBabyChildSitePage.value && label === "Baby & Child") {');
+    expect(source).toContain('window.open("/baby-child", "_blank", "noopener,noreferrer")');
+    expect(source).toContain("return;");
+    expect(source).toContain('@click="handleNavClick(item.label)"');
+  });
+
+  it("keeps Baby & Child subnavigation inside the Baby & Child site pages", () => {
+    const source = readSource("../src/components/RhHeader.vue");
+
+    expect(source).toContain("const isBabyChildSitePage = computed(");
+    expect(source).toContain("page.value.startsWith(\"baby-child-\")");
+    expect(source).toContain("const babyChildPageMap = {");
+    expect(source).toContain('Bedding: "baby-child-bedding"');
+    expect(source).toContain('Registry: "baby-child-registry"');
+    expect(source).toContain("isBabyChildSitePage.value ? babyChildNavigation : primaryNavigation");
+    expect(source).toContain("if (isBabyChildSitePage.value && babyChildPageMap[label]) {");
+    expect(source).toContain("return babyChildPageMap[label];");
+    expect(source).toContain("return babyChildPageMap[label] === page.value;");
+    expect(source).toContain("'is-baby-child': isBabyChildSitePage");
+    expect(source).toContain(":class=\"{ 'baby-brand': isBabyChildSitePage }\"");
+  });
 });

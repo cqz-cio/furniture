@@ -43,6 +43,18 @@ services:
       retries: 30
       start_period: 10s
 
+  libretranslate:
+    image: libretranslate/libretranslate:latest
+    container_name: yudao-libretranslate-local
+    user: root
+    command: ["--load-only", "en,zh"]
+    ports:
+      - "127.0.0.1:5000:5000"
+    volumes:
+      - yudao_libretranslate_models:/home/libretranslate/.local/share/argos-translate
+    restart: unless-stopped
+
 volumes:
   yudao_mysql_data:
   yudao_redis_data:
+  yudao_libretranslate_models:

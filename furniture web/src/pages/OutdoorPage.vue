@@ -1,7 +1,7 @@
 <script setup>
 import { generatedFurnitureAssets } from "../data/generatedFurnitureAssets.js";
 
-const heroImage = generatedFurnitureAssets.home.modules["004"].desktop;
+const heroImage = generatedFurnitureAssets.outdoor.hero;
 
 const edits = ["Lounge", "Dining", "Poolside", "Lighting"];
 
@@ -17,21 +17,21 @@ const collections = [
     id: "dining",
     title: "Dining",
     description: "Tables and chairs scaled for long meals, easy hosting, and everyday use outside.",
-    image: generatedFurnitureAssets.products.table.gallery,
+    image: generatedFurnitureAssets.sale.categories.Dining.desktop,
     href: "/missing",
   },
   {
     id: "shade",
     title: "Shade & Texture",
     description: "Layered materials, woven accents, and soft neutrals that bring depth to the patio.",
-    image: generatedFurnitureAssets.products.chair.gallery,
+    image: generatedFurnitureAssets.sale.categories.Rugs.desktop,
     href: "/missing",
   },
   {
     id: "lighting",
     title: "Lighting",
     description: "Pendants and ambient pieces that keep outdoor spaces warm after sunset.",
-    image: generatedFurnitureAssets.products.pendant.cover,
+    image: generatedFurnitureAssets.sale.categories.Lighting.desktop,
     href: "/missing",
   },
 ];
@@ -40,7 +40,10 @@ const collections = [
 <template>
   <section class="outdoor-landing-page">
     <section class="outdoor-landing-hero" aria-labelledby="outdoor-landing-title">
-      <img :src="heroImage" alt="Outdoor living terrace with layered neutral furniture" />
+      <picture>
+        <source media="(max-width: 760px)" :srcset="heroImage.mobile" />
+        <img :src="heroImage.desktop" alt="Outdoor living terrace with layered neutral furniture" />
+      </picture>
       <div class="landing-hero-copy outdoor-landing-copy">
         <p class="eyebrow">RH Outdoor</p>
         <h1 id="outdoor-landing-title">Open-air rooms, fully composed.</h1>

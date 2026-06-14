@@ -263,7 +263,9 @@ describe("RH layout extraction data", () => {
     expect(salePageSource).toContain('<picture class="sale-hero-picture">');
     expect(salePageSource).toContain('media="(max-width: 760px)"');
     expect(css).toContain(".sale-hero-picture {\n  display: block;");
-    expect(css).toContain(".sale-hero-image {\n    height: 244.77px;");
+    expect(css).toContain("height: clamp(760px, 54vw, 1120px);");
+    expect(css).toContain(".sale-hero-image {\n  display: block;\n  width: 100%;\n  height: clamp(760px, 54vw, 1120px);");
+    expect(css).toContain(".sale-hero-image {\n    height: min(600.08px, 153.87vw);");
   });
 
   it("defines measured homepage image slots from desktop and mobile exports", () => {

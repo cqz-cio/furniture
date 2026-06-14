@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const readSource = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
+const readSource = (path) => readFileSync(new URL(path, import.meta.url), "utf8").replace(/\r\n/g, "\n");
 
 describe("home landing page", () => {
   it("uses buyer-facing responsive images instead of extraction placeholders", () => {
@@ -24,6 +24,11 @@ describe("home landing page", () => {
     expect(styles).toContain(".home-hero-picture");
     expect(styles).toContain(".home-entry-picture");
     expect(styles).toContain(".home-entry-copy");
+    expect(styles).toContain(".home-grid {\n  width: 100%;\n  margin: 0;\n  display: grid;\n  grid-template-columns: 1fr;\n  gap: 0;");
+    expect(styles).toContain("height: clamp(907.88px, 62vw, 1320px);");
+    expect(styles).toContain(".home-entry-copy {\n  position: absolute;\n  left: 50%;\n  top: 58%;");
+    expect(styles).toContain("bottom: auto;\n  z-index: 2;");
+    expect(styles).toContain("transform: translate(-50%, -50%);");
     expect(styles).not.toContain(".home-entry > div:last-child");
   });
 });

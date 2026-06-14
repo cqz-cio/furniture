@@ -40,7 +40,65 @@ const activeMegaItem = ref("");
 const regionOpen = ref(false);
 const accountOpen = ref(false);
 const searchOpen = ref(false);
-const navItems = computed(() => (page.value === "baby-child" ? babyChildNavigation : primaryNavigation));
+const isBabyChildSitePage = computed(
+  () => page.value === "baby-child" || page.value.startsWith("baby-child-"),
+);
+const babyChildPageMap = {
+  Furniture: "baby-child-furniture",
+  Bedding: "baby-child-bedding",
+  Nursery: "baby-child-nursery",
+  Décor: "baby-child-decor",
+  "D茅cor": "baby-child-decor",
+  Lighting: "baby-child-lighting",
+  Rugs: "baby-child-rugs",
+  Windows: "baby-child-windows",
+  Storage: "baby-child-storage",
+  Playroom: "baby-child-playroom",
+  Gifts: "baby-child-gifts",
+  Teen: "baby-child-teen",
+  Sale: "baby-child-sale",
+  Registry: "baby-child-registry",
+};
+const primaryNavigationLabelKeys = {
+  Living: "navigation.primary.living",
+  Dining: "navigation.primary.dining",
+  Bed: "navigation.primary.bed",
+  Bath: "navigation.primary.bath",
+  Outdoor: "navigation.primary.outdoor",
+  Lighting: "navigation.primary.lighting",
+  Textiles: "navigation.primary.textiles",
+  Rugs: "navigation.primary.rugs",
+  Décor: "navigation.primary.decor",
+  "D茅cor": "navigation.primary.decor",
+  "Baby & Child": "navigation.primary.babyChild",
+  Teen: "navigation.primary.teen",
+  Sale: "navigation.primary.sale",
+  "Interior Design": "navigation.primary.interiorDesign",
+};
+const babyChildNavigationLabelKeys = {
+  Furniture: "navigation.babyChild.furniture",
+  Bedding: "navigation.babyChild.bedding",
+  Nursery: "navigation.babyChild.nursery",
+  Décor: "navigation.babyChild.decor",
+  "D茅cor": "navigation.babyChild.decor",
+  Lighting: "navigation.babyChild.lighting",
+  Rugs: "navigation.babyChild.rugs",
+  Windows: "navigation.babyChild.windows",
+  Storage: "navigation.babyChild.storage",
+  Playroom: "navigation.babyChild.playroom",
+  Gifts: "navigation.babyChild.gifts",
+  Teen: "navigation.babyChild.teen",
+  Sale: "navigation.babyChild.sale",
+  Registry: "navigation.babyChild.registry",
+};
+const navigationLabelKey = (label) =>
+  (isBabyChildSitePage.value ? babyChildNavigationLabelKeys[label] : primaryNavigationLabelKeys[label]) ||
+  primaryNavigationLabelKeys[label] ||
+  babyChildNavigationLabelKeys[label] ||
+  "";
+const navItemLabel = (label) => t(navigationLabelKey(label));
+const menuItemLabel = (label) => (navigationLabelKey(label) ? navItemLabel(label) : label);
+const navItems = computed(() => (isBabyChildSitePage.value ? babyChildNavigation : primaryNavigation));
 const hoverMenuItems = computed(() => (activeDropdown.value === "Sale" ? saleMegaMenu : livingMegaMenu));
 const hoverSecondaryMenuItems = computed(() =>
   activeDropdown.value === "Living" && activeMegaItem.value ? livingMegaSubmenus[activeMegaItem.value] || [] : [],
@@ -53,6 +111,9 @@ const generatedGlobalMenuImages = [
 ];
 
 const pageKey = (label) => {
+  if (isBabyChildSitePage.value && babyChildPageMap[label]) {
+    return babyChildPageMap[label];
+  }
   if (label === "Living") return "sofas-plp";
   if (label === "Furniture") return "baby-child";
   if (label === "Baby & Child") return "baby-child";
@@ -68,6 +129,10 @@ const localeButtonLabel = computed(
 );
 
 const isActive = (label) => {
+  if (isBabyChildSitePage.value && page.value === "baby-child") return label === "Furniture";
+  if (isBabyChildSitePage.value && babyChildPageMap[label]) {
+    return babyChildPageMap[label] === page.value;
+  }
   if (page.value === "baby-child") return label === "Furniture";
   return pageKey(label) === page.value;
 };
@@ -139,6 +204,16 @@ const activatePage = (label) => {
 };
 
 const handleNavClick = (label) => {
+  if (!isBabyChildSitePage.value && label === "Baby & Child") {
+    window.open("/baby-child", "_blank", "noopener,noreferrer");
+    closeMenu();
+    hideDropdown();
+    regionOpen.value = false;
+    accountOpen.value = false;
+    searchOpen.value = false;
+    return;
+  }
+
   if (!menuOpen.value && ["Living", "Sale"].includes(label)) {
     activeDropdown.value = activeDropdown.value === label ? "" : label;
     activeMegaItem.value = "";
@@ -186,7 +261,7 @@ onBeforeUnmount(() => {
       'is-overlay': overlay,
       'menu-is-open': menuOpen,
       'region-is-open': regionOpen,
-      'is-baby-child': page === 'baby-child',
+      'is-baby-child': isBabyChildSitePage,
     }"
   >
     <div class="header-topline">
@@ -218,12 +293,12 @@ onBeforeUnmount(() => {
 
       <button
         class="brand-button"
-        :class="{ 'baby-brand': page === 'baby-child' }"
+        :class="{ 'baby-brand': isBabyChildSitePage }"
         type="button"
-        :aria-label="page === 'baby-child' ? 'RH Baby and Child' : 'The World of RH'"
-        @click="page = page === 'baby-child' ? 'baby-child' : 'home'"
+        :aria-label="isBabyChildSitePage ? 'RH Baby and Child' : 'The World of RH'"
+        @click="page = isBabyChildSitePage ? 'baby-child' : 'home'"
       >
-        <template v-if="page === 'baby-child'">
+        <template v-if="isBabyChildSitePage">
           <span>baby &amp; child</span>
           <strong>RH</strong>
         </template>
@@ -282,7 +357,7 @@ onBeforeUnmount(() => {
           :aria-expanded="['Living', 'Sale'].includes(item.label) ? activeDropdown === item.label : undefined"
           @click="handleNavClick(item.label)"
         >
-          {{ item.label }}
+          {{ navItemLabel(item.label) }}
         </button>
       </div>
     </nav>
@@ -302,14 +377,14 @@ onBeforeUnmount(() => {
             type="button"
             @click="activateMegaItem(item.label)"
           >
-            {{ item.label }}
+            {{ menuItemLabel(item.label) }}
           </button>
-          <a v-else :class="{ accent: item.accent }" :href="item.href" @click="hideDropdown">{{ item.label }}</a>
+          <a v-else :class="{ accent: item.accent }" :href="item.href" @click="hideDropdown">{{ menuItemLabel(item.label) }}</a>
         </li>
       </ul>
       <ul v-if="hoverSecondaryMenuItems.length" class="category-mega-secondary">
         <li v-for="item in hoverSecondaryMenuItems" :key="item.label">
-          <a :href="item.href" @click="hideDropdown">{{ item.label }}</a>
+          <a :href="item.href" @click="hideDropdown">{{ menuItemLabel(item.label) }}</a>
         </li>
       </ul>
       <div v-else class="category-mega-empty" aria-hidden="true"></div>
@@ -345,7 +420,7 @@ onBeforeUnmount(() => {
           :class="{ accent: item.accent }"
           @click="activatePage(item.label)"
         >
-          <span>{{ item.label }}</span>
+          <span>{{ menuItemLabel(item.label) }}</span>
           <span aria-hidden="true">›</span>
         </button>
         <button class="mobile-region" type="button">

@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const STORAGE_KEY = "furniture-web-locale";
@@ -151,6 +152,51 @@ describe("i18n locale helper", () => {
         expect(getMessage(`home.modules.${moduleKey}.cta`, locale.lang), `${moduleKey} cta missing`).toBeTruthy();
       }
     }
+  });
+
+  it("provides primary and Baby & Child navigation labels across every supported locale", async () => {
+    const { getMessage } = await loadI18n();
+    const navKeys = [
+      "navigation.primary.living",
+      "navigation.primary.dining",
+      "navigation.primary.bed",
+      "navigation.primary.bath",
+      "navigation.primary.outdoor",
+      "navigation.primary.lighting",
+      "navigation.primary.textiles",
+      "navigation.primary.rugs",
+      "navigation.primary.decor",
+      "navigation.primary.babyChild",
+      "navigation.primary.teen",
+      "navigation.primary.sale",
+      "navigation.primary.interiorDesign",
+      "navigation.babyChild.furniture",
+      "navigation.babyChild.bedding",
+      "navigation.babyChild.nursery",
+      "navigation.babyChild.decor",
+      "navigation.babyChild.windows",
+      "navigation.babyChild.storage",
+      "navigation.babyChild.registry",
+    ];
+
+    for (const key of navKeys) {
+      expect(getMessage(key, "en"), `${key} missing for en`).toBeTruthy();
+      expect(getMessage(key, "zh-CN"), `${key} missing for zh-CN`).toBeTruthy();
+      expect(getMessage(key, "fr"), `${key} missing for fr`).toBeTruthy();
+    }
+
+    expect(getMessage("navigation.primary.decor", "zh-CN")).toBe("装饰");
+    expect(getMessage("navigation.babyChild.furniture", "zh-CN")).toBe("家具");
+    expect(getMessage("navigation.babyChild.registry", "fr")).toBe("Liste de naissance");
+  });
+
+  it("renders header navigation labels through locale messages instead of raw layout labels", () => {
+    const source = readFileSync(new URL("../src/components/RhHeader.vue", import.meta.url), "utf8");
+
+    expect(source).toContain("const navigationLabelKey = (label) =>");
+    expect(source).toContain("const navItemLabel = (label) => t(navigationLabelKey(label));");
+    expect(source).toContain("{{ navItemLabel(item.label) }}");
+    expect(source).not.toContain("{{ item.label }}");
   });
 
   it("provides membership journey translations across every supported locale", async () => {

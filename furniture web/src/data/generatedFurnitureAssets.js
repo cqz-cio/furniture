@@ -77,6 +77,36 @@ export const generatedFurnitureAssets = {
       },
     },
   },
+  outdoor: {
+    hero: {
+      desktop: asset("outdoor-landing-hero-desktop.webp"),
+      mobile: asset("outdoor-landing-hero-mobile.webp"),
+    },
+  },
+  babyChild: {
+    hero: {
+      desktop: asset("baby-child-hero-desktop.webp"),
+      mobile: asset("baby-child-hero-mobile.webp"),
+    },
+    collections: {
+      nursery: asset("baby-child-nursery.webp"),
+      playroom: asset("baby-child-playroom.webp"),
+      study: asset("baby-child-study.webp"),
+      lighting: asset("baby-child-lighting.webp"),
+    },
+  },
+  teen: {
+    hero: {
+      desktop: asset("teen-hero-desktop.webp"),
+      mobile: asset("teen-hero-mobile.webp"),
+    },
+    collections: {
+      bedroom: asset("teen-bedroom.webp"),
+      lounge: asset("teen-lounge.webp"),
+      study: asset("teen-study.webp"),
+      lighting: asset("teen-lighting.webp"),
+    },
+  },
   products: {
     sofa: {
       cover: asset("product-sofa-cover.webp"),

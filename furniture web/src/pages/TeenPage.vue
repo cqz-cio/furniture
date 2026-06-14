@@ -1,35 +1,35 @@
 <script setup>
 import { generatedFurnitureAssets } from "../data/generatedFurnitureAssets.js";
 
-const heroImage = generatedFurnitureAssets.products.sofa.gallery;
+const heroImage = generatedFurnitureAssets.teen.hero;
 
 const collections = [
   {
     id: "bedroom",
     title: "Bedroom",
     description: "Tailored beds, layered textiles, and storage that keeps a personal room composed.",
-    image: generatedFurnitureAssets.products.bed.cover,
+    image: generatedFurnitureAssets.teen.collections.bedroom,
     href: "/sofas-plp",
   },
   {
     id: "lounge",
     title: "Lounge",
     description: "Deep seating and relaxed tables for movie nights, gaming, and time with friends.",
-    image: generatedFurnitureAssets.products.sofa.cover,
+    image: generatedFurnitureAssets.teen.collections.lounge,
     href: "/sofas-plp",
   },
   {
     id: "study",
     title: "Study",
     description: "Desks, chairs, and lighting that make focus feel natural from afternoon to late night.",
-    image: generatedFurnitureAssets.products.table.gallery,
+    image: generatedFurnitureAssets.teen.collections.study,
     href: "/sofas-plp",
   },
   {
     id: "lighting",
     title: "Lighting",
     description: "Sculptural pendants and task lamps that give every zone a finished point of view.",
-    image: generatedFurnitureAssets.products.pendant.gallery,
+    image: generatedFurnitureAssets.teen.collections.lighting,
     href: "/sofas-plp",
   },
 ];
@@ -40,7 +40,10 @@ const edits = ["Sleep", "Study", "Lounge", "Storage"];
 <template>
   <section class="teen-landing-page">
     <section class="teen-landing-hero" aria-labelledby="teen-landing-title">
-      <img :src="heroImage" alt="Modern teen lounge with deep seating and layered neutral furniture" />
+      <picture>
+        <source media="(max-width: 760px)" :srcset="heroImage.mobile" />
+        <img :src="heroImage.desktop" alt="Modern teen lounge with deep seating and layered neutral furniture" />
+      </picture>
       <div class="landing-hero-copy teen-landing-copy">
         <p class="eyebrow">RH Teen</p>
         <h1 id="teen-landing-title">Personal rooms, fully considered.</h1>
