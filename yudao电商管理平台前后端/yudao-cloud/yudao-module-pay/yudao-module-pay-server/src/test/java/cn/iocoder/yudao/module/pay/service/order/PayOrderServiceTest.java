@@ -304,10 +304,21 @@ public class PayOrderServiceTest extends BaseDbAndRedisUnitTest {
     }
 
     @Test
+    public void testSubmitOrder_priceNotPositive() {
+        PayOrderDO order = randomPojo(PayOrderDO.class, o -> o.setStatus(PayOrderStatusEnum.WAITING.getStatus())
+                .setExpireTime(addTime(Duration.ofDays(1))).setPrice(0));
+        orderMapper.insert(order);
+        PayOrderSubmitReqVO reqVO = randomPojo(PayOrderSubmitReqVO.class, o -> o.setId(order.getId()));
+        String userIp = randomString();
+
+        assertServiceException(() -> orderService.submitOrder(reqVO, userIp), PAY_ORDER_PRICE_NOT_POSITIVE);
+    }
+
+    @Test
     public void testSubmitOrder_channelNotFound() {
         // mock 数据（order）
         PayOrderDO order = randomPojo(PayOrderDO.class, o -> o.setStatus(PayOrderStatusEnum.WAITING.getStatus())
-                .setAppId(1L).setExpireTime(addTime(Duration.ofDays(1))));
+                .setAppId(1L).setExpireTime(addTime(Duration.ofDays(1))).setPrice(10));
         orderMapper.insert(order);
         // 准备参数
         PayOrderSubmitReqVO reqVO = randomPojo(PayOrderSubmitReqVO.class, o -> o.setId(order.getId())
@@ -334,7 +345,7 @@ public class PayOrderServiceTest extends BaseDbAndRedisUnitTest {
 
             // mock 数据（order）
             PayOrderDO order = randomPojo(PayOrderDO.class, o -> o.setStatus(PayOrderStatusEnum.WAITING.getStatus())
-                    .setAppId(1L).setExpireTime(addTime(Duration.ofDays(1))));
+                    .setAppId(1L).setExpireTime(addTime(Duration.ofDays(1))).setPrice(10));
             orderMapper.insert(order);
             // 准备参数
             PayOrderSubmitReqVO reqVO = randomPojo(PayOrderSubmitReqVO.class, o -> o.setId(order.getId())
@@ -390,7 +401,7 @@ public class PayOrderServiceTest extends BaseDbAndRedisUnitTest {
 
             // mock 数据（order）
             PayOrderDO order = randomPojo(PayOrderDO.class, o -> o.setStatus(PayOrderStatusEnum.WAITING.getStatus())
-                    .setAppId(1L).setExpireTime(addTime(Duration.ofDays(1))));
+                    .setAppId(1L).setExpireTime(addTime(Duration.ofDays(1))).setPrice(10));
             orderMapper.insert(order);
             // 准备参数
             PayOrderSubmitReqVO reqVO = randomPojo(PayOrderSubmitReqVO.class, o -> o.setId(order.getId())
@@ -516,7 +527,8 @@ public class PayOrderServiceTest extends BaseDbAndRedisUnitTest {
     @Test
     public void testNotifyOrderSuccess_orderExtension_notFound() {
         // 准备参数
-        PayChannelDO channel = randomPojo(PayChannelDO.class, o -> o.setId(10L));
+        PayChannelDO channel = randomPojo(PayChannelDO.class, o -> o.setId(10L)
+                .setCode(PayChannelEnum.ALIPAY_APP.getCode()));
         PayOrderRespDTO notify = randomPojo(PayOrderRespDTO.class,
                 o -> o.setStatus(PayOrderStatusEnum.SUCCESS.getStatus()));
 
@@ -530,10 +542,12 @@ public class PayOrderServiceTest extends BaseDbAndRedisUnitTest {
         // mock 数据（PayOrderExtensionDO）
         PayOrderExtensionDO orderExtension = randomPojo(PayOrderExtensionDO.class,
                 o -> o.setStatus(PayOrderStatusEnum.CLOSED.getStatus())
-                        .setNo("P110"));
+                        .setNo("P110")
+                        .setChannelId(10L).setChannelCode(PayChannelEnum.ALIPAY_APP.getCode()));
         orderExtensionMapper.insert(orderExtension);
         // 准备参数
-        PayChannelDO channel = randomPojo(PayChannelDO.class, o -> o.setId(10L));
+        PayChannelDO channel = randomPojo(PayChannelDO.class, o -> o.setId(10L)
+                .setCode(PayChannelEnum.ALIPAY_APP.getCode()));
         PayOrderRespDTO notify = randomPojo(PayOrderRespDTO.class,
                 o -> o.setStatus(PayOrderStatusEnum.SUCCESS.getStatus())
                         .setOutTradeNo("P110"));
@@ -548,10 +562,12 @@ public class PayOrderServiceTest extends BaseDbAndRedisUnitTest {
         // mock 数据（PayOrderExtensionDO）
         PayOrderExtensionDO orderExtension = randomPojo(PayOrderExtensionDO.class,
                 o -> o.setStatus(PayOrderStatusEnum.SUCCESS.getStatus())
-                        .setNo("P110"));
+                        .setNo("P110")
+                        .setChannelId(10L).setChannelCode(PayChannelEnum.ALIPAY_APP.getCode()));
         orderExtensionMapper.insert(orderExtension);
         // 准备参数
-        PayChannelDO channel = randomPojo(PayChannelDO.class, o -> o.setId(10L));
+        PayChannelDO channel = randomPojo(PayChannelDO.class, o -> o.setId(10L)
+                .setCode(PayChannelEnum.ALIPAY_APP.getCode()));
         PayOrderRespDTO notify = randomPojo(PayOrderRespDTO.class,
                 o -> o.setStatus(PayOrderStatusEnum.SUCCESS.getStatus())
                         .setOutTradeNo("P110"));
@@ -561,6 +577,98 @@ public class PayOrderServiceTest extends BaseDbAndRedisUnitTest {
                 PAY_ORDER_NOT_FOUND);
         // 断言 PayOrderExtensionDO ：数据更新被回滚
         assertPojoEquals(orderExtension, orderExtensionMapper.selectOne(null));
+    }
+
+    @Test
+    public void testNotifyOrderSuccess_channelMismatch() {
+        PayOrderDO order = randomPojo(PayOrderDO.class,
+                o -> o.setStatus(PayOrderStatusEnum.WAITING.getStatus()).setPrice(10));
+        orderMapper.insert(order);
+        PayOrderExtensionDO orderExtension = randomPojo(PayOrderExtensionDO.class,
+                o -> o.setStatus(PayOrderStatusEnum.WAITING.getStatus())
+                        .setNo("P110").setOrderId(order.getId())
+                        .setChannelId(20L).setChannelCode(PayChannelEnum.ALIPAY_APP.getCode()));
+        orderExtensionMapper.insert(orderExtension);
+        PayChannelDO channel = randomPojo(PayChannelDO.class, o -> o.setId(10L)
+                .setCode(PayChannelEnum.WX_PUB.getCode()));
+        PayOrderRespDTO notify = randomPojo(PayOrderRespDTO.class,
+                o -> o.setStatus(PayOrderStatusEnum.SUCCESS.getStatus())
+                        .setOutTradeNo("P110").setChannelOrderNo("C110").setPrice(10));
+
+        assertServiceException(() -> orderService.notifyOrder(channel, notify),
+                PAY_ORDER_NOTIFY_CHANNEL_NOT_MATCH);
+        assertPojoEquals(orderExtension, orderExtensionMapper.selectOne(null));
+        assertPojoEquals(order, orderMapper.selectById(order.getId()));
+    }
+
+    @Test
+    public void testNotifyOrderSuccess_priceMismatch() {
+        PayOrderDO order = randomPojo(PayOrderDO.class,
+                o -> o.setStatus(PayOrderStatusEnum.WAITING.getStatus()).setPrice(10));
+        orderMapper.insert(order);
+        PayOrderExtensionDO orderExtension = randomPojo(PayOrderExtensionDO.class,
+                o -> o.setStatus(PayOrderStatusEnum.WAITING.getStatus())
+                        .setNo("P110").setOrderId(order.getId())
+                        .setChannelId(10L).setChannelCode(PayChannelEnum.ALIPAY_APP.getCode()));
+        orderExtensionMapper.insert(orderExtension);
+        PayChannelDO channel = randomPojo(PayChannelDO.class, o -> o.setId(10L)
+                .setCode(PayChannelEnum.ALIPAY_APP.getCode()));
+        PayOrderRespDTO notify = randomPojo(PayOrderRespDTO.class,
+                o -> o.setStatus(PayOrderStatusEnum.SUCCESS.getStatus())
+                        .setOutTradeNo("P110").setChannelOrderNo("C110").setPrice(11));
+
+        assertServiceException(() -> orderService.notifyOrder(channel, notify),
+                PAY_ORDER_NOTIFY_PRICE_NOT_MATCH);
+        assertPojoEquals(orderExtension, orderExtensionMapper.selectOne(null));
+        assertPojoEquals(order, orderMapper.selectById(order.getId()));
+    }
+
+    @Test
+    public void testNotifyOrderSuccess_channelOrderNoEmpty() {
+        PayOrderDO order = randomPojo(PayOrderDO.class,
+                o -> o.setStatus(PayOrderStatusEnum.WAITING.getStatus()).setPrice(10));
+        orderMapper.insert(order);
+        PayOrderExtensionDO orderExtension = randomPojo(PayOrderExtensionDO.class,
+                o -> o.setStatus(PayOrderStatusEnum.WAITING.getStatus())
+                        .setNo("P110").setOrderId(order.getId())
+                        .setChannelId(10L).setChannelCode(PayChannelEnum.ALIPAY_APP.getCode()));
+        orderExtensionMapper.insert(orderExtension);
+        PayChannelDO channel = randomPojo(PayChannelDO.class, o -> o.setId(10L)
+                .setCode(PayChannelEnum.ALIPAY_APP.getCode()));
+        PayOrderRespDTO notify = randomPojo(PayOrderRespDTO.class,
+                o -> o.setStatus(PayOrderStatusEnum.SUCCESS.getStatus())
+                        .setOutTradeNo("P110").setChannelOrderNo("").setPrice(10));
+
+        assertServiceException(() -> orderService.notifyOrder(channel, notify),
+                PAY_ORDER_NOTIFY_CHANNEL_ORDER_NO_EMPTY);
+        assertPojoEquals(orderExtension, orderExtensionMapper.selectOne(null));
+        assertPojoEquals(order, orderMapper.selectById(order.getId()));
+    }
+
+    @Test
+    public void testNotifyOrderSuccess_channelOrderNoConflict() {
+        PayOrderDO paidOrder = randomPojo(PayOrderDO.class,
+                o -> o.setStatus(PayOrderStatusEnum.SUCCESS.getStatus())
+                        .setChannelId(10L).setChannelOrderNo("C110"));
+        orderMapper.insert(paidOrder);
+        PayOrderDO order = randomPojo(PayOrderDO.class,
+                o -> o.setStatus(PayOrderStatusEnum.WAITING.getStatus()).setPrice(10));
+        orderMapper.insert(order);
+        PayOrderExtensionDO orderExtension = randomPojo(PayOrderExtensionDO.class,
+                o -> o.setStatus(PayOrderStatusEnum.WAITING.getStatus())
+                        .setNo("P110").setOrderId(order.getId())
+                        .setChannelId(10L).setChannelCode(PayChannelEnum.ALIPAY_APP.getCode()));
+        orderExtensionMapper.insert(orderExtension);
+        PayChannelDO channel = randomPojo(PayChannelDO.class, o -> o.setId(10L)
+                .setCode(PayChannelEnum.ALIPAY_APP.getCode()));
+        PayOrderRespDTO notify = randomPojo(PayOrderRespDTO.class,
+                o -> o.setStatus(PayOrderStatusEnum.SUCCESS.getStatus())
+                        .setOutTradeNo("P110").setChannelOrderNo("C110").setPrice(10));
+
+        assertServiceException(() -> orderService.notifyOrder(channel, notify),
+                PAY_ORDER_NOTIFY_CHANNEL_ORDER_NO_CONFLICT);
+        assertPojoEquals(orderExtension, orderExtensionMapper.selectById(orderExtension.getId()));
+        assertPojoEquals(order, orderMapper.selectById(order.getId()));
     }
 
     @Test
@@ -581,10 +689,12 @@ public class PayOrderServiceTest extends BaseDbAndRedisUnitTest {
         PayOrderExtensionDO orderExtension = randomPojo(PayOrderExtensionDO.class,
                 o -> o.setStatus(PayOrderStatusEnum.SUCCESS.getStatus())
                         .setNo("P110")
-                        .setOrderId(order.getId()));
+                        .setOrderId(order.getId())
+                        .setChannelId(10L).setChannelCode(PayChannelEnum.ALIPAY_APP.getCode()));
         orderExtensionMapper.insert(orderExtension);
         // 准备参数
-        PayChannelDO channel = randomPojo(PayChannelDO.class, o -> o.setId(10L));
+        PayChannelDO channel = randomPojo(PayChannelDO.class, o -> o.setId(10L)
+                .setCode(PayChannelEnum.ALIPAY_APP.getCode()));
         PayOrderRespDTO notify = randomPojo(PayOrderRespDTO.class,
                 o -> o.setStatus(PayOrderStatusEnum.SUCCESS.getStatus())
                         .setOutTradeNo("P110"));
@@ -606,16 +716,18 @@ public class PayOrderServiceTest extends BaseDbAndRedisUnitTest {
         PayOrderExtensionDO orderExtension = randomPojo(PayOrderExtensionDO.class,
                 o -> o.setStatus(PayOrderStatusEnum.SUCCESS.getStatus())
                         .setNo("P110")
-                        .setOrderId(order.getId()));
+                        .setOrderId(order.getId())
+                        .setChannelId(10L).setChannelCode(PayChannelEnum.ALIPAY_APP.getCode()));
         orderExtensionMapper.insert(orderExtension);
         // 重要：需要将 order 的 extensionId 更新下
         order.setExtensionId(orderExtension.getId());
         orderMapper.updateById(order);
         // 准备参数
-        PayChannelDO channel = randomPojo(PayChannelDO.class, o -> o.setId(10L));
+        PayChannelDO channel = randomPojo(PayChannelDO.class, o -> o.setId(10L)
+                .setCode(PayChannelEnum.ALIPAY_APP.getCode()));
         PayOrderRespDTO notify = randomPojo(PayOrderRespDTO.class,
                 o -> o.setStatus(PayOrderStatusEnum.SUCCESS.getStatus())
-                        .setOutTradeNo("P110"));
+                        .setOutTradeNo("P110").setChannelOrderNo("C110").setPrice(order.getPrice()));
 
         // 调用，并断言异常
         orderService.notifyOrder(channel, notify);
@@ -638,14 +750,15 @@ public class PayOrderServiceTest extends BaseDbAndRedisUnitTest {
         PayOrderExtensionDO orderExtension = randomPojo(PayOrderExtensionDO.class,
                 o -> o.setStatus(PayOrderStatusEnum.WAITING.getStatus())
                         .setNo("P110")
-                        .setOrderId(order.getId()));
+                        .setOrderId(order.getId())
+                        .setChannelId(10L).setChannelCode(PayChannelEnum.ALIPAY_APP.getCode()));
         orderExtensionMapper.insert(orderExtension);
         // 准备参数
         PayChannelDO channel = randomPojo(PayChannelDO.class, o -> o.setId(10L)
-                .setFeeRate(10D));
+                .setCode(PayChannelEnum.ALIPAY_APP.getCode()).setFeeRate(10D));
         PayOrderRespDTO notify = randomPojo(PayOrderRespDTO.class,
                 o -> o.setStatus(PayOrderStatusEnum.SUCCESS.getStatus())
-                        .setOutTradeNo("P110"));
+                        .setOutTradeNo("P110").setChannelOrderNo("C110").setPrice(10));
 
         // 调用，并断言异常
         orderService.notifyOrder(channel, notify);

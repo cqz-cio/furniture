@@ -75,7 +75,7 @@ public class WalletPayClient extends AbstractPayClient<NonePayClientConfig> {
                     reqDTO.getOutTradeNo(), reqDTO.getPrice());
             return PayOrderRespDTO.successOf(transaction.getNo(), transaction.getCreator(),
                     transaction.getCreateTime(),
-                    reqDTO.getOutTradeNo(), transaction);
+                    reqDTO.getOutTradeNo(), transaction, reqDTO.getPrice());
         } catch (Throwable ex) {
             log.error("[doUnifiedOrder][reqDTO({}) 异常]", reqDTO, ex);
             Integer errorCode = INTERNAL_SERVER_ERROR.getCode();
@@ -117,7 +117,7 @@ public class WalletPayClient extends AbstractPayClient<NonePayClientConfig> {
                     String.valueOf(orderExtension.getOrderId()), PayWalletBizTypeEnum.PAYMENT);
             Assert.notNull(walletTransaction, "支付单 {} 钱包流水不能为空", outTradeNo);
             return PayOrderRespDTO.successOf(walletTransaction.getNo(), walletTransaction.getCreator(),
-                    walletTransaction.getCreateTime(), outTradeNo, walletTransaction);
+                    walletTransaction.getCreateTime(), outTradeNo, walletTransaction, walletTransaction.getPrice());
         }
         // 其它状态为无效状态
         log.error("[doGetOrder] 支付单 {} 的状态不正确", outTradeNo);

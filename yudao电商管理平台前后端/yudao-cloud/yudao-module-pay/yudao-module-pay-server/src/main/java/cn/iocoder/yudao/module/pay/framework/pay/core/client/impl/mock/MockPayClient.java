@@ -35,7 +35,7 @@ public class MockPayClient extends AbstractPayClient<NonePayClientConfig> {
     @Override
     protected PayOrderRespDTO doUnifiedOrder(PayOrderUnifiedReqDTO reqDTO) {
         return PayOrderRespDTO.successOf("MOCK-P-" + reqDTO.getOutTradeNo(), "", LocalDateTime.now(),
-                reqDTO.getOutTradeNo(), MOCK_RESP_SUCCESS_DATA);
+                reqDTO.getOutTradeNo(), MOCK_RESP_SUCCESS_DATA, reqDTO.getPrice());
     }
 
     @Override

@@ -75,7 +75,7 @@ public class AlipayBarPayClient extends AbstractAlipayPayClient {
         if ("10000".equals(response.getCode())) { // 免密支付
             LocalDateTime successTime = LocalDateTimeUtil.of(response.getGmtPayment());
             return PayOrderRespDTO.successOf(response.getTradeNo(), response.getBuyerUserId(), successTime,
-                            response.getOutTradeNo(), response)
+                            response.getOutTradeNo(), response, reqDTO.getPrice())
                     .setDisplayMode(displayMode).setDisplayContent("");
         }
         // 大额支付，需要用户输入密码，所以返回 waiting。此时，前端一般会进行轮询

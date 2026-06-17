@@ -31,6 +31,8 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 
 import java.nio.charset.StandardCharsets;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.security.cert.X509Certificate;
 import java.time.LocalDateTime;
 import java.util.Collections;
@@ -95,7 +97,7 @@ public abstract class AbstractAlipayPayClient extends AbstractPayClient<AlipayPa
             throw new IllegalArgumentException(StrUtil.format("body({}) 的 trade_status 不正确", body));
         });
         return PayOrderRespDTO.of(status, bodyObj.get("trade_no"), bodyObj.get("seller_id"), parseTime(params.get("gmt_payment")),
-                bodyObj.get("out_trade_no"), body);
+                bodyObj.get("out_trade_no"), body, parseAmountToFen(bodyObj.get("total_amount")));
     }
 
     @Override
@@ -123,7 +125,14 @@ public abstract class AbstractAlipayPayClient extends AbstractPayClient<AlipayPa
             throw new IllegalArgumentException(StrUtil.format("body({}) 的 trade_status 不正确", response.getBody()));
         });
         return PayOrderRespDTO.of(status, response.getTradeNo(), response.getBuyerUserId(), LocalDateTimeUtil.of(response.getSendPayDate()),
-                outTradeNo, response);
+                outTradeNo, response, parseAmountToFen(response.getTotalAmount()));
+    }
+
+    private static Integer parseAmountToFen(String amount) {
+        if (StrUtil.isBlank(amount)) {
+            return null;
+        }
+        return new BigDecimal(amount).movePointRight(2).setScale(0, RoundingMode.HALF_UP).intValue();
     }
 
     private static Integer parseStatus(String tradeStatus) {

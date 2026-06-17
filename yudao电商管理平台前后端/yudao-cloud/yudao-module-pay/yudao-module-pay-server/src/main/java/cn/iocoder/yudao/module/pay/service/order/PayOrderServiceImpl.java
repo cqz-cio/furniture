@@ -200,6 +200,9 @@ public class PayOrderServiceImpl implements PayOrderService {
         if (LocalDateTimeUtils.beforeNow(order.getExpireTime())) { // 校验是否过期
             throw exception(PAY_ORDER_IS_EXPIRED);
         }
+        if (order.getPrice() == null || order.getPrice() <= 0) {
+            throw exception(PAY_ORDER_PRICE_NOT_POSITIVE);
+        }
 
         // 【重要】校验是否支付拓展单已支付，只是没有回调、或者数据不正常
         validateOrderActuallyPaid(id);
@@ -290,17 +293,79 @@ public class PayOrderServiceImpl implements PayOrderService {
     }
 
     private void notifyOrderSuccess(PayChannelDO channel, PayOrderRespDTO notify) {
-        // 1. 更新 PayOrderExtensionDO 支付成功
-        PayOrderExtensionDO orderExtension = updateOrderSuccess(notify);
-        // 2. 更新 PayOrderDO 支付成功
-        Boolean paid = updateOrderSuccess(channel, orderExtension, notify);
+        // 1. 校验回调归属与金额，避免伪造渠道回调、串单或金额被篡改
+        PayOrderExtensionDO orderExtension = validateOrderExtensionExists(notify);
+        validateOrderNotifyChannel(channel, orderExtension);
+        validateOrderExtensionCanNotifySuccess(orderExtension);
+        PayOrderDO order = validateOrderCanNotifySuccess(orderExtension);
+        validateOrderNotifyPrice(order, notify);
+        validateOrderNotifyChannelOrderNo(channel, order, notify);
+        // 2. 更新 PayOrderExtensionDO 支付成功
+        orderExtension = updateOrderSuccess(orderExtension, notify);
+        // 3. 更新 PayOrderDO 支付成功
+        Boolean paid = updateOrderSuccess(channel, order, orderExtension, notify);
         if (paid) { // 如果之前已经成功回调，则直接返回，不用重复记录支付通知记录；例如说：支付平台重复回调
             return;
         }
 
-        // 3. 插入支付通知记录
+        // 4. 插入支付通知记录
         notifyService.createPayNotifyTask(PayNotifyTypeEnum.ORDER.getType(),
                 orderExtension.getOrderId());
+    }
+
+    private PayOrderExtensionDO validateOrderExtensionExists(PayOrderRespDTO notify) {
+        PayOrderExtensionDO orderExtension = orderExtensionMapper.selectByNo(notify.getOutTradeNo());
+        if (orderExtension == null) {
+            throw exception(PAY_ORDER_EXTENSION_NOT_FOUND);
+        }
+        return orderExtension;
+    }
+
+    private void validateOrderNotifyChannel(PayChannelDO channel, PayOrderExtensionDO orderExtension) {
+        if (ObjectUtil.notEqual(orderExtension.getChannelId(), channel.getId())
+                || ObjectUtil.notEqual(orderExtension.getChannelCode(), channel.getCode())) {
+            throw exception(PAY_ORDER_NOTIFY_CHANNEL_NOT_MATCH);
+        }
+    }
+
+    private void validateOrderExtensionCanNotifySuccess(PayOrderExtensionDO orderExtension) {
+        if (PayOrderStatusEnum.isSuccess(orderExtension.getStatus())) {
+            return;
+        }
+        if (ObjectUtil.notEqual(orderExtension.getStatus(), PayOrderStatusEnum.WAITING.getStatus())) {
+            throw exception(PAY_ORDER_EXTENSION_STATUS_IS_NOT_WAITING);
+        }
+    }
+
+    private PayOrderDO validateOrderCanNotifySuccess(PayOrderExtensionDO orderExtension) {
+        PayOrderDO order = orderMapper.selectById(orderExtension.getOrderId());
+        if (order == null) {
+            throw exception(PAY_ORDER_NOT_FOUND);
+        }
+        if (PayOrderStatusEnum.isSuccess(order.getStatus())
+                && Objects.equals(order.getExtensionId(), orderExtension.getId())) {
+            return order;
+        }
+        if (!PayOrderStatusEnum.WAITING.getStatus().equals(order.getStatus())) {
+            throw exception(PAY_ORDER_STATUS_IS_NOT_WAITING);
+        }
+        return order;
+    }
+
+    private void validateOrderNotifyPrice(PayOrderDO order, PayOrderRespDTO notify) {
+        if (notify.getPrice() != null && ObjectUtil.notEqual(order.getPrice(), notify.getPrice())) {
+            throw exception(PAY_ORDER_NOTIFY_PRICE_NOT_MATCH);
+        }
+    }
+
+    private void validateOrderNotifyChannelOrderNo(PayChannelDO channel, PayOrderDO order, PayOrderRespDTO notify) {
+        if (StrUtil.isBlank(notify.getChannelOrderNo())) {
+            throw exception(PAY_ORDER_NOTIFY_CHANNEL_ORDER_NO_EMPTY);
+        }
+        PayOrderDO exists = orderMapper.selectByChannelIdAndChannelOrderNo(channel.getId(), notify.getChannelOrderNo());
+        if (exists != null && ObjectUtil.notEqual(exists.getId(), order.getId())) {
+            throw exception(PAY_ORDER_NOTIFY_CHANNEL_ORDER_NO_CONFLICT);
+        }
     }
 
     /**
@@ -309,12 +374,7 @@ public class PayOrderServiceImpl implements PayOrderService {
      * @param notify 通知
      * @return PayOrderExtensionDO 对象
      */
-    private PayOrderExtensionDO updateOrderSuccess(PayOrderRespDTO notify) {
-        // 1. 查询 PayOrderExtensionDO
-        PayOrderExtensionDO orderExtension = orderExtensionMapper.selectByNo(notify.getOutTradeNo());
-        if (orderExtension == null) {
-            throw exception(PAY_ORDER_EXTENSION_NOT_FOUND);
-        }
+    private PayOrderExtensionDO updateOrderSuccess(PayOrderExtensionDO orderExtension, PayOrderRespDTO notify) {
         if (PayOrderStatusEnum.isSuccess(orderExtension.getStatus())) { // 如果已经是成功，直接返回，不用重复更新
             log.info("[updateOrderExtensionSuccess][orderExtension({}) 已经是已支付，无需更新]", orderExtension.getId());
             return orderExtension;
@@ -341,13 +401,9 @@ public class PayOrderServiceImpl implements PayOrderService {
      * @param notify         通知回调
      * @return 是否之前已经成功回调
      */
-    private Boolean updateOrderSuccess(PayChannelDO channel, PayOrderExtensionDO orderExtension,
+    private Boolean updateOrderSuccess(PayChannelDO channel, PayOrderDO order, PayOrderExtensionDO orderExtension,
                                        PayOrderRespDTO notify) {
         // 1. 判断 PayOrderDO 是否处于待支付
-        PayOrderDO order = orderMapper.selectById(orderExtension.getOrderId());
-        if (order == null) {
-            throw exception(PAY_ORDER_NOT_FOUND);
-        }
         if (PayOrderStatusEnum.isSuccess(order.getStatus()) // 如果已经是成功，直接返回，不用重复更新
                 && Objects.equals(order.getExtensionId(), orderExtension.getId())) {
             log.info("[updateOrderExtensionSuccess][order({}) 已经是已支付，无需更新]", order.getId());

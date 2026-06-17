@@ -25,6 +25,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
+import javax.validation.Valid;
 import java.util.Objects;
 
 import static cn.iocoder.yudao.framework.common.pojo.CommonResult.success;
@@ -54,6 +55,10 @@ public class AppPayOrderController {
     public CommonResult<PayOrderRespVO> getOrder(@RequestParam(value = "id", required = false) Long id,
                                                  @RequestParam(value = "no", required = false) String no,
                                                  @RequestParam(value = "sync", required = false) Boolean sync) {
+        Long loginUserId = getLoginUserId();
+        if (loginUserId == null) {
+            return success(null);
+        }
         PayOrderDO order = null;
         if (CharSequenceUtil.isNotEmpty(no)) {
             order = payOrderService.getOrder(no);
@@ -66,7 +71,7 @@ public class AppPayOrderController {
         }
         // 重要：校验订单是否是当前用户，避免越权
         if (order.getUserId() != null // 特殊：早期订单未存储 userId，所以忽略
-                && ObjUtil.notEqual(order.getUserId(), getLoginUserId())) {
+                && ObjUtil.notEqual(order.getUserId(), loginUserId)) {
             return success(null);
         }
 
@@ -81,13 +86,25 @@ public class AppPayOrderController {
 
     @PostMapping("/submit")
     @Operation(summary = "提交支付订单")
-    public CommonResult<AppPayOrderSubmitRespVO> submitPayOrder(@RequestBody AppPayOrderSubmitReqVO reqVO) {
+    public CommonResult<AppPayOrderSubmitRespVO> submitPayOrder(@Valid @RequestBody AppPayOrderSubmitReqVO reqVO) {
+        Long loginUserId = getLoginUserId();
+        if (loginUserId == null || reqVO == null || reqVO.getId() == null) {
+            return success(null);
+        }
+        PayOrderDO order = payOrderService.getOrder(reqVO.getId());
+        if (order == null) {
+            return success(null);
+        }
+        if (order.getUserId() != null && ObjUtil.notEqual(order.getUserId(), loginUserId)) {
+            return success(null);
+        }
+
         // 1. 钱包支付事，需要额外传 user_id 和 user_type
         if (Objects.equals(reqVO.getChannelCode(), PayChannelEnum.WALLET.getCode())) {
             if (reqVO.getChannelExtras() == null) {
                 reqVO.setChannelExtras(Maps.newHashMapWithExpectedSize(1));
             }
-            PayWalletDO wallet = payWalletService.getOrCreateWallet(getLoginUserId(), getLoginUserType());
+            PayWalletDO wallet = payWalletService.getOrCreateWallet(loginUserId, getLoginUserType());
             reqVO.getChannelExtras().put(WalletPayClient.WALLET_ID_KEY, String.valueOf(wallet.getId()));
         }
 
