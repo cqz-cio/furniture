@@ -18,7 +18,8 @@ describe("purchase controls", () => {
 
     expect(source).toContain("const maxPurchaseQuantity = computed");
     expect(source).toContain("const normalizedPurchaseQuantity = computed");
-    expect(source).toContain("const handleAddToCart = () =>");
+    expect(source).toContain("const handleAddToCart = (event) =>");
+    expect(source).toContain("trigger: event?.currentTarget");
     expect(source).toContain("Math.min(Math.floor(Number(quantity.value) || 1), maxPurchaseQuantity.value)");
     expect(source).toContain("@change=\"quantity = normalizedPurchaseQuantity\"");
     expect(source).toContain(":max=\"maxPurchaseQuantity\"");

@@ -118,7 +118,7 @@ onMounted(async () => {
               type="button"
               :disabled="!isProductAvailable(product)"
               :aria-disabled="!isProductAvailable(product)"
-              @click="emit('add-to-cart', product, 1)"
+              @click="emit('add-to-cart', product, 1, { trigger: $event.currentTarget })"
             >
               {{ isProductAvailable(product) ? t("addToCart") : t("product.unavailable") }}
             </button>

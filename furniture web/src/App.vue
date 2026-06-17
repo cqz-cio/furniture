@@ -39,8 +39,11 @@ import {
   updateLocalCartItemQuantity,
   writeLocalCart,
 } from "./services/localCart.js";
+import { clearYudaoSession, readYudaoSession, redactSecret } from "./services/authSession.js";
+import { playAddToCartFlyAnimation } from "./services/cartFlyAnimation.js";
 import { getCheckoutEntryRoute } from "./services/membershipNavigation.js";
 import { addCartItem, deleteCartItems, getRemoteCartItems, updateCartItemCount } from "./services/yudaoCartApi.js";
+import { getYudaoAppTenantId, isYudaoAuthError } from "./services/yudaoRequest.js";
 
 const pageRoutes = {
   home: "/",
@@ -114,6 +117,8 @@ const cartOpen = ref(false);
 const cartItems = ref(readLocalCart());
 const cartMode = ref("local");
 const cartNoticeKey = ref("");
+const cartNoticeDetail = ref("");
+const cartDebugInfo = ref("");
 const authVersion = ref(0);
 let remoteCartRequestId = 0;
 
@@ -185,25 +190,64 @@ const handleInternalLinkClick = (event) => {
 
 const cartQuantity = computed(() => cartItems.value.reduce((sum, item) => sum + item.quantity, 0));
 const usesOverlayHeader = computed(() => ["home", "sale"].includes(currentPage.value));
+const usesCheckoutShell = computed(() => currentPage.value === "checkout");
 
-const switchToLocalCart = ({ noticeKey = "" } = {}) => {
+const getYudaoCartErrorDetail = (error) => {
+  const parts = [
+    error?.kind ? `kind=${error.kind}` : "",
+    Number.isFinite(Number(error?.code)) ? `code=${Number(error.code)}` : "",
+    error?.status ? `status=${error.status}` : "",
+    error?.message ? `msg=${error.message}` : "",
+  ].filter(Boolean);
+  return parts.length ? `Yudao cart sync failed: ${parts.join(", ")}` : "";
+};
+
+const getYudaoCartDebugInfo = (session, result) => {
+  const token = session?.accessToken || "";
+  const tokenInfo = token ? `yes (${redactSecret(token)})` : "no";
+  return `Yudao debug: path=/trade/cart/list, tenant=${getYudaoAppTenantId()}, token=${tokenInfo}, ${result}`;
+};
+
+const switchToLocalCart = ({ noticeKey = "", noticeDetail = "" } = {}) => {
   cartItems.value = readLocalCart();
   cartMode.value = "local";
   cartNoticeKey.value = noticeKey;
+  cartNoticeDetail.value = noticeDetail;
+};
+
+const switchToAuthRequiredCart = () => {
+  clearYudaoSession();
+  authVersion.value += 1;
+  switchToLocalCart({ noticeKey: "cart.remoteAuthRequired" });
 };
 
 const loadRemoteCart = async () => {
   const requestId = ++remoteCartRequestId;
+  const requestSession = readYudaoSession();
+  cartDebugInfo.value = getYudaoCartDebugInfo(requestSession, "status=requesting");
   try {
     const remoteItems = await getRemoteCartItems();
     if (requestId !== remoteCartRequestId) return false;
     cartMode.value = "yudao";
     cartItems.value = remoteItems;
     cartNoticeKey.value = "";
+    cartNoticeDetail.value = "";
+    cartDebugInfo.value = getYudaoCartDebugInfo(requestSession, `status=success, items=${remoteItems.length}`);
     return true;
-  } catch {
+  } catch (caught) {
     if (requestId !== remoteCartRequestId) return false;
-    switchToLocalCart({ noticeKey: "cart.remoteUnavailable" });
+    cartDebugInfo.value = getYudaoCartDebugInfo(
+      requestSession,
+      `status=failed${getYudaoCartErrorDetail(caught) ? `, ${getYudaoCartErrorDetail(caught)}` : ""}`,
+    );
+    if (isYudaoAuthError(caught)) {
+      switchToAuthRequiredCart();
+      return true;
+    }
+    switchToLocalCart({
+      noticeKey: "cart.remoteUnavailable",
+      noticeDetail: getYudaoCartErrorDetail(caught),
+    });
     return true;
   }
 };
@@ -213,34 +257,52 @@ const handleAuthChange = async () => {
   authVersion.value += 1;
 };
 
-const addToCart = async (product, quantity = 1) => {
+const playCartFlyAnimation = (options = {}) => {
+  playAddToCartFlyAnimation({ trigger: options.trigger });
+};
+
+const addToCart = async (product, quantity = 1, options = {}) => {
   if (product.source === "yudao") {
     try {
       await addCartItem(product.skuId, quantity);
       await loadRemoteCart();
-      cartOpen.value = true;
+      playCartFlyAnimation(options);
       return;
-    } catch {
-      switchToLocalCart({ noticeKey: "cart.remoteMutationUnavailable" });
+    } catch (caught) {
+      if (isYudaoAuthError(caught)) {
+        switchToAuthRequiredCart();
+        return;
+      }
+      switchToLocalCart({
+        noticeKey: "cart.remoteMutationUnavailable",
+        noticeDetail: getYudaoCartErrorDetail(caught),
+      });
     }
   }
 
   cartItems.value = addLocalCartItem(cartItems.value, product, quantity);
-  cartOpen.value = true;
+  playCartFlyAnimation(options);
 };
 
 const updateCartQuantity = async (item, quantity) => {
   const nextQuantity = normalizeCartQuantity(quantity);
+  cartItems.value = updateLocalCartItemQuantity(cartItems.value, item.skuId, nextQuantity);
   if (item.source === "yudao" && item.cartId) {
     try {
       await updateCartItemCount(item.cartId, nextQuantity);
       await loadRemoteCart();
       return;
-    } catch {
-      switchToLocalCart({ noticeKey: "cart.remoteMutationUnavailable" });
+    } catch (caught) {
+      if (isYudaoAuthError(caught)) {
+        switchToAuthRequiredCart();
+        return;
+      }
+      switchToLocalCart({
+        noticeKey: "cart.remoteMutationUnavailable",
+        noticeDetail: getYudaoCartErrorDetail(caught),
+      });
     }
   }
-  cartItems.value = updateLocalCartItemQuantity(cartItems.value, item.skuId, nextQuantity);
 };
 
 const removeFromCart = async (item) => {
@@ -249,8 +311,15 @@ const removeFromCart = async (item) => {
       await deleteCartItems([item.cartId]);
       await loadRemoteCart();
       return;
-    } catch {
-      switchToLocalCart({ noticeKey: "cart.remoteMutationUnavailable" });
+    } catch (caught) {
+      if (isYudaoAuthError(caught)) {
+        switchToAuthRequiredCart();
+        return;
+      }
+      switchToLocalCart({
+        noticeKey: "cart.remoteMutationUnavailable",
+        noticeDetail: getYudaoCartErrorDetail(caught),
+      });
     }
   }
   cartItems.value = removeLocalCartItem(cartItems.value, item.skuId);
@@ -279,8 +348,9 @@ const continueCheckout = () => {
 
 watch(currentPage, (page) => {
   const nextPath = pageRoutes[page] || pageRoutes.missing;
+  if (pageFromPath(window.location.pathname) === page) return;
   if (window.location.pathname !== nextPath) {
-    window.history.pushState({ page }, "", nextPath);
+    window.history.pushState({ page }, "", `${nextPath}${window.location.search}${window.location.hash}`);
   }
 });
 
@@ -306,6 +376,7 @@ onBeforeUnmount(() => {
 
 <template>
   <RhHeader
+    v-if="!usesCheckoutShell"
     v-model:page="currentPage"
     :cart-count="cartQuantity"
     :cart-mode="cartMode"
@@ -313,7 +384,7 @@ onBeforeUnmount(() => {
     @auth-change="handleAuthChange"
     @open-cart="cartOpen = true"
   />
-  <main class="app-main">
+  <main class="app-main" :class="{ 'is-checkout-shell': usesCheckoutShell }">
     <component
       :is="pageComponent"
       :page-key="currentPage"
@@ -325,9 +396,11 @@ onBeforeUnmount(() => {
       @order-created="handleOrderCreated"
     />
   </main>
-  <RhFooter />
+  <RhFooter v-if="!usesCheckoutShell" />
   <CartDrawer
     :items="cartItems"
+    :debug-info="cartDebugInfo"
+    :notice-detail="cartNoticeDetail"
     :notice-key="cartNoticeKey"
     :open="cartOpen"
     @checkout="startCheckout"

@@ -26,10 +26,10 @@ const normalizedPurchaseQuantity = computed(() => {
   return Math.max(1, Math.min(Math.floor(Number(quantity.value) || 1), maxPurchaseQuantity.value));
 });
 
-const handleAddToCart = () => {
+const handleAddToCart = (event) => {
   quantity.value = normalizedPurchaseQuantity.value;
   if (!canPurchase.value) return;
-  emit("add-to-cart", product.value, normalizedPurchaseQuantity.value);
+  emit("add-to-cart", product.value, normalizedPurchaseQuantity.value, { trigger: event?.currentTarget });
 };
 
 onMounted(async () => {
@@ -109,7 +109,7 @@ onMounted(async () => {
               @change="quantity = normalizedPurchaseQuantity"
             />
           </label>
-          <button type="button" :disabled="!canPurchase" @click="handleAddToCart">
+          <button type="button" :disabled="!canPurchase" @click="handleAddToCart($event)">
             {{ canPurchase ? t("addToCart") : t("product.unavailable") }}
           </button>
         </div>
@@ -169,7 +169,7 @@ onMounted(async () => {
               @change="quantity = normalizedPurchaseQuantity"
             />
           </label>
-          <button type="button" :disabled="!canPurchase" @click="handleAddToCart">
+          <button type="button" :disabled="!canPurchase" @click="handleAddToCart($event)">
             {{ canPurchase ? t("addToCart") : t("product.unavailable") }}
           </button>
         </div>

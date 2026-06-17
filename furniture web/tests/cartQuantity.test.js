@@ -27,4 +27,15 @@ describe("cart quantity normalization", () => {
     expect(appSource).toContain("normalizeCartQuantity(quantity)");
     expect(appSource).toContain("updateCartItemCount(item.cartId, nextQuantity)");
   });
+
+  it("optimistically updates remote cart quantities before waiting for the API", () => {
+    const appSource = readSource("../src/App.vue");
+    const updateBody = appSource.slice(appSource.indexOf("const updateCartQuantity = async"), appSource.indexOf("const removeFromCart"));
+    const localUpdateIndex = updateBody.indexOf("cartItems.value = updateLocalCartItemQuantity(cartItems.value, item.skuId, nextQuantity)");
+    const remoteUpdateIndex = updateBody.indexOf("await updateCartItemCount(item.cartId, nextQuantity)");
+
+    expect(localUpdateIndex).toBeGreaterThan(-1);
+    expect(remoteUpdateIndex).toBeGreaterThan(-1);
+    expect(localUpdateIndex).toBeLessThan(remoteUpdateIndex);
+  });
 });

@@ -295,17 +295,15 @@ onBeforeUnmount(() => {
         class="brand-button"
         :class="{ 'baby-brand': isBabyChildSitePage }"
         type="button"
-        :aria-label="isBabyChildSitePage ? 'RH Baby and Child' : 'The World of RH'"
+        :aria-label="isBabyChildSitePage ? 'Oakved Baby and Child' : 'Oakved'"
         @click="page = isBabyChildSitePage ? 'baby-child' : 'home'"
       >
         <template v-if="isBabyChildSitePage">
-          <span>baby &amp; child</span>
-          <strong>RH</strong>
+          <img class="brand-logo" src="/assets/brand/oakved-logo-black.png" alt="Oakved" />
+          <span class="brand-button-suffix">baby &amp; child</span>
         </template>
         <template v-else>
-          <span>The</span>
-          <span>WORLD of</span>
-          <strong>RH</strong>
+          <img class="brand-logo" src="/assets/brand/oakved-logo-black.png" alt="Oakved" />
         </template>
       </button>
 
@@ -336,7 +334,13 @@ onBeforeUnmount(() => {
           </section>
         </div>
         <button class="account-icon" type="button" :aria-label="t('header.account')" @click="openAccount"></button>
-        <button class="bag-icon" type="button" :aria-label="t('header.bag')" @click="emit('open-cart')">
+        <button
+          class="bag-icon"
+          type="button"
+          :aria-label="t('header.bag')"
+          data-cart-animation-target
+          @click="emit('open-cart')"
+        >
           <span v-if="cartCount" class="bag-count">{{ cartCount }}</span>
         </button>
       </div>
@@ -411,7 +415,7 @@ onBeforeUnmount(() => {
       </article>
     </section>
 
-    <div v-if="menuOpen" class="mobile-drawer-layer" aria-label="Mobile RH menu">
+    <div v-if="menuOpen" class="mobile-drawer-layer" aria-label="Mobile Oakved menu">
       <aside class="mobile-menu-drawer">
         <button
           v-for="item in mobileDrawerNavigation"
@@ -428,7 +432,7 @@ onBeforeUnmount(() => {
           <span aria-hidden="true">›</span>
         </button>
         <div class="mobile-drawer-brand">
-          <span>The</span> WORLD <span>of</span> RH
+          <img class="mobile-drawer-brand-logo" src="/assets/brand/oakved-logo-black.png" alt="Oakved" />
         </div>
       </aside>
       <button class="mobile-drawer-scrim" type="button" :aria-label="t('header.menuClose')" @click="closeMenu"></button>
