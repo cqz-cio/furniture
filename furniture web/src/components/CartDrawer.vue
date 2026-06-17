@@ -29,7 +29,7 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(["checkout", "close", "resync", "update-quantity", "remove"]);
+const emit = defineEmits(["checkout", "close", "resync", "update-quantity", "remove", "wishlist"]);
 const { t } = useI18n();
 const totals = computed(() => getCartTotals(props.items));
 const membershipPricing = computed(() => getMembershipPricing(props.items));
@@ -61,6 +61,9 @@ const displayDelivery = computed(() => (props.items.length ? 299 : 0));
 const displaySummaryTotal = computed(() => membershipPricing.value.estimatedTotal + displayDelivery.value);
 const handleQuantityChange = (item, value) => {
   emit("update-quantity", item, normalizeCartQuantity(value));
+};
+const adjustQuantity = (item, delta) => {
+  emit("update-quantity", item, normalizeCartQuantity(Number(item.quantity) + delta));
 };
 const cartItemDetailHref = (item) => {
   if (isMembershipItem(item)) return "";
@@ -132,7 +135,12 @@ onBeforeUnmount(() => setBodyCartState(false));
           <div v-if="noticeKey" class="cart-drawer-notice">
             <p>{{ t(noticeKey) }}</p>
             <small v-if="showNoticeDetail" class="cart-notice-detail">{{ noticeDetail }}</small>
-            <button v-if="canResyncCart" type="button" @click="emit('resync')">
+            <button
+              v-if="canResyncCart"
+              class="cart-risk-action cart-risk-action-warning"
+              type="button"
+              @click="emit('resync')"
+            >
               {{ t("cart.retrySync") }}
             </button>
           </div>
@@ -188,19 +196,40 @@ onBeforeUnmount(() => setBodyCartState(false));
                 </dl>
                 <small v-if="item.cartProblemKey" class="cart-item-problem">{{ t(item.cartProblemKey) }}</small>
                 <div class="cart-item-links">
-                  <button type="button" @click="emit('remove', item)">{{ t("cart.remove") }}</button>
-                  <span>+ Add To Wishlist</span>
+                  <button
+                    class="cart-risk-action cart-risk-action-danger"
+                    type="button"
+                    @click="emit('remove', item)"
+                  >
+                    {{ t("cart.remove") }}
+                  </button>
+                  <button class="cart-risk-action cart-risk-action-neutral" type="button" @click="emit('wishlist', item)">
+                    + Add To Wishlist
+                  </button>
                 </div>
               </div>
               <div class="cart-item-controls">
                 <label>
                   <span class="sr-only">{{ t("cart.quantity") }}</span>
-                  <input
-                    :value="item.quantity"
-                    min="1"
-                    type="number"
-                    @change="handleQuantityChange(item, $event.target.value)"
-                  />
+                  <span class="cart-quantity-stepper">
+                    <button
+                      type="button"
+                      :disabled="item.quantity <= 1"
+                      aria-label="Decrease quantity"
+                      @click="adjustQuantity(item, -1)"
+                    >
+                      -
+                    </button>
+                    <input
+                      :value="item.quantity"
+                      min="1"
+                      type="number"
+                      @change="handleQuantityChange(item, $event.target.value)"
+                    />
+                    <button type="button" aria-label="Increase quantity" @click="adjustQuantity(item, 1)">
+                      +
+                    </button>
+                  </span>
                 </label>
               </div>
               <div class="cart-item-price">
@@ -215,7 +244,7 @@ onBeforeUnmount(() => setBodyCartState(false));
             <div class="cart-commerce-left">
               <form class="cart-promo-form">
                 <input aria-label="Promo code" placeholder="Promo code" type="text" />
-                <button type="button">Apply</button>
+                <button class="cart-risk-action cart-risk-action-warning" type="button">Apply</button>
               </form>
               <aside class="cart-rh-members">
                 <strong>RH</strong>
