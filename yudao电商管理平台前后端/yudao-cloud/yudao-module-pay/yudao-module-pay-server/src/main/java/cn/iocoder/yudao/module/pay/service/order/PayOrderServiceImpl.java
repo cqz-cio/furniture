@@ -4,6 +4,7 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.extra.spring.SpringUtil;
+import cn.iocoder.yudao.framework.common.exception.ServiceException;
 import cn.iocoder.yudao.framework.common.pojo.PageResult;
 import cn.iocoder.yudao.framework.common.util.date.LocalDateTimeUtils;
 import cn.iocoder.yudao.framework.common.util.number.MoneyUtils;
@@ -32,6 +33,7 @@ import cn.iocoder.yudao.module.pay.service.channel.PayChannelService;
 import cn.iocoder.yudao.module.pay.service.notify.PayNotifyService;
 import com.google.common.annotations.VisibleForTesting;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
@@ -169,6 +171,12 @@ public class PayOrderServiceImpl implements PayOrderService {
         if (unifiedOrderResp != null) {
             try {
                 getSelf().notifyOrder(channel, unifiedOrderResp);
+            } catch (ServiceException e) {
+                if (!isIgnorableSubmitOrderNotifyException(e)) {
+                    throw e;
+                }
+                log.warn("[submitOrder][order({}) channel({}) 支付结果({}) 通知时发生并发异常，可忽略]",
+                        order, channel, unifiedOrderResp, e);
             } catch (Exception e) {
                 // 兼容 https://gitee.com/zhijiantianya/yudao-cloud/issues/I8SM9H 场景
                 // 支付宝或微信扫码之后时，由于 PayClient 是直接返回支付成功，而支付也会有回调，导致存在并发更新问题，此时一般是可以 try catch 直接忽略
@@ -184,6 +192,13 @@ public class PayOrderServiceImpl implements PayOrderService {
             order = orderMapper.selectById(order.getId());
         }
         return PayOrderConvert.INSTANCE.convert(order, unifiedOrderResp);
+    }
+
+    private boolean isIgnorableSubmitOrderNotifyException(ServiceException e) {
+        return Objects.equals(e.getCode(), PAY_ORDER_EXTENSION_STATUS_IS_NOT_WAITING.getCode())
+                || Objects.equals(e.getCode(), PAY_ORDER_EXTENSION_IS_PAID.getCode())
+                || Objects.equals(e.getCode(), PAY_ORDER_STATUS_IS_NOT_WAITING.getCode())
+                || Objects.equals(e.getCode(), PAY_ORDER_STATUS_IS_SUCCESS.getCode());
     }
 
     private PayOrderDO validateOrderCanSubmit(Long id) {
@@ -414,14 +429,19 @@ public class PayOrderServiceImpl implements PayOrderService {
         }
 
         // 2. 更新 PayOrderDO
-        int updateCounts = orderMapper.updateByIdAndStatus(order.getId(), PayOrderStatusEnum.WAITING.getStatus(),
-                PayOrderDO.builder().status(PayOrderStatusEnum.SUCCESS.getStatus())
-                        .channelId(channel.getId()).channelCode(channel.getCode())
-                        .successTime(notify.getSuccessTime()).extensionId(orderExtension.getId()).no(orderExtension.getNo())
-                        .channelOrderNo(notify.getChannelOrderNo()).channelUserId(notify.getChannelUserId())
-                        .channelFeeRate(channel.getFeeRate())
-                        .channelFeePrice(MoneyUtils.calculateRatePrice(order.getPrice(), channel.getFeeRate()))
-                        .build());
+        int updateCounts;
+        try {
+            updateCounts = orderMapper.updateByIdAndStatus(order.getId(), PayOrderStatusEnum.WAITING.getStatus(),
+                    PayOrderDO.builder().status(PayOrderStatusEnum.SUCCESS.getStatus())
+                            .channelId(channel.getId()).channelCode(channel.getCode())
+                            .successTime(notify.getSuccessTime()).extensionId(orderExtension.getId()).no(orderExtension.getNo())
+                            .channelOrderNo(notify.getChannelOrderNo()).channelUserId(notify.getChannelUserId())
+                            .channelFeeRate(channel.getFeeRate())
+                            .channelFeePrice(MoneyUtils.calculateRatePrice(order.getPrice(), channel.getFeeRate()))
+                            .build());
+        } catch (DuplicateKeyException e) {
+            throw exception(PAY_ORDER_NOTIFY_CHANNEL_ORDER_NO_CONFLICT);
+        }
         if (updateCounts == 0) { // 校验状态，必须是待支付
             throw exception(PAY_ORDER_STATUS_IS_NOT_WAITING);
         }
@@ -430,6 +450,8 @@ public class PayOrderServiceImpl implements PayOrderService {
     }
 
     private void notifyOrderClosed(PayChannelDO channel, PayOrderRespDTO notify) {
+        PayOrderExtensionDO orderExtension = validateOrderExtensionExists(notify);
+        validateOrderNotifyChannel(channel, orderExtension);
         updateOrderExtensionClosed(channel, notify);
     }
 

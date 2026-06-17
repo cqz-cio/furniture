@@ -30,6 +30,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DuplicateKeyException;
 
 import javax.annotation.Resource;
 import java.time.Duration;
@@ -46,6 +47,7 @@ import static cn.iocoder.yudao.module.pay.enums.ErrorCodeConstants.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
@@ -80,6 +82,17 @@ public class PayOrderServiceTest extends BaseDbAndRedisUnitTest {
     }
 
     @Test
+    public void testPayOrder_channelOrderNoUnique() {
+        // mock 数据
+        PayOrderDO order = randomPojo(PayOrderDO.class, o -> o.setChannelId(10L).setChannelOrderNo("C110"));
+        orderMapper.insert(order);
+        PayOrderDO duplicateOrder = randomPojo(PayOrderDO.class, o -> o.setChannelId(10L).setChannelOrderNo("C110"));
+
+        // 调用，并断言唯一约束生效
+        assertThrows(DuplicateKeyException.class, () -> orderMapper.insert(duplicateOrder));
+    }
+
+    @Test
     public void testGetOrder_id() {
         // mock 数据（PayOrderDO）
         PayOrderDO order = randomPojo(PayOrderDO.class);
@@ -111,9 +124,9 @@ public class PayOrderServiceTest extends BaseDbAndRedisUnitTest {
     @Test
     public void testGetOrderCountByAppId() {
         // mock 数据（PayOrderDO）
-        PayOrderDO order01 = randomPojo(PayOrderDO.class);
+        PayOrderDO order01 = randomPojo(PayOrderDO.class, o -> o.setChannelOrderNo("count-1"));
         orderMapper.insert(order01);
-        PayOrderDO order02 = randomPojo(PayOrderDO.class);
+        PayOrderDO order02 = randomPojo(PayOrderDO.class, o -> o.setChannelOrderNo("count-2"));
         orderMapper.insert(order02);
         // 准备参数
         Long appId = order01.getAppId();
@@ -138,19 +151,24 @@ public class PayOrderServiceTest extends BaseDbAndRedisUnitTest {
         });
         orderMapper.insert(dbOrder);
         // 测试 appId 不匹配
-        orderMapper.insert(cloneIgnoreId(dbOrder, o -> o.setAppId(2L)));
+        orderMapper.insert(cloneIgnoreId(dbOrder, o -> o.setAppId(2L).setChannelOrderNo("221")));
         // 测试 channelCode 不匹配
-        orderMapper.insert(cloneIgnoreId(dbOrder, o -> o.setChannelCode(PayChannelEnum.ALIPAY_APP.getCode())));
+        orderMapper.insert(cloneIgnoreId(dbOrder, o -> o.setChannelCode(PayChannelEnum.ALIPAY_APP.getCode())
+                .setChannelOrderNo("222")));
         // 测试 merchantOrderId 不匹配
-        orderMapper.insert(cloneIgnoreId(dbOrder, o -> o.setMerchantOrderId(randomString())));
+        orderMapper.insert(cloneIgnoreId(dbOrder, o -> o.setMerchantOrderId(randomString()).setChannelOrderNo("223")));
         // 测试 channelOrderNo 不匹配
-        orderMapper.insert(cloneIgnoreId(dbOrder, o -> o.setChannelOrderNo(randomString())));
+        orderMapper.insert(cloneIgnoreId(dbOrder, o -> o.setChannelOrderNo("page-not-match")));
         // 测试 no 不匹配
-        orderMapper.insert(cloneIgnoreId(dbOrder, o -> o.setNo(randomString())));
+        orderMapper.insert(cloneIgnoreId(dbOrder, o -> o.setNo(randomString()).setChannelOrderNo("224")));
         // 测试 status 不匹配
-        orderMapper.insert(cloneIgnoreId(dbOrder, o -> o.setStatus(PayOrderStatusEnum.CLOSED.getStatus())));
+        orderMapper.insert(cloneIgnoreId(dbOrder, o -> o.setStatus(PayOrderStatusEnum.CLOSED.getStatus())
+                .setChannelOrderNo("225")));
         // 测试 createTime 不匹配
-        orderMapper.insert(cloneIgnoreId(dbOrder, o -> o.setCreateTime(buildTime(2019, 1, 1))));
+        orderMapper.insert(cloneIgnoreId(dbOrder, o -> {
+            o.setCreateTime(buildTime(2019, 1, 1));
+            o.setChannelOrderNo("226");
+        }));
         // 准备参数
         PayOrderPageReqVO reqVO = new PayOrderPageReqVO();
         reqVO.setAppId(1L);
@@ -183,19 +201,24 @@ public class PayOrderServiceTest extends BaseDbAndRedisUnitTest {
         });
         orderMapper.insert(dbOrder);
         // 测试 appId 不匹配
-        orderMapper.insert(cloneIgnoreId(dbOrder, o -> o.setAppId(2L)));
+        orderMapper.insert(cloneIgnoreId(dbOrder, o -> o.setAppId(2L).setChannelOrderNo("231")));
         // 测试 channelCode 不匹配
-        orderMapper.insert(cloneIgnoreId(dbOrder, o -> o.setChannelCode(PayChannelEnum.ALIPAY_APP.getCode())));
+        orderMapper.insert(cloneIgnoreId(dbOrder, o -> o.setChannelCode(PayChannelEnum.ALIPAY_APP.getCode())
+                .setChannelOrderNo("232")));
         // 测试 merchantOrderId 不匹配
-        orderMapper.insert(cloneIgnoreId(dbOrder, o -> o.setMerchantOrderId(randomString())));
+        orderMapper.insert(cloneIgnoreId(dbOrder, o -> o.setMerchantOrderId(randomString()).setChannelOrderNo("233")));
         // 测试 channelOrderNo 不匹配
-        orderMapper.insert(cloneIgnoreId(dbOrder, o -> o.setChannelOrderNo(randomString())));
+        orderMapper.insert(cloneIgnoreId(dbOrder, o -> o.setChannelOrderNo("list-not-match")));
         // 测试 no 不匹配
-        orderMapper.insert(cloneIgnoreId(dbOrder, o -> o.setNo(randomString())));
+        orderMapper.insert(cloneIgnoreId(dbOrder, o -> o.setNo(randomString()).setChannelOrderNo("234")));
         // 测试 status 不匹配
-        orderMapper.insert(cloneIgnoreId(dbOrder, o -> o.setStatus(PayOrderStatusEnum.CLOSED.getStatus())));
+        orderMapper.insert(cloneIgnoreId(dbOrder, o -> o.setStatus(PayOrderStatusEnum.CLOSED.getStatus())
+                .setChannelOrderNo("235")));
         // 测试 createTime 不匹配
-        orderMapper.insert(cloneIgnoreId(dbOrder, o -> o.setCreateTime(buildTime(2019, 1, 1))));
+        orderMapper.insert(cloneIgnoreId(dbOrder, o -> {
+            o.setCreateTime(buildTime(2019, 1, 1));
+            o.setChannelOrderNo("236");
+        }));
         // 准备参数
         PayOrderExportReqVO reqVO = new PayOrderExportReqVO();
         reqVO.setAppId(1L);
@@ -390,6 +413,45 @@ public class PayOrderServiceTest extends BaseDbAndRedisUnitTest {
                             PayOrderStatusEnum.WAITING.getStatus(), reqVO.getChannelExtras(),
                             null, null, null);
         }
+    }
+
+    @Test
+    public void testSubmitOrder_notifySecurityException() {
+        // mock 数据（order）
+        PayOrderDO order = randomPojo(PayOrderDO.class, o -> o.setStatus(PayOrderStatusEnum.WAITING.getStatus())
+                .setAppId(1L).setExpireTime(addTime(Duration.ofDays(1))).setPrice(10));
+        orderMapper.insert(order);
+        // 准备参数
+        PayOrderSubmitReqVO reqVO = randomPojo(PayOrderSubmitReqVO.class, o -> o.setId(order.getId())
+                .setChannelCode(PayChannelEnum.ALIPAY_APP.getCode()));
+        String userIp = randomString();
+        // mock 方法（app）
+        PayAppDO app = randomPojo(PayAppDO.class, o -> o.setId(1L));
+        when(appService.validPayApp(eq(1L))).thenReturn(app);
+        // mock 方法（channel）
+        PayChannelDO channel = randomPojo(PayChannelDO.class, o -> o.setId(10L)
+                .setCode(PayChannelEnum.ALIPAY_APP.getCode()));
+        when(channelService.validPayChannel(eq(1L), eq(PayChannelEnum.ALIPAY_APP.getCode())))
+                .thenReturn(channel);
+        // mock 方法（client）
+        PayClient<?> client = mock(PayClient.class);
+        when(channelService.getPayClient(eq(10L))).thenReturn(client);
+        // mock 方法：渠道即时成功，但是缺少渠道流水号，不能被吞掉
+        PayOrderRespDTO unifiedOrderResp = randomPojo(PayOrderRespDTO.class, o -> o
+                .setStatus(PayOrderStatusEnum.SUCCESS.getStatus())
+                .setOutTradeNo(null)
+                .setChannelOrderNo(null)
+                .setChannelErrorCode(null)
+                .setChannelErrorMsg(null)
+                .setPrice(10));
+        when(client.unifiedOrder(any())).thenAnswer(invocation -> {
+            unifiedOrderResp.setOutTradeNo(invocation.getArgument(0, cn.iocoder.yudao.module.pay.framework.pay.core.client.dto.order.PayOrderUnifiedReqDTO.class).getOutTradeNo());
+            return unifiedOrderResp;
+        });
+
+        // 调用，并断言异常
+        assertServiceException(() -> orderService.submitOrder(reqVO, userIp),
+                PAY_ORDER_NOTIFY_CHANNEL_ORDER_NO_EMPTY);
     }
 
     @Test
@@ -783,7 +845,8 @@ public class PayOrderServiceTest extends BaseDbAndRedisUnitTest {
     @Test
     public void testNotifyOrderClosed_orderExtension_notFound() {
         // 准备参数
-        PayChannelDO channel = randomPojo(PayChannelDO.class, o -> o.setId(10L));
+        PayChannelDO channel = randomPojo(PayChannelDO.class, o -> o.setId(10L)
+                .setCode(PayChannelEnum.ALIPAY_APP.getCode()));
         PayOrderRespDTO notify = randomPojo(PayOrderRespDTO.class,
                 o -> o.setStatus(PayOrderStatusEnum.CLOSED.getStatus()));
 
@@ -793,14 +856,37 @@ public class PayOrderServiceTest extends BaseDbAndRedisUnitTest {
     }
 
     @Test
+    public void testNotifyOrderClosed_channelMismatch() {
+        // mock 数据（PayOrderExtensionDO）
+        PayOrderExtensionDO orderExtension = randomPojo(PayOrderExtensionDO.class,
+                o -> o.setStatus(PayOrderStatusEnum.WAITING.getStatus())
+                        .setNo("P110")
+                        .setChannelId(20L).setChannelCode(PayChannelEnum.ALIPAY_APP.getCode()));
+        orderExtensionMapper.insert(orderExtension);
+        // 准备参数
+        PayChannelDO channel = randomPojo(PayChannelDO.class, o -> o.setId(10L)
+                .setCode(PayChannelEnum.WX_PUB.getCode()));
+        PayOrderRespDTO notify = randomPojo(PayOrderRespDTO.class,
+                o -> o.setStatus(PayOrderStatusEnum.CLOSED.getStatus())
+                        .setOutTradeNo("P110"));
+
+        // 调用，并断言异常
+        assertServiceException(() -> orderService.notifyOrder(channel, notify),
+                PAY_ORDER_NOTIFY_CHANNEL_NOT_MATCH);
+        assertPojoEquals(orderExtension, orderExtensionMapper.selectOne(null));
+    }
+
+    @Test
     public void testNotifyOrderClosed_orderExtension_closed() {
         // mock 数据（PayOrderExtensionDO）
         PayOrderExtensionDO orderExtension = randomPojo(PayOrderExtensionDO.class,
                 o -> o.setStatus(PayOrderStatusEnum.CLOSED.getStatus())
-                        .setNo("P110"));
+                        .setNo("P110")
+                        .setChannelId(10L).setChannelCode(PayChannelEnum.ALIPAY_APP.getCode()));
         orderExtensionMapper.insert(orderExtension);
         // 准备参数
-        PayChannelDO channel = randomPojo(PayChannelDO.class, o -> o.setId(10L));
+        PayChannelDO channel = randomPojo(PayChannelDO.class, o -> o.setId(10L)
+                .setCode(PayChannelEnum.ALIPAY_APP.getCode()));
         PayOrderRespDTO notify = randomPojo(PayOrderRespDTO.class,
                 o -> o.setStatus(PayOrderStatusEnum.CLOSED.getStatus())
                         .setOutTradeNo("P110"));
@@ -816,10 +902,12 @@ public class PayOrderServiceTest extends BaseDbAndRedisUnitTest {
         // mock 数据（PayOrderExtensionDO）
         PayOrderExtensionDO orderExtension = randomPojo(PayOrderExtensionDO.class,
                 o -> o.setStatus(PayOrderStatusEnum.SUCCESS.getStatus())
-                        .setNo("P110"));
+                        .setNo("P110")
+                        .setChannelId(10L).setChannelCode(PayChannelEnum.ALIPAY_APP.getCode()));
         orderExtensionMapper.insert(orderExtension);
         // 准备参数
-        PayChannelDO channel = randomPojo(PayChannelDO.class, o -> o.setId(10L));
+        PayChannelDO channel = randomPojo(PayChannelDO.class, o -> o.setId(10L)
+                .setCode(PayChannelEnum.ALIPAY_APP.getCode()));
         PayOrderRespDTO notify = randomPojo(PayOrderRespDTO.class,
                 o -> o.setStatus(PayOrderStatusEnum.CLOSED.getStatus())
                         .setOutTradeNo("P110"));
@@ -835,10 +923,12 @@ public class PayOrderServiceTest extends BaseDbAndRedisUnitTest {
         // mock 数据（PayOrderExtensionDO）
         PayOrderExtensionDO orderExtension = randomPojo(PayOrderExtensionDO.class,
                 o -> o.setStatus(PayOrderStatusEnum.REFUND.getStatus())
-                        .setNo("P110"));
+                        .setNo("P110")
+                        .setChannelId(10L).setChannelCode(PayChannelEnum.ALIPAY_APP.getCode()));
         orderExtensionMapper.insert(orderExtension);
         // 准备参数
-        PayChannelDO channel = randomPojo(PayChannelDO.class, o -> o.setId(10L));
+        PayChannelDO channel = randomPojo(PayChannelDO.class, o -> o.setId(10L)
+                .setCode(PayChannelEnum.ALIPAY_APP.getCode()));
         PayOrderRespDTO notify = randomPojo(PayOrderRespDTO.class,
                 o -> o.setStatus(PayOrderStatusEnum.CLOSED.getStatus())
                         .setOutTradeNo("P110"));
@@ -853,10 +943,12 @@ public class PayOrderServiceTest extends BaseDbAndRedisUnitTest {
         // mock 数据（PayOrderExtensionDO）
         PayOrderExtensionDO orderExtension = randomPojo(PayOrderExtensionDO.class,
                 o -> o.setStatus(PayOrderStatusEnum.WAITING.getStatus())
-                        .setNo("P110"));
+                        .setNo("P110")
+                        .setChannelId(10L).setChannelCode(PayChannelEnum.ALIPAY_APP.getCode()));
         orderExtensionMapper.insert(orderExtension);
         // 准备参数
-        PayChannelDO channel = randomPojo(PayChannelDO.class, o -> o.setId(10L));
+        PayChannelDO channel = randomPojo(PayChannelDO.class, o -> o.setId(10L)
+                .setCode(PayChannelEnum.ALIPAY_APP.getCode()));
         PayOrderRespDTO notify = randomPojo(PayOrderRespDTO.class,
                 o -> o.setStatus(PayOrderStatusEnum.CLOSED.getStatus())
                         .setOutTradeNo("P110"));
