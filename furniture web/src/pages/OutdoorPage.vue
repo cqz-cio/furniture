@@ -1,4 +1,5 @@
 <script setup>
+import BrandEyebrow from "../components/BrandEyebrow.vue";
 import { generatedFurnitureAssets } from "../data/generatedFurnitureAssets.js";
 
 const heroImage = generatedFurnitureAssets.outdoor.hero;
@@ -45,7 +46,7 @@ const collections = [
         <img :src="heroImage.desktop" alt="Outdoor living terrace with layered neutral furniture" />
       </picture>
       <div class="landing-hero-copy outdoor-landing-copy">
-        <p class="eyebrow">RH Outdoor</p>
+        <BrandEyebrow suffix="Outdoor" />
         <h1 id="outdoor-landing-title">Open-air rooms, fully composed.</h1>
         <p>
           Furniture, lighting, and materials for terraces, gardens, pool decks, and dining under the sky.

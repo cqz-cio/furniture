@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mapOrderDetail, mapSpuToProduct } from "../src/services/yudaoMappers.js";
+import { mapAddressResponse, mapOrderDetail, mapSpuToProduct } from "../src/services/yudaoMappers.js";
 
 describe("yudao mapper module", () => {
   it("maps SPU records from the dedicated mapper module", () => {
@@ -29,6 +29,18 @@ describe("yudao mapper module", () => {
       no: "O1",
       status: 10,
       payPrice: 120000,
+      addressVerification: {
+        source: "google-address-validation",
+        status: "suggested",
+        choice: "suggested",
+        providerResponseId: "google-response-1",
+        selectedAddress: {
+          street: "12 MAIN ST",
+          city: "New York",
+          state: "NY",
+          postalCode: "10001",
+        },
+      },
       items: [{ spuName: "Sofa", price: 90000, originalPrice: 120000, productType: "merchandise" }],
     };
 
@@ -36,6 +48,18 @@ describe("yudao mapper module", () => {
       id: 1,
       no: "O1",
       payPrice: 1200,
+      addressVerification: {
+        source: "google-address-validation",
+        status: "suggested",
+        choice: "suggested",
+        providerResponseId: "google-response-1",
+        selectedAddress: {
+          street: "12 MAIN ST",
+          city: "New York",
+          state: "NY",
+          postalCode: "10001",
+        },
+      },
       items: [
         {
           name: "Sofa",
@@ -45,6 +69,54 @@ describe("yudao mapper module", () => {
           category: "merchandise",
         },
       ],
+    });
+  });
+
+  it("keeps saved address verification metadata for address book review", () => {
+    expect(
+      mapAddressResponse({
+        id: 9,
+        name: "Ada Lovelace",
+        mobile: "555-0100",
+        areaName: "Boston, MA",
+        detailAddress: "12 Main St, Boston, MA 02116",
+        addressVerification: {
+          status: "unverified",
+          choice: "original",
+          reason: "google-unverified",
+          confirmedAt: "2026-06-16T10:00:00.000Z",
+        },
+      }),
+    ).toMatchObject({
+      id: 9,
+      addressVerification: {
+        status: "unverified",
+        choice: "original",
+      },
+      addressVerificationSummary: {
+        statusLabelKey: "membership.account.addressBook.verification.statuses.unverified",
+        warningKey: "membership.account.addressBook.verification.warning",
+      },
+    });
+  });
+
+  it("marks saved addresses without verification metadata for review", () => {
+    expect(
+      mapAddressResponse({
+        id: 10,
+        name: "Grace Hopper",
+        mobile: "555-0101",
+        areaName: "Arlington, VA",
+        detailAddress: "1 Navy Way, Arlington, VA 22201",
+      }),
+    ).toMatchObject({
+      id: 10,
+      addressVerification: null,
+      addressVerificationSummary: {
+        status: "missing",
+        statusLabelKey: "membership.account.addressBook.verification.statuses.missing",
+        warningKey: "membership.account.addressBook.verification.missingWarning",
+      },
     });
   });
 });

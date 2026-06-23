@@ -20,4 +20,7 @@ public class TradeOrderDeliveryReqVO {
     @Schema(description = "发货物流单号", example = "SF123456789")
     private String logisticsNo;
 
+    @Schema(description = "是否已人工复核地址核对风险", example = "true")
+    private Boolean addressVerificationAcknowledged;
+
 }

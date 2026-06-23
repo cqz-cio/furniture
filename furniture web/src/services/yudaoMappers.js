@@ -1,3 +1,5 @@
+import { buildAddressBookVerificationSummary } from "./addressBookVerification.js";
+
 const fenToYuan = (value) => {
   const amount = Number(value);
   return Number.isFinite(amount) ? amount / 100 : 0;
@@ -47,17 +49,23 @@ export const mapCartResponseToItems = (cartResponse) => {
   });
 };
 
-export const mapAddressResponse = (address = {}) => ({
-  id: address.id,
-  name: address.name || "",
-  mobile: address.mobile || "",
-  areaName: address.areaName || "",
-  detailAddress: address.detailAddress || "",
-  label: [address.name, address.mobile, `${address.areaName || ""} ${address.detailAddress || ""}`.trim()]
-    .filter(Boolean)
-    .join(" - "),
-  raw: address,
-});
+export const mapAddressResponse = (address = {}) => {
+  const addressVerification = address.addressVerification || address.addressConfirmation || null;
+
+  return {
+    id: address.id,
+    name: address.name || "",
+    mobile: address.mobile || "",
+    areaName: address.areaName || "",
+    detailAddress: address.detailAddress || "",
+    label: [address.name, address.mobile, `${address.areaName || ""} ${address.detailAddress || ""}`.trim()]
+      .filter(Boolean)
+      .join(" - "),
+    addressVerification,
+    addressVerificationSummary: buildAddressBookVerificationSummary(addressVerification),
+    raw: address,
+  };
+};
 
 export const mapMemberProfile = (profile = {}) => ({
   id: profile.id,
@@ -94,6 +102,7 @@ export const mapOrderDetail = (order = {}) => ({
   payPrice: fenToYuan(order.payPrice),
   payOrderId: order.payOrderId,
   createTime: order.createTime,
+  addressVerification: order.addressVerification || null,
   items: (order.items || []).map((item) => ({
     id: item.id,
     skuId: item.skuId,

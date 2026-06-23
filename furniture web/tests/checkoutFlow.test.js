@@ -63,6 +63,20 @@ describe("checkout flow model", () => {
     expect(canPlaceCheckoutOrder(flow)).toBe(false);
   });
 
+  it("allows payment after the buyer confirms the entered address", () => {
+    const flow = buildCheckoutFlow([regularItem], {
+      address: { line1: "12 Main", postalCode: "02116" },
+      addressConfirmed: true,
+      paymentMethod: "card",
+      cardComplete: true,
+      termsAccepted: true,
+    });
+
+    expect(flow.addressVerification.status).toBe("verified");
+    expect(flow.readyForPayment).toBe(true);
+    expect(canPlaceCheckoutOrder(flow)).toBe(true);
+  });
+
   it("allows payment and order placement after a verified address and terms agreement", () => {
     const flow = buildCheckoutFlow([regularItem], {
       address: { line1: "12 Main Street", city: "Boston", region: "MA", postalCode: "02116-0000" },

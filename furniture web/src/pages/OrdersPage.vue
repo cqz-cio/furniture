@@ -5,8 +5,20 @@ import {
   getMembershipEligibilityItemsFromOrderItems,
   getMembershipEligibilityReview,
 } from "../services/membershipAccount.js";
+import {
+  buildPaymentReturnUrl,
+  buildYudaoPaymentPayload,
+  getPaymentRedirectTarget,
+  getPaymentReturnParams,
+  getPaymentReturnSummary,
+  normalizeYudaoPayChannelCode,
+  submitPaymentFormDisplay,
+} from "../services/checkoutPayment.js";
+import { getOrderDetailPath } from "../services/checkoutSession.js";
 import { membershipRoutes } from "../services/membershipNavigation.js";
+import { buildOrderAddressVerificationSummary } from "../services/orderAddressVerification.js";
 import { getOrderDetail, getOrderPage } from "../services/yudaoOrderApi.js";
+import { getPayOrder, submitPayOrder } from "../services/yudaoPaymentApi.js";
 import { readYudaoToken } from "../services/yudaoRequest.js";
 import { useI18n } from "../i18n.js";
 
@@ -23,7 +35,18 @@ const tokenRequired = ref(false);
 const orders = ref([]);
 const total = ref(0);
 const detail = ref(null);
-const orderId = computed(() => new URLSearchParams(window.location.search).get("id"));
+const payOrder = ref(null);
+const payOrderError = ref("");
+const paymentResumeBusy = ref(false);
+const paymentResumeError = ref("");
+const paymentReturn = computed(() => getPaymentReturnParams(window.location.search));
+const paymentReturnSummary = computed(() => getPaymentReturnSummary(paymentReturn.value));
+const orderId = computed(() => paymentReturn.value.orderId || new URLSearchParams(window.location.search).get("id"));
+const activePayOrderId = computed(() => paymentReturn.value.payOrderId || detail.value?.payOrderId || "");
+const resolvedPayOrderId = computed(() => payOrder.value?.id || activePayOrderId.value);
+const hasPaidPaymentReturn = computed(() => paymentReturnSummary.value?.status === "paid");
+const paymentChannelCode = normalizeYudaoPayChannelCode(import.meta.env.VITE_YUDAO_PAY_CHANNEL_CODE);
+const paymentChannelConfigured = computed(() => Boolean(paymentChannelCode));
 const { t } = useI18n();
 const money = (value) =>
   `$${Number(value || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -38,12 +61,96 @@ const getOrderMembershipReview = (order) =>
   getMembershipEligibilityReview(getMembershipEligibilityItemsFromOrderItems(order.items || []));
 const getOrderMembershipSavingsLabel = (order) =>
   order.items?.length ? money(getOrderMembershipReview(order).savingsTotal) : t("orders.memberSavingsUnavailable");
+const payOrderStatusMap = new Map([
+  ["0", "waiting"],
+  ["10", "paid"],
+  ["20", "refunded"],
+  ["30", "closed"],
+  ["waiting", "waiting"],
+  ["wait", "waiting"],
+  ["unpaid", "waiting"],
+  ["success", "paid"],
+  ["paid", "paid"],
+  ["closed", "closed"],
+  ["close", "closed"],
+  ["refunded", "refunded"],
+  ["refund", "refunded"],
+]);
+const normalizePayOrderStatus = (status) => payOrderStatusMap.get(String(status ?? "").trim().toLowerCase()) || "unknown";
+const payOrderStatus = computed(() => payOrder.value?.status ?? (hasPaidPaymentReturn.value ? "paid" : detail.value ? (detail.value.payStatus ? "paid" : "unpaid") : ""));
+const payOrderStatusLabelKey = computed(() => `orders.paymentStatuses.${normalizePayOrderStatus(payOrderStatus.value)}`);
+const canResumePayment = computed(
+  () =>
+    Boolean(activePayOrderId.value) &&
+    !hasPaidPaymentReturn.value &&
+    paymentChannelConfigured.value &&
+    normalizePayOrderStatus(payOrderStatus.value) === "waiting" &&
+    !paymentResumeBusy.value,
+);
+const canShowPaymentChannelNotice = computed(
+  () =>
+    Boolean(activePayOrderId.value) &&
+    !hasPaidPaymentReturn.value &&
+    !paymentChannelConfigured.value &&
+    normalizePayOrderStatus(payOrderStatus.value) === "waiting",
+);
+const addressVerificationSummary = computed(() => buildOrderAddressVerificationSummary(detail.value?.addressVerification));
 let ordersRequestId = 0;
 
 const clearOrderData = () => {
   orders.value = [];
   total.value = 0;
   detail.value = null;
+  payOrder.value = null;
+  payOrderError.value = "";
+  paymentResumeError.value = "";
+};
+
+const refreshPayOrderStatus = async (requestId) => {
+  if (!activePayOrderId.value) return;
+  try {
+    const nextPayOrder = await getPayOrder(activePayOrderId.value, { sync: true });
+    if (requestId !== ordersRequestId) return;
+    payOrder.value = nextPayOrder;
+    payOrderError.value = "";
+  } catch {
+    if (requestId !== ordersRequestId) return;
+    payOrderError.value = t("orders.paymentStatusUnavailable");
+  }
+};
+
+const resumePayment = async () => {
+  if (!canResumePayment.value) {
+    paymentResumeError.value = t("orders.paymentResumeUnavailable");
+    return;
+  }
+  paymentResumeBusy.value = true;
+  paymentResumeError.value = "";
+  try {
+    const paymentPayload = buildYudaoPaymentPayload(
+      { payOrderId: resolvedPayOrderId.value },
+      {
+        channelCode: paymentChannelCode,
+        returnUrl: buildPaymentReturnUrl(window.location.origin, orderId.value, resolvedPayOrderId.value),
+      },
+    );
+    if (!paymentPayload) {
+      paymentResumeError.value = t("orders.paymentResumeUnavailable");
+      return;
+    }
+    const paymentResult = await submitPayOrder(paymentPayload);
+    if (submitPaymentFormDisplay(paymentResult, window.document)) return;
+    const paymentRedirectTarget = getPaymentRedirectTarget(paymentResult);
+    if (!paymentRedirectTarget) {
+      paymentResumeError.value = t("orders.paymentResumeUnavailable");
+      return;
+    }
+    window.location.assign(paymentRedirectTarget);
+  } catch {
+    paymentResumeError.value = t("orders.paymentResumeUnavailable");
+  } finally {
+    paymentResumeBusy.value = false;
+  }
 };
 
 const loadOrders = async () => {
@@ -62,6 +169,7 @@ const loadOrders = async () => {
       if (requestId !== ordersRequestId) return;
       detail.value = nextDetail;
     }
+    await refreshPayOrderStatus(requestId);
     const page = await getOrderPage({ pageNo: 1, pageSize: 10 });
     if (requestId !== ordersRequestId) return;
     orders.value = page.list;
@@ -107,6 +215,40 @@ watch(() => props.authVersion, loadOrders);
           <p class="eyebrow">{{ t("orders.selectedOrder") }}</p>
           <h2>{{ detail.no }}</h2>
           <p>{{ statusLabel(detail.status) }}</p>
+          <p v-if="payOrderStatus">
+            {{ t("orders.paymentStatus", { status: t(payOrderStatusLabelKey) }) }}
+          </p>
+          <p v-if="activePayOrderId">
+            {{ t("orders.payOrderLabel", { id: activePayOrderId }) }}
+          </p>
+          <section v-if="paymentReturnSummary" class="orders-payment-return">
+            <h3>{{ t(paymentReturnSummary.titleKey) }}</h3>
+            <p>{{ t(paymentReturnSummary.messageKey) }}</p>
+            <p v-if="paymentReturnSummary.detail">{{ paymentReturnSummary.detail }}</p>
+            <div v-if="paymentReturnSummary.canRetry" class="orders-payment-return-actions">
+              <button v-if="activePayOrderId" class="orders-payment-resume" type="button" :disabled="!canResumePayment" @click="resumePayment">
+                {{ paymentResumeBusy ? t("common.working") : t("orders.actions.resumePayment") }}
+              </button>
+              <button class="orders-payment-retry" type="button" @click="loadOrders">
+                {{ t("orders.actions.refreshPaymentStatus") }}
+              </button>
+            </div>
+          </section>
+          <button v-if="canResumePayment" class="orders-payment-resume" type="button" :disabled="paymentResumeBusy" @click="resumePayment">
+            {{ paymentResumeBusy ? t("common.working") : t("orders.actions.resumePayment") }}
+          </button>
+          <p v-if="canShowPaymentChannelNotice" class="orders-payment-warning">
+            {{ t("orders.paymentChannelUnavailable") }}
+          </p>
+          <p v-if="paymentResumeError" class="orders-payment-warning">
+            {{ paymentResumeError }}
+          </p>
+          <div v-if="payOrderError" class="orders-payment-warning">
+            <span>{{ payOrderError }}</span>
+            <button class="orders-payment-retry" type="button" @click="loadOrders">
+              {{ t("orders.actions.refreshPaymentStatus") }}
+            </button>
+          </div>
         </div>
         <strong>{{ money(detail.payPrice) }}</strong>
       </div>
@@ -117,6 +259,64 @@ watch(() => props.authVersion, loadOrders);
           <p>{{ item.count }} x {{ money(item.price) }}</p>
         </div>
       </div>
+      <section v-if="addressVerificationSummary" class="order-address-verification">
+        <h3>{{ t("orders.addressVerification.title") }}</h3>
+        <dl>
+          <div>
+            <dt>{{ t("orders.addressVerification.source") }}</dt>
+            <dd>{{ t(addressVerificationSummary.sourceLabelKey) }}</dd>
+          </div>
+          <div>
+            <dt>{{ t("orders.addressVerification.addressSource") }}</dt>
+            <dd>{{ t(addressVerificationSummary.addressSourceLabelKey) }}</dd>
+          </div>
+          <div>
+            <dt>{{ t("orders.addressVerification.status") }}</dt>
+            <dd>{{ t(addressVerificationSummary.statusLabelKey) }}</dd>
+          </div>
+          <div>
+            <dt>{{ t("orders.addressVerification.choice") }}</dt>
+            <dd>{{ t(addressVerificationSummary.choiceLabelKey) }}</dd>
+          </div>
+          <div v-if="addressVerificationSummary.reason">
+            <dt>{{ t("orders.addressVerification.reason") }}</dt>
+            <dd>{{ t(addressVerificationSummary.reasonLabelKey) }}</dd>
+          </div>
+          <div v-if="addressVerificationSummary.confirmedAt">
+            <dt>{{ t("orders.addressVerification.confirmedAt") }}</dt>
+            <dd>{{ addressVerificationSummary.confirmedAt }}</dd>
+          </div>
+          <div v-if="addressVerificationSummary.original">
+            <dt>{{ t("orders.addressVerification.original") }}</dt>
+            <dd>{{ addressVerificationSummary.original }}</dd>
+          </div>
+          <div v-if="addressVerificationSummary.suggested">
+            <dt>{{ t("orders.addressVerification.suggested") }}</dt>
+            <dd>{{ addressVerificationSummary.suggested }}</dd>
+          </div>
+          <div v-if="addressVerificationSummary.selected">
+            <dt>{{ t("orders.addressVerification.selected") }}</dt>
+            <dd>{{ addressVerificationSummary.selected }}</dd>
+          </div>
+          <div v-if="addressVerificationSummary.providerResponseId">
+            <dt>{{ t("orders.addressVerification.providerResponseId") }}</dt>
+            <dd>{{ addressVerificationSummary.providerResponseId }}</dd>
+          </div>
+          <div v-if="addressVerificationSummary.providerStatus">
+            <dt>{{ t("orders.addressVerification.providerStatus") }}</dt>
+            <dd>{{ t(addressVerificationSummary.providerStatusLabelKey) }}</dd>
+          </div>
+        </dl>
+        <p v-if="addressVerificationSummary.warningKey" class="order-address-verification-warning">
+          {{ t(addressVerificationSummary.warningKey) }}
+        </p>
+        <p v-if="addressVerificationSummary.sourceWarningKey" class="order-address-verification-warning">
+          {{ t(addressVerificationSummary.sourceWarningKey) }}
+        </p>
+        <p v-if="addressVerificationSummary.providerWarningKey" class="order-address-verification-warning">
+          {{ t(addressVerificationSummary.providerWarningKey) }}
+        </p>
+      </section>
       <section
         v-if="orderMembershipEligibilityReview.lines.length"
         class="membership-eligibility-panel order-membership-eligibility"
@@ -173,7 +373,7 @@ watch(() => props.authVersion, loadOrders);
     </article>
 
     <section class="order-list">
-      <a v-for="order in orders" :key="order.id" class="order-row" :href="`/orders?id=${order.id}`">
+      <a v-for="order in orders" :key="order.id" class="order-row" :href="getOrderDetailPath(order.id, order.payOrderId)">
         <span>
           <small>{{ t("orders.orderLabel") }}</small>
           {{ order.no }}

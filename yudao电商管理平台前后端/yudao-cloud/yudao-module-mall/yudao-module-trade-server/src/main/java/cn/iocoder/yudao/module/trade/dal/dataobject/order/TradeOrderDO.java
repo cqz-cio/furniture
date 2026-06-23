@@ -12,6 +12,7 @@ import cn.iocoder.yudao.module.trade.enums.order.TradeOrderCancelTypeEnum;
 import cn.iocoder.yudao.module.trade.enums.order.TradeOrderRefundStatusEnum;
 import cn.iocoder.yudao.module.trade.enums.order.TradeOrderStatusEnum;
 import cn.iocoder.yudao.module.trade.enums.order.TradeOrderTypeEnum;
+import com.baomidou.mybatisplus.annotation.FieldStrategy;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -79,6 +80,11 @@ public class TradeOrderDO extends BaseDO {
      * 用户备注
      */
     private String userRemark;
+    /**
+     * Address verification audit payload captured at checkout.
+     */
+    @TableField(typeHandler = JacksonTypeHandler.class, updateStrategy = FieldStrategy.ALWAYS)
+    private Map<String, Object> addressVerification;
     /**
      * 订单状态
      *

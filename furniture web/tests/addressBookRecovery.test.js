@@ -22,4 +22,21 @@ describe("address book recovery actions", () => {
     expect(source).toContain("orders-recovery-actions");
     expect(source).toContain("orders-recovery-action");
   });
+
+  it("shows saved address verification metadata without treating it as a live lookup", () => {
+    const source = readSource("../src/pages/AccountAddressBookPage.vue");
+    const i18n = readSource("../src/i18n.js");
+
+    expect(source).toContain("address.addressVerificationSummary");
+    expect(source).toContain('class="address-book-verification"');
+    expect(source).toContain('t(address.addressVerificationSummary.statusLabelKey)');
+    expect(source).toContain('t("membership.account.addressBook.verification.lastChecked")');
+    expect(source).toContain("address.addressVerificationSummary.warningKey");
+    expect(source).toContain("address.addressVerificationSummary.providerWarningKey");
+    expect(source).toContain("address.addressVerificationSummary.sourceWarningKey");
+    expect(i18n).toContain("addressBook");
+    expect(i18n).toContain("missingWarning");
+    expect(i18n).toContain("providerFallbackWarning");
+    expect(i18n).toContain("localPostalRegionWarning");
+  });
 });

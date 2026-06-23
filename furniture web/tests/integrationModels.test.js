@@ -101,6 +101,22 @@ describe("yudao integration models", () => {
       areaName: "Shanghai",
       detailAddress: "Road 1",
       label: "Ada - 15500000000 - Shanghai Road 1",
+      addressVerification: null,
+      addressVerificationSummary: {
+        source: "",
+        status: "missing",
+        statusLabelKey: "membership.account.addressBook.verification.statuses.missing",
+        choice: "unknown",
+        choiceLabelKey: "membership.account.addressBook.verification.choices.unknown",
+        reason: "unknown",
+        reasonLabelKey: "membership.account.addressBook.verification.reasons.unknown",
+        confirmedAt: "",
+        providerStatus: "",
+        providerStatusLabelKey: "",
+        warningKey: "membership.account.addressBook.verification.missingWarning",
+        sourceWarningKey: "",
+        providerWarningKey: "",
+      },
       raw: expect.any(Object),
     });
   });

@@ -10,6 +10,9 @@ describe("outdoor landing page", () => {
 
     expect(page).toContain("outdoor-landing-page");
     expect(page).toContain("outdoor-landing-hero");
+    expect(page).toContain("BrandEyebrow");
+    expect(page).toContain('suffix="Outdoor"');
+    expect(page).not.toContain(">RH Outdoor<");
     expect(page).toContain("heroImage.mobile");
     expect(page).toContain("generatedFurnitureAssets.outdoor.hero");
     expect(page).toContain("generatedFurnitureAssets.sale.categories.Outdoor.desktop");

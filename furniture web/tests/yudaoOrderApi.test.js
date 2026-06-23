@@ -86,10 +86,13 @@ describe("Yudao order API module", () => {
     });
   });
 
-  it("posts order creation payloads", async () => {
-    fetchMock.mockResolvedValueOnce(mockYudaoResponse(901));
+  it("posts order creation payloads and returns the Yudao pay order id", async () => {
+    fetchMock.mockResolvedValueOnce(mockYudaoResponse({ id: 901, payOrderId: 7001 }));
 
-    await createOrder({ addressId: 301, items: [{ skuId: 201, count: 2 }] }, { storage });
+    await expect(createOrder({ addressId: 301, items: [{ skuId: 201, count: 2 }] }, { storage })).resolves.toEqual({
+      id: 901,
+      payOrderId: 7001,
+    });
 
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toBe(`${API_BASE}/trade/order/create`);
@@ -105,15 +108,19 @@ describe("Yudao order API module", () => {
       total: 1,
       list: [{ id: 901, no: "SO-901", payPrice: 1299 }],
     });
-    await expect(getOrderDetail("SO/901", { storage })).resolves.toMatchObject({
+    await expect(getOrderDetail("901", { storage })).resolves.toMatchObject({
       id: 901,
       no: "SO-901",
       items: [{ skuId: 201, name: "Linen sofa", price: 649.5 }],
     });
 
     expect(fetchMock.mock.calls[0][0]).toBe(`${API_BASE}/trade/order/page?pageNo=2&pageSize=5`);
-    expect(fetchMock.mock.calls[1][0]).toBe(
-      `${API_BASE}/trade/order/get-detail?id=${encodeURIComponent("SO/901")}`
-    );
+    expect(fetchMock.mock.calls[1][0]).toBe(`${API_BASE}/trade/order/get-detail?id=901`);
+  });
+
+  it("does not request Yudao order detail with a non-numeric order id", async () => {
+    await expect(getOrderDetail("SO/901", { storage })).resolves.toBeNull();
+
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

@@ -1,5 +1,12 @@
 <template>
   <Dialog v-model="dialogVisible" title="修改订单收货地址" width="35%">
+    <el-alert
+      class="mb-16px"
+      :closable="false"
+      show-icon
+      :title="addressVerificationInvalidationWarning"
+      type="warning"
+    />
     <el-form ref="formRef" v-loading="formLoading" :model="formData" label-width="120px">
       <el-form-item label="收件人">
         <el-input v-model="formData.receiverName" placeholder="请输入收件人名称" />
@@ -41,6 +48,8 @@ defineOptions({ name: 'OrderUpdateAddressForm' })
 const { t } = useI18n() // 国际化
 const message = useMessage() // 消息弹窗
 
+const addressVerificationInvalidationWarning =
+  '修改收货地址后，原地址核对记录将失效；发货前请人工确认新地址。'
 const dialogVisible = ref(false) // 弹窗的是否展示
 const formLoading = ref(false) // 表单的加载中：1）修改时的数据加载；2）提交的按钮禁用
 const formData = ref({

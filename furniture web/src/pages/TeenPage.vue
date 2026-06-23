@@ -1,4 +1,5 @@
 <script setup>
+import BrandEyebrow from "../components/BrandEyebrow.vue";
 import { generatedFurnitureAssets } from "../data/generatedFurnitureAssets.js";
 
 const heroImage = generatedFurnitureAssets.teen.hero;
@@ -45,7 +46,7 @@ const edits = ["Sleep", "Study", "Lounge", "Storage"];
         <img :src="heroImage.desktop" alt="Modern teen lounge with deep seating and layered neutral furniture" />
       </picture>
       <div class="landing-hero-copy teen-landing-copy">
-        <p class="eyebrow">RH Teen</p>
+        <BrandEyebrow suffix="Teen" />
         <h1 id="teen-landing-title">Personal rooms, fully considered.</h1>
         <p>
           Furniture, lighting, and storage for bedrooms, lounges, and study spaces with an elevated point of view.

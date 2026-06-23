@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from "vue";
+import BrandEyebrow from "../components/BrandEyebrow.vue";
 
 const props = defineProps({
   pageKey: {
@@ -76,7 +77,7 @@ const placeholderModules = [
 <template>
   <section class="baby-category-placeholder">
     <div class="baby-category-intro">
-      <p class="eyebrow">RH Baby &amp; Child</p>
+      <BrandEyebrow suffix="Baby &amp; Child" tone="dark" />
       <h1>{{ currentCategory.title }}</h1>
       <p>{{ currentCategory.summary }}</p>
       <span>Product page placeholder</span>

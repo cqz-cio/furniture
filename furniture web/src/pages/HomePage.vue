@@ -1,4 +1,5 @@
 <script setup>
+import BrandEyebrow from "../components/BrandEyebrow.vue";
 import { generatedFurnitureAssets } from "../data/generatedFurnitureAssets.js";
 import { homeFullPageModules } from "../data/rhLayout.js";
 import { useI18n } from "../i18n.js";
@@ -34,6 +35,7 @@ const homeModuleKeys = [
 
 const homeModuleKey = (index) => homeModuleKeys[index] || "interiors";
 const homeModuleCopy = (index, field) => t(`home.modules.${homeModuleKey(index)}.${field}`);
+const homeModuleEyebrowSuffix = (index) => homeModuleCopy(index, "eyebrow").replace(/^RH\s+/i, "");
 
 const generatedHomeModuleAssets = [
   generatedFurnitureAssets.home.modules["002"],
@@ -57,7 +59,8 @@ const generatedHomeModuleAsset = (index) => generatedHomeModuleAssets[index % ge
     </picture>
     <div class="home-hero-copy">
       <p class="eyebrow">{{ t("home.heroEyebrow") }}</p>
-      <h1>RH</h1>
+      <h1 class="sr-only">Oakved</h1>
+      <img class="home-hero-logo" src="/assets/brand/oakved-logo-white.png" alt="Oakved" />
       <p>{{ t("home.heroSubtitle") }}</p>
     </div>
   </section>
@@ -80,7 +83,7 @@ const generatedHomeModuleAsset = (index) => generatedHomeModuleAssets[index % ge
         <span class="home-entry-shade" aria-hidden="true"></span>
       </picture>
       <div class="home-entry-copy">
-        <p class="eyebrow">{{ homeModuleCopy(index, "eyebrow") }}</p>
+        <BrandEyebrow :suffix="homeModuleEyebrowSuffix(index)" />
         <h2>{{ homeModuleCopy(index, "title") }}</h2>
         <p>{{ homeModuleCopy(index, "subtitle") }}</p>
         <span>{{ homeModuleCopy(index, "cta") }}</span>

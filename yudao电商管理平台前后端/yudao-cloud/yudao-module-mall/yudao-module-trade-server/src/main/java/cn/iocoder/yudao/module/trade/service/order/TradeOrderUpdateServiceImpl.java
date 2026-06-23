@@ -72,6 +72,7 @@ import javax.validation.constraints.NotNull;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
@@ -92,6 +93,15 @@ import static cn.iocoder.yudao.module.trade.enums.MessageTemplateConstants.WXA_O
 @Service
 @Slf4j
 public class TradeOrderUpdateServiceImpl implements TradeOrderUpdateService {
+
+    private static final Set<String> SUPPORTED_ADDRESS_VERIFICATION_SOURCES = CollUtil.newHashSet(
+            "google-address-validation", "remote-address-verification", "local-postal-region",
+            "backend-address-verification");
+    private static final Set<String> SUPPORTED_ADDRESS_SOURCES = CollUtil.newHashSet("new", "saved");
+    private static final Set<String> SUPPORTED_ADDRESS_VERIFICATION_STATUSES = CollUtil.newHashSet(
+            "verified", "suggested", "unverified");
+    private static final Set<String> SUPPORTED_ADDRESS_VERIFICATION_CHOICES = CollUtil.newHashSet(
+            "original", "suggested");
 
     @Resource
     private TradeOrderMapper tradeOrderMapper;
@@ -222,6 +232,7 @@ public class TradeOrderUpdateServiceImpl implements TradeOrderUpdateService {
         if (Objects.equals(createReqVO.getDeliveryType(), DeliveryTypeEnum.EXPRESS.getType())) {
             MemberAddressRespDTO address = addressApi.getAddress(createReqVO.getAddressId(), userId).getCheckedData();
             Assert.notNull(address, "地址({}) 不能为空", createReqVO.getAddressId()); // 价格计算时，已经计算
+            validateAddressVerificationMatchesAddress(createReqVO.getAddressVerification(), address);
             order.setReceiverName(address.getName()).setReceiverMobile(address.getMobile())
                     .setReceiverAreaId(address.getAreaId()).setReceiverDetailAddress(address.getDetailAddress());
         } else if (Objects.equals(createReqVO.getDeliveryType(), DeliveryTypeEnum.PICK_UP.getType())) {
@@ -229,6 +240,85 @@ public class TradeOrderUpdateServiceImpl implements TradeOrderUpdateService {
             order.setPickUpVerifyCode(RandomUtil.randomNumbers(8)); // 随机一个核销码，长度为 8 位
         }
         return order;
+    }
+
+    private void validateAddressVerificationMatchesAddress(Map<String, Object> addressVerification,
+                                                           MemberAddressRespDTO address) {
+        if (addressVerification == null || !(addressVerification.get("selectedAddress") instanceof Map)) {
+            throw exception(ORDER_CREATE_FAIL_ADDRESS_VERIFICATION_MISMATCH);
+        }
+        validateSupportedAddressVerificationValues(addressVerification);
+        Map<?, ?> selectedAddress = (Map<?, ?>) addressVerification.get("selectedAddress");
+        String selectedText = normalizeAddressText(buildSelectedAddressText(selectedAddress));
+        String actualText = normalizeAddressText(address.getDetailAddress());
+        if (StrUtil.isBlank(selectedText) || StrUtil.isBlank(actualText)) {
+            throw exception(ORDER_CREATE_FAIL_ADDRESS_VERIFICATION_MISMATCH);
+        }
+        validateSelectedAddressComponentMatchesActual(selectedAddress, actualText, "street", true);
+        validateSelectedAddressComponentMatchesActual(selectedAddress, actualText, "apartment", false);
+        validateSelectedAddressComponentMatchesActual(selectedAddress, actualText, "city", true);
+        validateSelectedAddressComponentMatchesActual(selectedAddress, actualText, "state", true);
+        validateSelectedAddressComponentMatchesActual(selectedAddress, actualText, "postalCode", true);
+        if (!Objects.equals(selectedText, actualText)
+                && !StrUtil.contains(selectedText, actualText)
+                && !StrUtil.contains(actualText, selectedText)) {
+            throw exception(ORDER_CREATE_FAIL_ADDRESS_VERIFICATION_MISMATCH);
+        }
+    }
+
+    private void validateSupportedAddressVerificationValues(Map<String, Object> addressVerification) {
+        if (!hasSupportedAddressVerificationValue(addressVerification, "source", SUPPORTED_ADDRESS_VERIFICATION_SOURCES)
+                || !hasSupportedAddressVerificationValue(addressVerification, "addressSource", SUPPORTED_ADDRESS_SOURCES)
+                || !hasSupportedAddressVerificationValue(addressVerification, "status", SUPPORTED_ADDRESS_VERIFICATION_STATUSES)
+                || !hasSupportedAddressVerificationValue(addressVerification, "choice", SUPPORTED_ADDRESS_VERIFICATION_CHOICES)) {
+            throw exception(ORDER_CREATE_FAIL_ADDRESS_VERIFICATION_MISMATCH);
+        }
+    }
+
+    private boolean hasSupportedAddressVerificationValue(Map<?, ?> addressVerification, String key, Set<String> supportedValues) {
+        String value = getAddressVerificationText(addressVerification, key).toLowerCase();
+        return supportedValues.contains(value);
+    }
+
+    private void validateSelectedAddressComponentMatchesActual(Map<?, ?> selectedAddress, String actualText,
+                                                               String key, boolean required) {
+        String selectedComponent = normalizeAddressText(getAddressVerificationText(selectedAddress, key));
+        if (StrUtil.isBlank(selectedComponent)) {
+            if (required) {
+                throw exception(ORDER_CREATE_FAIL_ADDRESS_VERIFICATION_MISMATCH);
+            }
+            return;
+        }
+        if (!StrUtil.contains(actualText, selectedComponent)) {
+            throw exception(ORDER_CREATE_FAIL_ADDRESS_VERIFICATION_MISMATCH);
+        }
+    }
+
+    private String buildSelectedAddressText(Map<?, ?> selectedAddress) {
+        List<String> addressParts = new ArrayList<>();
+        addressParts.add(getAddressVerificationText(selectedAddress, "street"));
+        addressParts.add(getAddressVerificationText(selectedAddress, "apartment"));
+        addressParts.add(getAddressVerificationText(selectedAddress, "city"));
+        String stateAndPostalCode = StrUtil.trim(StrUtil.join(" ",
+                getAddressVerificationText(selectedAddress, "state"),
+                getAddressVerificationText(selectedAddress, "postalCode")));
+        addressParts.add(stateAndPostalCode);
+        return StrUtil.join(" ", CollUtil.filterNew(addressParts, StrUtil::isNotBlank));
+    }
+
+    private String getAddressVerificationText(Map<?, ?> address, String key) {
+        Object value = address.get(key);
+        return value == null ? "" : String.valueOf(value).trim();
+    }
+
+    private String normalizeAddressText(String value) {
+        if (StrUtil.isBlank(value)) {
+            return "";
+        }
+        return value.toUpperCase()
+                .replaceAll("[^A-Z0-9]+", " ")
+                .trim()
+                .replaceAll("\\s+", " ");
     }
 
     private List<TradeOrderItemDO> buildTradeOrderItems(TradeOrderDO tradeOrderDO,
@@ -260,12 +350,27 @@ public class TradeOrderUpdateServiceImpl implements TradeOrderUpdateService {
         // 特殊情况：积分兑换时，可能支付金额为零
         if (order.getPayPrice() > 0) {
             createPayOrder(order, orderItems);
+        } else {
+            markZeroPayOrderPaid(order, orderItems);
         }
 
         // 4. 插入订单日志
         TradeOrderLogUtils.setOrderInfo(order.getId(), null, order.getStatus());
 
         // TODO @LeeYan9: 是可以思考下, 订单的营销优惠记录, 应该记录在哪里, 微信讨论起来!
+    }
+
+    private void markZeroPayOrderPaid(TradeOrderDO order, List<TradeOrderItemDO> orderItems) {
+        LocalDateTime payTime = LocalDateTime.now();
+        TradeOrderDO updateOrder = new TradeOrderDO().setId(order.getId())
+                .setStatus(TradeOrderStatusEnum.UNDELIVERED.getStatus())
+                .setPayStatus(true)
+                .setPayTime(payTime);
+        tradeOrderMapper.updateById(updateOrder);
+        order.setStatus(TradeOrderStatusEnum.UNDELIVERED.getStatus())
+                .setPayStatus(true)
+                .setPayTime(payTime);
+        tradeOrderHandlers.forEach(handler -> handler.afterPayOrder(order, orderItems));
     }
 
     private void createPayOrder(TradeOrderDO order, List<TradeOrderItemDO> orderItems) {
@@ -303,7 +408,8 @@ public class TradeOrderUpdateServiceImpl implements TradeOrderUpdateService {
         // 3. 更新 TradeOrderDO 状态为已支付，等待发货
         int updateCount = tradeOrderMapper.updateByIdAndStatus(id, order.getStatus(),
                 new TradeOrderDO().setStatus(TradeOrderStatusEnum.UNDELIVERED.getStatus()).setPayStatus(true)
-                        .setPayTime(LocalDateTime.now()).setPayChannelCode(payOrder.getChannelCode()));
+                        .setPayTime(payOrder.getSuccessTime() != null ? payOrder.getSuccessTime() : LocalDateTime.now())
+                        .setPayChannelCode(payOrder.getChannelCode()));
         if (updateCount == 0) {
             throw exception(ORDER_UPDATE_PAID_STATUS_NOT_UNPAID);
         }
@@ -379,6 +485,7 @@ public class TradeOrderUpdateServiceImpl implements TradeOrderUpdateService {
         if (ObjectUtil.notEqual(order.getDeliveryType(), DeliveryTypeEnum.EXPRESS.getType())) {
             throw exception(ORDER_DELIVERY_FAIL_DELIVERY_TYPE_NOT_EXPRESS);
         }
+        validateAddressVerificationDeliveryReview(order, deliveryReqVO);
 
         // 2. 更新订单为已发货
         TradeOrderDO updateOrderObj = new TradeOrderDO();
@@ -401,7 +508,10 @@ public class TradeOrderUpdateServiceImpl implements TradeOrderUpdateService {
         // 3. 记录订单日志
         TradeOrderLogUtils.setOrderInfo(order.getId(), order.getStatus(), TradeOrderStatusEnum.DELIVERED.getStatus(),
                 MapUtil.<String, Object>builder().put("expressName", express != null ? express.getName() : "")
-                        .put("logisticsNo", express != null ? deliveryReqVO.getLogisticsNo() : "").build());
+                        .put("logisticsNo", express != null ? deliveryReqVO.getLogisticsNo() : "")
+                        .put("addressVerificationReviewNote",
+                                buildAddressVerificationReviewNote(order, deliveryReqVO))
+                        .build());
 
         // 4.1 发送站内信
         tradeMessageService.sendMessageWhenDeliveryOrder(new TradeOrderMessageWhenDeliveryOrderReqBO()
@@ -448,6 +558,48 @@ public class TradeOrderUpdateServiceImpl implements TradeOrderUpdateService {
         // 2. 执行 TradeOrderHandler 前置处理
         tradeOrderHandlers.forEach(handler -> handler.beforeDeliveryOrder(order));
         return order;
+    }
+
+    private void validateAddressVerificationDeliveryReview(TradeOrderDO order, TradeOrderDeliveryReqVO deliveryReqVO) {
+        if (ObjectUtil.equal(deliveryReqVO.getLogisticsId(), TradeOrderDO.LOGISTICS_ID_NULL)) {
+            return;
+        }
+        if (!isAddressVerificationDeliveryReviewRequired(order.getAddressVerification())) {
+            return;
+        }
+        if (Boolean.TRUE.equals(deliveryReqVO.getAddressVerificationAcknowledged())) {
+            return;
+        }
+        throw exception(ORDER_DELIVERY_FAIL_ADDRESS_VERIFICATION_NEEDS_REVIEW);
+    }
+
+    private boolean isAddressVerificationDeliveryReviewRequired(Map<String, Object> addressVerification) {
+        if (addressVerification == null) {
+            return true;
+        }
+        String providerStatus = getAddressVerificationText(addressVerification, "providerStatus");
+        if (StrUtil.equals(providerStatus, "fallback")) {
+            return true;
+        }
+        String source = getAddressVerificationText(addressVerification, "source");
+        if (StrUtil.equalsAny(source, "local-postal-region", "backend-address-verification")) {
+            return true;
+        }
+        String status = getAddressVerificationText(addressVerification, "status");
+        return StrUtil.equals(status, "unverified");
+    }
+
+    private String buildAddressVerificationReviewNote(TradeOrderDO order, TradeOrderDeliveryReqVO deliveryReqVO) {
+        if (ObjectUtil.equal(deliveryReqVO.getLogisticsId(), TradeOrderDO.LOGISTICS_ID_NULL)) {
+            return "";
+        }
+        if (!Boolean.TRUE.equals(deliveryReqVO.getAddressVerificationAcknowledged())) {
+            return "";
+        }
+        if (!isAddressVerificationDeliveryReviewRequired(order.getAddressVerification())) {
+            return "";
+        }
+        return "，地址风险已人工复核";
     }
 
     @NotNull

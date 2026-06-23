@@ -75,8 +75,9 @@ const getStepStatus = ({
 
 export const buildCheckoutFlow = (items = [], options = {}) => {
   const rawVerification = getAddressVerification(options.address);
+  const addressConfirmed = Boolean(options.addressConfirmed || options.useSuggestedAddress);
   const addressVerification =
-    rawVerification.status === "issue" && options.useSuggestedAddress
+    rawVerification.status === "issue" && addressConfirmed
       ? { ...rawVerification, status: "verified", issue: "" }
       : rawVerification;
   const customNotice = getCustomOrderNotice(items);

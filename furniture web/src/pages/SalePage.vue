@@ -1,4 +1,5 @@
 <script setup>
+import BrandEyebrow from "../components/BrandEyebrow.vue";
 import SaleCategoryTile from "../components/SaleCategoryTile.vue";
 import { generatedFurnitureAssets } from "../data/generatedFurnitureAssets.js";
 import { saleCategories, saleCategoryLinkHref, saleQuickLinks } from "../data/rhLayout.js";
@@ -15,7 +16,7 @@ import { saleCategories, saleCategoryLinkHref, saleQuickLinks } from "../data/rh
       />
     </picture>
     <div class="sale-hero-copy">
-      <p class="eyebrow">RH Sale</p>
+      <BrandEyebrow suffix="Sale" />
       <h1>Sale</h1>
     </div>
   </section>

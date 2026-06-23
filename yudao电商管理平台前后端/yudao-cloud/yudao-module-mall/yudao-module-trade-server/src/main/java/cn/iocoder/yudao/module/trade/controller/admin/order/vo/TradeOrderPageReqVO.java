@@ -34,6 +34,15 @@ public class TradeOrderPageReqVO extends PageParam {
     @Schema(description = "配送方式", example = "1")
     private Integer deliveryType;
 
+    @Schema(description = "地址核对状态", example = "unverified")
+    private String addressVerificationStatus;
+
+    @Schema(description = "Address verification source", example = "google-address-validation")
+    private String addressVerificationSource;
+
+    @Schema(description = "地址核对服务状态", example = "fallback")
+    private String addressVerificationProviderStatus;
+
     @Schema(description = "发货物流公司编号", example = "1")
     private Long logisticsId;
 

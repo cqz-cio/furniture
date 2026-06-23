@@ -46,6 +46,7 @@ export {
   updateMemberProfile,
 } from "./yudaoMemberApi.js";
 export { createOrder, getOrderDetail, getOrderPage, settleOrder } from "./yudaoOrderApi.js";
+export { getPayOrder, submitPayOrder } from "./yudaoPaymentApi.js";
 export { getProductDetail, getProductPage } from "./yudaoProductApi.js";
 export {
   mapAddressResponse,

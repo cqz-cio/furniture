@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 const readSource = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
 
 describe("checkout auth split flow", () => {
-  it("routes cart checkout through checkout auth in App.vue", () => {
+  it("routes cart checkout through the checkout entry helper in App.vue", () => {
     const source = readSource("../src/App.vue");
 
     expect(source).toContain("getCheckoutEntryRoute");
@@ -23,6 +23,15 @@ describe("checkout auth split flow", () => {
     expect(source).toContain('"account-orders": "/account/orders"');
     expect(source).toContain('"/orders": "account-orders"');
     expect(source).toContain('url.pathname !== pageRoutes.missing');
+  });
+
+  it("does not drop order query params when an alias route already maps to the active page", () => {
+    const source = readSource("../src/App.vue");
+
+    expect(source).toContain("watch(currentPage, (page) =>");
+    expect(source).toContain("if (pageFromPath(window.location.pathname) === page) return;");
+    expect(source).toContain("window.location.search");
+    expect(source).toContain("window.location.hash");
   });
 
   it("derives checkout auth options from cart items", () => {

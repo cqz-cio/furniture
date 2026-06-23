@@ -208,6 +208,15 @@ yudao:
     order-notify-url: http://yunai.natapp1.cc/admin-api/pay/notify/order # 支付渠道的【支付】回调地址
     refund-notify-url: http://yunai.natapp1.cc/admin-api/pay/notify/refund # 支付渠道的【退款】回调地址
     transfer-notify-url: http://yunai.natapp1.cc/admin-api/pay/notify/transfer # 支付渠道的【转账】回调地址
+  member:
+    address-verification:
+      google:
+        # Set YUDAO_GOOGLE_ADDRESS_VALIDATION_API_KEY in the runtime environment.
+        api-key: ${YUDAO_GOOGLE_ADDRESS_VALIDATION_API_KEY:}
+        endpoint: https://addressvalidation.googleapis.com/v1:validateAddress
+        enable-usps-cass: true
+        connect-timeout-millis: 3000
+        read-timeout-millis: 5000
   access-log: # 访问日志的配置项
     enable: false
   demo: false # 关闭演示模式

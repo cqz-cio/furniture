@@ -12,6 +12,7 @@ import org.springframework.validation.annotation.Validated;
 
 import javax.annotation.Resource;
 import java.util.List;
+import java.util.Objects;
 
 import static cn.iocoder.yudao.framework.common.exception.util.ServiceExceptionUtil.exception;
 import static cn.iocoder.yudao.module.member.enums.ErrorCodeConstants.ADDRESS_NOT_EXISTS;
@@ -49,7 +50,7 @@ public class AddressServiceImpl implements AddressService {
     @Transactional(rollbackFor = Exception.class)
     public void updateAddress(Long userId, AppAddressUpdateReqVO updateReqVO) {
         // 校验存在,校验是否能够操作
-        validAddressExists(userId, updateReqVO.getId());
+        MemberAddressDO existingAddress = validAddressExists(userId, updateReqVO.getId());
 
         // 如果修改的是默认收件地址，则将原默认地址修改为非默认
         if (Boolean.TRUE.equals(updateReqVO.getDefaultStatus())) {
@@ -60,6 +61,9 @@ public class AddressServiceImpl implements AddressService {
 
         // 更新
         MemberAddressDO updateObj = AddressConvert.INSTANCE.convert(updateReqVO);
+        if (updateReqVO.getAddressVerification() == null && !hasDeliveryAddressChanged(existingAddress, updateReqVO)) {
+            updateObj.setAddressVerification(existingAddress.getAddressVerification());
+        }
         memberAddressMapper.updateById(updateObj);
     }
 
@@ -71,11 +75,22 @@ public class AddressServiceImpl implements AddressService {
         memberAddressMapper.deleteById(id);
     }
 
-    private void validAddressExists(Long userId, Long id) {
+    private MemberAddressDO validAddressExists(Long userId, Long id) {
         MemberAddressDO addressDO = getAddress(userId, id);
         if (addressDO == null) {
             throw exception(ADDRESS_NOT_EXISTS);
         }
+        return addressDO;
+    }
+
+    private static boolean hasDeliveryAddressChanged(MemberAddressDO existingAddress, AppAddressUpdateReqVO updateReqVO) {
+        return !Objects.equals(existingAddress.getAreaId(), updateReqVO.getAreaId())
+                || !normalizeAddressText(existingAddress.getDetailAddress())
+                        .equals(normalizeAddressText(updateReqVO.getDetailAddress()));
+    }
+
+    private static String normalizeAddressText(String value) {
+        return value == null ? "" : value.trim();
     }
 
     @Override

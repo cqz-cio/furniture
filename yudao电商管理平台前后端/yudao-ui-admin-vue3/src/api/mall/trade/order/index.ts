@@ -42,6 +42,7 @@ export interface OrderVO {
   receiverAreaId?: number | null // 收件人地区编号
   receiverAreaName?: string //收件人地区名字
   receiverDetailAddress?: string // 收件人详细地址
+  addressVerification?: AddressVerificationAudit | null // 地址核对审计
 
   // ========== 售后基本信息 ==========
   afterSaleStatus?: number | null // 售后状态
@@ -68,6 +69,44 @@ export interface OrderVO {
   }
   // 订单操作日志
   logs?: OrderLogRespVO[]
+}
+
+export interface AddressVerificationAddress {
+  street?: string
+  apartment?: string
+  city?: string
+  state?: string
+  postalCode?: string
+}
+
+export interface AddressVerificationAudit {
+  source?: string
+  addressSource?: string
+  status?: string
+  reason?: string
+  choice?: string
+  deliverable?: boolean
+  confirmedAt?: string
+  providerResponseId?: string
+  providerStatus?: string
+  originalAddress?: AddressVerificationAddress | null
+  suggestedAddress?: AddressVerificationAddress | null
+  selectedAddress?: AddressVerificationAddress | null
+}
+
+export interface AddressVerificationProviderStatus {
+  source?: string
+  name?: string
+  enabled?: boolean
+  fallback?: boolean
+  reason?: string
+  uspsCassEnabled?: boolean
+}
+
+export interface AddressVerificationStatus {
+  mode?: string
+  fallbackActive?: boolean
+  providers?: AddressVerificationProviderStatus[]
 }
 
 export interface OrderLogRespVO {
@@ -130,6 +169,11 @@ export const getOrderSummary = async (params: any) => {
   return await request.get<TradeOrderSummaryRespVO>({ url: `/trade/order/summary`, params })
 }
 
+// 查询地址核对服务状态
+export const getAddressVerificationStatus = async () => {
+  return await request.get<AddressVerificationStatus>({ url: `/member/address/verification-status` })
+}
+
 // 查询交易订单详情
 export const getOrder = async (id: number | null) => {
   return await request.get({ url: `/trade/order/get-detail?id=` + id })
@@ -144,6 +188,7 @@ export interface DeliveryVO {
   id?: number // 订单编号
   logisticsId: number | null // 物流公司编号
   logisticsNo: string // 物流编号
+  addressVerificationAcknowledged?: boolean // 是否已人工复核地址核对风险
 }
 
 // 订单发货

@@ -1,4 +1,5 @@
 <script setup>
+import BrandEyebrow from "../components/BrandEyebrow.vue";
 import { generatedFurnitureAssets } from "../data/generatedFurnitureAssets.js";
 
 const heroImage = generatedFurnitureAssets.babyChild.hero;
@@ -50,7 +51,7 @@ const services = [
         <img :src="heroImage.desktop" alt="Layered child bedroom with upholstered bed and warm neutral furnishings" />
       </picture>
       <div class="landing-hero-copy child-landing-copy">
-        <p class="eyebrow">RH Baby &amp; Child</p>
+        <BrandEyebrow suffix="Baby &amp; Child" />
         <h1 id="child-landing-title">Rooms for first chapters.</h1>
         <p>
           Timeless nursery, bedroom, and playroom pieces designed to grow with the routines of family life.
@@ -73,7 +74,7 @@ const services = [
 
     <section class="landing-service-band child-service-band" aria-label="Baby and child services">
       <div>
-        <p class="eyebrow">RH Design Services</p>
+        <BrandEyebrow suffix="Design Services" tone="dark" />
         <h2>From nursery plans to growing bedrooms.</h2>
       </div>
       <ul>

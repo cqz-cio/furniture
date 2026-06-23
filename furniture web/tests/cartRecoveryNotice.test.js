@@ -8,8 +8,18 @@ describe("cart recovery notices", () => {
     const source = readSource("../src/App.vue");
 
     expect(source).toContain("cartNoticeKey = ref(\"\")");
+    expect(source).toContain("cartNoticeDetail = ref(\"\")");
+    expect(source).toContain("cartDebugInfo = ref(\"\")");
+    expect(source).toContain("getYudaoCartErrorDetail");
+    expect(source).toContain("getYudaoCartDebugInfo");
     expect(source).toContain(':notice-key="cartNoticeKey"');
+    expect(source).toContain(':notice-detail="cartNoticeDetail"');
+    expect(source).toContain(':debug-info="cartDebugInfo"');
     expect(source).toContain('@resync="loadRemoteCart"');
+    expect(source).toContain("clearYudaoSession");
+    expect(source).toContain("isYudaoAuthError");
+    expect(source).toContain("switchToAuthRequiredCart");
+    expect(source).toContain('noticeKey: "cart.remoteAuthRequired"');
     expect(source).toContain('noticeKey: "cart.remoteUnavailable"');
     expect(source).toContain('noticeKey: "cart.remoteMutationUnavailable"');
   });
@@ -18,9 +28,11 @@ describe("cart recovery notices", () => {
     const source = readSource("../src/components/CartDrawer.vue");
 
     expect(source).toContain("noticeKey");
+    expect(source).toContain("debugInfo");
     expect(source).toContain("cart-drawer-notice");
+    expect(source).toContain("cart-debug-info");
     expect(source).toContain("t(noticeKey)");
-    expect(source).toContain('const emit = defineEmits(["checkout", "close", "resync", "update-quantity", "remove"])');
+    expect(source).toContain('const emit = defineEmits(["checkout", "close", "resync", "update-quantity", "remove", "wishlist"])');
     expect(source).toContain("canResyncCart");
     expect(source).toContain('t("cart.retrySync")');
     expect(source).toContain('@click="emit(\'resync\')"');
@@ -40,6 +52,7 @@ describe("cart recovery notices", () => {
     const source = readSource("../src/styles.css");
 
     expect(source).toContain(".cart-drawer-notice");
+    expect(source).toContain(".cart-debug-info");
     expect(source).toContain(".cart-drawer-notice button");
     expect(source).toContain(".cart-item-problem");
   });

@@ -6,6 +6,7 @@ import lombok.Data;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @Schema(description = "用户 App - 订单交易的明细 Response VO")
 @Data
@@ -27,6 +28,9 @@ public class AppTradeOrderDetailRespVO {
 
     @Schema(description = "用户备注", requiredMode = Schema.RequiredMode.REQUIRED, example = "你猜")
     private String userRemark;
+
+    @Schema(description = "Address verification audit payload")
+    private Map<String, Object> addressVerification;
 
     @Schema(description = "订单状态", requiredMode = Schema.RequiredMode.REQUIRED, example = "1")
     private Integer status;

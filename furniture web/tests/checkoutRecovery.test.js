@@ -45,6 +45,26 @@ describe("checkout recovery actions", () => {
     });
   });
 
+  it("keeps address confirmation failures on checkout for a fresh address review", () => {
+    expect(getCheckoutRecoveryAction("checkout.errors.addressConfirmationRequired", routes)).toEqual({
+      type: "address-review",
+      labelKey: "checkout.actions.reviewAddress",
+    });
+  });
+
+  it("links to the created order when payment is unavailable after order creation", () => {
+    expect(
+      getCheckoutRecoveryAction("checkout.errors.paymentUnavailable", {
+        ...routes,
+        orderDetail: "/orders?id=902",
+      }),
+    ).toEqual({
+      type: "link",
+      labelKey: "checkout.actions.viewOrder",
+      href: "/orders?id=902",
+    });
+  });
+
   it("does not show recovery actions for generic errors", () => {
     expect(getCheckoutRecoveryAction("checkout.errors.orderUnavailable", routes)).toBeNull();
   });

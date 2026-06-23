@@ -1,8 +1,12 @@
 package cn.iocoder.yudao.module.member.controller.app.address.vo;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
+import javax.validation.constraints.AssertTrue;
 import javax.validation.constraints.NotNull;
+import java.util.Map;
 
 // TODO 芋艿：example 缺失
 /**
@@ -31,5 +35,43 @@ public class AppAddressBaseVO {
     @Schema(description = "是否默认地址", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotNull(message = "是否默认地址不能为空")
     private Boolean defaultStatus;
+
+    @Schema(description = "Address verification audit payload from checkout confirmation")
+    private Map<String, Object> addressVerification;
+
+    @AssertTrue(message = "Address verification audit must include confirmed selected address")
+    @JsonIgnore
+    public boolean isConfirmedAddressVerification() {
+        if (addressVerification == null) {
+            return true;
+        }
+        return hasAddressVerificationText("source")
+                && hasAddressVerificationText("addressSource")
+                && hasAddressVerificationText("status")
+                && hasAddressVerificationText("choice")
+                && hasAddressVerificationText("confirmedAt")
+                && hasConfirmedSelectedAddress();
+    }
+
+    private boolean hasAddressVerificationText(String key) {
+        Object value = addressVerification.get(key);
+        return value != null && !String.valueOf(value).trim().isEmpty();
+    }
+
+    private boolean hasConfirmedSelectedAddress() {
+        if (!(addressVerification.get("selectedAddress") instanceof Map)) {
+            return false;
+        }
+        Map<?, ?> selectedAddress = (Map<?, ?>) addressVerification.get("selectedAddress");
+        return hasMapText(selectedAddress, "street")
+                && hasMapText(selectedAddress, "city")
+                && hasMapText(selectedAddress, "state")
+                && hasMapText(selectedAddress, "postalCode");
+    }
+
+    private boolean hasMapText(Map<?, ?> map, String key) {
+        Object value = map.get(key);
+        return value != null && !String.valueOf(value).trim().isEmpty();
+    }
 
 }

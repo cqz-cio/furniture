@@ -109,65 +109,68 @@ onBeforeUnmount(() => setBodyModalState(false));
 
 <template>
   <Teleport to="body">
-    <div v-if="open" class="account-modal-layer" role="presentation">
-      <section
-        class="account-modal"
-        :class="modalClass"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="account-modal-title"
-      >
-        <button class="account-modal-close" type="button" :aria-label="t('common.close')" @click="emit('close')">
-          <span></span>
-          <span></span>
-        </button>
-
-        <template v-if="isAuthenticated">
-          <h2 id="account-modal-title">{{ modalTitle }}</h2>
-          <p class="account-welcome">
-            {{ session.userId ? t("auth.account.welcomeMember", { id: session.userId }) : t("auth.account.welcomeGuest") }}
-          </p>
-          <p v-if="error" class="auth-error">{{ error }}</p>
-          <nav class="account-menu" :aria-label="t('auth.account.linksAria')">
-            <a v-for="link in accountLinks" :key="link.labelKey" :href="link.href" @click="emit('close')">
-              {{ t(link.labelKey) }}
-            </a>
-          </nav>
-          <button class="auth-primary-button" type="button" :disabled="logoutBusy" @click="logout">
-            {{ logoutBusy ? t("common.working") : t("auth.account.signOut") }}
+    <Transition name="account-drawer-slide">
+      <div v-if="open" class="account-modal-layer" role="presentation">
+        <button class="account-modal-scrim" type="button" :aria-label="t('common.close')" @click="emit('close')"></button>
+        <section
+          class="account-modal"
+          :class="modalClass"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="account-modal-title"
+        >
+          <button class="account-modal-close" type="button" :aria-label="t('common.close')" @click="emit('close')">
+            <span></span>
+            <span></span>
           </button>
-        </template>
 
-        <template v-else>
-          <h2 id="account-modal-title">{{ modalTitle }}</h2>
-          <p v-if="logoutNotice" class="auth-error">{{ logoutNotice }}</p>
-          <AuthEmailSignInForm
-            v-if="mode === 'signin'"
-            @authenticated="handleAuthenticated"
-            @secure-link="showSecureLink"
-            @create-account="showCreate"
-            @trade="showTrade"
-          />
-          <AuthEmailSignInForm
-            v-else-if="mode === 'secureLink'"
-            variant="secureLink"
-            @sign-in="showSignIn"
-            @create-account="showCreate"
-            @trade="showTrade"
-          />
-          <AuthCreateAccountForm
-            v-else-if="mode === 'create'"
-            @authenticated="handleAuthenticated"
-            @sign-in="showSignIn"
-            @trade="showTrade"
-          />
-          <AuthTradeSignInForm v-else @authenticated="handleAuthenticated" @sign-in="showSignIn" @close="emit('close')" />
-          <details v-if="showDeveloperToken" class="auth-developer-token">
-            <summary>{{ t("auth.developerToken") }}</summary>
-            <AuthTokenPanel @token-change="refreshSession" />
-          </details>
-        </template>
-      </section>
-    </div>
+          <template v-if="isAuthenticated">
+            <h2 id="account-modal-title">{{ modalTitle }}</h2>
+            <p class="account-welcome">
+              {{ session.userId ? t("auth.account.welcomeMember", { id: session.userId }) : t("auth.account.welcomeGuest") }}
+            </p>
+            <p v-if="error" class="auth-error">{{ error }}</p>
+            <nav class="account-menu" :aria-label="t('auth.account.linksAria')">
+              <a v-for="link in accountLinks" :key="link.labelKey" :href="link.href" @click="emit('close')">
+                {{ t(link.labelKey) }}
+              </a>
+            </nav>
+            <button class="auth-primary-button" type="button" :disabled="logoutBusy" @click="logout">
+              {{ logoutBusy ? t("common.working") : t("auth.account.signOut") }}
+            </button>
+          </template>
+
+          <template v-else>
+            <h2 id="account-modal-title">{{ modalTitle }}</h2>
+            <p v-if="logoutNotice" class="auth-error">{{ logoutNotice }}</p>
+            <AuthEmailSignInForm
+              v-if="mode === 'signin'"
+              @authenticated="handleAuthenticated"
+              @secure-link="showSecureLink"
+              @create-account="showCreate"
+              @trade="showTrade"
+            />
+            <AuthEmailSignInForm
+              v-else-if="mode === 'secureLink'"
+              variant="secureLink"
+              @sign-in="showSignIn"
+              @create-account="showCreate"
+              @trade="showTrade"
+            />
+            <AuthCreateAccountForm
+              v-else-if="mode === 'create'"
+              @authenticated="handleAuthenticated"
+              @sign-in="showSignIn"
+              @trade="showTrade"
+            />
+            <AuthTradeSignInForm v-else @authenticated="handleAuthenticated" @sign-in="showSignIn" @close="emit('close')" />
+            <details v-if="showDeveloperToken" class="auth-developer-token">
+              <summary>{{ t("auth.developerToken") }}</summary>
+              <AuthTokenPanel @token-change="refreshSession" />
+            </details>
+          </template>
+        </section>
+      </div>
+    </Transition>
   </Teleport>
 </template>

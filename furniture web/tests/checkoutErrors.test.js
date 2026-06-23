@@ -18,9 +18,42 @@ describe("checkout error messages", () => {
     );
   });
 
+  it("maps missing backend address confirmation audit failures to address review recovery", () => {
+    expect(getCheckoutErrorKey({ code: 1011000040 })).toBe(
+      "checkout.errors.addressConfirmationRequired"
+    );
+    expect(getCheckoutErrorKey({ msg: "快递订单必须包含用户确认后的地址核对记录" })).toBe(
+      "checkout.errors.addressConfirmationRequired"
+    );
+    expect(getCheckoutErrorKey({ message: "Express orders require confirmed address verification audit" })).toBe(
+      "checkout.errors.addressConfirmationRequired"
+    );
+  });
+
   it("maps price and settlement changes to a review message", () => {
     expect(getCheckoutErrorKey({ msg: "Order price changed, please resettle" })).toBe(
       "checkout.errors.priceChanged"
+    );
+  });
+
+  it("maps payment channel failures to a payment unavailable message", () => {
+    expect(getCheckoutErrorKey({ msg: "Pay order submit failed: payment channel disabled" })).toBe(
+      "checkout.errors.paymentUnavailable"
+    );
+  });
+
+  it("maps Yudao pay order state errors to payment recovery", () => {
+    expect(getCheckoutErrorKey({ code: 1007002000, msg: "支付订单不存在" })).toBe(
+      "checkout.errors.paymentUnavailable"
+    );
+    expect(getCheckoutErrorKey({ code: 1007002001, msg: "支付订单不处于待支付" })).toBe(
+      "checkout.errors.paymentUnavailable"
+    );
+    expect(getCheckoutErrorKey({ code: 1007002002, msg: "订单已支付，请刷新页面" })).toBe(
+      "checkout.errors.paymentUnavailable"
+    );
+    expect(getCheckoutErrorKey({ code: 1007002003, msg: "支付订单已经过期" })).toBe(
+      "checkout.errors.paymentUnavailable"
     );
   });
 

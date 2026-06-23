@@ -12,10 +12,10 @@ export const AUTH_TOKEN_STORAGE_KEY = LEGACY_AUTH_TOKEN_STORAGE_KEY;
 const trimSlash = (value) => value.replace(/\/$/, "");
 
 export const getYudaoAppApiBase = () =>
-  trimSlash(import.meta.env.VITE_YUDAO_APP_API_BASE || DEFAULT_APP_API_BASE);
+  trimSlash(import.meta.env.VITE_YUDAO_APP_API_BASE || import.meta.env.VITE_YUDAO_API_BASE_URL || DEFAULT_APP_API_BASE);
 
 export const getYudaoAppTenantId = () =>
-  String(import.meta.env.VITE_YUDAO_APP_TENANT_ID || DEFAULT_APP_TENANT_ID).trim();
+  String(import.meta.env.VITE_YUDAO_APP_TENANT_ID || import.meta.env.VITE_YUDAO_TENANT_ID || DEFAULT_APP_TENANT_ID).trim();
 
 export const readYudaoToken = (storage) => readYudaoSession(storage)?.accessToken || "";
 

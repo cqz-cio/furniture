@@ -12,7 +12,8 @@ describe("home landing page", () => {
     expect(homePage).toContain("home-entry-picture");
     expect(homePage).toContain("home-entry-copy");
     expect(homePage).toContain('homeModuleCopy(index, "title")');
-    expect(homePage).toContain('homeModuleCopy(index, "eyebrow")');
+    expect(homePage).toContain("homeModuleEyebrowSuffix(index)");
+    expect(homePage).toContain("BrandEyebrow");
     expect(homePage).toContain('homeModuleCopy(index, "cta")');
     expect(homePage).toContain("generatedHomeModuleAsset(index)");
     expect(homePage).not.toContain("const homeModuleTitles = [");
@@ -30,5 +31,25 @@ describe("home landing page", () => {
     expect(styles).toContain("bottom: auto;\n  z-index: 2;");
     expect(styles).toContain("transform: translate(-50%, -50%);");
     expect(styles).not.toContain(".home-entry > div:last-child");
+  });
+
+  it("uses the Oakved logo artwork in the hero instead of RH text", () => {
+    const homePage = readSource("../src/pages/HomePage.vue");
+    const styles = readSource("../src/styles.css");
+
+    expect(homePage).toContain('class="home-hero-logo"');
+    expect(homePage).toContain('src="/assets/brand/oakved-logo-white.png"');
+    expect(homePage).toContain('alt="Oakved"');
+    expect(homePage).not.toContain("<h1>RH</h1>");
+    expect(styles).toContain(".home-hero-logo");
+  });
+
+  it("uses adaptive Oakved badges for RH-style module eyebrows", () => {
+    const homePage = readSource("../src/pages/HomePage.vue");
+    const styles = readSource("../src/styles.css");
+
+    expect(homePage).toContain(':suffix="homeModuleEyebrowSuffix(index)"');
+    expect(homePage).not.toContain('<p class="eyebrow">{{ homeModuleCopy(index, "eyebrow") }}</p>');
+    expect(styles).toContain(".brand-eyebrow-logo");
   });
 });

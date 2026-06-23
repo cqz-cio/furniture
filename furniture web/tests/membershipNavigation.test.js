@@ -19,6 +19,7 @@ describe("membership navigation model", () => {
     expect(membershipRoutes.accountOrders).toBe("/account/orders");
     expect(membershipRoutes.accountGiftRegistry).toBe("/gift-registry");
     expect(membershipRoutes.checkoutAuth).toBe("/checkout/auth");
+    expect(membershipRoutes.checkout).toBe("/checkout");
     expect(membershipRoutes.giftRegistry).toBe("/gift-registry");
   });
 
@@ -57,8 +58,8 @@ describe("membership navigation model", () => {
     expect(getMembershipJoinTarget({ signedIn: true, memberStatus: "active" })).toBe("/account/membership");
   });
 
-  it("starts checkout through the auth split and flags membership intent", () => {
-    expect(getCheckoutEntryRoute([])).toBe("/checkout/auth");
+  it("starts regular checkout directly and flags membership intent when needed", () => {
+    expect(getCheckoutEntryRoute([])).toBe("/checkout?guest=true");
     expect(getCheckoutEntryRoute([{ skuId: "membership-annual", quantity: 1 }])).toBe("/checkout/auth?intent=membership");
   });
 

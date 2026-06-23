@@ -28,7 +28,10 @@ export const getOrderPage = async (params = {}, options = {}) => {
   return mapOrderPage(data);
 };
 
+const isYudaoNumericId = (id) => /^\d+$/.test(String(id || "").trim());
+
 export const getOrderDetail = async (id, options = {}) => {
-  const data = await requestYudao(`/trade/order/get-detail?id=${encodeURIComponent(id)}`, options);
+  if (!isYudaoNumericId(id)) return null;
+  const data = await requestYudao(`/trade/order/get-detail?id=${encodeURIComponent(String(id).trim())}`, options);
   return data ? mapOrderDetail(data) : null;
 };

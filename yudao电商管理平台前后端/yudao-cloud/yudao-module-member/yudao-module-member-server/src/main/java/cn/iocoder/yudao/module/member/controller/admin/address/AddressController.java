@@ -1,10 +1,12 @@
 package cn.iocoder.yudao.module.member.controller.admin.address;
 
 import cn.iocoder.yudao.framework.common.pojo.CommonResult;
+import cn.iocoder.yudao.module.member.controller.app.address.vo.AppAddressVerificationStatusRespVO;
 import cn.iocoder.yudao.module.member.controller.admin.address.vo.AddressRespVO;
 import cn.iocoder.yudao.module.member.convert.address.AddressConvert;
 import cn.iocoder.yudao.module.member.dal.dataobject.address.MemberAddressDO;
 import cn.iocoder.yudao.module.member.service.address.AddressService;
+import cn.iocoder.yudao.module.member.service.address.AddressVerificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -28,6 +30,8 @@ public class AddressController {
 
     @Resource
     private AddressService addressService;
+    @Resource
+    private AddressVerificationService addressVerificationService;
 
     @GetMapping("/list")
     @Operation(summary = "获得用户收件地址列表")
@@ -36,6 +40,13 @@ public class AddressController {
     public CommonResult<List<AddressRespVO>> getAddressList(@RequestParam("userId") Long userId) {
         List<MemberAddressDO> list = addressService.getAddressList(userId);
         return success(AddressConvert.INSTANCE.convertList2(list));
+    }
+
+    @GetMapping("/verification-status")
+    @Operation(summary = "Get address verification provider status")
+    @PreAuthorize("@ss.hasPermission('member:user:query')")
+    public CommonResult<AppAddressVerificationStatusRespVO> getAddressVerificationStatus() {
+        return success(addressVerificationService.getStatus());
     }
 
 }

@@ -118,4 +118,17 @@ describe("header language menu", () => {
     expect(source).toContain("'is-baby-child': isBabyChildSitePage");
     expect(source).toContain(":class=\"{ 'baby-brand': isBabyChildSitePage }\"");
   });
+
+  it("uses the Oakved brand asset for the standard header and mobile drawer", () => {
+    const source = readSource("../src/components/RhHeader.vue");
+    const css = readSource("../src/styles.css");
+
+    expect(source).toContain('src="/assets/brand/oakved-logo-black.png"');
+    expect(source).toContain('class="brand-logo"');
+    expect(source).toContain('alt="Oakved"');
+    expect(source).toContain('class="mobile-drawer-brand-logo"');
+    expect(source).not.toContain("<span>The</span>\n          <span>WORLD of</span>\n          <strong>RH</strong>");
+    expect(css).toContain(".brand-logo");
+    expect(css).toContain(".mobile-drawer-brand-logo");
+  });
 });

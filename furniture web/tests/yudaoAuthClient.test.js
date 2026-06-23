@@ -15,6 +15,8 @@ import {
 } from "../src/services/yudaoAuthApi.js";
 import { getRemoteCartItems } from "../src/services/yudaoCartApi.js";
 import {
+  getYudaoAppApiBase,
+  getYudaoAppTenantId,
   isYudaoAuthError,
   isYudaoBusinessError,
   isYudaoNetworkError,
@@ -64,6 +66,7 @@ describe("Yudao member auth client", () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
   });
 
   it("requestEmailSignInLink posts email with no auth token", async () => {
@@ -378,6 +381,16 @@ describe("Yudao member auth client", () => {
 
     expect(fetchMock.mock.calls[0][1].headers).not.toHaveProperty("tenant-id");
     expect(fetchMock.mock.calls[1][1].headers["tenant-id"]).toBe("9");
+  });
+
+  it("reads legacy Yudao storefront env names when canonical app env names are absent", () => {
+    vi.stubEnv("VITE_YUDAO_APP_API_BASE", "");
+    vi.stubEnv("VITE_YUDAO_APP_TENANT_ID", "");
+    vi.stubEnv("VITE_YUDAO_API_BASE_URL", "https://legacy.example/app-api/");
+    vi.stubEnv("VITE_YUDAO_TENANT_ID", "88");
+
+    expect(getYudaoAppApiBase()).toBe("https://legacy.example/app-api");
+    expect(getYudaoAppTenantId()).toBe("88");
   });
 
   it("refreshes the token and retries once when Yudao returns an auth failure result", async () => {

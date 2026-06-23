@@ -251,6 +251,25 @@ watch(() => props.authVersion, loadAddresses);
             <p>{{ address.mobile }}</p>
             <p>{{ address.areaName }} {{ address.detailAddress }}</p>
             <small v-if="address.raw?.defaultStatus">{{ t("membership.account.addressBook.defaultBadge") }}</small>
+            <section v-if="address.addressVerificationSummary" class="address-book-verification">
+              <small>{{ t(address.addressVerificationSummary.statusLabelKey) }}</small>
+              <span v-if="address.addressVerificationSummary.confirmedAt">
+                {{ t("membership.account.addressBook.verification.lastChecked") }}
+                {{ address.addressVerificationSummary.confirmedAt }}
+              </span>
+              <span v-if="address.addressVerificationSummary.providerStatus">
+                {{ t(address.addressVerificationSummary.providerStatusLabelKey) }}
+              </span>
+              <strong v-if="address.addressVerificationSummary.warningKey">
+                {{ t(address.addressVerificationSummary.warningKey) }}
+              </strong>
+              <strong v-if="address.addressVerificationSummary.sourceWarningKey">
+                {{ t(address.addressVerificationSummary.sourceWarningKey) }}
+              </strong>
+              <strong v-if="address.addressVerificationSummary.providerWarningKey">
+                {{ t(address.addressVerificationSummary.providerWarningKey) }}
+              </strong>
+            </section>
           </div>
           <div class="account-form-actions">
             <button type="button" @click="editAddress(address)">{{ t("membership.account.addressBook.edit") }}</button>

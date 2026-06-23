@@ -67,7 +67,7 @@ const messages = {
       },
     },
     home: {
-      heroEyebrow: "Welcome to the World of RH",
+      heroEyebrow: "Welcome to Oakved",
       heroSubtitle: "Discover furnishings, lighting, textiles, and objects of enduring design.",
       gridAria: "RH home feature collections",
       modules: {
@@ -168,6 +168,7 @@ const messages = {
       remoteBag: "Live Yudao bag",
       localBag: "Local preview bag",
       remoteUnavailable: "We could not sync your Yudao bag. Local preview mode is being used for now.",
+      remoteAuthRequired: "Your Yudao member session expired. Sign in again, then retry syncing your bag.",
       remoteMutationUnavailable: "That Yudao bag update could not be saved remotely. Review the local preview before checkout.",
       retrySync: "Retry sync",
       itemUnavailable: "This item needs review before checkout.",
@@ -301,6 +302,24 @@ const messages = {
         placeOrder: "Place Order",
         deliveryNotes: "Delivery & Assembly Notes",
       },
+      shipping: {
+        title: "Shipping Address",
+        firstName: "First Name",
+        lastName: "Last Name",
+        country: "Country",
+        street: "Street Address",
+        apartment: "Apt., Floor, Suite, etc. (optional)",
+        city: "City",
+        state: "State",
+        postalCode: "Postal Code",
+        phone: "Phone",
+        savedAddresses: "Saved Addresses",
+        enterNewAddress: "Enter a new address",
+        savedAddressVerification: "Saved address verification",
+        savedAddressVerificationRecheck: "Review this address again before payment.",
+        addressVerificationFallbackWarning:
+          "Remote address verification is not fully configured right now. We will still review this address, but please confirm the street details carefully before payment.",
+      },
       customNotice: {
         requiredTitle: "Custom Order Notice",
         requiredMessage: "Custom merchandise requires review of final sale, production and delivery timing before payment.",
@@ -318,6 +337,73 @@ const messages = {
         needsVerification: "Address needs verification before payment.",
         verified: "Shipping address is verified for payment.",
         suggested: "Suggested Address",
+      },
+      addressReview: {
+        titleVerified: "Confirm Your Verified Address",
+        titleReview: "Review Your Shipping Address",
+        suggestedMessage: "We found a standardized address suggestion for the ZIP code you entered.",
+        unverifiedMessage: "We could not verify this address. Using an unverified address may delay delivery or cause additional delivery fees.",
+        confirmMessage: "Please confirm the standardized delivery address before payment.",
+        verifiedLabel: "Verified Address",
+        enteredLabel: "You Entered",
+        suggestedLabel: "Suggested Address",
+        useSuggested: "Use Suggested Address",
+        useVerified: "Use Verified Address",
+        useEntered: "Use Address As Entered",
+        editOriginal: "Edit Original Address",
+        confirmationNotice:
+          "By continuing, you confirm the address you select will be used as the shipping address for this order and recorded with the address review.",
+        providerFallbackWarning:
+          "Remote address verification was unavailable, so this review is based on the local ZIP database. Please confirm the address carefully.",
+        localPostalRegionWarning:
+          "This review only matched the ZIP code to a city and state. It does not confirm the street address is deliverable.",
+        localOnlyVerificationWarning:
+          "This review only standardized the address format. It does not confirm the street address is deliverable.",
+      },
+      addressConfirmation: {
+        title: "Confirmed shipping address",
+        status: "Address status",
+        choice: "Address choice",
+        addressSource: "Address source",
+        reason: "Review reason",
+        providerStatus: "Verifier status",
+        edit: "Edit address",
+        warning: "You chose to use an address that could not be fully verified. Delivery may be delayed if the carrier cannot deliver to it.",
+        providerFallbackWarning: "Remote address verification was unavailable, so this address was checked with the local ZIP database. Please review it carefully before payment.",
+        localPostalRegionWarning: "This address was checked only against ZIP, city, and state data. Please confirm the street address before payment.",
+        localOnlyVerificationWarning: "This address was standardized by the backend fallback verifier only. Please confirm the street address before payment.",
+        addressSources: {
+          saved: "Saved address",
+          new: "New address",
+          unknown: "Unknown source",
+        },
+        statuses: {
+          verified: "Verified address confirmed",
+          suggested: "Suggested address confirmed",
+          unverified: "Unverified address confirmed",
+          unknown: "Address confirmation recorded",
+        },
+        choices: {
+          original: "Using address as entered",
+          suggested: "Using suggested address",
+          unknown: "Choice unavailable",
+        },
+        providerStatuses: {
+          fallback: "Remote verifier fallback",
+          unknown: "Unknown verifier status",
+        },
+        reasons: {
+          "postal-region-mismatch": "ZIP code city or state was corrected",
+          "missing-required-fields": "Required address fields were missing",
+          "unknown-postal-code": "Postal code could not be matched",
+          "google-address-complete": "Google confirmed the address is complete",
+          "google-review-required": "Google returned a standardized address for review",
+          "google-unverified": "Google could not verify the address",
+          "backend-standardized": "The backend standardized the entered address",
+          "remote-standardized": "The remote verifier standardized the address",
+          "cass-standardized": "CASS standardized the address",
+          unknown: "No issue reason recorded",
+        },
       },
       payment: {
         title: "Payment Method",
@@ -339,6 +425,7 @@ const messages = {
             description: "Mark the order for member credit review before final capture.",
           },
         },
+        channelUnavailable: "Payment channel is not configured. Configure VITE_YUDAO_PAY_CHANNEL_CODE before accepting payment.",
         ready: "Ready for secure entry",
         required: "Required before placing order",
       },
@@ -353,6 +440,10 @@ const messages = {
       errors: {
         loadUnavailable: "Checkout service is unavailable. Please try again later.",
         orderUnavailable: "Order service is unavailable. Please try again later.",
+        paymentUnavailable: "Payment service is not ready. Check the payment channel and try again.",
+        paymentChannelUnavailable: "Payment channel is not configured. Configure the Yudao payment channel before submitting the order.",
+        paymentRequired: "Complete payment details and required agreements before submitting the order.",
+        addressConfirmationRequired: "Review and confirm the shipping address before placing the order.",
         noAddress: "No Yudao address is available for this user.",
         stockUnavailable: "Some items are no longer available in the requested quantity. Review your bag before placing the order.",
         addressUnavailable: "This address cannot be used for the current delivery. Update your address before continuing.",
@@ -364,6 +455,8 @@ const messages = {
         reviewBag: "Review bag",
         signIn: "Sign in again",
         refreshSettlement: "Refresh checkout",
+        viewOrder: "View order",
+        reviewAddress: "Review address",
       },
       mode: {
         yudao: {
@@ -404,12 +497,105 @@ const messages = {
       orderLabel: "Order",
       memberSavings: "Member Savings",
       memberSavingsUnavailable: "-",
+      paymentStatus: "Payment status {status}",
+      paymentStatusUnavailable: "Payment status is still being confirmed. Refresh this page to check again.",
+      paymentResumeUnavailable: "Payment could not be resumed. Refresh payment status and try again.",
+      paymentChannelUnavailable: "This order is awaiting payment, but the Yudao payment channel is not configured.",
+      paymentReturn: {
+        cancelled: {
+          title: "Payment was cancelled",
+          message: "Your order was created, but payment was not completed. You can continue payment or refresh the payment status.",
+        },
+        failed: {
+          title: "Payment did not complete",
+          message: "The payment channel returned an unsuccessful result. Try continuing payment or refresh the status before contacting support.",
+        },
+        paid: {
+          title: "Payment completed",
+          message: "The payment channel returned a successful result. We are refreshing the order status below.",
+        },
+        waiting: {
+          title: "Payment is still pending",
+          message: "The payment channel has not confirmed completion yet. Continue payment or refresh the status.",
+        },
+        unknown: {
+          title: "Payment result needs review",
+          message: "The payment channel returned a result we could not classify. Refresh the status before trying again.",
+        },
+      },
+      paymentStatuses: {
+        waiting: "Awaiting payment",
+        paid: "Paid",
+        closed: "Closed",
+        refunded: "Refunded",
+        unknown: "Unknown",
+      },
+      payOrderLabel: "Pay order {id}",
       view: "View",
       empty: "No remote orders are available yet. Create a Yudao order from checkout to see it here.",
       status: "Status {status}",
+      addressVerification: {
+        title: "Address verification",
+        source: "Verification source",
+        addressSource: "Address source",
+        verificationSources: {
+          "google-address-validation": "Google address validation",
+          "local-postal-region": "Local ZIP check",
+          "remote-address-verification": "Address verification service",
+          "backend-address-verification": "Backend fallback verification",
+          unknown: "Unknown verifier",
+        },
+        addressSources: {
+          saved: "Saved address",
+          new: "New address",
+          unknown: "Unknown source",
+        },
+        statuses: {
+          verified: "Verified",
+          suggested: "Suggested correction",
+          unverified: "Needs confirmation",
+          unknown: "Unknown status",
+        },
+        choices: {
+          original: "Used entered address",
+          suggested: "Used suggested address",
+          unknown: "Unknown choice",
+        },
+        reasons: {
+          "postal-region-mismatch": "ZIP code city or state was corrected",
+          "missing-required-fields": "Required address fields were missing",
+          "unknown-postal-code": "Postal code could not be matched",
+          "google-address-complete": "Google confirmed the address is complete",
+          "google-review-required": "Google returned a standardized address for review",
+          "google-unverified": "Google could not verify the address",
+          "backend-standardized": "The backend standardized the entered address",
+          "remote-standardized": "The remote verifier standardized the address",
+          "cass-standardized": "CASS standardized the address",
+          unknown: "No issue reason recorded",
+        },
+        providerStatuses: {
+          fallback: "Remote verifier fell back to local ZIP check",
+          unknown: "Unknown verifier status",
+        },
+        status: "Verification status",
+        choice: "Confirmed choice",
+        reason: "Review reason",
+        confirmedAt: "Buyer confirmed at",
+        original: "Original address",
+        suggested: "Suggested address",
+        selected: "Selected address",
+        providerResponseId: "Verifier response",
+        providerStatus: "Verifier status",
+        warning: "The buyer confirmed an address that could not be fully verified. Review delivery risk before fulfillment.",
+        providerFallbackWarning: "Remote address verification was unavailable for this order, so only the local ZIP check was recorded.",
+        localPostalRegionWarning: "Only the local ZIP, city, and state match was recorded for this order. It is not a carrier deliverability confirmation.",
+        localOnlyVerificationWarning: "Only backend fallback address normalization was recorded for this order. It is not a carrier deliverability confirmation.",
+      },
       actions: {
         connectAccount: "Connect account",
         retry: "Retry orders",
+        refreshPaymentStatus: "Refresh payment status",
+        resumePayment: "Continue payment",
         shop: "Continue shopping",
       },
     },
@@ -902,6 +1088,42 @@ const messages = {
           chooseRegion: "Choose a region",
           defaultAddress: "Use as default delivery address",
           defaultBadge: "Default address",
+            verification: {
+              lastChecked: "Last checkout review",
+              missingWarning: "This saved address has not been reviewed during checkout yet.",
+              warning: "This address was previously confirmed even though it could not be fully verified.",
+              providerFallbackWarning: "Remote verification was unavailable during the last review; only the local ZIP check was recorded.",
+              localPostalRegionWarning: "The last review only matched ZIP, city, and state data; it did not confirm street-level deliverability.",
+              localOnlyVerificationWarning: "The last review only standardized the address through backend fallback verification; it did not confirm street-level deliverability.",
+              statuses: {
+                verified: "Reviewed and verified",
+                suggested: "Reviewed with suggested correction",
+                unverified: "Reviewed but unverified",
+                missing: "Not reviewed yet",
+                unknown: "Review status recorded",
+              },
+            choices: {
+              original: "Entered address kept",
+              suggested: "Suggested address used",
+              unknown: "Choice recorded",
+            },
+            reasons: {
+              "postal-region-mismatch": "ZIP code city or state was corrected",
+              "missing-required-fields": "Required address fields were missing",
+              "unknown-postal-code": "Postal code could not be matched",
+              "google-address-complete": "Google confirmed the address is complete",
+              "google-review-required": "Google returned a standardized address for review",
+              "google-unverified": "Google could not verify the address",
+              "backend-standardized": "The backend standardized the entered address",
+              "remote-standardized": "The remote verifier standardized the address",
+              "cass-standardized": "CASS standardized the address",
+              unknown: "No issue reason recorded",
+            },
+            providerStatuses: {
+              fallback: "Remote verifier fallback",
+              unknown: "Unknown verifier status",
+            },
+          },
           saving: "Saving...",
           addAddress: "Add Address",
           updateAddress: "Update Address",
@@ -1066,7 +1288,7 @@ const messages = {
       tradeSignIn: "设计师账户登录",
     },
     home: {
-      heroEyebrow: "欢迎来到 RH 的世界",
+      heroEyebrow: "欢迎来到 Oakved",
       heroSubtitle: "探索经久设计的家具、灯具、织物与家居饰品。",
       gridAria: "RH 首页精选系列",
       modules: {
@@ -1167,6 +1389,7 @@ const messages = {
       remoteBag: "Yudao 实时购物袋",
       localBag: "本地预览购物袋",
       remoteUnavailable: "暂时无法同步 Yudao 购物袋，当前使用本地预览模式。",
+      remoteAuthRequired: "Yudao 会员登录态已失效。请重新登录会员账号，然后再重新同步购物袋。",
       remoteMutationUnavailable: "本次 Yudao 购物袋更新未能远程保存，请在结账前检查本地预览。",
       retrySync: "重新同步",
       itemUnavailable: "该商品需要在结账前检查。",
@@ -1316,6 +1539,21 @@ const messages = {
         verified: "配送地址已验证，可用于支付。",
         suggested: "建议地址",
       },
+      addressReview: {
+        titleVerified: "确认已验证地址",
+        titleReview: "核对收货地址",
+        suggestedMessage: "我们根据你填写的 ZIP 找到了标准化地址建议。",
+        unverifiedMessage: "我们暂时无法验证此地址。使用未验证地址可能导致配送延迟或产生额外配送费用。",
+        confirmMessage: "付款前请确认标准化配送地址。",
+        verifiedLabel: "已验证地址",
+        enteredLabel: "你填写的地址",
+        suggestedLabel: "建议地址",
+        useSuggested: "使用建议地址",
+        useVerified: "使用已验证地址",
+        useEntered: "仍使用原地址",
+        editOriginal: "编辑原地址",
+        confirmationNotice: "继续后，你选择的地址将作为本订单的收货地址，并随地址核对记录一起保存。",
+      },
       payment: {
         title: "支付方式",
         intro: "提交订单前会核对银行卡支付、会员额度和礼品卡规则。",
@@ -1336,6 +1574,7 @@ const messages = {
             description: "将订单标记为会员额度核对，最终扣款前继续确认。",
           },
         },
+        channelUnavailable: "支付渠道尚未配置。请先配置 VITE_YUDAO_PAY_CHANNEL_CODE 后再开放支付。",
         ready: "已准备安全录入",
         required: "提交订单前必填",
       },
@@ -1350,6 +1589,10 @@ const messages = {
       errors: {
         loadUnavailable: "结账服务暂时不可用，请稍后再试。",
         orderUnavailable: "订单服务暂时不可用，请稍后再试。",
+        paymentUnavailable: "支付服务尚未准备好，请检查支付渠道后重试。",
+        paymentChannelUnavailable: "支付渠道尚未配置。请先配置 Yudao 支付渠道，然后再提交订单。",
+        paymentRequired: "请先填写支付信息并勾选必要协议，然后再提交订单。",
+        addressConfirmationRequired: "请先核对并确认收货地址，然后再提交订单。",
         noAddress: "该用户没有可用的 Yudao 地址。",
         stockUnavailable: "部分商品库存或购买数量已变化，请先检查购物袋后再下单。",
         addressUnavailable: "当前配送地址无法用于本次配送，请更新地址后继续。",
@@ -1361,6 +1604,8 @@ const messages = {
         reviewBag: "检查购物袋",
         signIn: "重新登录",
         refreshSettlement: "刷新结算",
+        viewOrder: "查看订单",
+        reviewAddress: "重新核对地址",
       },
       mode: {
         yudao: {
@@ -1401,12 +1646,48 @@ const messages = {
       orderLabel: "订单",
       memberSavings: "会员节省",
       memberSavingsUnavailable: "-",
+      paymentStatus: "支付状态 {status}",
+      paymentStatusUnavailable: "支付状态仍在确认中。请刷新此页面后再查看。",
+      paymentResumeUnavailable: "暂时无法继续支付。请刷新支付状态后再试。",
+      paymentChannelUnavailable: "该订单仍待支付，但 Yudao 支付渠道尚未配置。",
+      paymentReturn: {
+        cancelled: {
+          title: "支付已取消",
+          message: "订单已创建，但支付尚未完成。你可以继续支付，或刷新支付状态。",
+        },
+        failed: {
+          title: "支付未完成",
+          message: "支付渠道返回了失败结果。请尝试继续支付，或先刷新状态再联系客服。",
+        },
+        paid: {
+          title: "支付已完成",
+          message: "支付渠道返回成功结果。我们会在下方刷新订单状态。",
+        },
+        waiting: {
+          title: "支付仍在处理中",
+          message: "支付渠道尚未确认完成。你可以继续支付，或刷新支付状态。",
+        },
+        unknown: {
+          title: "支付结果需要确认",
+          message: "支付渠道返回了无法分类的结果。请先刷新状态，再决定是否重试。",
+        },
+      },
+      paymentStatuses: {
+        waiting: "待支付",
+        paid: "已支付",
+        closed: "已关闭",
+        refunded: "已退款",
+        unknown: "未知",
+      },
+      payOrderLabel: "支付单 {id}",
       view: "查看",
       empty: "暂无远程订单。请从结账页创建 Yudao 订单后在此查看。",
       status: "状态 {status}",
       actions: {
         connectAccount: "连接账户",
         retry: "重试订单",
+        refreshPaymentStatus: "刷新支付状态",
+        resumePayment: "继续支付",
         shop: "继续购物",
       },
     },
@@ -2046,7 +2327,7 @@ const messages = {
       tradeSignIn: "Connexion Trade",
     },
     home: {
-      heroEyebrow: "Bienvenue dans l'univers RH",
+      heroEyebrow: "Bienvenue chez Oakved",
       heroSubtitle: "Découvrez du mobilier, des luminaires, des textiles et des objets au design durable.",
       gridAria: "Collections en vedette RH",
       modules: {
@@ -2147,6 +2428,7 @@ const messages = {
       remoteBag: "Panier Yudao en direct",
       localBag: "Panier de prévisualisation local",
       remoteUnavailable: "Impossible de synchroniser le panier Yudao. Le mode apercu local est utilise pour le moment.",
+      remoteAuthRequired: "Votre session membre Yudao a expire. Connectez-vous a nouveau, puis resynchronisez votre panier.",
       remoteMutationUnavailable: "Cette mise a jour du panier Yudao n'a pas pu etre enregistree a distance. Verifiez l'apercu local avant le paiement.",
       retrySync: "Resynchroniser",
       itemUnavailable: "Cet article doit etre verifie avant le paiement.",
@@ -2281,6 +2563,24 @@ const messages = {
         placeOrder: "Passer commande",
         deliveryNotes: "Notes livraison et installation",
       },
+      shipping: {
+        title: "Adresse de livraison",
+        firstName: "Prenom",
+        lastName: "Nom",
+        country: "Pays",
+        street: "Adresse",
+        apartment: "Appartement, etage, suite, etc. (facultatif)",
+        city: "Ville",
+        state: "Etat",
+        postalCode: "Code postal",
+        phone: "Telephone",
+        savedAddresses: "Adresses enregistrees",
+        enterNewAddress: "Saisir une nouvelle adresse",
+        savedAddressVerification: "Verification de l'adresse enregistree",
+        savedAddressVerificationRecheck: "Verifiez de nouveau cette adresse avant le paiement.",
+        addressVerificationFallbackWarning:
+          "La verification d'adresse distante n'est pas entierement configuree pour le moment. Nous verifierons quand meme cette adresse, mais confirmez la rue avec attention avant le paiement.",
+      },
       customNotice: {
         requiredTitle: "Avis commande personnalisee",
         requiredMessage: "Les articles personnalises exigent la verification de la vente finale, de la production et des delais avant paiement.",
@@ -2298,6 +2598,73 @@ const messages = {
         needsVerification: "L'adresse doit etre verifiee avant le paiement.",
         verified: "L'adresse de livraison est verifiee pour le paiement.",
         suggested: "Adresse suggeree",
+      },
+      addressReview: {
+        titleVerified: "Confirmer l'adresse verifiee",
+        titleReview: "Verifier l'adresse de livraison",
+        suggestedMessage: "Nous avons trouve une adresse normalisee pour le code postal saisi.",
+        unverifiedMessage: "Nous n'avons pas pu verifier cette adresse. Une adresse non verifiee peut retarder la livraison ou ajouter des frais.",
+        confirmMessage: "Confirmez l'adresse de livraison normalisee avant le paiement.",
+        verifiedLabel: "Adresse verifiee",
+        enteredLabel: "Adresse saisie",
+        suggestedLabel: "Adresse suggeree",
+        useSuggested: "Utiliser l'adresse suggeree",
+        useVerified: "Utiliser l'adresse verifiee",
+        useEntered: "Utiliser l'adresse saisie",
+        editOriginal: "Modifier l'adresse d'origine",
+        confirmationNotice:
+          "En continuant, vous confirmez que l'adresse choisie sera utilisee comme adresse de livraison de cette commande et enregistree avec la verification.",
+        providerFallbackWarning:
+          "La verification d'adresse distante etait indisponible ; cet examen utilise donc la base locale de codes postaux. Confirmez l'adresse avec attention.",
+        localPostalRegionWarning:
+          "Cette verification rapproche seulement le code postal, la ville et l'etat. Elle ne confirme pas que la rue est desservie.",
+        localOnlyVerificationWarning:
+          "Cette verification a seulement standardise le format de l'adresse. Elle ne confirme pas que la rue est desservie.",
+      },
+      addressConfirmation: {
+        title: "Adresse de livraison confirmee",
+        status: "Statut de l'adresse",
+        choice: "Choix d'adresse",
+        addressSource: "Source de l'adresse",
+        reason: "Motif de verification",
+        providerStatus: "Statut du verificateur",
+        edit: "Modifier l'adresse",
+        warning: "Vous avez choisi une adresse qui n'a pas pu etre entierement verifiee. La livraison peut etre retardee si le transporteur ne peut pas la desservir.",
+        providerFallbackWarning: "La verification d'adresse distante etait indisponible ; cette adresse a donc ete controlee avec la base locale de codes postaux. Verifiez-la attentivement avant le paiement.",
+        localPostalRegionWarning: "Cette adresse a seulement ete comparee aux donnees de code postal, ville et etat. Confirmez la rue avant le paiement.",
+        localOnlyVerificationWarning: "Cette adresse a seulement ete standardisee par le verificateur de repli du serveur. Confirmez la rue avant le paiement.",
+        addressSources: {
+          saved: "Adresse enregistree",
+          new: "Nouvelle adresse",
+          unknown: "Source inconnue",
+        },
+        statuses: {
+          verified: "Adresse verifiee confirmee",
+          suggested: "Adresse proposee confirmee",
+          unverified: "Adresse non verifiee confirmee",
+          unknown: "Confirmation d'adresse enregistree",
+        },
+        choices: {
+          original: "Adresse saisie conservee",
+          suggested: "Adresse proposee utilisee",
+          unknown: "Choix indisponible",
+        },
+        providerStatuses: {
+          fallback: "Repli du verificateur distant",
+          unknown: "Statut du verificateur inconnu",
+        },
+        reasons: {
+          "postal-region-mismatch": "La ville ou l'etat du code postal a ete corrige",
+          "missing-required-fields": "Des champs d'adresse requis etaient manquants",
+          "unknown-postal-code": "Le code postal n'a pas pu etre rapproche",
+          "google-address-complete": "Google a confirme que l'adresse est complete",
+          "google-review-required": "Google a renvoye une adresse standardisee a verifier",
+          "google-unverified": "Google n'a pas pu verifier l'adresse",
+          "backend-standardized": "Le serveur a standardise l'adresse saisie",
+          "remote-standardized": "Le verificateur distant a standardise l'adresse",
+          "cass-standardized": "CASS a standardise l'adresse",
+          unknown: "Aucun motif enregistre",
+        },
       },
       payment: {
         title: "Mode de paiement",
@@ -2319,6 +2686,7 @@ const messages = {
             description: "Marquer la commande pour verification du credit membre avant capture finale.",
           },
         },
+        channelUnavailable: "Le canal de paiement n'est pas configure. Configurez VITE_YUDAO_PAY_CHANNEL_CODE avant d'accepter le paiement.",
         ready: "Pret pour une saisie securisee",
         required: "Requis avant la commande",
       },
@@ -2333,6 +2701,10 @@ const messages = {
       errors: {
         loadUnavailable: "Le service de paiement est indisponible. Veuillez reessayer plus tard.",
         orderUnavailable: "Le service de commande est indisponible. Veuillez reessayer plus tard.",
+        paymentUnavailable: "Le service de paiement n'est pas pret. Verifiez le canal de paiement puis reessayez.",
+        paymentChannelUnavailable: "Le canal de paiement n'est pas configure. Configurez le canal de paiement Yudao avant de commander.",
+        paymentRequired: "Completez les informations de paiement et acceptez les accords requis avant de commander.",
+        addressConfirmationRequired: "Verifiez et confirmez l'adresse de livraison avant de commander.",
         noAddress: "Aucune adresse Yudao n'est disponible pour cet utilisateur.",
         stockUnavailable: "Certains articles ne sont plus disponibles dans la quantite demandee. Verifiez votre panier avant de commander.",
         addressUnavailable: "Cette adresse ne peut pas etre utilisee pour la livraison actuelle. Modifiez l'adresse avant de continuer.",
@@ -2344,6 +2716,8 @@ const messages = {
         reviewBag: "Verifier le panier",
         signIn: "Se reconnecter",
         refreshSettlement: "Actualiser le paiement",
+        viewOrder: "Voir la commande",
+        reviewAddress: "Verifier l'adresse",
       },
       mode: {
         yudao: {
@@ -2384,12 +2758,105 @@ const messages = {
       orderLabel: "Commande",
       memberSavings: "Économies membre",
       memberSavingsUnavailable: "-",
+      paymentStatus: "Statut du paiement {status}",
+      paymentStatusUnavailable: "Le statut du paiement est encore en confirmation. Actualisez cette page pour verifier a nouveau.",
+      paymentResumeUnavailable: "Impossible de reprendre le paiement. Actualisez le statut du paiement puis reessayez.",
+      paymentChannelUnavailable: "Cette commande attend le paiement, mais le canal de paiement Yudao n'est pas configure.",
+      paymentReturn: {
+        cancelled: {
+          title: "Paiement annule",
+          message: "La commande a ete creee, mais le paiement n'est pas termine. Vous pouvez continuer le paiement ou actualiser le statut.",
+        },
+        failed: {
+          title: "Paiement non termine",
+          message: "Le canal de paiement a retourne un resultat negatif. Continuez le paiement ou actualisez le statut avant de contacter le support.",
+        },
+        paid: {
+          title: "Paiement termine",
+          message: "Le canal de paiement a retourne un resultat reussi. Nous actualisons le statut de commande ci-dessous.",
+        },
+        waiting: {
+          title: "Paiement en attente",
+          message: "Le canal de paiement n'a pas encore confirme la fin du paiement. Continuez le paiement ou actualisez le statut.",
+        },
+        unknown: {
+          title: "Resultat de paiement a verifier",
+          message: "Le canal de paiement a retourne un resultat non classe. Actualisez le statut avant de reessayer.",
+        },
+      },
+      paymentStatuses: {
+        waiting: "En attente de paiement",
+        paid: "Paye",
+        closed: "Ferme",
+        refunded: "Rembourse",
+        unknown: "Inconnu",
+      },
+      payOrderLabel: "Ordre de paiement {id}",
       view: "Voir",
       empty: "Aucune commande distante n'est encore disponible. Créez une commande Yudao depuis le paiement pour la voir ici.",
       status: "Statut {status}",
+      addressVerification: {
+        title: "Verification de l'adresse",
+        source: "Source de verification",
+        addressSource: "Source de l'adresse",
+        verificationSources: {
+          "google-address-validation": "Validation d'adresse Google",
+          "local-postal-region": "Verification locale du code postal",
+          "remote-address-verification": "Service de verification d'adresse",
+          "backend-address-verification": "Verification de repli du serveur",
+          unknown: "Verificateur inconnu",
+        },
+        addressSources: {
+          saved: "Adresse enregistree",
+          new: "Nouvelle adresse",
+          unknown: "Source inconnue",
+        },
+        statuses: {
+          verified: "Verifiee",
+          suggested: "Correction proposee",
+          unverified: "Confirmation requise",
+          unknown: "Statut inconnu",
+        },
+        choices: {
+          original: "Adresse saisie conservee",
+          suggested: "Adresse proposee utilisee",
+          unknown: "Choix inconnu",
+        },
+        reasons: {
+          "postal-region-mismatch": "La ville ou l'etat du code postal a ete corrige",
+          "missing-required-fields": "Des champs d'adresse requis etaient manquants",
+          "unknown-postal-code": "Le code postal n'a pas pu etre rapproche",
+          "google-address-complete": "Google a confirme que l'adresse est complete",
+          "google-review-required": "Google a renvoye une adresse standardisee a verifier",
+          "google-unverified": "Google n'a pas pu verifier l'adresse",
+          "backend-standardized": "Le serveur a standardise l'adresse saisie",
+          "remote-standardized": "Le verificateur distant a standardise l'adresse",
+          "cass-standardized": "CASS a standardise l'adresse",
+          unknown: "Aucun motif enregistre",
+        },
+        providerStatuses: {
+          fallback: "Le verificateur distant a bascule vers le controle local du code postal",
+          unknown: "Statut du verificateur inconnu",
+        },
+        status: "Statut de verification",
+        choice: "Choix confirme",
+        reason: "Motif de verification",
+        confirmedAt: "Confirme par l'acheteur le",
+        original: "Adresse originale",
+        suggested: "Adresse proposee",
+        selected: "Adresse selectionnee",
+        providerResponseId: "Reponse du verificateur",
+        providerStatus: "Statut du verificateur",
+        warning: "L'acheteur a confirme une adresse qui n'a pas pu etre entierement verifiee. Verifiez le risque de livraison avant l'expedition.",
+        providerFallbackWarning: "La verification d'adresse distante etait indisponible pour cette commande ; seul le controle local du code postal a ete enregistre.",
+        localPostalRegionWarning: "Seul le rapprochement local code postal, ville et etat a ete enregistre pour cette commande. Ce n'est pas une confirmation de livraison par transporteur.",
+        localOnlyVerificationWarning: "Seule la normalisation de repli du serveur a ete enregistree pour cette commande. Ce n'est pas une confirmation de livraison par transporteur.",
+      },
       actions: {
         connectAccount: "Connecter le compte",
         retry: "Reessayer",
+        refreshPaymentStatus: "Actualiser le paiement",
+        resumePayment: "Continuer le paiement",
         shop: "Continuer les achats",
       },
     },
@@ -2934,6 +3401,38 @@ const messages = {
           chooseRegion: "Choisir une région",
           defaultAddress: "Utiliser comme adresse de livraison par défaut",
           defaultBadge: "Adresse par défaut",
+          verification: {
+            lastChecked: "Dernière vérification au paiement",
+            warning: "Cette adresse a déjà été confirmée alors qu'elle n'a pas pu être entièrement vérifiée.",
+            providerFallbackWarning: "La vérification distante était indisponible lors du dernier contrôle ; seul le contrôle local du code postal a été enregistré.",
+            statuses: {
+              verified: "Vérifiée lors du paiement",
+              suggested: "Vérifiée avec correction proposée",
+              unverified: "Vérifiée mais non confirmée",
+              unknown: "Statut de vérification enregistré",
+            },
+            choices: {
+              original: "Adresse saisie conservée",
+              suggested: "Adresse proposée utilisée",
+              unknown: "Choix enregistré",
+            },
+            reasons: {
+              "postal-region-mismatch": "La ville ou l'état du code postal a été corrigé",
+              "missing-required-fields": "Des champs d'adresse requis étaient manquants",
+              "unknown-postal-code": "Le code postal n'a pas pu être rapproché",
+              "google-address-complete": "Google a confirmé que l'adresse est complète",
+              "google-review-required": "Google a renvoyé une adresse standardisée à vérifier",
+              "google-unverified": "Google n'a pas pu vérifier l'adresse",
+              "backend-standardized": "Le serveur a standardisé l'adresse saisie",
+              "remote-standardized": "Le vérificateur distant a standardisé l'adresse",
+              "cass-standardized": "CASS a standardisé l'adresse",
+              unknown: "Aucun motif enregistré",
+            },
+            providerStatuses: {
+              fallback: "Repli du vérificateur distant",
+              unknown: "Statut du vérificateur inconnu",
+            },
+          },
           saving: "Enregistrement...",
           addAddress: "Ajouter l'adresse",
           updateAddress: "Mettre à jour l'adresse",
@@ -3565,6 +4064,200 @@ const persistLocale = (lang) => {
     // Locale changes should still work if browser storage is disabled.
   }
 };
+
+messages["zh-CN"].orders.addressVerification = {
+  title: "地址核对",
+  source: "核对来源",
+  addressSource: "地址来源",
+  verificationSources: {
+    "google-address-validation": "Google 地址验证",
+    "local-postal-region": "本地邮编核对",
+    "remote-address-verification": "地址核对服务",
+    unknown: "未知核对来源",
+  },
+  addressSources: {
+    saved: "已保存地址",
+    new: "新增地址",
+    unknown: "未知来源",
+  },
+  statuses: {
+    verified: "已核对",
+    suggested: "有建议修改",
+    unverified: "需要确认",
+    unknown: "未知状态",
+  },
+  choices: {
+    original: "使用原填写地址",
+    suggested: "使用建议地址",
+    unknown: "未知选择",
+  },
+  reasons: {
+    "postal-region-mismatch": "邮编对应的城市或州已被修正",
+    "missing-required-fields": "缺少必要地址字段",
+    "unknown-postal-code": "无法匹配邮政编码",
+    unknown: "未记录原因",
+  },
+  status: "核对状态",
+  choice: "用户选择",
+  reason: "核对原因",
+  confirmedAt: "用户确认时间",
+  original: "原始地址",
+  suggested: "建议地址",
+  selected: "确认地址",
+  providerResponseId: "核对响应编号",
+};
+
+Object.assign(messages["zh-CN"].orders.addressVerification.reasons, {
+  "google-address-complete": "Google 已确认地址完整",
+  "google-review-required": "Google 返回了需要用户复核的标准化地址",
+  "google-unverified": "Google 无法验证该地址",
+  "backend-standardized": "后端已标准化用户填写的地址",
+  "remote-standardized": "远程核对服务已标准化该地址",
+  "cass-standardized": "CASS 已标准化该地址",
+});
+
+messages["zh-CN"].orders.addressVerification.providerStatuses = {
+  fallback: "远程核对已回退到本地邮编核对",
+  unknown: "未知核对服务状态",
+};
+messages["zh-CN"].orders.addressVerification.providerStatus = "核对服务状态";
+messages["zh-CN"].orders.addressVerification.warning =
+  "买家确认了未完全验证的地址。履约发货前请再次评估配送风险。";
+messages["zh-CN"].orders.addressVerification.providerFallbackWarning =
+  "该订单远程地址核对不可用，仅记录了本地邮编核对结果。";
+
+messages["zh-CN"].checkout.shipping = {
+  title: "收货地址",
+  firstName: "名",
+  lastName: "姓",
+  country: "国家",
+  street: "街道地址",
+  apartment: "公寓、楼层、套房等（可选）",
+  city: "城市",
+  state: "州",
+  postalCode: "邮政编码",
+  phone: "电话",
+  savedAddresses: "已保存地址",
+  enterNewAddress: "填写新地址",
+  savedAddressVerification: "已保存地址核对记录",
+  savedAddressVerificationRecheck: "支付前仍需要再次核对并确认该地址。",
+};
+
+messages["zh-CN"].checkout.shipping.addressVerificationFallbackWarning =
+  "\u5f53\u524d\u8fdc\u7a0b\u5730\u5740\u6838\u5bf9\u5c1a\u672a\u5b8c\u5168\u914d\u7f6e\u3002\u6211\u4eec\u4ecd\u4f1a\u8fdb\u884c\u5730\u5740\u590d\u6838\uff0c\u4f46\u652f\u4ed8\u524d\u8bf7\u4ed4\u7ec6\u786e\u8ba4\u8857\u9053\u5730\u5740\u3002";
+
+messages["zh-CN"].checkout.addressConfirmation = {
+  title: "已确认收货地址",
+  status: "地址状态",
+  choice: "地址选择",
+  addressSource: "地址来源",
+  reason: "核对原因",
+  edit: "编辑地址",
+  warning: "你选择使用未完全验证的地址。如果承运商无法投递，配送可能会延迟。",
+  addressSources: {
+    saved: "已保存地址",
+    new: "新增地址",
+    unknown: "未知来源",
+  },
+  statuses: {
+    verified: "已确认验证地址",
+    suggested: "已确认建议地址",
+    unverified: "已确认未验证地址",
+    unknown: "已记录地址确认",
+  },
+  choices: {
+    original: "使用原填写地址",
+    suggested: "使用建议地址",
+    unknown: "未知选择",
+  },
+  reasons: {
+    "postal-region-mismatch": "邮编对应的城市或州已被修正",
+    "missing-required-fields": "缺少必要地址字段",
+    "unknown-postal-code": "无法匹配邮政编码",
+    unknown: "未记录原因",
+  },
+};
+
+Object.assign(messages["zh-CN"].checkout.addressConfirmation.reasons, {
+  "google-address-complete": "Google 已确认地址完整",
+  "google-review-required": "Google 返回了需要用户复核的标准化地址",
+  "google-unverified": "Google 无法验证该地址",
+  "backend-standardized": "后端已标准化用户填写的地址",
+  "remote-standardized": "远程核对服务已标准化该地址",
+  "cass-standardized": "CASS 已标准化该地址",
+});
+
+messages["zh-CN"].checkout.addressReview.providerFallbackWarning =
+  "远程地址核对不可用，本次使用本地邮编数据库核对。请仔细确认地址后再继续。";
+messages["zh-CN"].checkout.addressConfirmation.providerStatus = "核对服务状态";
+messages["zh-CN"].checkout.addressConfirmation.providerFallbackWarning =
+  "远程地址核对不可用，本次使用本地邮编数据库核对。付款前请再次确认地址准确。";
+messages["zh-CN"].checkout.addressConfirmation.providerStatuses = {
+  fallback: "远程核对回退",
+  unknown: "未知核对服务状态",
+};
+
+messages["zh-CN"].membership.account.addressBook.verification = {
+  lastChecked: "上次结账核对",
+  warning: "该地址曾在无法完全验证的情况下由用户确认。",
+  providerFallbackWarning: "上次核对时远程地址核对不可用，仅记录了本地邮编核对结果。",
+  statuses: {
+    verified: "结账时已核对验证",
+    suggested: "结账时按建议地址核对",
+    unverified: "结账时已确认但未完全验证",
+    unknown: "已记录核对状态",
+  },
+  choices: {
+    original: "保留原填写地址",
+    suggested: "使用建议地址",
+    unknown: "已记录选择",
+  },
+  reasons: {
+    "postal-region-mismatch": "邮编对应的城市或州已被修正",
+    "missing-required-fields": "缺少必要地址字段",
+    "unknown-postal-code": "无法匹配邮政编码",
+    "google-address-complete": "Google 已确认地址完整",
+    "google-review-required": "Google 返回了需要用户复核的标准化地址",
+    "google-unverified": "Google 无法验证该地址",
+    "backend-standardized": "后端已标准化用户填写的地址",
+    "remote-standardized": "远程核对服务已标准化该地址",
+    "cass-standardized": "CASS 已标准化该地址",
+    unknown: "未记录原因",
+  },
+  providerStatuses: {
+    fallback: "远程核对回退",
+    unknown: "未知核对服务状态",
+  },
+};
+
+messages.fr.membership.account.addressBook.verification.missingWarning =
+  "Cette adresse enregistree n'a pas encore ete verifiee lors du paiement.";
+messages.fr.membership.account.addressBook.verification.statuses.missing = "Pas encore verifiee";
+messages.fr.membership.account.addressBook.verification.localPostalRegionWarning =
+  "Le dernier controle a seulement rapproche le code postal, la ville et l'etat ; il ne confirme pas la livraison au niveau de la rue.";
+messages.fr.membership.account.addressBook.verification.localOnlyVerificationWarning =
+  "Le dernier controle a seulement standardise l'adresse avec le verificateur de repli du serveur ; il ne confirme pas la livraison au niveau de la rue.";
+messages["zh-CN"].orders.addressVerification.verificationSources["backend-address-verification"] =
+  "后端兜底地址核对";
+messages["zh-CN"].orders.addressVerification.localPostalRegionWarning =
+  "本订单仅记录了本地邮编、城市和州的匹配结果，不代表承运商确认该街道地址可投递。";
+messages["zh-CN"].orders.addressVerification.localOnlyVerificationWarning =
+  "本订单仅记录了后端兜底地址标准化结果，不代表承运商确认该街道地址可投递。";
+messages["zh-CN"].checkout.addressReview.localPostalRegionWarning =
+  "本次仅按本地邮编、城市和州数据进行核对，不能证明街道地址一定可投递。请仔细确认。";
+messages["zh-CN"].checkout.addressReview.localOnlyVerificationWarning =
+  "本次仅由后端兜底服务标准化地址格式，不能证明街道地址一定可投递。请仔细确认。";
+messages["zh-CN"].checkout.addressConfirmation.localPostalRegionWarning =
+  "该地址仅通过本地邮编、城市和州数据核对。付款前请再次确认街道地址。";
+messages["zh-CN"].checkout.addressConfirmation.localOnlyVerificationWarning =
+  "该地址仅通过后端兜底服务完成格式标准化。付款前请再次确认街道地址。";
+messages["zh-CN"].membership.account.addressBook.verification.localPostalRegionWarning =
+  "上次核对仅匹配了邮编、城市和州，不代表街道级投递地址已被确认。";
+messages["zh-CN"].membership.account.addressBook.verification.localOnlyVerificationWarning =
+  "上次核对仅通过后端兜底服务标准化地址，不代表街道级投递地址已被确认。";
+messages["zh-CN"].membership.account.addressBook.verification.missingWarning =
+  "该保存地址尚未在结账时完成地址核对。";
+messages["zh-CN"].membership.account.addressBook.verification.statuses.missing = "尚未核对";
 
 const locale = ref(getInitialLocale());
 updateDocumentLanguage(locale.value);
