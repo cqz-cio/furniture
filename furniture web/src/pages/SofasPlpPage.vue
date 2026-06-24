@@ -1,13 +1,16 @@
 <script setup>
-import { computed, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import ProductImage from "../components/ProductImage.vue";
 import { demoProducts } from "../data/demoProducts.js";
 import { useI18n } from "../i18n.js";
+import { PRODUCT_SORT_OPTIONS } from "../services/productListControls.js";
 import {
-  applyProductListControls,
-  buildProductTypeOptions,
-  PRODUCT_SORT_OPTIONS,
-} from "../services/productListControls.js";
+  buildProductListingModel,
+  productFacetGroups,
+  productListingFilters,
+  productListingQueryFilterLabels,
+  resolveProductListingQuery,
+} from "../services/productListingModel.js";
 import { getProductPage } from "../services/yudaoProductApi.js";
 
 const emit = defineEmits(["add-to-cart"]);
@@ -17,20 +20,48 @@ const loading = ref(true);
 const source = ref("demo");
 const products = ref(demoProducts);
 const searchQuery = ref("");
-const selectedProductType = ref("all");
+const initialListingQuery = resolveProductListingQuery(typeof window === "undefined" ? "" : window.location.search);
+const selectedProductType = ref(initialListingQuery.filter);
+const selectedFacets = ref(initialListingQuery.facets);
 const selectedSort = ref("featured");
 const quickAddMessage = ref("");
 const skeletonCards = [0, 1, 2, 3];
 
 const sourceLabel = computed(() => (source.value === "yudao" ? t("connectedCatalog") : t("offlineCatalog")));
-const productTypeOptions = computed(() => buildProductTypeOptions(products.value));
-const visibleProducts = computed(() =>
-  applyProductListControls(products.value, {
-    query: searchQuery.value,
-    productType: selectedProductType.value,
-    sort: selectedSort.value,
+const normalizeValue = (value) => String(value ?? "").trim().toLowerCase();
+const sortForListingModel = computed(() => {
+  if (selectedSort.value === "priceAsc") return "price-asc";
+  if (selectedSort.value === "priceDesc") return "price-desc";
+  return "featured";
+});
+const productTypeOptions = computed(() => {
+  const baseOptions = productListingFilters.filter((option) => option.value !== "all");
+  const hasSelectedOption = baseOptions.some((option) => option.value === selectedProductType.value);
+  if (hasSelectedOption || selectedProductType.value === "all") return baseOptions;
+
+  return [
+    {
+      value: selectedProductType.value,
+      label: productListingQueryFilterLabels[selectedProductType.value] || selectedProductType.value,
+    },
+    ...baseOptions,
+  ];
+});
+const listingModel = computed(() =>
+  buildProductListingModel(products.value, {
+    filter: selectedProductType.value,
+    sort: sortForListingModel.value,
+    facets: selectedFacets.value,
   })
 );
+const productMatchesSearch = (product) => {
+  const query = normalizeValue(searchQuery.value);
+  if (!query) return true;
+  return [product.name, product.subtitle, product.description, product.productType]
+    .map(normalizeValue)
+    .some((value) => value.includes(query));
+};
+const visibleProducts = computed(() => listingModel.value.products.filter(productMatchesSearch));
 const resultSummary = computed(() =>
   t("productList.resultSummary", { visible: visibleProducts.value.length, total: products.value.length })
 );
@@ -40,6 +71,12 @@ const activeFilterLabels = computed(() => {
   if (selectedProductType.value !== "all") {
     labels.push(productTypeOptions.value.find((option) => option.value === selectedProductType.value)?.label || selectedProductType.value);
   }
+  Object.entries(selectedFacets.value).forEach(([key, value]) => {
+    if (!value || value === "all") return;
+    const group = productFacetGroups.find((item) => item.key === key);
+    const option = group?.options.find((item) => item.value === value);
+    labels.push(option?.label || value);
+  });
   return labels;
 });
 const money = (value) => `$${value.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
@@ -47,14 +84,22 @@ const isProductAvailable = (product) => Number(product.stock) > 0;
 const resetProductListControls = () => {
   searchQuery.value = "";
   selectedProductType.value = "all";
+  selectedFacets.value = {};
   selectedSort.value = "featured";
 };
 const handleQuickAdd = (product, options) => {
   emit("add-to-cart", product, 1, options);
   quickAddMessage.value = `${product.name} added to bag`;
 };
+const syncListingQueryFromLocation = () => {
+  const listingQuery = resolveProductListingQuery(window.location.search);
+  selectedProductType.value = listingQuery.filter;
+  selectedFacets.value = listingQuery.facets;
+};
 
 onMounted(async () => {
+  window.addEventListener("popstate", syncListingQueryFromLocation);
+  window.addEventListener("oakved:navigation", syncListingQueryFromLocation);
   try {
     const page = await getProductPage({ pageNo: 1, pageSize: 24 });
     if (page.list.length > 0) {
@@ -66,6 +111,11 @@ onMounted(async () => {
   } finally {
     loading.value = false;
   }
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("popstate", syncListingQueryFromLocation);
+  window.removeEventListener("oakved:navigation", syncListingQueryFromLocation);
 });
 </script>
 

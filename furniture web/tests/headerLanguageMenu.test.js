@@ -106,4 +106,16 @@ describe("header language menu", () => {
     expect(css).toContain("left: var(--category-menu-left, 80px);");
     expect(css).not.toContain(".category-mega-menu.is-sale-menu {\n  left: auto;");
   });
+
+  it("remounts same-page product listings when the navigation query changes", () => {
+    const appSource = readSource("../src/App.vue");
+    const plpSource = readSource("../src/pages/SofasPlpPage.vue");
+
+    expect(appSource).toContain("const routeSignature = ref");
+    expect(appSource).toContain("routeSignature.value = nextPath;");
+    expect(appSource).toContain(':key="`${currentPage}:${routeSignature}`"');
+    expect(plpSource).toContain("resolveProductListingQuery");
+    expect(plpSource).toContain("buildProductListingModel");
+    expect(plpSource).toContain('window.addEventListener("oakved:navigation", syncListingQueryFromLocation)');
+  });
 });

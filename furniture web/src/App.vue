@@ -115,6 +115,7 @@ const pageFromPath = (path) => {
 };
 
 const currentPage = ref(pageFromPath(window.location.pathname));
+const routeSignature = ref(`${window.location.pathname}${window.location.search}${window.location.hash}`);
 const cartOpen = ref(false);
 const cartItems = ref(readLocalCart());
 const cartMode = ref("local");
@@ -201,6 +202,7 @@ const applySeo = (page) => {
 
 const syncPageFromLocation = () => {
   currentPage.value = pageFromPath(window.location.pathname);
+  routeSignature.value = `${window.location.pathname}${window.location.search}${window.location.hash}`;
 };
 
 const navigateToPath = (path) => {
@@ -210,6 +212,7 @@ const navigateToPath = (path) => {
   if (`${window.location.pathname}${window.location.search}${window.location.hash}` !== nextPath) {
     window.history.pushState({ page: nextPage }, "", nextPath);
   }
+  routeSignature.value = nextPath;
   window.dispatchEvent(new CustomEvent("oakved:navigation", { detail: { path: nextPath } }));
 };
 
@@ -434,8 +437,10 @@ onBeforeUnmount(() => {
   />
   <main class="app-main" :class="{ 'is-checkout-shell': usesCheckoutShell }">
     <component
+      :key="`${currentPage}:${routeSignature}`"
       :is="pageComponent"
       :page-key="currentPage"
+      :route-signature="routeSignature"
       :auth-version="authVersion"
       :items="cartItems"
       @add-to-cart="addToCart"

@@ -113,6 +113,24 @@ describe("product listing model", () => {
     ).toBe(8);
   });
 
+  it("keeps primary navigation entries mapped to distinct product listing groups", () => {
+    const navigationQueries = [
+      ["?room=bedroom", ["nightstand", "single-sofa", "round-table", "bed-bench", "dresser", "vanity", "desk", "chair"]],
+      ["?category=storage", ["nightstand", "dresser"]],
+      ["?category=desk-table", ["round-table", "vanity", "desk"]],
+      ["?category=seating", ["single-sofa", "bed-bench", "chair"]],
+      ["?material=wood", ["nightstand", "single-sofa", "round-table", "bed-bench", "dresser", "vanity", "desk", "chair"]],
+    ];
+
+    navigationQueries.forEach(([search, expectedTypes]) => {
+      const query = resolveProductListingQuery(search);
+      const listingTypes = buildProductListingModel(demoProducts, query)
+        .products.map((product) => product.productType)
+        .sort();
+      expect(listingTypes).toEqual([...expectedTypes].sort());
+    });
+  });
+
   it("supports launch-ready faceted filtering by material, color, availability and price", () => {
     expect(productFacetGroups.map((group) => group.key)).toEqual(["material", "color", "availability", "price"]);
 
