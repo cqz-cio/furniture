@@ -169,15 +169,36 @@ export const inferListingType = (product = {}) => {
   if (knownTypes.has(rawType)) return rawType;
   const text = `${rawType} ${product.name || ""} ${product.subtitle || ""}`.toLowerCase();
 
-  if (text.includes("round") && text.includes("table")) return "round-table";
-  if (text.includes("nightstand") || text.includes("bedside")) return "nightstand";
-  if (text.includes("bench")) return "bed-bench";
-  if (text.includes("dresser") || text.includes("chest") || text.includes("cabinet")) return "dresser";
-  if (text.includes("vanity")) return "vanity";
-  if (text.includes("desk")) return "desk";
-  if (text.includes("single-sofa") || text.includes("single sofa") || text.includes("sofa")) return "single-sofa";
-  if (text.includes("chair")) return "chair";
+  if ((text.includes("round") && text.includes("table")) || text.includes("圆桌")) return "round-table";
+  if (text.includes("nightstand") || text.includes("bedside") || text.includes("床头柜") || text.includes("床边柜")) {
+    return "nightstand";
+  }
+  if (text.includes("bench") || text.includes("床尾长凳") || text.includes("床凳") || text.includes("长凳")) {
+    return "bed-bench";
+  }
+  if (
+    text.includes("dresser") ||
+    text.includes("chest") ||
+    text.includes("cabinet") ||
+    text.includes("斗柜") ||
+    text.includes("抽屉柜") ||
+    text.includes("收纳柜")
+  ) {
+    return "dresser";
+  }
+  if (text.includes("vanity") || text.includes("化妆桌") || text.includes("梳妆台")) return "vanity";
+  if (text.includes("desk") || text.includes("书桌") || text.includes("写字桌")) return "desk";
+  if (text.includes("single-sofa") || text.includes("single sofa") || text.includes("sofa") || text.includes("单人座沙发") || text.includes("单人沙发")) {
+    return "single-sofa";
+  }
+  if (text.includes("chair") || text.includes("椅子") || text.includes("座椅") || text.includes("椅")) return "chair";
   return product.productType || "uncategorized";
+};
+
+export const supplementMissingCompanyTypes = (liveProducts = [], fallbackProducts = []) => {
+  const liveTypes = new Set(liveProducts.map((product) => inferListingType(product)));
+  const missingFallbackProducts = fallbackProducts.filter((product) => !liveTypes.has(product.productType));
+  return [...liveProducts, ...missingFallbackProducts];
 };
 
 const matchesFacet = (product, key, value) => {

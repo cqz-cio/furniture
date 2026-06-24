@@ -8,6 +8,7 @@ import {
   productListingQueryFilterLabels,
   productListingQueryFilters,
   resolveProductListingQuery,
+  supplementMissingCompanyTypes,
 } from "../src/services/productListingModel.js";
 
 describe("product listing model", () => {
@@ -166,6 +167,28 @@ describe("product listing model", () => {
 
     expect(listing.products.map((product) => product.name)).toEqual(["Cloud Sofa"]);
     expect(listing.summary.collectionCount).toBe(1);
+  });
+
+  it("infers company listing types from Chinese remote product names and categories", () => {
+    expect(inferListingType({ name: "北美黑胡桃床尾长凳" })).toBe("bed-bench");
+    expect(inferListingType({ name: "烟熏橡木床头柜" })).toBe("nightstand");
+    expect(inferListingType({ category: "斗柜", name: "六斗柜" })).toBe("dresser");
+    expect(inferListingType({ name: "圆桌" })).toBe("round-table");
+    expect(inferListingType({ name: "单人座沙发" })).toBe("single-sofa");
+  });
+
+  it("supplements missing company product types when live catalog data is incomplete", () => {
+    const liveProducts = [
+      { id: 1, name: "Live Nightstand", productType: "nightstand" },
+      { id: 2, name: "Live Dresser", productType: "dresser" },
+    ];
+    const supplementedProducts = supplementMissingCompanyTypes(liveProducts, demoProducts);
+    const listing = buildProductListingModel(supplementedProducts, {
+      filter: "bed-bench",
+      sort: "featured",
+    });
+
+    expect(listing.products.map((product) => product.name)).toEqual(["End-of-Bed Bench"]);
   });
 
   it("keeps explicit company productType ahead of descriptive words", () => {

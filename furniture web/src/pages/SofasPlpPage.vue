@@ -10,6 +10,7 @@ import {
   productListingFilters,
   productListingQueryFilterLabels,
   resolveProductListingQuery,
+  supplementMissingCompanyTypes,
 } from "../services/productListingModel.js";
 import { getProductPage } from "../services/yudaoProductApi.js";
 
@@ -103,7 +104,7 @@ onMounted(async () => {
   try {
     const page = await getProductPage({ pageNo: 1, pageSize: 24 });
     if (page.list.length > 0) {
-      products.value = page.list;
+      products.value = supplementMissingCompanyTypes(page.list, demoProducts);
       source.value = "yudao";
     }
   } catch {
