@@ -33,7 +33,6 @@ const chooseOption = (option) => {
         <h2>{{ t(`membership.checkoutAuth.${option.key}.title`) }}</h2>
         <p>{{ t(`membership.checkoutAuth.${option.key}.description`) }}</p>
         <small v-if="option.disabled">{{ t("membership.checkoutAuth.guestDisabledReason") }}</small>
-        <small v-else-if="option.disabledForMembership">{{ t("membership.checkoutAuth.guestMembershipNote") }}</small>
         <button v-if="option.key === 'guest'" type="button" :disabled="option.disabled" @click="chooseOption(option)">
           {{ t(`membership.checkoutAuth.${option.key}.cta`) }}
         </button>

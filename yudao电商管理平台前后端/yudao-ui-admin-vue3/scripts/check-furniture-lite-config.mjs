@@ -81,16 +81,39 @@ const requiredFurnitureLiteConfigTokens = [
   '/system/role',
   '/infra/file/file-config',
   'deniedFixedRoutePrefixes',
-  '/ai',
   '/crm'
 ]
 
 for (const token of requiredFurnitureLiteConfigTokens) {
-  assert.ok(furnitureLiteConfig.includes(token), `src/config/furnitureLite.ts must include ${token}`)
+  assert.ok(
+    furnitureLiteConfig.includes(token),
+    `src/config/furnitureLite.ts must include ${token}`
+  )
 }
 
+const allowedMenuBlock =
+  furnitureLiteConfig.match(/const allowedMenuPaths = new Set\(\[[\s\S]*?\]\)/)?.[0] || ''
+const deniedFixedRoutePrefixesBlock =
+  furnitureLiteConfig.match(/const deniedFixedRoutePrefixes = \[[\s\S]*?\]/)?.[0] || ''
+
+for (const route of ['/ai', '/ai/chat', '/ai/model', '/ai/knowledge', '/ai/workflow']) {
+  assert.ok(
+    !allowedMenuBlock.includes(`'${route}'`) && !allowedMenuBlock.includes(`"${route}"`),
+    `furniture-lite mode must hide generic AI menu route ${route}`
+  )
+}
+
+assert.ok(
+  deniedFixedRoutePrefixesBlock.includes("'/ai'") ||
+    deniedFixedRoutePrefixesBlock.includes('"/ai"'),
+  'src/config/furnitureLite.ts must deny /ai fixed routes in furniture-lite mode'
+)
+
 for (const token of ['filterFurnitureLiteMenus', 'filterFurnitureLiteFixedRoutes']) {
-  assert.ok(permissionStore.includes(token), `src/store/modules/permission.ts must reference ${token}`)
+  assert.ok(
+    permissionStore.includes(token),
+    `src/store/modules/permission.ts must reference ${token}`
+  )
 }
 
 assert.ok(

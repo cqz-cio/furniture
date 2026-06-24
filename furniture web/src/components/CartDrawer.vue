@@ -22,6 +22,11 @@ const totals = computed(() => getCartTotals(props.items));
 const membershipPricing = computed(() => getMembershipPricing(props.items));
 const membershipNotice = computed(() => getMembershipCartNotice(props.items));
 const hasRemoteItems = computed(() => props.items.some((item) => item.source === "yudao"));
+const cartServicePromises = [
+  { label: "Delivery", value: "Room-of-choice scheduling" },
+  { label: "Assembly", value: "Placement notes reviewed" },
+  { label: "Materials", value: "Wood finishes checked" },
+];
 const money = (value) => `$${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 </script>
 
@@ -51,14 +56,25 @@ const money = (value) => `$${value.toLocaleString("en-US", { minimumFractionDigi
           <strong>{{ membershipNotice.title }}</strong>
           <p>{{ membershipNotice.message }}</p>
         </section>
+        <section class="cart-assurance-strip" aria-label="Furniture service planning">
+          <article v-for="promise in cartServicePromises" :key="promise.label">
+            <span>{{ promise.label }}</span>
+            <strong>{{ promise.value }}</strong>
+          </article>
+        </section>
         <article v-for="item in items" :key="item.skuId" class="cart-item">
           <ProductImage :src="item.cover" :label="item.name" />
           <div class="cart-item-main">
             <span class="cart-item-source">
-              {{ isMembershipItem(item) ? "Membership" : item.source === "yudao" ? "Yudao" : "Preview" }}
+              {{ isMembershipItem(item) ? "Membership" : item.source === "yudao" ? "Live catalog" : "Oakved item" }}
             </span>
             <h3>{{ item.name }}</h3>
             <p>{{ item.subtitle }}</p>
+            <div v-if="item.delivery || item.dimensions || item.material" class="cart-item-specs">
+              <span v-if="item.delivery">{{ item.delivery }}</span>
+              <span v-if="item.dimensions">{{ item.dimensions }}</span>
+              <span v-if="item.material">{{ item.material }}</span>
+            </div>
             <strong>{{ money(item.price) }}</strong>
             <div class="cart-item-controls">
               <label>
@@ -92,6 +108,10 @@ const money = (value) => `$${value.toLocaleString("en-US", { minimumFractionDigi
         <div class="cart-foot-row">
           <span>{{ t("cart.subtotal") }}</span>
           <strong>{{ money(membershipPricing.estimatedTotal) }}</strong>
+        </div>
+        <div class="cart-checkout-note">
+          <strong>Before checkout</strong>
+          <span>Confirm elevator access, room measurements and preferred delivery window for large furniture.</span>
         </div>
         <p>{{ t("cart.deliveryNote") }}</p>
         <button type="button" :disabled="items.length === 0" @click="emit('checkout')">{{ t("common.checkout") }}</button>

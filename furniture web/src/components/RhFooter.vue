@@ -3,7 +3,7 @@ import { footerLinkHref, rhFooter } from "../data/rhLayout.js";
 </script>
 
 <template>
-  <footer class="rh-footer" aria-label="RH footer extraction">
+  <footer class="rh-footer" aria-label="Oakved footer">
     <section class="footer-newsletter" aria-label="Email signup">
       <h2>{{ rhFooter.newsletter.title }}</h2>
       <p>{{ rhFooter.newsletter.subtitle }}</p>
@@ -22,7 +22,7 @@ import { footerLinkHref, rhFooter } from "../data/rhLayout.js";
 
     <button class="footer-region" type="button">
       <span>{{ rhFooter.region }}</span>
-      <span aria-hidden="true">⌄</span>
+      <span aria-hidden="true">v</span>
     </button>
 
     <p class="footer-copyright">{{ rhFooter.copyright }}</p>

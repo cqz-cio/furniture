@@ -36,6 +36,13 @@ describe("membership UI integration", () => {
     expect(source).toContain("displayEstimatedTotal");
   });
 
+  it("keeps guest checkout restriction copy limited to disabled membership checkout", () => {
+    const source = readSource("../src/pages/CheckoutAuthPage.vue");
+
+    expect(source).toContain('v-if="option.disabled"');
+    expect(source).not.toContain("v-else-if=\"option.disabledForMembership\"");
+  });
+
   it("adds membership eligibility review to account order detail", () => {
     const source = readSource("../src/pages/OrdersPage.vue");
 

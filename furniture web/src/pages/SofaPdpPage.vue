@@ -14,16 +14,59 @@ const source = ref("demo");
 const quantity = ref(1);
 
 const productId = computed(() => new URLSearchParams(window.location.search).get("id"));
-const sourceLabel = computed(() => (source.value === "yudao" ? t("connectedCatalog") : t("offlineCatalog")));
+const sourceLabel = computed(() => (source.value === "yudao" ? "Oakved collection" : "Oakved catalog"));
 const money = (value) => `$${value.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 const activeGalleryIndex = ref(0);
 const detail = computed(() => buildProductDetailModel(product.value));
 const activeGalleryItem = computed(() => detail.value.gallery[activeGalleryIndex.value] || detail.value.gallery[0]);
+const addCurrentProductToCart = () => emit("add-to-cart", product.value, quantity.value);
+let lastGalleryWheelAt = 0;
+
+const setGalleryIndex = (index) => {
+  const total = detail.value.gallery.length;
+  if (!total) return;
+  activeGalleryIndex.value = (index + total) % total;
+};
+
+const showPreviousGalleryItem = () => setGalleryIndex(activeGalleryIndex.value - 1);
+const showNextGalleryItem = () => setGalleryIndex(activeGalleryIndex.value + 1);
+
+const handleGalleryWheel = (event) => {
+  const now = Date.now();
+  if (now - lastGalleryWheelAt < 760) return;
+
+  const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
+  if (Math.abs(delta) < 8) return;
+
+  lastGalleryWheelAt = now;
+  if (delta > 0) {
+    showNextGalleryItem();
+  } else {
+    showPreviousGalleryItem();
+  }
+};
+
+const applyProductSeo = () => {
+  if (typeof document === "undefined") return;
+  const title = detail.value.name ? `${detail.value.name} | Oakved` : "Product Details | Oakved";
+  document.title = title;
+  let description = document.querySelector('meta[name="description"]');
+  if (!description) {
+    description = document.createElement("meta");
+    description.setAttribute("name", "description");
+    document.head.appendChild(description);
+  }
+  description.setAttribute(
+    "content",
+    `${detail.value.name} from ${detail.value.collection}. ${detail.value.description}`,
+  );
+};
 
 onMounted(async () => {
   const id = productId.value;
   if (!id) {
     loading.value = false;
+    applyProductSeo();
     return;
   }
 
@@ -36,6 +79,7 @@ onMounted(async () => {
   } finally {
     activeGalleryIndex.value = 0;
     loading.value = false;
+    applyProductSeo();
   }
 });
 </script>
@@ -46,20 +90,57 @@ onMounted(async () => {
 
     <div class="product-detail-grid">
       <div class="product-detail-media">
-        <figure class="product-gallery-main" :class="`tone-${activeGalleryItem.tone}`">
-          <img v-if="activeGalleryItem.src" :src="activeGalleryItem.src" :alt="`${detail.name} ${activeGalleryItem.label}`" />
-          <figcaption v-else class="product-gallery-placeholder">
-            <span>{{ activeGalleryItem.label }}</span>
-            <strong>{{ activeGalleryItem.kind }}</strong>
-          </figcaption>
+        <figure
+          class="product-gallery-main"
+          :class="`tone-${activeGalleryItem.tone}`"
+          tabindex="0"
+          :aria-label="`${detail.name} gallery. Click, scroll or use arrow keys to switch views.`"
+          @click="showNextGalleryItem"
+          @wheel.prevent="handleGalleryWheel"
+          @keydown.left.prevent="showPreviousGalleryItem"
+          @keydown.right.prevent="showNextGalleryItem"
+        >
+          <Transition name="product-gallery-fade">
+            <img
+              v-if="activeGalleryItem.src"
+              :key="activeGalleryItem.src"
+              :src="activeGalleryItem.src"
+              :alt="`${detail.name} ${activeGalleryItem.label}`"
+            />
+            <figcaption v-else :key="activeGalleryItem.label" class="product-gallery-placeholder">
+              <span>{{ activeGalleryItem.label }}</span>
+              <strong>{{ activeGalleryItem.kind }}</strong>
+            </figcaption>
+          </Transition>
+          <button
+            class="product-gallery-nav product-gallery-nav-prev"
+            type="button"
+            aria-label="Previous product image"
+            @click.stop="showPreviousGalleryItem"
+          >
+            ‹
+          </button>
+          <button
+            class="product-gallery-nav product-gallery-nav-next"
+            type="button"
+            aria-label="Next product image"
+            @click.stop="showNextGalleryItem"
+          >
+            ›
+          </button>
         </figure>
+        <p class="product-gallery-status" aria-live="polite">
+          <span>{{ activeGalleryItem.label }} view</span>
+          <span>{{ activeGalleryIndex + 1 }} / {{ detail.gallery.length }}</span>
+          <small>Click, scroll or use arrow keys to switch views</small>
+        </p>
         <div class="product-gallery-thumbs" aria-label="Product images">
           <button
             v-for="(item, index) in detail.gallery"
             :key="`${item.label}-${index}`"
             type="button"
             :class="{ active: activeGalleryIndex === index }"
-            @click="activeGalleryIndex = index"
+            @click="setGalleryIndex(index)"
           >
             <img v-if="item.src" :src="item.src" :alt="item.label" />
             <span v-else>{{ item.label }}</span>
@@ -81,6 +162,13 @@ onMounted(async () => {
         </div>
         <p class="product-savings-label">{{ detail.price.savingsLabel }}</p>
         <p class="product-price-context">{{ detail.price.context }}</p>
+        <section class="product-membership-callout" aria-label="Membership pricing details">
+          <div>
+            <strong>{{ detail.membershipPrompt.title }}</strong>
+            <p>{{ detail.membershipPrompt.copy }}</p>
+          </div>
+          <a :href="detail.membershipPrompt.href">{{ detail.membershipPrompt.linkLabel }}</a>
+        </section>
         <nav class="product-related-links" aria-label="Related product options">
           <a v-for="link in detail.relatedLinks" :key="link.label" :href="link.href">{{ link.label }}</a>
         </nav>
@@ -124,13 +212,20 @@ onMounted(async () => {
           <small>{{ detail.availability.specialOrder }}</small>
         </section>
 
+        <section class="product-assurance-grid" aria-label="Delivery and returns">
+          <article v-for="item in detail.purchaseAssurance" :key="item.title">
+            <h2>{{ item.title }}</h2>
+            <p>{{ item.copy }}</p>
+          </article>
+        </section>
+
         <p class="product-stock">{{ detail.stock.label }} {{ detail.stock.value }} / {{ detail.stock.status }}</p>
         <div class="product-purchase-row">
           <label>
             {{ t("quantity") }}
             <input v-model.number="quantity" min="1" type="number" />
           </label>
-          <button type="button" @click="emit('add-to-cart', product, quantity)">
+          <button type="button" @click="addCurrentProductToCart">
             {{ t("addToCart") }}
           </button>
         </div>
@@ -148,5 +243,67 @@ onMounted(async () => {
         </section>
       </article>
     </div>
+
+    <section class="product-inspiration-section" aria-label="Room inspiration">
+      <header>
+        <p class="eyebrow">Room inspiration</p>
+        <h2>Complete the room with proportion, texture and quiet materials.</h2>
+      </header>
+      <div class="product-inspiration-grid">
+        <article v-for="item in detail.roomInspiration" :key="item.title">
+          <img :src="item.image" :alt="item.title" />
+          <div>
+            <h3>{{ item.title }}</h3>
+            <p>{{ item.copy }}</p>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="shop-room-section" aria-label="Shop the room">
+      <figure class="shop-room-figure">
+        <img :src="detail.roomInspiration[0]?.image" alt="Styled room with shoppable Oakved furniture" loading="lazy" />
+        <a
+          v-for="(item, index) in detail.companionProducts"
+          :key="item.title"
+          :href="item.href"
+          class="shop-room-hotspot"
+          :class="`hotspot-${index + 1}`"
+        >
+          <span>{{ index + 1 }}</span>
+          <strong>{{ item.title }}</strong>
+        </a>
+        <a class="shop-room-hotspot hotspot-3" :href="`/product?id=${detail.id || 1001}`">
+          <span>3</span>
+          <strong>{{ detail.name }}</strong>
+        </a>
+      </figure>
+      <div class="shop-room-copy">
+        <p class="eyebrow">Shop the room</p>
+        <h2>Tap the room to move from inspiration to product detail.</h2>
+        <p>Hotspots keep the room photograph central while making the key pieces immediately shoppable.</p>
+      </div>
+    </section>
+
+    <section class="product-companion-section" aria-label="Complete the room">
+      <header>
+        <p class="eyebrow">Complete the room</p>
+        <h2>Recommended pieces that share the same quiet material language.</h2>
+      </header>
+      <div class="product-companion-grid">
+        <a v-for="item in detail.companionProducts" :key="item.title" :href="item.href">
+          <img :src="item.image" :alt="item.title" loading="lazy" />
+          <span>{{ item.title }}</span>
+        </a>
+      </div>
+    </section>
+
+    <aside class="product-sticky-purchase" aria-label="Quick purchase">
+      <div>
+        <strong>{{ detail.name }}</strong>
+        <span>{{ money(detail.price.member) }} Member</span>
+      </div>
+      <button type="button" @click="addCurrentProductToCart">{{ t("addToCart") }}</button>
+    </aside>
   </section>
 </template>

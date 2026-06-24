@@ -42,7 +42,7 @@ const normalizeSources = (sources) =>
 
 export const buildAssistantProductDetailUrl = (product) => {
   const id = product?.id ?? product?.spuId;
-  return id === undefined || id === null ? "/sofas-plp" : `/sofa-pdp?id=${encodeURIComponent(id)}`;
+  return id === undefined || id === null ? "/products" : `/product?id=${encodeURIComponent(id)}`;
 };
 
 export const normalizeAssistantProduct = (product = {}) => ({

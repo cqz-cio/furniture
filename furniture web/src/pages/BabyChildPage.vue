@@ -1,60 +1,86 @@
 <script setup>
-import ImageSpecPlaceholder from "../components/ImageSpecPlaceholder.vue";
-import { babyChildPageSpecs } from "../data/rhLayout.js";
+import BrandEyebrow from "../components/BrandEyebrow.vue";
+import { generatedFurnitureAssets } from "../data/generatedFurnitureAssets.js";
 
-const moduleByKey = Object.fromEntries(babyChildPageSpecs.desktop.modules.map((module) => [module.key, module]));
-const groups = babyChildPageSpecs.groups;
+const heroImage = generatedFurnitureAssets.babyChild.hero;
 
-const specOf = (key) => moduleByKey[key];
-const groupClasses = (group) => [
-  "baby-spec-module",
-  `baby-spec-${group.key}`,
-  ...group.layout.split(" ").map((layout) => `baby-layout-${layout}`),
+const collections = [
+  {
+    id: "nursery",
+    title: "Nursery",
+    description: "Soft upholstered beds, quiet storage, and layered lighting for the earliest routines.",
+    image: generatedFurnitureAssets.babyChild.collections.nursery,
+    href: "/products",
+  },
+  {
+    id: "playroom",
+    title: "Playroom",
+    description: "Durable silhouettes and warm wood tones arranged for reading, play, and reset.",
+    image: generatedFurnitureAssets.babyChild.collections.playroom,
+    href: "/products",
+  },
+  {
+    id: "study",
+    title: "Study",
+    description: "Scaled desks, shelves, and seating that make homework corners feel considered.",
+    image: generatedFurnitureAssets.babyChild.collections.study,
+    href: "/products",
+  },
+  {
+    id: "lighting",
+    title: "Lighting",
+    description: "A softer glow for bedtime stories, morning routines, and every little pause between.",
+    image: generatedFurnitureAssets.babyChild.collections.lighting,
+    href: "/products",
+  },
+];
+
+const services = [
+  "Complimentary design consultation",
+  "Registry guidance",
+  "Member savings",
+  "Delivery coordination",
 ];
 </script>
 
 <template>
-  <section class="baby-spec-page">
-    <header class="spec-page-head baby-spec-head">
-      <p class="eyebrow">Baby &amp; Child 首页</p>
-      <h1>图片 / 视频投放区域抽取</h1>
-      <p>
-        PC：{{ babyChildPageSpecs.desktop.viewport }}，页面总高度：{{ babyChildPageSpecs.desktop.documentHeight }}，
-        {{ babyChildPageSpecs.desktop.summary }}。
-      </p>
-      <p>
-        Mobile：{{ babyChildPageSpecs.mobile.viewport }}，页面总高度：{{ babyChildPageSpecs.mobile.documentHeight }}，
-        {{ babyChildPageSpecs.mobile.summary }}。
-      </p>
-    </header>
-
-    <article v-for="group in groups" :key="group.key" :class="groupClasses(group)">
-      <ImageSpecPlaceholder
-        v-if="group.layout === 'single'"
-        v-bind="specOf(group.parts[0])"
-        :tone="specOf(group.parts[0]).type === 'background' ? 'light' : 'dark'"
-      />
-
-      <div v-else-if="group.layout === 'sourcebook'" class="baby-sourcebook-layout">
-        <ImageSpecPlaceholder class="baby-sourcebook-bg" v-bind="specOf(group.parts[0])" />
-        <ImageSpecPlaceholder class="baby-sourcebook-cover" v-bind="specOf(group.parts[1])" />
-        <ImageSpecPlaceholder class="baby-sourcebook-logo" v-bind="specOf(group.parts[2])" />
+  <section class="child-landing-page">
+    <section class="child-landing-hero" aria-labelledby="child-landing-title">
+      <picture>
+        <source media="(max-width: 760px)" :srcset="heroImage.mobile" />
+        <img :src="heroImage.desktop" alt="Layered child bedroom with upholstered bed and warm neutral furnishings" />
+      </picture>
+      <div class="landing-hero-copy child-landing-copy">
+        <BrandEyebrow suffix="Baby &amp; Child" />
+        <h1 id="child-landing-title">Rooms for first chapters.</h1>
+        <p>
+          Timeless nursery, bedroom, and playroom pieces designed to grow with the routines of family life.
+        </p>
+        <div class="landing-actions">
+          <a href="/products">Shop Baby &amp; Child</a>
+          <a href="/membership">Join Oakved Members</a>
+        </div>
       </div>
+    </section>
 
-      <div v-else-if="group.layout.includes('collection')" class="baby-collection-layout" :class="{ 'baby-wide-logo': group.layout.includes('wideLogo') }">
-        <ImageSpecPlaceholder class="baby-collection-main" v-bind="specOf(group.parts[0])" tone="dark" />
-        <ImageSpecPlaceholder class="baby-collection-logo" v-bind="specOf(group.parts[1])" />
-      </div>
+    <section class="landing-feature-grid child-feature-grid" aria-label="Baby and child collections">
+      <a v-for="collection in collections" :key="collection.id" :href="collection.href" class="landing-feature-card">
+        <img :src="collection.image" :alt="`${collection.title} furniture collection`" />
+        <span class="eyebrow">Collection</span>
+        <h2>{{ collection.title }}</h2>
+        <p>{{ collection.description }}</p>
+      </a>
+    </section>
 
-      <div v-else-if="group.layout === 'halfGrid'" class="baby-half-grid">
-        <ImageSpecPlaceholder
-          v-for="part in group.parts"
-          :key="part"
-          :class="`baby-grid-${part}`"
-          v-bind="specOf(part)"
-          :tone="specOf(part).type === 'background' ? 'light' : 'dark'"
-        />
+    <section class="landing-service-band child-service-band" aria-label="Baby and child services">
+      <div>
+        <BrandEyebrow suffix="Design Services" tone="dark" />
+        <h2>From nursery plans to growing bedrooms.</h2>
       </div>
-    </article>
+      <ul>
+        <li v-for="service in services" :key="service">{{ service }}</li>
+      </ul>
+      <a href="/membership">Explore services</a>
+    </section>
   </section>
 </template>

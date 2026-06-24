@@ -6,25 +6,19 @@ const allowedMenuBlock = source.match(/const allowedMenuPaths = new Set\(\[[\s\S
 const deniedFixedRoutePrefixesBlock =
   source.match(/const deniedFixedRoutePrefixes = \[[\s\S]*?\]/)?.[0] || ''
 
-const requiredAiRoutes = [
-  '/ai',
-  '/ai/chat',
-  '/ai/model',
-  '/ai/knowledge',
-  '/ai/workflow'
-]
+const hiddenAiRoutes = ['/ai', '/ai/chat', '/ai/model', '/ai/knowledge', '/ai/workflow']
 
-for (const route of requiredAiRoutes) {
+for (const route of hiddenAiRoutes) {
   assert.ok(
-    allowedMenuBlock.includes(`'${route}'`) || allowedMenuBlock.includes(`"${route}"`),
-    `furniture-lite mode must allow AI menu route ${route}`
+    !allowedMenuBlock.includes(`'${route}'`) && !allowedMenuBlock.includes(`"${route}"`),
+    `furniture-lite mode must hide generic AI menu route ${route}`
   )
 }
 
 assert.ok(
-  !deniedFixedRoutePrefixesBlock.includes("'/ai'") &&
-    !deniedFixedRoutePrefixesBlock.includes('"/ai"'),
-  'furniture-lite mode must not deny /ai fixed routes'
+  deniedFixedRoutePrefixesBlock.includes("'/ai'") ||
+    deniedFixedRoutePrefixesBlock.includes('"/ai"'),
+  'furniture-lite mode must deny /ai fixed routes'
 )
 
-console.log('Furniture lite AI access checks passed')
+console.log('Furniture lite AI hidden checks passed')

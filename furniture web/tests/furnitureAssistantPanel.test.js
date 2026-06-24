@@ -4,12 +4,11 @@ import { describe, expect, it } from "vitest";
 const readSource = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
 
 describe("furniture assistant panel", () => {
-  it("mounts the assistant from the app shell", () => {
+  it("keeps the assistant unmounted from the storefront app shell", () => {
     const source = readSource("../src/App.vue");
 
-    expect(source).toContain('import FurnitureAssistantPanel from "./components/FurnitureAssistantPanel.vue";');
-    expect(source).toContain("<FurnitureAssistantPanel");
-    expect(source).toContain('@add-to-cart="addToCart"');
+    expect(source).not.toContain('import FurnitureAssistantPanel from "./components/FurnitureAssistantPanel.vue";');
+    expect(source).not.toContain("<FurnitureAssistantPanel");
   });
 
   it("defines a polished draggable launcher plus draggable and resizable dialog", () => {

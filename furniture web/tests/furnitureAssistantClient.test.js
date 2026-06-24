@@ -37,7 +37,7 @@ describe("furniture assistant client", () => {
           stock: 12,
           cover: "https://cdn.example/sofa.jpg",
           reason: "Compact scale, light fabric tone and within budget.",
-          detailUrl: "/sofa-pdp?id=1001",
+          detailUrl: "/product?id=1001",
           source: "assistant",
           raw: expect.any(Object),
         },
@@ -59,7 +59,7 @@ describe("furniture assistant client", () => {
     expect(response.products[0]).toMatchObject({
       id: 1,
       skuId: 11,
-      detailUrl: "/sofa-pdp?id=1",
+      detailUrl: "/product?id=1",
       reason: expect.any(String),
     });
   });
@@ -89,7 +89,7 @@ describe("furniture assistant client", () => {
       body: JSON.stringify({ message: "live sofa" }),
     });
     expect(response.answer).toBe("Here are live Yudao products.");
-    expect(response.products[0]).toMatchObject({ id: 8, skuId: 80, detailUrl: "/sofa-pdp?id=8" });
+    expect(response.products[0]).toMatchObject({ id: 8, skuId: 80, detailUrl: "/product?id=8" });
     expect(response.sources).toEqual([{ type: "model", name: "DeepSeek deepseek-v4-flash" }]);
   });
 

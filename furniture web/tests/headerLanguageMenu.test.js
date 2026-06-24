@@ -67,15 +67,15 @@ describe("header language menu", () => {
     expect(css).toContain(".rh-header.is-overlay:focus-within::before");
   });
 
-  it("opens Living and Sale category menus only after a nav click", () => {
+  it("opens focused wood furniture category menus only after a nav click", () => {
     const source = readSource("../src/components/RhHeader.vue");
     const css = readSource("../src/styles.css");
 
     expect(source).toContain("const handleNavClick = (label) => {");
-    expect(source).toContain('["Living", "Sale"].includes(label)');
+    expect(source).toContain("woodFurnitureDropdownLabels.includes(label)");
     expect(source).toContain("activeDropdown.value = activeDropdown.value === label ? \"\" : label");
     expect(source).toContain("activeMegaItem.value = \"\"");
-    expect(source).toContain("livingMegaSubmenus[activeMegaItem.value]");
+    expect(source).toContain("woodFurnitureMegaMenus[activeDropdown.value]");
     expect(source).toContain("const activateMegaItem = (label) => {");
     expect(source).toContain("category-mega-secondary");
     expect(source).toContain("category-mega-link");
@@ -92,5 +92,18 @@ describe("header language menu", () => {
     expect(source).not.toContain("@mouseenter=\"showDropdown");
     expect(source).not.toContain("@focus=\"showDropdown");
     expect(source).not.toContain("const showDropdown");
+  });
+
+  it("positions the category menu from the clicked primary nav item", () => {
+    const source = readSource("../src/components/RhHeader.vue");
+    const css = readSource("../src/styles.css");
+
+    expect(source).toContain("const navButtonRefs = ref({})");
+    expect(source).toContain("const dropdownPositionStyle = computed");
+    expect(source).toContain("updateDropdownPosition(label)");
+    expect(source).toContain(':ref="(element) => setNavButtonRef(item.label, element)"');
+    expect(source).toContain(':style="dropdownPositionStyle"');
+    expect(css).toContain("left: var(--category-menu-left, 80px);");
+    expect(css).not.toContain(".category-mega-menu.is-sale-menu {\n  left: auto;");
   });
 });

@@ -85,6 +85,20 @@ const checkoutStepLabels = {
   "place-order": "Place Order",
   "delivery-notes": "Delivery & Assembly Notes",
 };
+const checkoutServicePromises = [
+  {
+    label: "Delivery Planning",
+    value: "Room access, elevator notes and delivery window stay visible before order placement.",
+  },
+  {
+    label: "Furniture Review",
+    value: "Dimensions, finish language and selected quantities are reviewed beside payment.",
+  },
+  {
+    label: "Aftercare",
+    value: "Assembly, protection and support notes are captured for the final handoff.",
+  },
+];
 const primaryActionDisabled = computed(
   () => busy.value || (mode.value !== "yudao" && mode.value !== "empty") || (mode.value === "yudao" && !canPlaceCheckoutOrder(checkoutFlow.value)),
 );
@@ -131,7 +145,7 @@ const loadCheckoutData = async (options = {}) => {
 const submitOrder = async () => {
   const addressId = getSelectedAddressId(selectedAddressId.value, defaultAddress.value);
   if (!addressId) {
-    error.value = "No Yudao address is available for this user.";
+    error.value = "No delivery address is available for this account.";
     return;
   }
   busy.value = true;
@@ -169,6 +183,13 @@ watch(() => props.items, () => loadCheckoutData({ preserveAddressSelection: true
     </header>
 
     <p v-if="error" class="checkout-error">{{ error }}</p>
+
+    <section class="checkout-service-strip" aria-label="Checkout service promises">
+      <article v-for="promise in checkoutServicePromises" :key="promise.label">
+        <span>{{ promise.label }}</span>
+        <strong>{{ promise.value }}</strong>
+      </article>
+    </section>
 
     <section class="checkout-grid">
       <div class="checkout-main">
@@ -241,10 +262,15 @@ watch(() => props.items, () => loadCheckoutData({ preserveAddressSelection: true
             <ProductImage :src="item.cover" :label="item.name" />
             <div>
               <p class="checkout-item-kicker">
-                {{ isMembershipItem(item) ? "Membership" : item.source === "yudao" ? t("checkout.itemKickerYudao") : t("checkout.itemKickerPreview") }}
+                {{ isMembershipItem(item) ? "Membership" : item.source === "yudao" ? "Live catalog item" : "Oakved item" }}
               </p>
               <h3>{{ item.name }}</h3>
               <p>{{ item.subtitle }}</p>
+              <div v-if="item.delivery || item.dimensions || item.material" class="checkout-item-specs">
+                <span v-if="item.delivery">{{ item.delivery }}</span>
+                <span v-if="item.dimensions">{{ item.dimensions }}</span>
+                <span v-if="item.material">{{ item.material }}</span>
+              </div>
               <strong>{{ item.quantity }} x {{ money(item.price) }}</strong>
             </div>
           </article>
@@ -319,6 +345,10 @@ watch(() => props.items, () => loadCheckoutData({ preserveAddressSelection: true
         </div>
         <small v-if="settlement">{{ t("checkout.settlementIncluded") }}</small>
         <small v-else>{{ t("checkout.settlementPending") }}</small>
+        <div class="checkout-summary-note">
+          <strong>Room readiness</strong>
+          <span>Measure doorways, stair turns and bedroom wall clearance before confirming large wood furniture.</span>
+        </div>
         <button type="button" :disabled="primaryActionDisabled" @click="handlePrimaryAction">
           {{ busy ? t("common.working") : t(`${checkoutModeKey}.cta`) }}
         </button>

@@ -95,7 +95,7 @@ describe("i18n locale helper", () => {
 
     setLocale("fr");
 
-    expect(t("home.heroEyebrow")).toBe("Bienvenue dans l'univers RH");
+    expect(t("home.heroEyebrow")).toBe("Bienvenue chez Oakved");
     expect(t("missing.key")).toBe("missing.key");
   });
 
@@ -162,6 +162,36 @@ describe("i18n locale helper", () => {
 
     for (const locale of availableLocales) {
       for (const key of orderKeys) {
+        expect(getMessage(key, locale.lang), `${key} missing for ${locale.lang}`).toBeTruthy();
+      }
+    }
+  });
+
+  it("provides storefront navigation and home module labels across every supported locale", async () => {
+    const { availableLocales, getMessage } = await loadI18n();
+    const storefrontKeys = [
+      "navigation.primary.living",
+      "navigation.primary.dining",
+      "navigation.primary.bed",
+      "navigation.primary.bath",
+      "navigation.primary.outdoor",
+      "navigation.primary.lighting",
+      "navigation.primary.textiles",
+      "navigation.primary.rugs",
+      "navigation.primary.decor",
+      "navigation.primary.babyChild",
+      "navigation.primary.teen",
+      "navigation.primary.sale",
+      "navigation.primary.interiorDesign",
+      "home.modules.bedroom.title",
+      "home.modules.dining.title",
+      "home.modules.outdoorLiving.title",
+      "home.modules.sourcebooks.title",
+      "home.modules.services.title",
+    ];
+
+    for (const locale of availableLocales) {
+      for (const key of storefrontKeys) {
         expect(getMessage(key, locale.lang), `${key} missing for ${locale.lang}`).toBeTruthy();
       }
     }

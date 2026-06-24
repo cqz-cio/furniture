@@ -13,7 +13,7 @@ import { accountMenuItems } from "../services/membershipNavigation.js";
       <p class="eyebrow">Account Dashboard</p>
       <h1>Manage orders, addresses, payment methods and membership.</h1>
       <p>
-        The account dashboard provides the RH-aligned destination for membership status, rules, renewal and gift
+        The account dashboard provides the Oakved destination for membership status, rules, renewal and gift
         registry access.
       </p>
     </section>
