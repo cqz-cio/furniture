@@ -21,13 +21,32 @@ const detail = computed(() => buildProductDetailModel(product.value));
 const activeGalleryItem = computed(() => detail.value.gallery[activeGalleryIndex.value] || detail.value.gallery[0]);
 const maxPurchaseQuantity = computed(() => Math.max(0, Number(product.value.stock) || 0));
 const canPurchase = computed(() => maxPurchaseQuantity.value > 0);
+let lastGalleryWheelAt = 0;
+
 const normalizedPurchaseQuantity = computed(() => {
   if (!canPurchase.value) return 0;
   return Math.max(1, Math.min(Math.floor(Number(quantity.value) || 1), maxPurchaseQuantity.value));
 });
-const moveGallery = (direction) => {
+
+const setGalleryIndex = (index) => {
   const total = detail.value.gallery.length;
-  activeGalleryIndex.value = (activeGalleryIndex.value + direction + total) % total;
+  if (!total) return;
+  activeGalleryIndex.value = (index + total) % total;
+};
+const moveGallery = (direction) => setGalleryIndex(activeGalleryIndex.value + direction);
+const showPreviousGalleryItem = () => moveGallery(-1);
+const showNextGalleryItem = () => moveGallery(1);
+const handleGalleryWheel = (event) => {
+  const now = Date.now();
+  if (now - lastGalleryWheelAt < 820) return;
+  const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
+  if (Math.abs(delta) < 8) return;
+  lastGalleryWheelAt = now;
+  if (delta > 0) {
+    showNextGalleryItem();
+  } else {
+    showPreviousGalleryItem();
+  }
 };
 
 const applyProductSeo = () => {
@@ -80,26 +99,40 @@ onMounted(async () => {
         <figure
           class="product-gallery-main"
           :class="`tone-${activeGalleryItem.tone}`"
+          :aria-label="`${detail.name} gallery. Click, scroll or use arrow keys to switch views.`"
           tabindex="0"
-          @keydown.left.prevent="moveGallery(-1)"
-          @keydown.right.prevent="moveGallery(1)"
+          @click="showNextGalleryItem"
+          @wheel.prevent="handleGalleryWheel"
+          @keydown.left.prevent="showPreviousGalleryItem"
+          @keydown.right.prevent="showNextGalleryItem"
         >
-          <button class="product-gallery-arrow product-gallery-arrow-prev" type="button" aria-label="Previous image" @click="moveGallery(-1)">‹</button>
-          <img v-if="activeGalleryItem.src" :src="activeGalleryItem.src" :alt="`${detail.name} ${activeGalleryItem.label}`" />
-          <figcaption v-else class="product-gallery-placeholder">
-            <span>{{ activeGalleryItem.label }}</span>
-            <strong>{{ activeGalleryItem.kind }}</strong>
-          </figcaption>
-          <button class="product-gallery-arrow product-gallery-arrow-next" type="button" aria-label="Next image" @click="moveGallery(1)">›</button>
+          <button class="product-gallery-arrow product-gallery-arrow-prev" type="button" aria-label="Previous image" @click.stop="showPreviousGalleryItem">&lsaquo;</button>
+          <Transition name="product-gallery-fade">
+            <img
+              v-if="activeGalleryItem.src"
+              :key="activeGalleryItem.src"
+              :src="activeGalleryItem.src"
+              :alt="`${detail.name} ${activeGalleryItem.label}`"
+            />
+            <figcaption v-else :key="activeGalleryItem.label" class="product-gallery-placeholder">
+              <span>{{ activeGalleryItem.label }}</span>
+              <strong>{{ activeGalleryItem.kind }}</strong>
+            </figcaption>
+          </Transition>
+          <button class="product-gallery-arrow product-gallery-arrow-next" type="button" aria-label="Next image" @click.stop="showNextGalleryItem">&rsaquo;</button>
         </figure>
-        <p class="product-gallery-status">{{ activeGalleryIndex + 1 }} / {{ detail.gallery.length }}</p>
+        <p class="product-gallery-status" aria-live="polite">
+          <span>{{ activeGalleryItem.label }} view</span>
+          <span>{{ activeGalleryIndex + 1 }} / {{ detail.gallery.length }}</span>
+          <small>Click, scroll or use arrow keys to switch views</small>
+        </p>
         <div class="product-gallery-thumbs" aria-label="Product images">
           <button
             v-for="(item, index) in detail.gallery"
             :key="`${item.label}-${index}`"
             type="button"
             :class="{ active: activeGalleryIndex === index }"
-            @click="activeGalleryIndex = index"
+            @click="setGalleryIndex(index)"
           >
             <img v-if="item.src" :src="item.src" :alt="item.label" />
             <span v-else>{{ item.label }}</span>
@@ -121,6 +154,15 @@ onMounted(async () => {
         </div>
         <p class="product-savings-label">{{ detail.price.savingsLabel }}</p>
         <p class="product-price-context">{{ detail.price.context }}</p>
+
+        <section class="product-membership-callout" aria-label="Membership pricing details">
+          <div>
+            <strong>{{ detail.membershipPrompt.title }}</strong>
+            <p>{{ detail.membershipPrompt.copy }}</p>
+          </div>
+          <a :href="detail.membershipPrompt.href">{{ detail.membershipPrompt.linkLabel }}</a>
+        </section>
+
         <div class="product-mobile-purchase-bar" aria-label="Mobile purchase actions">
           <div>
             <small>{{ detail.price.memberLabel }}</small>
@@ -184,6 +226,13 @@ onMounted(async () => {
           <small>{{ detail.availability.specialOrder }}</small>
         </section>
 
+        <section class="product-assurance-grid" aria-label="Delivery and returns">
+          <article v-for="item in detail.purchaseAssurance" :key="item.title">
+            <h2>{{ item.title }}</h2>
+            <p>{{ item.copy }}</p>
+          </article>
+        </section>
+
         <p class="product-stock">{{ detail.stock.label }} {{ detail.stock.value }} / {{ detail.stock.status }}</p>
         <div class="product-purchase-row">
           <label>
@@ -215,5 +264,57 @@ onMounted(async () => {
         </section>
       </article>
     </div>
+
+    <section class="product-inspiration-section" aria-label="Room inspiration">
+      <header>
+        <p class="eyebrow">Room Inspiration</p>
+        <h2>Style the full Oakved room</h2>
+        <p>Use material, scale and surrounding pieces to help customers picture the product before purchase.</p>
+      </header>
+      <div class="product-inspiration-grid">
+        <article v-for="item in detail.roomInspiration" :key="item.title">
+          <img :src="item.image" :alt="item.title" loading="lazy" />
+          <div>
+            <h3>{{ item.title }}</h3>
+            <p>{{ item.copy }}</p>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="shop-room-section" aria-label="Shop the room">
+      <figure class="shop-room-figure">
+        <img :src="detail.roomInspiration?.[0]?.image || activeGalleryItem.src" alt="Styled room with shoppable Oakved furniture" loading="lazy" />
+        <a
+          v-for="(item, index) in detail.companionProducts"
+          :key="item.title"
+          class="shop-room-hotspot"
+          :href="item.href"
+          :style="{ left: index === 0 ? '34%' : '66%', top: index === 0 ? '58%' : '42%' }"
+          :aria-label="`Shop ${item.title}`"
+        >
+          {{ index + 1 }}
+        </a>
+      </figure>
+      <div class="shop-room-copy">
+        <p class="eyebrow">Shop The Room</p>
+        <h2>Build a coordinated wood furniture setting</h2>
+        <p>Each hotspot links the primary item with complementary tables, storage and seating so the page feels closer to a finished showroom.</p>
+      </div>
+    </section>
+
+    <section class="product-companion-section" aria-label="Complete the room">
+      <header>
+        <p class="eyebrow">Complete The Room</p>
+        <h2>Pieces that sit well together</h2>
+        <p>Keep the next step visual and product-led instead of sending customers back to a blank catalog search.</p>
+      </header>
+      <div class="product-companion-grid">
+        <a v-for="item in detail.companionProducts" :key="item.title" :href="item.href">
+          <img :src="item.image" :alt="item.title" loading="lazy" />
+          <span>{{ item.title }}</span>
+        </a>
+      </div>
+    </section>
   </section>
 </template>

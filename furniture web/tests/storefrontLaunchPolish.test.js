@@ -9,10 +9,28 @@ describe("storefront launch polish", () => {
 
     expect(source).toContain('class="product-gallery-status"');
     expect(source).toContain("activeGalleryIndex + 1");
+    expect(source).toContain("handleGalleryWheel");
+    expect(source).toContain("@wheel.prevent");
+    expect(source).toContain("@click=\"showNextGalleryItem\"");
+    expect(source).toContain("<Transition name=\"product-gallery-fade\"");
     expect(source).toContain("@keydown.left.prevent");
     expect(source).toContain("@keydown.right.prevent");
-    expect(source).toContain("‹");
-    expect(source).toContain("›");
+    expect(source).toContain("&lsaquo;");
+    expect(source).toContain("&rsaquo;");
+  });
+
+  it("renders PDP commerce modules from the detail model", () => {
+    const source = readSource("../src/pages/SofaPdpPage.vue");
+
+    expect(source).toContain("product-membership-callout");
+    expect(source).toContain("detail.membershipPrompt");
+    expect(source).toContain("product-assurance-grid");
+    expect(source).toContain("detail.purchaseAssurance");
+    expect(source).toContain("product-inspiration-section");
+    expect(source).toContain("detail.roomInspiration");
+    expect(source).toContain("shop-room-section");
+    expect(source).toContain("detail.companionProducts");
+    expect(source).toContain("product-companion-grid");
   });
 
   it("surfaces active PLP filters before the grid", () => {
