@@ -1344,9 +1344,11 @@ button {
 
 .home-hero {
   position: relative;
-  min-height: clamp(907.88px, 62vw, 1320px);
+  height: clamp(907.88px, 67.25vw, 1320px);
+  min-height: 0;
   display: grid;
   align-items: stretch;
+  overflow: hidden;
   background: var(--deep);
   color: white;
 }
@@ -1423,10 +1425,12 @@ button {
 .home-hero-image {
   display: block;
   width: 100%;
-  height: clamp(907.88px, 62vw, 1320px);
+  height: 100%;
 }
 
 .home-hero-picture {
+  position: absolute;
+  inset: 0;
   opacity: 0;
   animation: homeHeroCrossfade 28s ease-in-out infinite;
 }

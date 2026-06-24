@@ -29,7 +29,9 @@ describe("home landing page", () => {
     expect(styles).toContain(".home-entry-picture");
     expect(styles).toContain(".home-entry-copy");
     expect(styles).toContain(".home-grid {\n  width: 100%;\n  margin: 0;\n  display: grid;\n  grid-template-columns: 1fr;\n  gap: 0;");
-    expect(styles).toContain("height: clamp(907.88px, 62vw, 1320px);");
+    expect(styles).toContain("height: clamp(907.88px, 67.25vw, 1320px);");
+    expect(styles).toContain("overflow: hidden;");
+    expect(styles).toContain(".home-hero-picture {\n  position: absolute;\n  inset: 0;");
     expect(styles).toContain(".home-entry-copy {\n  position: absolute;\n  left: 50%;\n  top: 58%;");
     expect(styles).toContain("bottom: auto;\n  z-index: 2;");
     expect(styles).toContain("transform: translate(-50%, -50%);");
