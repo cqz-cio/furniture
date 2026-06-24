@@ -310,12 +310,17 @@ describe("checkout session helpers", () => {
   it("maps checkout modes to polished page copy and action states", () => {
     expect(getCheckoutPresentation("yudao")).toEqual({
       title: "Review Your Order",
-      message: "Confirm your delivery address and send the order to Yudao.",
-      cta: "Create Yudao Order",
+      message: "Confirm your delivery address and create the connected catalog order.",
+      cta: "Create Connected Order",
       canSubmit: true,
     });
     expect(getCheckoutPresentation("token-required")).toMatchObject({
       cta: "Add Token To Continue",
+      canSubmit: false,
+    });
+    expect(getCheckoutPresentation("local-preview")).toMatchObject({
+      message: "Review your Oakved selections before final account checkout is connected.",
+      cta: "Review Only",
       canSubmit: false,
     });
     expect(getCheckoutPresentation("empty")).toMatchObject({

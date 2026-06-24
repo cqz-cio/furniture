@@ -73,7 +73,16 @@ describe("yudao integration models", () => {
   });
 
   it("keeps local cart quantities stable and removes items", () => {
-    const sofa = { id: 12, skuId: 99, name: "Cloud Sofa", price: 2599, cover: "cover.jpg" };
+    const sofa = {
+      id: 12,
+      skuId: 99,
+      name: "Cloud Sofa",
+      price: 2599,
+      cover: "cover.jpg",
+      delivery: "White-glove delivery",
+      dimensions: "92W x 96D x 78H cm",
+      material: "wood",
+    };
     const cart = addLocalCartItem([], sofa, 2);
     const merged = addLocalCartItem(cart, sofa, 3);
     const updated = updateLocalCartItemQuantity(merged, 99, 1);
@@ -81,6 +90,11 @@ describe("yudao integration models", () => {
 
     expect(merged).toHaveLength(1);
     expect(merged[0].quantity).toBe(5);
+    expect(merged[0]).toMatchObject({
+      delivery: "White-glove delivery",
+      dimensions: "92W x 96D x 78H cm",
+      material: "Wood finish",
+    });
     expect(updated[0].quantity).toBe(1);
     expect(removed).toEqual([]);
   });

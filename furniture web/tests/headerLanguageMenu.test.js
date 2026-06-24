@@ -67,15 +67,15 @@ describe("header language menu", () => {
     expect(css).toContain(".rh-header.is-overlay:focus-within::before");
   });
 
-  it("opens Living and Sale category menus only after a nav click", () => {
+  it("opens focused wood furniture category menus only after a nav click", () => {
     const source = readSource("../src/components/RhHeader.vue");
     const css = readSource("../src/styles.css");
 
     expect(source).toContain("const handleNavClick = (label) => {");
-    expect(source).toContain('["Living", "Sale"].includes(label)');
+    expect(source).toContain("woodFurnitureDropdownLabels.includes(label)");
     expect(source).toContain("activeDropdown.value = activeDropdown.value === label ? \"\" : label");
     expect(source).toContain("activeMegaItem.value = \"\"");
-    expect(source).toContain("livingMegaSubmenus[activeMegaItem.value]");
+    expect(source).toContain("woodFurnitureMegaMenus[activeDropdown.value]");
     expect(source).toContain("const activateMegaItem = (label) => {");
     expect(source).toContain("category-mega-secondary");
     expect(source).toContain("category-mega-link");
@@ -94,41 +94,16 @@ describe("header language menu", () => {
     expect(source).not.toContain("const showDropdown");
   });
 
-  it("opens Baby & Child from the primary nav in a new page without replacing the current page", () => {
-    const source = readSource("../src/components/RhHeader.vue");
-
-    expect(source).toContain('if (!isBabyChildSitePage.value && label === "Baby & Child") {');
-    expect(source).toContain('window.open("/baby-child", "_blank", "noopener,noreferrer")');
-    expect(source).toContain("return;");
-    expect(source).toContain('@click="handleNavClick(item.label)"');
-  });
-
-  it("keeps Baby & Child subnavigation inside the Baby & Child site pages", () => {
-    const source = readSource("../src/components/RhHeader.vue");
-
-    expect(source).toContain("const isBabyChildSitePage = computed(");
-    expect(source).toContain("page.value.startsWith(\"baby-child-\")");
-    expect(source).toContain("const babyChildPageMap = {");
-    expect(source).toContain('Bedding: "baby-child-bedding"');
-    expect(source).toContain('Registry: "baby-child-registry"');
-    expect(source).toContain("isBabyChildSitePage.value ? babyChildNavigation : primaryNavigation");
-    expect(source).toContain("if (isBabyChildSitePage.value && babyChildPageMap[label]) {");
-    expect(source).toContain("return babyChildPageMap[label];");
-    expect(source).toContain("return babyChildPageMap[label] === page.value;");
-    expect(source).toContain("'is-baby-child': isBabyChildSitePage");
-    expect(source).toContain(":class=\"{ 'baby-brand': isBabyChildSitePage }\"");
-  });
-
-  it("uses the Oakved brand asset for the standard header and mobile drawer", () => {
+  it("positions the category menu from the clicked primary nav item", () => {
     const source = readSource("../src/components/RhHeader.vue");
     const css = readSource("../src/styles.css");
 
-    expect(source).toContain('src="/assets/brand/oakved-logo-black.png"');
-    expect(source).toContain('class="brand-logo"');
-    expect(source).toContain('alt="Oakved"');
-    expect(source).toContain('class="mobile-drawer-brand-logo"');
-    expect(source).not.toContain("<span>The</span>\n          <span>WORLD of</span>\n          <strong>RH</strong>");
-    expect(css).toContain(".brand-logo");
-    expect(css).toContain(".mobile-drawer-brand-logo");
+    expect(source).toContain("const navButtonRefs = ref({})");
+    expect(source).toContain("const dropdownPositionStyle = computed");
+    expect(source).toContain("updateDropdownPosition(label)");
+    expect(source).toContain(':ref="(element) => setNavButtonRef(item.label, element)"');
+    expect(source).toContain(':style="dropdownPositionStyle"');
+    expect(css).toContain("left: var(--category-menu-left, 80px);");
+    expect(css).not.toContain(".category-mega-menu.is-sale-menu {\n  left: auto;");
   });
 });

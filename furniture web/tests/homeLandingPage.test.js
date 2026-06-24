@@ -23,6 +23,9 @@ describe("home landing page", () => {
     expect(homePage).not.toContain("specHeight");
     expect(homePage).not.toContain("sourceLevel");
     expect(styles).toContain(".home-hero-picture");
+    expect(styles).toContain("homeHeroCrossfade");
+    expect(styles).toContain("homeSlowZoom");
+    expect(styles).toContain(".home-hero-slide-2");
     expect(styles).toContain(".home-entry-picture");
     expect(styles).toContain(".home-entry-copy");
     expect(styles).toContain(".home-grid {\n  width: 100%;\n  margin: 0;\n  display: grid;\n  grid-template-columns: 1fr;\n  gap: 0;");

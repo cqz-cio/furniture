@@ -9,7 +9,7 @@ import {
 } from "../src/services/giftRegistry.js";
 
 describe("gift registry model", () => {
-  it("creates an RH-aligned registry draft with event, registrant, address and privacy defaults", () => {
+  it("creates an Oakved registry draft with event, registrant, address and privacy defaults", () => {
     expect(createGiftRegistryDraft()).toMatchObject({
       event: {
         type: "Wedding",

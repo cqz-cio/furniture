@@ -1,422 +1,244 @@
 <template>
-  <div>
-    <el-card shadow="never">
-      <el-skeleton :loading="loading" animated>
-        <el-row :gutter="16" justify="space-between">
-          <el-col :xl="12" :lg="12" :md="12" :sm="24" :xs="24">
-            <div class="flex items-center">
-              <el-avatar :src="avatar" :size="70" class="mr-16px">
-                <img src="@/assets/imgs/avatar.gif" alt="" />
-              </el-avatar>
-              <div>
-                <div class="text-20px">
-                  {{ t('workplace.welcome') }} {{ username }} {{ t('workplace.happyDay') }}
-                </div>
-                <div class="mt-10px text-14px text-gray-500">
-                  {{ t('workplace.toady') }}，20℃ - 32℃！
-                </div>
-              </div>
+  <section class="furniture-admin-page">
+    <div class="furniture-admin-page-head">
+      <div>
+        <p class="furniture-admin-kicker">Furniture commerce</p>
+        <h1>家具运营控制台</h1>
+        <p> 聚焦商品、订单、售后、库存与支付异常，把日常处理入口放在第一屏，减少通用后台噪音。 </p>
+      </div>
+      <el-space wrap>
+        <el-tag effect="plain" type="success">今日履约正常</el-tag>
+        <el-button type="primary" @click="go('/mall/trade/order')">处理订单</el-button>
+        <el-button @click="go('/mall/product/spu')">维护商品</el-button>
+      </el-space>
+    </div>
+
+    <div class="furniture-admin-metrics">
+      <button
+        v-for="item in metrics"
+        :key="item.label"
+        class="furniture-admin-metric"
+        type="button"
+        @click="go(item.path)"
+      >
+        <span>{{ item.label }}</span>
+        <strong>{{ item.value }}</strong>
+        <small>{{ item.hint }}</small>
+      </button>
+    </div>
+
+    <div class="furniture-admin-work-grid">
+      <el-card class="furniture-admin-panel" shadow="never">
+        <template #header>
+          <div class="furniture-admin-panel-title">
+            <span>运营待办</span>
+            <el-tag type="warning" effect="plain">需要今日处理</el-tag>
+          </div>
+        </template>
+        <div class="furniture-admin-status-list">
+          <button
+            v-for="item in queues"
+            :key="item.title"
+            class="furniture-admin-status-row"
+            type="button"
+            @click="go(item.path)"
+          >
+            <span>
+              <strong>{{ item.title }}</strong>
+              <small>{{ item.description }}</small>
+            </span>
+            <el-tag :type="item.type" effect="light">{{ item.count }}</el-tag>
+          </button>
+        </div>
+      </el-card>
+
+      <el-card class="furniture-admin-panel" shadow="never">
+        <template #header>
+          <div class="furniture-admin-panel-title">
+            <span>常用工作台</span>
+            <span>快速进入高频模块</span>
+          </div>
+        </template>
+        <div class="furniture-admin-action-grid">
+          <button
+            v-for="item in actions"
+            :key="item.title"
+            class="furniture-admin-action-card"
+            type="button"
+            @click="go(item.path)"
+          >
+            <Icon :icon="item.icon" :size="22" />
+            <span>{{ item.title }}</span>
+            <small>{{ item.description }}</small>
+          </button>
+        </div>
+      </el-card>
+    </div>
+
+    <el-card class="furniture-admin-table-panel" shadow="never">
+      <template #header>
+        <div class="furniture-admin-panel-title">
+          <span>重点商品状态</span>
+          <el-button text type="primary" @click="go('/mall/product/spu')">查看全部</el-button>
+        </div>
+      </template>
+      <el-table :data="priorityProducts">
+        <el-table-column label="商品" min-width="240">
+          <template #default="{ row }">
+            <div class="furniture-admin-product-cell">
+              <img :src="row.image" :alt="row.name" />
+              <span>
+                <strong>{{ row.name }}</strong>
+                <small>{{ row.category }}</small>
+              </span>
             </div>
-          </el-col>
-          <el-col :xl="12" :lg="12" :md="12" :sm="24" :xs="24">
-            <div class="h-70px flex items-center justify-end lt-sm:mt-10px">
-              <div class="px-8px text-right">
-                <div class="mb-16px text-14px text-gray-400">{{ t('workplace.project') }}</div>
-                <CountTo
-                  class="text-20px"
-                  :start-val="0"
-                  :end-val="totalSate.project"
-                  :duration="2600"
-                />
-              </div>
-              <el-divider direction="vertical" />
-              <div class="px-8px text-right">
-                <div class="mb-16px text-14px text-gray-400">{{ t('workplace.toDo') }}</div>
-                <CountTo
-                  class="text-20px"
-                  :start-val="0"
-                  :end-val="totalSate.todo"
-                  :duration="2600"
-                />
-              </div>
-              <el-divider direction="vertical" border-style="dashed" />
-              <div class="px-8px text-right">
-                <div class="mb-16px text-14px text-gray-400">{{ t('workplace.access') }}</div>
-                <CountTo
-                  class="text-20px"
-                  :start-val="0"
-                  :end-val="totalSate.access"
-                  :duration="2600"
-                />
-              </div>
-            </div>
-          </el-col>
-        </el-row>
-      </el-skeleton>
+          </template>
+        </el-table-column>
+        <el-table-column prop="stock" label="库存" width="120" />
+        <el-table-column prop="orders" label="近 7 日订单" width="140" />
+        <el-table-column label="状态" width="150">
+          <template #default="{ row }">
+            <el-tag :type="row.type" effect="light">{{ row.status }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="owner" label="负责人" width="140" />
+      </el-table>
     </el-card>
-  </div>
-
-  <el-row class="mt-8px" :gutter="8" justify="space-between">
-    <el-col :xl="16" :lg="16" :md="24" :sm="24" :xs="24" class="mb-8px">
-      <el-card shadow="never">
-        <template #header>
-          <div class="h-3 flex justify-between">
-            <span>{{ t('workplace.project') }}</span>
-            <el-link
-              type="primary"
-              :underline="false"
-              href="https://github.com/yudaocode"
-              target="_blank"
-            >
-              {{ t('action.more') }}
-            </el-link>
-          </div>
-        </template>
-        <el-skeleton :loading="loading" animated>
-          <el-row>
-            <el-col
-              v-for="(item, index) in projects"
-              :key="`card-${index}`"
-              :xl="8"
-              :lg="8"
-              :md="8"
-              :sm="24"
-              :xs="24"
-            >
-              <el-card
-                shadow="hover"
-                class="mr-5px mt-5px cursor-pointer"
-                @click="handleProjectClick(item.message)"
-              >
-                <div class="flex items-center">
-                  <Icon
-                    :icon="item.icon"
-                    :size="25"
-                    class="mr-8px"
-                    :style="{ color: item.color }"
-                  />
-                  <span class="text-16px">{{ item.name }}</span>
-                </div>
-                <div class="mt-12px text-12px text-gray-400">{{ t(item.message) }}</div>
-                <div class="mt-12px flex justify-between text-12px text-gray-400">
-                  <span>{{ item.personal }}</span>
-                  <span>{{ formatTime(item.time, 'yyyy-MM-dd') }}</span>
-                </div>
-              </el-card>
-            </el-col>
-          </el-row>
-        </el-skeleton>
-      </el-card>
-
-      <el-card shadow="never" class="mt-8px">
-        <el-skeleton :loading="loading" animated>
-          <el-row :gutter="20" justify="space-between">
-            <el-col :xl="10" :lg="10" :md="24" :sm="24" :xs="24">
-              <el-card shadow="hover" class="mb-8px">
-                <el-skeleton :loading="loading" animated>
-                  <Echart :options="pieOptionsData" :height="280" />
-                </el-skeleton>
-              </el-card>
-            </el-col>
-            <el-col :xl="14" :lg="14" :md="24" :sm="24" :xs="24">
-              <el-card shadow="hover" class="mb-8px">
-                <el-skeleton :loading="loading" animated>
-                  <Echart :options="barOptionsData" :height="280" />
-                </el-skeleton>
-              </el-card>
-            </el-col>
-          </el-row>
-        </el-skeleton>
-      </el-card>
-    </el-col>
-    <el-col :xl="8" :lg="8" :md="24" :sm="24" :xs="24" class="mb-8px">
-      <el-card shadow="never">
-        <template #header>
-          <div class="h-3 flex justify-between">
-            <span>{{ t('workplace.shortcutOperation') }}</span>
-          </div>
-        </template>
-        <el-skeleton :loading="loading" animated>
-          <el-row>
-            <el-col v-for="item in shortcut" :key="`team-${item.name}`" :span="8" class="mb-8px">
-              <div class="flex items-center">
-                <Icon :icon="item.icon" class="mr-8px" :style="{ color: item.color }" />
-                <el-link type="default" :underline="false" @click="handleShortcutClick(item.url)">
-                  {{ item.name }}
-                </el-link>
-              </div>
-            </el-col>
-          </el-row>
-        </el-skeleton>
-      </el-card>
-      <el-card shadow="never" class="mt-8px">
-        <template #header>
-          <div class="h-3 flex justify-between">
-            <span>{{ t('workplace.notice') }}</span>
-            <el-link type="primary" :underline="false">{{ t('action.more') }}</el-link>
-          </div>
-        </template>
-        <el-skeleton :loading="loading" animated>
-          <div v-for="(item, index) in notice" :key="`dynamics-${index}`">
-            <div class="flex items-center">
-              <el-avatar :src="avatar" :size="35" class="mr-16px">
-                <img src="@/assets/imgs/avatar.gif" alt="" />
-              </el-avatar>
-              <div>
-                <div class="text-14px">
-                  <Highlight :keys="item.keys.map((v) => t(v))">
-                    {{ item.type }} : {{ item.title }}
-                  </Highlight>
-                </div>
-                <div class="mt-16px text-12px text-gray-400">
-                  {{ formatTime(item.date, 'yyyy-MM-dd') }}
-                </div>
-              </div>
-            </div>
-            <el-divider />
-          </div>
-        </el-skeleton>
-      </el-card>
-    </el-col>
-  </el-row>
+  </section>
 </template>
-<script lang="ts" setup>
-import { set } from 'lodash-es'
-import { EChartsOption } from 'echarts'
-import { formatTime } from '@/utils'
 
-import { useUserStore } from '@/store/modules/user'
-// import { useWatermark } from '@/hooks/web/useWatermark'
-import type { WorkplaceTotal, Project, Notice, Shortcut } from './types'
-import { pieOptions, barOptions } from './echarts-data'
+<script lang="ts" setup>
 import { useRouter } from 'vue-router'
 
 defineOptions({ name: 'Index' })
 
-const { t } = useI18n()
+type TagType = 'success' | 'warning' | 'danger' | 'info' | 'primary'
+
 const router = useRouter()
-const userStore = useUserStore()
-// const { setWatermark } = useWatermark()
-const loading = ref(true)
-const avatar = userStore.getUser.avatar
-const username = userStore.getUser.nickname
-const pieOptionsData = reactive<EChartsOption>(pieOptions) as EChartsOption
-// 获取统计数
-let totalSate = reactive<WorkplaceTotal>({
-  project: 0,
-  access: 0,
-  todo: 0
-})
+const go = (path: string) => router.push(path)
 
-const getCount = async () => {
-  const data = {
-    project: 40,
-    access: 2340,
-    todo: 10
+const metrics = [
+  { label: '今日订单', value: '128', hint: '较昨日 +12%', path: '/mall/trade/order' },
+  { label: '待发货', value: '34', hint: '优先核对大件物流', path: '/mall/trade/order' },
+  { label: '售后待处理', value: '7', hint: '含 2 单高优先级', path: '/mall/trade/after-sale' },
+  { label: '低库存', value: '18', hint: '软装与灯具补货', path: '/mall/product/spu' }
+]
+
+const queues: Array<{
+  title: string
+  description: string
+  count: string
+  type: TagType
+  path: string
+}> = [
+  {
+    title: 'Order fulfillment queue',
+    description: '待配货、待出库、待同步物流单号',
+    count: '34',
+    type: 'warning',
+    path: '/mall/trade/order'
+  },
+  {
+    title: 'Payment exceptions',
+    description: '支付成功未回调、退款待确认',
+    count: '5',
+    type: 'danger',
+    path: '/pay/order'
+  },
+  {
+    title: 'Address verification',
+    description: '大件家具配送地址、楼层与预约时间核对',
+    count: '11',
+    type: 'primary',
+    path: '/mall/trade/order'
+  },
+  {
+    title: 'After-sale review',
+    description: '退换货、补发配件、安装反馈',
+    count: '7',
+    type: 'info',
+    path: '/mall/trade/after-sale'
   }
-  totalSate = Object.assign(totalSate, data)
-}
+]
 
-// 获取项目数
-let projects = reactive<Project[]>([])
-const getProject = async () => {
-  const data = [
-    {
-      name: 'ruoyi-vue-pro',
-      icon: 'simple-icons:springboot',
-      message: 'github.com/YunaiV/ruoyi-vue-pro',
-      personal: 'Spring Boot 单体架构',
-      time: new Date('2025-01-02'),
-      color: '#6DB33F'
-    },
-    {
-      name: 'yudao-ui-admin-vue3',
-      icon: 'ep:element-plus',
-      message: 'github.com/yudaocode/yudao-ui-admin-vue3',
-      personal: 'Vue3 + element-plus 管理后台',
-      time: new Date('2025-02-03'),
-      color: '#409EFF'
-    },
-    {
-      name: 'yudao-ui-mall-uniapp',
-      icon: 'icon-park-outline:mall-bag',
-      message: 'github.com/yudaocode/yudao-ui-mall-uniapp',
-      personal: 'Vue3 + uniapp 商城手机端',
-      time: new Date('2025-03-04'),
-      color: '#ff4d4f'
-    },
-    {
-      name: 'yudao-cloud',
-      icon: 'material-symbols:cloud-outline',
-      message: 'github.com/YunaiV/yudao-cloud',
-      personal: 'Spring Cloud 微服务架构',
-      time: new Date('2025-04-05'),
-      color: '#1890ff'
-    },
-    {
-      name: 'yudao-ui-admin-vben',
-      icon: 'devicon:antdesign',
-      message: 'github.com/yudaocode/yudao-ui-admin-vben',
-      personal: 'Vue3 + vben5(antd) 管理后台',
-      time: new Date('2025-05-06'),
-      color: '#e18525'
-    },
-    {
-      name: 'yudao-ui-admin-uniapp',
-      icon: 'ant-design:mobile',
-      message: 'github.com/yudaocode/yudao-ui-admin-uniapp',
-      personal: 'Vue3 + uniapp 管理手机端',
-      time: new Date('2025-06-01'),
-      color: '#2979ff'
-    }
-  ]
-  projects = Object.assign(projects, data)
-}
+const actions = [
+  {
+    title: '商品管理',
+    description: '上架、价格、图片与前台预览',
+    icon: 'ep:goods',
+    path: '/mall/product/spu'
+  },
+  {
+    title: '订单中心',
+    description: '支付、发货、售后联动处理',
+    icon: 'ep:tickets',
+    path: '/mall/trade/order'
+  },
+  {
+    title: '会员用户',
+    description: '标签、等级与复购维护',
+    icon: 'ep:user',
+    path: '/member/user'
+  },
+  {
+    title: '支付订单',
+    description: '回调异常与退款记录',
+    icon: 'ep:wallet',
+    path: '/pay/order'
+  },
+  {
+    title: '文件素材',
+    description: '商品图、空间图、证书资料',
+    icon: 'ep:folder-opened',
+    path: '/infra/file'
+  },
+  {
+    title: '角色权限',
+    description: '运营、客服、仓配分权',
+    icon: 'ep:lock',
+    path: '/system/role'
+  }
+]
 
-// 获取通知公告
-let notice = reactive<Notice[]>([])
-const getNotice = async () => {
-  const data = [
-    {
-      title: '系统支持 JDK 8/17/21，Vue 2/3',
-      type: '技术兼容性',
-      keys: ['JDK', 'Vue'],
-      date: new Date()
-    },
-    {
-      title: '后端提供 Spring Boot 2.7/3.2 + Cloud 双架构',
-      type: '架构灵活性',
-      keys: ['Boot', 'Cloud'],
-      date: new Date()
-    },
-    {
-      title: '全部开源，个人与企业可 100% 直接使用，无需授权',
-      type: '开源免授权',
-      keys: ['无需授权'],
-      date: new Date()
-    },
-    {
-      title: '国内使用最广泛的快速开发平台，远超 10w+ 企业使用',
-      type: '广泛企业认可',
-      keys: ['最广泛', '10w+'],
-      date: new Date()
-    }
-  ]
-  notice = Object.assign(notice, data)
-}
-
-// 获取快捷入口
-let shortcut = reactive<Shortcut[]>([])
-
-const getShortcut = async () => {
-  const data = [
-    {
-      name: '首页',
-      icon: 'ion:home-outline',
-      url: '/',
-      color: '#1fdaca'
-    },
-    {
-      name: '商城中心',
-      icon: 'ep:shop',
-      url: '/mall/home',
-      color: '#ff6b6b'
-    },
-    {
-      name: 'AI 大模型',
-      icon: 'tabler:ai',
-      url: '/ai/chat',
-      color: '#7c3aed'
-    },
-    {
-      name: 'ERP 系统',
-      icon: 'simple-icons:erpnext',
-      url: '/erp/home',
-      color: '#3fb27f'
-    },
-    {
-      name: 'CRM 系统',
-      icon: 'simple-icons:civicrm',
-      url: '/crm/backlog',
-      color: '#4daf1bc9'
-    },
-    {
-      name: 'IoT 物联网',
-      icon: 'fa-solid:hdd',
-      url: '/iot/home',
-      color: '#1a73e8'
-    }
-  ]
-  shortcut = Object.assign(shortcut, data)
-}
-
-// 用户来源
-const getUserAccessSource = async () => {
-  const data = [
-    { value: 335, name: 'analysis.directAccess' },
-    { value: 310, name: 'analysis.mailMarketing' },
-    { value: 234, name: 'analysis.allianceAdvertising' },
-    { value: 135, name: 'analysis.videoAdvertising' },
-    { value: 1548, name: 'analysis.searchEngines' }
-  ]
-  set(
-    pieOptionsData,
-    'legend.data',
-    data.map((v) => t(v.name))
-  )
-  pieOptionsData!.series![0].data = data.map((v) => {
-    return {
-      name: t(v.name),
-      value: v.value
-    }
-  })
-}
-const barOptionsData = reactive<EChartsOption>(barOptions) as EChartsOption
-
-// 周活跃量
-const getWeeklyUserActivity = async () => {
-  const data = [
-    { value: 13253, name: 'analysis.monday' },
-    { value: 34235, name: 'analysis.tuesday' },
-    { value: 26321, name: 'analysis.wednesday' },
-    { value: 12340, name: 'analysis.thursday' },
-    { value: 24643, name: 'analysis.friday' },
-    { value: 1322, name: 'analysis.saturday' },
-    { value: 1324, name: 'analysis.sunday' }
-  ]
-  set(
-    barOptionsData,
-    'xAxis.data',
-    data.map((v) => t(v.name))
-  )
-  set(barOptionsData, 'series', [
-    {
-      name: t('analysis.activeQuantity'),
-      data: data.map((v) => v.value),
-      type: 'bar'
-    }
-  ])
-}
-
-const getAllApi = async () => {
-  await Promise.all([
-    getCount(),
-    getProject(),
-    getNotice(),
-    getShortcut(),
-    getUserAccessSource(),
-    getWeeklyUserActivity()
-  ])
-  loading.value = false
-}
-
-const handleProjectClick = (message: string) => {
-  window.open(`https://${message}`, '_blank')
-}
-
-const handleShortcutClick = (url: string) => {
-  router.push(url)
-}
-
-getAllApi()
+const priorityProducts: Array<{
+  name: string
+  category: string
+  image: string
+  stock: string
+  orders: number
+  status: string
+  type: TagType
+  owner: string
+}> = [
+  {
+    name: 'Aveline Modular Sofa',
+    category: '客厅 / 沙发',
+    image: '/assets/generated-furniture/product-sofa-cover.webp',
+    stock: '24 件',
+    orders: 19,
+    status: '热销补货',
+    type: 'warning',
+    owner: '商品运营'
+  },
+  {
+    name: 'Marble Dome Table Lamp',
+    category: '灯具 / 台灯',
+    image: '/assets/generated-furniture/product-pendant-cover.webp',
+    stock: '63 件',
+    orders: 13,
+    status: '正常',
+    type: 'success',
+    owner: '软装组'
+  },
+  {
+    name: 'Walnut Storage Cabinet',
+    category: '餐厅 / 储物',
+    image: '/assets/generated-furniture/product-table-cover.webp',
+    stock: '8 件',
+    orders: 11,
+    status: '低库存',
+    type: 'danger',
+    owner: '仓配组'
+  }
+]
 </script>

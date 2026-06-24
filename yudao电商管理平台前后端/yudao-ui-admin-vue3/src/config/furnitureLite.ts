@@ -25,7 +25,6 @@ const allowedMenuPaths = new Set([
   '/mall/trade/delivery/pick-up-store',
   '/member',
   '/member/user',
-  '/member/trade-application',
   '/member/level',
   '/member/tag',
   '/member/group',
@@ -36,26 +35,12 @@ const allowedMenuPaths = new Set([
   '/infra/file',
   '/infra/file-config',
   '/infra/file/file-config',
-  '/system/messages',
-  '/system/messages/mail',
-  '/system/messages/mail/mail-account',
-  '/system/messages/mail/mail-template',
-  '/system/messages/mail/mail-log',
   '/system/user',
   '/system/role',
   '/system/menu'
 ])
 
-const deniedFixedRoutePrefixes = [
-  '/bpm',
-  '/crm',
-  '/ai',
-  '/iot',
-  '/mes',
-  '/diy',
-  '/codegen',
-  '/job'
-]
+const deniedFixedRoutePrefixes = ['/ai', '/bpm', '/crm', '/iot', '/mes', '/diy', '/codegen', '/job']
 
 const isFalseEnvValue = (value: unknown): boolean =>
   typeof value === 'string' && value.toLowerCase() === 'false'

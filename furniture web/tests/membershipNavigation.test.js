@@ -10,7 +10,7 @@ import {
 } from "../src/services/membershipNavigation.js";
 
 describe("membership navigation model", () => {
-  it("defines RH-aligned membership and account routes", () => {
+  it("defines Oakved membership and account routes", () => {
     expect(membershipRoutes.membership).toBe("/membership");
     expect(membershipRoutes.membershipEnrollment).toBe("/membership/enrollment");
     expect(membershipRoutes.membershipTerms).toBe("/membership/terms");
@@ -23,7 +23,7 @@ describe("membership navigation model", () => {
     expect(membershipRoutes.giftRegistry).toBe("/gift-registry");
   });
 
-  it("keeps the My Account menu order aligned with RH", () => {
+  it("keeps the My Account menu order aligned with Oakved service priorities", () => {
     expect(accountMenuItems.map((item) => item.label)).toEqual([
       "Account Profile",
       "Address Book",

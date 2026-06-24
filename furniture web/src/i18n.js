@@ -36,6 +36,13 @@ const messages = {
     },
     navigation: {
       primary: {
+        bedroomFurniture: "Bedroom Furniture",
+        storageCabinets: "Storage Cabinets",
+        desksTables: "Desks & Tables",
+        seatingBenches: "Seating & Benches",
+        roomSets: "Room Sets",
+        woodcraft: "Woodcraft",
+        newSale: "New & Sale",
         living: "Living",
         dining: "Dining",
         bed: "Bed",
@@ -3667,6 +3674,13 @@ const navigationMessages = {
   en: {
     navigation: {
       primary: {
+        bedroomFurniture: "Bedroom Furniture",
+        storageCabinets: "Storage Cabinets",
+        desksTables: "Desks & Tables",
+        seatingBenches: "Seating & Benches",
+        roomSets: "Room Sets",
+        woodcraft: "Woodcraft",
+        newSale: "New & Sale",
         living: "Living",
         dining: "Dining",
         bed: "Bed",
@@ -3701,6 +3715,13 @@ const navigationMessages = {
   "zh-CN": {
     navigation: {
       primary: {
+        bedroomFurniture: "\u5367\u5ba4\u5bb6\u5177",
+        storageCabinets: "\u67dc\u7c7b\u6536\u7eb3",
+        desksTables: "\u684c\u6905\u4e66\u623f",
+        seatingBenches: "\u6905\u51f3\u6c99\u53d1",
+        roomSets: "\u6574\u5c4b\u642d\u914d",
+        woodcraft: "\u6728\u6750\u5de5\u827a",
+        newSale: "\u65b0\u54c1\u7279\u60e0",
         living: "客厅",
         dining: "餐厅",
         bed: "卧室",
@@ -3735,6 +3756,13 @@ const navigationMessages = {
   fr: {
     navigation: {
       primary: {
+        bedroomFurniture: "Mobilier de chambre",
+        storageCabinets: "Rangements",
+        desksTables: "Bureaux et tables",
+        seatingBenches: "Si\u00e8ges et bancs",
+        roomSets: "Pi\u00e8ces compl\u00e8tes",
+        woodcraft: "Travail du bois",
+        newSale: "Nouveaut\u00e9s et soldes",
         living: "Séjour",
         dining: "Salle à manger",
         bed: "Chambre",

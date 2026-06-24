@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { demoProducts } from "../data/demoProducts.js";
 import { useI18n } from "../i18n.js";
 import { buildProductDetailModel } from "../services/productDetailModel.js";
@@ -25,12 +25,31 @@ const normalizedPurchaseQuantity = computed(() => {
   if (!canPurchase.value) return 0;
   return Math.max(1, Math.min(Math.floor(Number(quantity.value) || 1), maxPurchaseQuantity.value));
 });
+const moveGallery = (direction) => {
+  const total = detail.value.gallery.length;
+  activeGalleryIndex.value = (activeGalleryIndex.value + direction + total) % total;
+};
+
+const applyProductSeo = () => {
+  if (typeof document === "undefined") return;
+  const title = detail.value?.name || "Product Details";
+  document.title = `${title} | Oakved`;
+  let meta = document.querySelector('meta[name="description"]');
+  if (!meta) {
+    meta = document.createElement("meta");
+    meta.setAttribute("name", "description");
+    document.head.appendChild(meta);
+  }
+  meta.setAttribute("content", detail.value?.description || "Product Details | Oakved");
+};
 
 const handleAddToCart = (event) => {
   quantity.value = normalizedPurchaseQuantity.value;
   if (!canPurchase.value) return;
   emit("add-to-cart", product.value, normalizedPurchaseQuantity.value, { trigger: event?.currentTarget });
 };
+
+watch(detail, applyProductSeo);
 
 onMounted(async () => {
   const id = productId.value;
@@ -58,13 +77,22 @@ onMounted(async () => {
 
     <div class="product-detail-grid">
       <div class="product-detail-media">
-        <figure class="product-gallery-main" :class="`tone-${activeGalleryItem.tone}`">
+        <figure
+          class="product-gallery-main"
+          :class="`tone-${activeGalleryItem.tone}`"
+          tabindex="0"
+          @keydown.left.prevent="moveGallery(-1)"
+          @keydown.right.prevent="moveGallery(1)"
+        >
+          <button class="product-gallery-arrow product-gallery-arrow-prev" type="button" aria-label="Previous image" @click="moveGallery(-1)">‹</button>
           <img v-if="activeGalleryItem.src" :src="activeGalleryItem.src" :alt="`${detail.name} ${activeGalleryItem.label}`" />
           <figcaption v-else class="product-gallery-placeholder">
             <span>{{ activeGalleryItem.label }}</span>
             <strong>{{ activeGalleryItem.kind }}</strong>
           </figcaption>
+          <button class="product-gallery-arrow product-gallery-arrow-next" type="button" aria-label="Next image" @click="moveGallery(1)">›</button>
         </figure>
+        <p class="product-gallery-status">{{ activeGalleryIndex + 1 }} / {{ detail.gallery.length }}</p>
         <div class="product-gallery-thumbs" aria-label="Product images">
           <button
             v-for="(item, index) in detail.gallery"

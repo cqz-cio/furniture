@@ -4,11 +4,10 @@ import {
   babyChildNavigation,
   globalMenuPanels,
   globalMenuLinkHref,
-  livingMegaMenu,
-  livingMegaSubmenus,
   mobileDrawerNavigation,
   primaryNavigation,
-  saleMegaMenu,
+  woodFurnitureDropdownLabels,
+  woodFurnitureMegaMenus,
 } from "../data/rhLayout.js";
 import { generatedFurnitureAssets } from "../data/generatedFurnitureAssets.js";
 import { useI18n } from "../i18n.js";
@@ -34,9 +33,11 @@ const page = defineModel("page", { type: String, default: "home" });
 const { availableLocales, currentLocale, setLocale, t } = useI18n();
 const headerRef = ref(null);
 const regionSwitcherRef = ref(null);
+const navButtonRefs = ref({});
 const menuOpen = ref(false);
 const activeDropdown = ref("");
 const activeMegaItem = ref("");
+const categoryMenuLeft = ref("80px");
 const regionOpen = ref(false);
 const accountOpen = ref(false);
 const searchOpen = ref(false);
@@ -47,8 +48,7 @@ const babyChildPageMap = {
   Furniture: "baby-child-furniture",
   Bedding: "baby-child-bedding",
   Nursery: "baby-child-nursery",
-  Décor: "baby-child-decor",
-  "D茅cor": "baby-child-decor",
+  Decor: "baby-child-decor",
   Lighting: "baby-child-lighting",
   Rugs: "baby-child-rugs",
   Windows: "baby-child-windows",
@@ -60,27 +60,19 @@ const babyChildPageMap = {
   Registry: "baby-child-registry",
 };
 const primaryNavigationLabelKeys = {
-  Living: "navigation.primary.living",
-  Dining: "navigation.primary.dining",
-  Bed: "navigation.primary.bed",
-  Bath: "navigation.primary.bath",
-  Outdoor: "navigation.primary.outdoor",
-  Lighting: "navigation.primary.lighting",
-  Textiles: "navigation.primary.textiles",
-  Rugs: "navigation.primary.rugs",
-  Décor: "navigation.primary.decor",
-  "D茅cor": "navigation.primary.decor",
-  "Baby & Child": "navigation.primary.babyChild",
-  Teen: "navigation.primary.teen",
-  Sale: "navigation.primary.sale",
-  "Interior Design": "navigation.primary.interiorDesign",
+  "Bedroom Furniture": "navigation.primary.bedroomFurniture",
+  "Storage Cabinets": "navigation.primary.storageCabinets",
+  "Desks & Tables": "navigation.primary.desksTables",
+  "Seating & Benches": "navigation.primary.seatingBenches",
+  "Room Sets": "navigation.primary.roomSets",
+  Woodcraft: "navigation.primary.woodcraft",
+  "New & Sale": "navigation.primary.newSale",
 };
 const babyChildNavigationLabelKeys = {
   Furniture: "navigation.babyChild.furniture",
   Bedding: "navigation.babyChild.bedding",
   Nursery: "navigation.babyChild.nursery",
-  Décor: "navigation.babyChild.decor",
-  "D茅cor": "navigation.babyChild.decor",
+  Decor: "navigation.babyChild.decor",
   Lighting: "navigation.babyChild.lighting",
   Rugs: "navigation.babyChild.rugs",
   Windows: "navigation.babyChild.windows",
@@ -99,10 +91,26 @@ const navigationLabelKey = (label) =>
 const navItemLabel = (label) => t(navigationLabelKey(label));
 const menuItemLabel = (label) => (navigationLabelKey(label) ? navItemLabel(label) : label);
 const navItems = computed(() => (isBabyChildSitePage.value ? babyChildNavigation : primaryNavigation));
-const hoverMenuItems = computed(() => (activeDropdown.value === "Sale" ? saleMegaMenu : livingMegaMenu));
-const hoverSecondaryMenuItems = computed(() =>
-  activeDropdown.value === "Living" && activeMegaItem.value ? livingMegaSubmenus[activeMegaItem.value] || [] : [],
-);
+const hasWoodDropdown = (label) => !isBabyChildSitePage.value && woodFurnitureDropdownLabels.includes(label);
+const hoverMenuItems = computed(() => woodFurnitureMegaMenus[activeDropdown.value] || []);
+const hoverSecondaryMenuItems = computed(() => []);
+const dropdownPositionStyle = computed(() => ({
+  "--category-menu-left": categoryMenuLeft.value,
+}));
+const mobileDrawerSections = computed(() => [
+  {
+    heading: "Shop Furniture",
+    items: mobileDrawerNavigation,
+  },
+  {
+    heading: "Service",
+    items: [
+      { label: "Membership FAQ", href: "/membership/faqs" },
+      { label: "Gift Registry", href: "/gift-registry" },
+      { label: "Trade Program", href: "/trade/sign-in" },
+    ],
+  },
+]);
 const generatedGlobalMenuImages = [
   generatedFurnitureAssets.products.sofa.cover,
   generatedFurnitureAssets.home.modules["004"].desktop,
@@ -114,7 +122,9 @@ const pageKey = (label) => {
   if (isBabyChildSitePage.value && babyChildPageMap[label]) {
     return babyChildPageMap[label];
   }
-  if (label === "Living") return "sofas-plp";
+  if (primaryNavigation.some((item) => item.label === label)) {
+    return label === "New & Sale" ? "sale" : "sofas-plp";
+  }
   if (label === "Furniture") return "baby-child";
   if (label === "Baby & Child") return "baby-child";
   if (label === "Sale") return "sale";
@@ -189,6 +199,30 @@ const hideDropdown = () => {
   activeMegaItem.value = "";
 };
 
+const setNavButtonRef = (label, element) => {
+  if (element) {
+    navButtonRefs.value[label] = element;
+    return;
+  }
+  delete navButtonRefs.value[label];
+};
+
+const updateDropdownPosition = (label) => {
+  const button = navButtonRefs.value[label];
+  if (!button || typeof window === "undefined") return;
+
+  const buttonRect = button.getBoundingClientRect();
+  const headerRect = headerRef.value?.getBoundingClientRect() || { left: 0, width: window.innerWidth };
+  const menuWidth = 516;
+  const gutter = 24;
+  const headerWidth = headerRect.width || window.innerWidth;
+  const navCenter = buttonRect.left - headerRect.left + buttonRect.width / 2;
+  const maxLeft = Math.max(gutter, headerWidth - menuWidth - gutter);
+  const nextLeft = Math.min(Math.max(navCenter - menuWidth / 2, gutter), maxLeft);
+
+  categoryMenuLeft.value = `${Math.round(nextLeft)}px`;
+};
+
 const setBodyMenuState = (isOpen) => {
   if (typeof document === "undefined") return;
   document.body.classList.toggle("rh-menu-open", isOpen);
@@ -214,7 +248,8 @@ const handleNavClick = (label) => {
     return;
   }
 
-  if (!menuOpen.value && ["Living", "Sale"].includes(label)) {
+  if (!menuOpen.value && woodFurnitureDropdownLabels.includes(label)) {
+    updateDropdownPosition(label);
     activeDropdown.value = activeDropdown.value === label ? "" : label;
     activeMegaItem.value = "";
     regionOpen.value = false;
@@ -241,14 +276,20 @@ const handleDocumentPointerDown = (event) => {
   }
 };
 
+const handleWindowResize = () => {
+  if (activeDropdown.value) updateDropdownPosition(activeDropdown.value);
+};
+
 watch(menuOpen, setBodyMenuState);
 
 onMounted(() => {
   document.addEventListener("pointerdown", handleDocumentPointerDown);
+  window.addEventListener("resize", handleWindowResize);
 });
 
 onBeforeUnmount(() => {
   document.removeEventListener("pointerdown", handleDocumentPointerDown);
+  window.removeEventListener("resize", handleWindowResize);
   setBodyMenuState(false);
 });
 </script>
@@ -355,10 +396,11 @@ onBeforeUnmount(() => {
         <button
           v-for="item in navItems"
           :key="item.label"
+          :ref="(element) => setNavButtonRef(item.label, element)"
           class="nav-link"
           :class="{ active: isActive(item.label) }"
           type="button"
-          :aria-expanded="['Living', 'Sale'].includes(item.label) ? activeDropdown === item.label : undefined"
+          :aria-expanded="hasWoodDropdown(item.label) ? activeDropdown === item.label : undefined"
           @click="handleNavClick(item.label)"
         >
           {{ navItemLabel(item.label) }}
@@ -367,23 +409,22 @@ onBeforeUnmount(() => {
     </nav>
 
     <section
-      v-if="['Living', 'Sale'].includes(activeDropdown)"
+      v-if="woodFurnitureDropdownLabels.includes(activeDropdown)"
       class="category-mega-menu"
-      :class="{ 'is-sale-menu': activeDropdown === 'Sale' }"
+      :class="{ 'is-sale-menu': activeDropdown === 'New & Sale' }"
+      :style="dropdownPositionStyle"
       :aria-label="`${activeDropdown} category menu`"
     >
       <ul>
         <li v-for="item in hoverMenuItems" :key="item.label">
-          <button
-            v-if="activeDropdown === 'Living'"
+          <a
             class="category-mega-link"
             :class="{ accent: item.accent, active: activeMegaItem === item.label }"
-            type="button"
-            @click="activateMegaItem(item.label)"
+            :href="item.href"
+            @click="hideDropdown"
           >
             {{ menuItemLabel(item.label) }}
-          </button>
-          <a v-else :class="{ accent: item.accent }" :href="item.href" @click="hideDropdown">{{ menuItemLabel(item.label) }}</a>
+          </a>
         </li>
       </ul>
       <ul v-if="hoverSecondaryMenuItems.length" class="category-mega-secondary">
@@ -394,7 +435,7 @@ onBeforeUnmount(() => {
       <div v-else class="category-mega-empty" aria-hidden="true"></div>
     </section>
 
-    <section v-if="menuOpen" class="global-menu" aria-label="RH menu">
+    <section v-if="menuOpen" class="global-menu" aria-label="Oakved menu">
       <article v-for="(panel, index) in globalMenuPanels" :key="panel.heading" class="global-menu-panel">
         <img
           class="global-menu-image"
@@ -417,16 +458,19 @@ onBeforeUnmount(() => {
 
     <div v-if="menuOpen" class="mobile-drawer-layer" aria-label="Mobile Oakved menu">
       <aside class="mobile-menu-drawer">
-        <button
-          v-for="item in mobileDrawerNavigation"
-          :key="item.label"
-          type="button"
-          :class="{ accent: item.accent }"
-          @click="activatePage(item.label)"
-        >
-          <span>{{ menuItemLabel(item.label) }}</span>
-          <span aria-hidden="true">›</span>
-        </button>
+        <section v-for="section in mobileDrawerSections" :key="section.heading" class="mobile-drawer-section">
+          <h2>{{ section.heading }}</h2>
+          <a
+            v-for="item in section.items"
+            :key="item.label"
+            :class="{ accent: item.accent }"
+            :href="item.href"
+            @click="closeMenu"
+          >
+            <span>{{ menuItemLabel(item.label) }}</span>
+            <span aria-hidden="true">›</span>
+          </a>
+        </section>
         <button class="mobile-region" type="button">
           <span>{{ t("header.mobileRegion") }}</span>
           <span aria-hidden="true">›</span>

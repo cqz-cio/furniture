@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+﻿import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   babyChildCollections,
@@ -15,6 +15,8 @@ import {
   livingMegaSubmenus,
   mobileDrawerNavigation,
   primaryNavigation,
+  woodFurnitureDropdownLabels,
+  woodFurnitureMegaMenus,
   rhFooter,
   outdoorCollectionSpecs,
   sofaPdpSpecs,
@@ -30,71 +32,65 @@ import {
 } from "../src/data/rhLayout.js";
 
 describe("RH layout extraction data", () => {
-  it("keeps the primary RH navigation order used by the header", () => {
+  it("keeps the focused wood furniture navigation order used by the header", () => {
     expect(primaryNavigation.map((item) => item.label)).toEqual([
-      "Living",
-      "Dining",
-      "Bed",
-      "Bath",
-      "Outdoor",
-      "Lighting",
-      "Textiles",
-      "Rugs",
-      "Décor",
-      "Baby & Child",
-      "Teen",
-      "Sale",
-      "Interior Design",
+      "Bedroom Furniture",
+      "Storage Cabinets",
+      "Desks & Tables",
+      "Seating & Benches",
+      "Room Sets",
+      "Woodcraft",
+      "New & Sale",
     ]);
+    expect(primaryNavigation.every((item) => item.href.startsWith("/products") || item.href === "/sale")).toBe(true);
   });
 
   it("defines the global hamburger menu panels from the source menu", () => {
     expect(globalMenuPanels.map((panel) => panel.heading)).toEqual([
       "Products",
-      "Places",
+      "Rooms",
       "Services",
-      "Spaces",
+      "New & Sale",
     ]);
-    expect(globalMenuPanels[0].links).toContain("RH Interiors");
+    expect(globalMenuPanels[0].links).toContain("Bedroom Furniture");
     expect(globalMenuPanels[0].image).toBeUndefined();
     expect(globalMenuPanels[0].spec).toMatchObject({
       rendered: "409 x 216",
       recommended2x: "818 x 432",
     });
-    expect(globalMenuPanels[1].links).toContain("Galleries");
-    expect(globalMenuPanels[2].groups.map((group) => group.heading)).toContain("Trade");
-    expect(globalMenuPanels[3].links).toContain("RH Three Expedition Yacht");
+    expect(globalMenuPanels[1].links).toContain("Bedroom Sets");
+    expect(globalMenuPanels[2].groups.map((group) => group.heading)).toContain("Support");
+    expect(globalMenuPanels[3].links).toContain("Sale");
   });
 
-  it("defines the Living dropdown and mobile drawer navigation", () => {
-    expect(livingMegaMenu.map((item) => item.label)).toEqual([
-      "Fabric Seating",
-      "Leather Seating",
-      "The Cloud® Collection",
-      "Shelving & Cabinets",
-      "Sideboards",
-      "Media",
-      "Tables",
-      "Consoles",
-      "Office",
-      "Shop By Room",
-      "Sale",
+  it("defines local dropdown menus for the focused storefront navigation", () => {
+    expect(woodFurnitureDropdownLabels).toEqual(primaryNavigation.map((item) => item.label));
+    expect(woodFurnitureMegaMenus["Bedroom Furniture"].map((item) => item.label)).toEqual([
+      "\u5e8a\u5934\u67dc",
+      "\u5e8a\u5c3e\u957f\u51f3",
+      "\u6597\u67dc",
+      "\u5316\u5986\u684c",
+      "\u5367\u5ba4\u5957\u88c5",
+      "\u67e5\u770b\u5168\u90e8\u5367\u5ba4\u5bb6\u5177",
     ]);
-    expect(livingSeatingMegaMenu.map((item) => item.label)).toContain("Sofas");
-    expect(livingSeatingMegaMenu.find((item) => item.label === "Sofas").href).toBe("/sofas-plp");
-    expect(livingMegaSubmenus["Fabric Seating"]).toBe(livingSeatingMegaMenu);
-    expect(livingMegaSubmenus["Leather Seating"].map((item) => item.label)).toContain("Leather Swatches");
-    expect(livingMegaSubmenus["The Cloud® Collection"].map((item) => item.label)).toContain("Cloud Leather Collection");
-    expect(livingMegaSubmenus["Shelving & Cabinets"].map((item) => item.label)).toContain("Bar Cabinets & Carts");
-    expect(livingMegaSubmenus.Sideboards.map((item) => item.label)).toContain("Glass Sideboards");
-    expect(livingMegaSubmenus.Media.map((item) => item.label)).toContain("Media Armoires");
-    expect(livingMegaSubmenus.Tables.map((item) => item.label)).toContain("Drink Tables");
-    expect(livingMegaSubmenus.Consoles.map((item) => item.label)).toContain("Sofa Console Tables");
-    expect(livingMegaSubmenus.Office.map((item) => item.label)).toContain("Office Accessories");
-    expect(livingMegaSubmenus["Shop By Room"].map((item) => item.label)).toEqual(["Living Rooms", "Office"]);
-    expect(livingMegaSubmenus.Sale.find((item) => item.label === "Sofas").href).toBe("/sofas-plp");
-    expect(mobileDrawerNavigation.at(-1).label).toBe("Interior Design");
-    expect(mobileDrawerNavigation.find((item) => item.label === "Sale").accent).toBe(true);
+    expect(woodFurnitureMegaMenus["Bedroom Furniture"].at(-1)).toMatchObject({
+      href: "/products?room=bedroom",
+      accent: true,
+    });
+    expect(woodFurnitureMegaMenus["New & Sale"].map((item) => item.href)).toEqual([
+      "/products?tag=new",
+      "/products?tag=best-seller",
+      "/products?tag=in-stock",
+      "/sale",
+      "/sale",
+    ]);
+    const allDropdownLinks = Object.values(woodFurnitureMegaMenus).flat();
+    expect(allDropdownLinks.every((item) => item.href.startsWith("/products") || item.href === "/sale")).toBe(true);
+    expect(livingMegaMenu).toBe(woodFurnitureMegaMenus["Bedroom Furniture"]);
+    expect(livingSeatingMegaMenu).toEqual([]);
+    expect(livingMegaSubmenus).toEqual({});
+    expect(mobileDrawerNavigation.at(-1).label).toBe("New & Sale");
+    expect(mobileDrawerNavigation.find((item) => item.label === "New & Sale").accent).toBe(true);
   });
 
   it("defines Baby & Child navigation and collection modules", () => {
@@ -102,7 +98,7 @@ describe("RH layout extraction data", () => {
       "Furniture",
       "Bedding",
       "Nursery",
-      "Décor",
+      "Decor",
       "Lighting",
       "Rugs",
       "Windows",
@@ -116,7 +112,7 @@ describe("RH layout extraction data", () => {
     expect(babyChildCollections.map((item) => item.title)).toEqual(["Nursery", "Bedroom", "Bedding", "Playroom"]);
   });
 
-  it("defines the shared RH footer text and link groups", () => {
+  it("defines the shared Oakved footer text and link groups", () => {
     expect(rhFooter.newsletter.title).toBe("INSPIRATION, DELIVERED.");
     expect(rhFooter.columns.map((column) => column.title)).toEqual([
       "RESOURCES",
@@ -125,8 +121,8 @@ describe("RH layout extraction data", () => {
       "LEGAL",
     ]);
     expect(rhFooter.columns[0].links).toContain("REQUEST A SOURCEBOOK");
-    expect(rhFooter.columns[0].links).toContain("RH MEMBERS PROGRAM");
-    expect(rhFooter.columns[1].links).toContain("MEMBERSHIP FAQS");
+    expect(rhFooter.columns[0].links).toContain("OAKVED MEMBERS PROGRAM");
+    expect(rhFooter.columns[0].links).toContain("MEMBERSHIP FAQS");
     expect(rhFooter.columns.at(-1).links).toContain("PRODUCT REGISTRATION");
     expect(rhFooter.region).toBe("United States ($) / English");
   });
@@ -135,22 +131,28 @@ describe("RH layout extraction data", () => {
     expect(footerLinkHref("RH MEMBERS PROGRAM")).toBe("/membership");
     expect(footerLinkHref("MEMBERSHIP FAQS")).toBe("/membership/faqs");
     expect(footerLinkHref("GIFT REGISTRY")).toBe("/gift-registry");
+    expect(rhFooter.columns.flatMap((column) => column.links).every((link) => footerLinkHref(link) !== "#")).toBe(true);
   });
 
   it("maps completed global menu entries to local routes", () => {
     expect(globalMenuLinkHref("RH")).toBe("/");
     expect(globalMenuLinkHref("RH Outdoor")).toBe("/outdoor");
     expect(globalMenuLinkHref("RH Baby & Child")).toBe("/baby-child");
-    expect(globalMenuLinkHref("RH Teen")).toBe("/teen");
-    expect(globalMenuLinkHref("RH Members Program")).toBe("/membership");
+    expect(globalMenuLinkHref("Oakved Members Program")).toBe("/membership");
+    expect(globalMenuLinkHref("New Arrivals")).toBe("/products?tag=new");
+    expect(globalMenuLinkHref("Bedroom Furniture")).toBe("/products?room=bedroom");
+    expect(globalMenuLinkHref("Storage Cabinets")).toBe("/products?category=storage");
+    expect(globalMenuLinkHref("Desks & Tables")).toBe("/products?category=desk-table");
+    expect(globalMenuLinkHref("Seating & Benches")).toBe("/products?category=seating");
+    expect(globalMenuPanels.flatMap((panel) => panel.links).every((link) => globalMenuLinkHref(link) !== "#")).toBe(true);
   });
 
   it("maps sale category modules to local prototype routes", () => {
     const salePageSource = readFileSync(new URL("../src/pages/SalePage.vue", import.meta.url), "utf8");
     const saleTileSource = readFileSync(new URL("../src/components/SaleCategoryTile.vue", import.meta.url), "utf8");
 
-    expect(saleCategoryLinkHref(saleCategories.find((item) => item.title === "Living"))).toBe("/sofas-plp");
-    expect(saleCategoryLinkHref(saleCategories.find((item) => item.title === "Sofas"))).toBe("/sofas-plp");
+    expect(saleCategoryLinkHref(saleCategories.find((item) => item.title === "Living"))).toBe("/products");
+    expect(saleCategoryLinkHref(saleCategories.find((item) => item.title === "Sofas"))).toBe("/products");
     expect(saleCategoryLinkHref(saleCategories.find((item) => item.title === "Outdoor"))).toBe("/outdoor");
     expect(saleCategoryLinkHref(saleCategories.find((item) => item.title === "Dining"))).toBe("/missing");
     expect(salePageSource).toContain("saleCategoryLinkHref(category)");
@@ -233,19 +235,13 @@ describe("RH layout extraction data", () => {
     ]);
   });
 
-  it("defines the Sale hover dropdown from the source menu screenshot", () => {
+  it("defines the Sale hover dropdown from the focused storefront menu", () => {
     expect(saleMegaMenu.map((item) => item.label)).toEqual([
-      "Living",
-      "Dining",
-      "Bed",
-      "Bath",
-      "Outdoor",
-      "Lighting",
-      "Textiles",
-      "Rugs",
-      "Décor",
-      "Baby & Child",
-      "Teen",
+      "\u65b0\u54c1\u4e0a\u67b6",
+      "\u70ed\u9500\u5355\u54c1",
+      "\u73b0\u8d27\u5bb6\u5177",
+      "\u9650\u65f6\u7279\u60e0",
+      "\u67e5\u770b\u5168\u90e8\u7279\u60e0",
     ]);
   });
 
@@ -269,47 +265,44 @@ describe("RH layout extraction data", () => {
   });
 
   it("defines measured homepage image slots from desktop and mobile exports", () => {
-    expect(homeHighlights.map((item) => item.title)).toEqual([
-      "首页第二屏图位",
-      "首页第三屏图位",
-      "首页第四屏图位",
-      "首页 Sourcebook 图位",
-    ]);
+    expect(homeHighlights).toHaveLength(4);
+    expect(homeHighlights.map((item) => item.desktopRendered)).toContain("1350 x 907.88");
     expect(homeHighlights[0].desktopRendered).toBe("1350 x 907.88");
     expect(homeHighlights.at(-1).mobileRendered).toBe("390 x 280.31");
   });
 
   it("extends the homepage structure with modules observed in the full mobile screenshot", () => {
-    expect(homeFullPageModules.map((item) => item.title)).toEqual([
-      "首页第二屏图位",
-      "首页第三屏图位",
-      "首页第四屏图位",
-      "首页 Sourcebook 图位",
-      "RH Milan 室内图位",
-      "Sourcebooks 双封面模块",
-      "RH Interiors 入口模块",
-      "Outdoor 休闲场景模块",
-      "室内系列入口模块",
-      "Sourcebooks 多封面矩阵",
-      "RH Members Program 文案模块",
-      "Chairman / 创始人文案模块",
-      "建筑外立面模块",
-      "餐厅 / 酒吧模块",
-      "泳池 / Guesthouse 模块",
-      "私人飞机模块",
-      "游艇模块",
-      "Footer 前服务链接区域",
+    expect(homeFullPageModules).toHaveLength(18);
+    expect(homeFullPageModules.slice(4).every((item) => item.sourceLevel)).toBe(true);
+    expect(homeFullPageModules.map((item) => item.key)).toEqual([
+      "home2",
+      "home3",
+      "home4",
+      "sourcebook",
+      "milan",
+      "sourcebooksCover",
+      "interiorsEntry",
+      "outdoorScene",
+      "interiorSeries",
+      "sourcebooksGrid",
+      "membersProgram",
+      "founder",
+      "architecture",
+      "restaurant",
+      "guesthouse",
+      "aviation",
+      "yachting",
+      "serviceLinks",
     ]);
-    expect(homeFullPageModules.slice(4).every((item) => item.sourceLevel === "完整手机长截图推断，待首页 JSON 精确复核")).toBe(true);
   });
-
   it("links completed homepage modules to local pages", () => {
     const source = readFileSync(new URL("../src/pages/HomePage.vue", import.meta.url), "utf8");
 
-    expect(source).toContain("const homeModuleHref = (title) => {");
-    expect(source).toContain('return "/outdoor"');
-    expect(source).toContain('return "/membership"');
-    expect(source).toContain(":is=\"homeModuleHref(item.title) ? 'a' : 'article'\"");
+    expect(source).toContain("const editorialModules = [");
+    expect(source).toContain('href: "/products?room=bedroom"');
+    expect(source).toContain('href: "/products?category=storage"');
+    expect(source).toContain('href: "/products?category=desk-table"');
+    expect(source).toContain('href: "/products?category=seating"');
   });
 
   it("uses measured homepage hero assets for desktop and mobile", () => {

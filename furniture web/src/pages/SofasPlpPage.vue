@@ -19,6 +19,8 @@ const products = ref(demoProducts);
 const searchQuery = ref("");
 const selectedProductType = ref("all");
 const selectedSort = ref("featured");
+const quickAddMessage = ref("");
+const skeletonCards = [0, 1, 2, 3];
 
 const sourceLabel = computed(() => (source.value === "yudao" ? t("connectedCatalog") : t("offlineCatalog")));
 const productTypeOptions = computed(() => buildProductTypeOptions(products.value));
@@ -32,12 +34,24 @@ const visibleProducts = computed(() =>
 const resultSummary = computed(() =>
   t("productList.resultSummary", { visible: visibleProducts.value.length, total: products.value.length })
 );
+const activeFilterLabels = computed(() => {
+  const labels = [`Showing ${visibleProducts.value.length} of ${products.value.length}`];
+  if (searchQuery.value.trim()) labels.push(`Search: ${searchQuery.value.trim()}`);
+  if (selectedProductType.value !== "all") {
+    labels.push(productTypeOptions.value.find((option) => option.value === selectedProductType.value)?.label || selectedProductType.value);
+  }
+  return labels;
+});
 const money = (value) => `$${value.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 const isProductAvailable = (product) => Number(product.stock) > 0;
 const resetProductListControls = () => {
   searchQuery.value = "";
   selectedProductType.value = "all";
   selectedSort.value = "featured";
+};
+const handleQuickAdd = (product, options) => {
+  emit("add-to-cart", product, 1, options);
+  quickAddMessage.value = `${product.name} added to bag`;
 };
 
 onMounted(async () => {
@@ -64,6 +78,9 @@ onMounted(async () => {
     </header>
 
     <p v-if="loading" class="product-loading">{{ t("loadingProducts") }}</p>
+    <section v-if="loading" class="product-grid product-grid-skeleton" aria-hidden="true">
+      <article v-for="item in skeletonCards" :key="item" class="product-card product-card-skeleton"></article>
+    </section>
 
     <section class="product-list-toolbar" :aria-label="t('productList.controlsAria')">
       <label>
@@ -89,6 +106,11 @@ onMounted(async () => {
       </label>
       <p>{{ resultSummary }}</p>
     </section>
+    <section class="product-active-filters" aria-label="Active filters">
+      <span v-for="label in activeFilterLabels" :key="label">{{ label }}</span>
+      <button type="button" @click="resetProductListControls">Clear all</button>
+    </section>
+    <p v-if="quickAddMessage" class="product-quick-add-status" role="status">{{ quickAddMessage }}</p>
 
     <div v-if="!loading && visibleProducts.length === 0" class="product-list-empty">
       <p class="eyebrow">{{ t("productList.empty.eyebrow") }}</p>
@@ -97,7 +119,7 @@ onMounted(async () => {
       <button type="button" @click="resetProductListControls">{{ t("productList.empty.action") }}</button>
     </div>
 
-    <section v-else class="product-grid" aria-label="Furniture products">
+    <section v-else-if="!loading" class="product-grid" aria-label="Furniture products">
       <article v-for="product in visibleProducts" :key="product.skuId" class="product-card">
         <a :href="`/sofa-pdp?id=${product.id}`" class="product-card-media">
           <ProductImage :src="product.cover" :label="product.name" />
@@ -118,7 +140,7 @@ onMounted(async () => {
               type="button"
               :disabled="!isProductAvailable(product)"
               :aria-disabled="!isProductAvailable(product)"
-              @click="emit('add-to-cart', product, 1, { trigger: $event.currentTarget })"
+              @click="handleQuickAdd(product, { trigger: $event.currentTarget })"
             >
               {{ isProductAvailable(product) ? t("addToCart") : t("product.unavailable") }}
             </button>

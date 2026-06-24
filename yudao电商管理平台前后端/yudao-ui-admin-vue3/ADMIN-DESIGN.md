@@ -535,3 +535,4 @@ Rules:
 When generating admin UI for this project:
 
 Build a focused furniture commerce operations console using Vue 3, Element Plus, and the existing Yudao admin patterns. Prioritize searchable tables, compact filters, clear status tags, reliable forms, contextual drawers, and action-oriented detail pages. Keep the visual language calm, light, neutral, and efficient. Do not use the customer-facing RH-like furniture showroom style inside admin workflows.
+

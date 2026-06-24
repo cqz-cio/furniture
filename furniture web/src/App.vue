@@ -49,8 +49,8 @@ const pageRoutes = {
   home: "/",
   sale: "/sale",
   outdoor: "/outdoor",
-  "sofas-plp": "/sofas-plp",
-  "sofa-pdp": "/sofa-pdp",
+  "sofas-plp": "/products",
+  "sofa-pdp": "/product",
   teen: "/teen",
   "baby-child": "/baby-child",
   "baby-child-furniture": "/baby-child/furniture",
@@ -91,6 +91,8 @@ const pageRoutes = {
 
 const routePages = Object.fromEntries(Object.entries(pageRoutes).map(([page, path]) => [path, page]));
 const routeAliases = {
+  "/sofas-plp": "sofas-plp",
+  "/sofa-pdp": "sofa-pdp",
   "/orders": "account-orders",
   "/account/payment-methods": "account",
   "/account/wishlist": "account",
@@ -154,6 +156,49 @@ const pageComponent = computed(() => {
   return MissingExtractionPage;
 });
 
+const pageSeo = {
+  home: {
+    title: "Oakved | Luxury Furniture, Lighting & Home Decor",
+    description: "Explore Oakved furniture, lighting, textiles and room inspiration for refined living.",
+  },
+  "sofas-plp": {
+    title: "Furniture Collection | Oakved",
+    description: "Shop bedroom furniture, storage, desks, tables, seating and wood finishes with member pricing.",
+  },
+  "sofa-pdp": {
+    title: "Product Details | Oakved",
+    description: "Review furniture details, finishes, delivery windows, member pricing and room inspiration.",
+  },
+  sale: {
+    title: "Sale | Oakved",
+    description: "Explore selected furniture, lighting and decor offers with refined room inspiration.",
+  },
+  outdoor: {
+    title: "Outdoor Furniture | Oakved",
+    description: "Shop outdoor furniture and garden room inspiration in weather-ready materials.",
+  },
+  teen: {
+    title: "Teen Furniture | Oakved",
+    description: "Explore teen bedroom, study and lounge furniture with elevated materials.",
+  },
+  "baby-child": {
+    title: "Baby & Child Furniture | Oakved",
+    description: "Explore nursery, playroom and child bedroom furniture with calm material palettes.",
+  },
+};
+
+const applySeo = (page) => {
+  const seo = pageSeo[page] || pageSeo.home;
+  document.title = seo.title;
+  let description = document.querySelector('meta[name="description"]');
+  if (!description) {
+    description = document.createElement("meta");
+    description.setAttribute("name", "description");
+    document.head.appendChild(description);
+  }
+  description.setAttribute("content", seo.description);
+};
+
 const syncPageFromLocation = () => {
   currentPage.value = pageFromPath(window.location.pathname);
 };
@@ -165,6 +210,7 @@ const navigateToPath = (path) => {
   if (`${window.location.pathname}${window.location.search}${window.location.hash}` !== nextPath) {
     window.history.pushState({ page: nextPage }, "", nextPath);
   }
+  window.dispatchEvent(new CustomEvent("oakved:navigation", { detail: { path: nextPath } }));
 };
 
 const handleInternalLinkClick = (event) => {
@@ -347,6 +393,7 @@ const continueCheckout = () => {
 };
 
 watch(currentPage, (page) => {
+  applySeo(page);
   const nextPath = pageRoutes[page] || pageRoutes.missing;
   if (pageFromPath(window.location.pathname) === page) return;
   if (window.location.pathname !== nextPath) {
@@ -363,6 +410,7 @@ watch(
 );
 
 onMounted(() => {
+  applySeo(currentPage.value);
   window.addEventListener("popstate", syncPageFromLocation);
   document.addEventListener("click", handleInternalLinkClick);
   loadRemoteCart();

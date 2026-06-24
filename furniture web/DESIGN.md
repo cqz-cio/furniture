@@ -463,3 +463,4 @@ This document is adapted for this project after reviewing:
 When generating customer-facing UI for this project:
 
 Build a premium furniture ecommerce storefront with RH-like restraint. Use large room and product photography, warm neutral surfaces, serif editorial headings, clean sans-serif utility text, spacious product grids, thin hairline dividers, subtle drawers, and quiet black primary actions. The interface should feel like a luxury furniture showroom and interior design magazine, not a generic ecommerce marketplace or SaaS dashboard.
+

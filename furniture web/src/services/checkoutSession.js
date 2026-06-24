@@ -148,20 +148,20 @@ export const getCheckoutPresentation = (mode) => {
   const states = {
     yudao: {
       title: "Review Your Order",
-      message: "Confirm your delivery address and send the order to Yudao.",
-      cta: "Create Yudao Order",
+      message: "Confirm your delivery address and create the connected catalog order.",
+      cta: "Create Connected Order",
       canSubmit: true,
     },
     "token-required": {
       title: "Connect Your Account",
-      message: "Save a Yudao App token in the account panel before creating a remote order.",
+      message: "Connect an account token before creating a live order.",
       cta: "Add Token To Continue",
       canSubmit: false,
     },
     "local-preview": {
       title: "Review Your Selections",
-      message: "Demo products can be reviewed locally. Add Yudao products to create a live order.",
-      cta: "Preview Only",
+      message: "Review your Oakved selections before final account checkout is connected.",
+      cta: "Review Only",
       canSubmit: false,
     },
     empty: {

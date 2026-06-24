@@ -18,7 +18,7 @@ const customItem = {
 };
 
 describe("checkout flow model", () => {
-  it("defines the RH-aligned checkout step order", () => {
+  it("defines the Oakved checkout step order", () => {
     expect(CHECKOUT_STEP_KEYS).toEqual([
       "details",
       "custom-check",

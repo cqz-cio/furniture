@@ -34,7 +34,7 @@ describe("membership and registry polish", () => {
     expect(source).not.toContain('href="/gift-registry/manage"');
   });
 
-  it("styles tighter RH-aligned service surfaces", () => {
+  it("styles tighter Oakved service surfaces", () => {
     const source = readSource("../src/styles.css");
 
     expect(source).toContain(".service-page-shell");

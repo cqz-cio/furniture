@@ -5,6 +5,13 @@ export const normalizeCartQuantity = (quantity) => {
   return Number.isFinite(nextQuantity) && nextQuantity >= 1 ? nextQuantity : 1;
 };
 
+const formatMaterialLabel = (value = "") => {
+  const material = String(value || "").trim();
+  if (!material) return "";
+  if (material.toLowerCase() === "wood") return "Wood finish";
+  return material;
+};
+
 export const addLocalCartItem = (items, product, quantity = 1) => {
   const skuId = product.skuId || product.id;
   const nextQuantity = normalizeCartQuantity(quantity);
@@ -26,6 +33,10 @@ export const addLocalCartItem = (items, product, quantity = 1) => {
       subtitle: product.subtitle || product.introduction || "",
       price: Number(product.price) || 0,
       cover: product.cover || product.picUrl || "",
+      delivery: product.delivery || product.detailConfig?.delivery || "",
+      dimensions: product.dimensions || product.detailConfig?.dimensions || "",
+      material: formatMaterialLabel(product.material || product.detailConfig?.material || ""),
+      productType: product.productType || product.detailConfig?.productType || "",
       quantity: nextQuantity,
       source: product.source || "local",
     },

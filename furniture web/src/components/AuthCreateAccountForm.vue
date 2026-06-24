@@ -327,7 +327,7 @@ onUnmounted(() => {
       <input v-model="privacyAccepted" type="checkbox" />
       <span>
         {{ t("auth.create.privacyPrefix") }}
-        <a href="#">{{ t("auth.create.privacyNotice") }}</a>
+        <a href="/membership/terms">{{ t("auth.create.privacyNotice") }}</a>
       </span>
     </label>
 
