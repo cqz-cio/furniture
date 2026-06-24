@@ -35,6 +35,12 @@ describe("home landing page", () => {
     expect(styles).toContain(".home-entry-copy {\n  position: absolute;\n  left: 50%;\n  top: 58%;");
     expect(styles).toContain("bottom: auto;\n  z-index: 2;");
     expect(styles).toContain("transform: translate(-50%, -50%);");
+    expect(styles).toContain(".home-entry:hover .home-entry-image");
+    expect(styles).toContain("transform: scale(1.025);");
+    expect(styles).toContain(".home-category-edit a:hover .home-category-image-stack img:first-child");
+    expect(styles).toContain(".home-category-edit a:hover .home-category-image-stack img:last-child");
+    expect(styles).toContain("animation: homeAmbientPulse 8s ease-in-out infinite;");
+    expect(styles).toContain("@keyframes homeAmbientPulse");
     expect(styles).not.toContain(".home-entry > div:last-child");
   });
 
