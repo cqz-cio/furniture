@@ -12,6 +12,8 @@ public class AppFavoriteRespVO {
 
     @Schema(description = "商品 SPU 编号", requiredMode = Schema.RequiredMode.REQUIRED, example = "29502")
     private Long spuId;
+    private Long skuId;
+    private Integer count;
 
     // ========== 商品相关字段 ==========
 
@@ -23,5 +25,11 @@ public class AppFavoriteRespVO {
 
     @Schema(description = "商品单价", example = "100")
     private Integer price;
+    private Integer marketPrice;
+    private String color;
+    private String fabric;
+    private String width;
+    private String delivery;
+    private String dimensions;
 
 }

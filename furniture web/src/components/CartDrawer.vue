@@ -27,6 +27,10 @@ const props = defineProps({
     type: String,
     default: "",
   },
+  wishlistNoticeKey: {
+    type: String,
+    default: "",
+  },
 });
 
 const emit = defineEmits(["checkout", "close", "resync", "update-quantity", "remove", "wishlist"]);
@@ -146,6 +150,7 @@ onBeforeUnmount(() => setBodyCartState(false));
           </div>
 
           <p v-if="showDebugInfo" class="cart-debug-info">{{ debugInfo }}</p>
+          <p v-if="wishlistNoticeKey" class="cart-wishlist-notice" aria-live="polite">{{ t(wishlistNoticeKey) }}</p>
 
           <div v-if="items.length === 0" class="cart-empty">
             <p>{{ t("cart.empty") }}</p>

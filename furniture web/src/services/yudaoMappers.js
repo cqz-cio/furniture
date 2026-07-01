@@ -49,6 +49,29 @@ export const mapCartResponseToItems = (cartResponse) => {
   });
 };
 
+export const mapFavoritePageToItems = (page = {}) => ({
+  list: (page.list || []).map((row) => ({
+    favoriteId: row.id,
+    id: row.spuId,
+    spuId: row.spuId,
+    skuId: row.skuId || row.spuId,
+    name: row.spuName || row.name || "Product",
+    subtitle: row.introduction || row.keyword || "",
+    cover: row.picUrl || row.cover || "",
+    price: fenToYuan(row.price),
+    marketPrice: fenToYuan(row.marketPrice),
+    color: row.color || "",
+    fabric: row.fabric || "",
+    width: row.width || "",
+    delivery: row.delivery || "",
+    dimensions: row.dimensions || "",
+    quantity: Math.max(1, Math.floor(Number(row.count) || Number(row.quantity) || 1)),
+    source: "yudao",
+    raw: row,
+  })),
+  total: Number(page.total || 0),
+});
+
 export const mapAddressResponse = (address = {}) => {
   const addressVerification = address.addressVerification || address.addressConfirmation || null;
 

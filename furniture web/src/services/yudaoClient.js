@@ -34,6 +34,15 @@ export {
   updateCartItemCount,
 } from "./yudaoCartApi.js";
 export {
+  createFavorite,
+  deleteFavorite,
+  getFavoriteCount,
+  getFavoriteExists,
+  getRemoteWishlistItems,
+  syncLocalWishlistToRemote,
+  updateFavoriteCount,
+} from "./yudaoFavoriteApi.js";
+export {
   createMemberAddress,
   deleteMemberAddress,
   getAddressList,
@@ -51,6 +60,7 @@ export { getProductDetail, getProductPage } from "./yudaoProductApi.js";
 export {
   mapAddressResponse,
   mapCartResponseToItems,
+  mapFavoritePageToItems,
   mapMemberProfile,
   mapOrderDetail,
   mapOrderPage,

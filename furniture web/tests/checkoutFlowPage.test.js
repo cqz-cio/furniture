@@ -102,6 +102,22 @@ describe("checkout flow page planning", () => {
     expect(source).toContain("return;");
   });
 
+  it("does not submit remote orders or payment if checkout items are not still remote cart rows", () => {
+    const source = readSource("../src/pages/CheckoutPage.vue");
+    const submitOrderBody = source.slice(
+      source.indexOf("const submitOrder = async () => {"),
+      source.indexOf("const handlePrimaryAction = async () => {"),
+    );
+
+    expect(submitOrderBody).toContain("if (!canUseYudaoCheckout(props.items))");
+    expect(submitOrderBody).toContain('errorKey.value = "checkout.errors.orderUnavailable"');
+    expect(submitOrderBody).toContain("if (!readYudaoToken())");
+    expect(submitOrderBody).toContain('errorKey.value = "checkout.errors.sessionExpired"');
+    expect(submitOrderBody.indexOf("if (!canUseYudaoCheckout(props.items))")).toBeLessThan(
+      submitOrderBody.indexOf("const payload = buildYudaoOrderPayload"),
+    );
+  });
+
   it("does not create a remote order when the address confirmation audit is incomplete", () => {
     const source = readSource("../src/pages/CheckoutPage.vue");
 

@@ -1,5 +1,6 @@
 package cn.iocoder.yudao.module.member.service.address;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
@@ -17,6 +18,7 @@ public class GoogleAddressValidationClientImpl implements GoogleAddressValidatio
 
     private final RestTemplate restTemplate;
 
+    @Autowired
     public GoogleAddressValidationClientImpl(
             @Value("${yudao.member.address-verification.google.connect-timeout-millis:3000}") int connectTimeoutMillis,
             @Value("${yudao.member.address-verification.google.read-timeout-millis:5000}") int readTimeoutMillis) {

@@ -17,6 +17,14 @@ public interface ProductFavoriteMapper extends BaseMapperX<ProductFavoriteDO> {
                 ProductFavoriteDO::getSpuId, spuId);
     }
 
+    default ProductFavoriteDO selectByUserIdAndSpuIdAndSkuId(Long userId, Long spuId, Long skuId) {
+        return selectOne(new LambdaQueryWrapper<ProductFavoriteDO>()
+                .eq(ProductFavoriteDO::getUserId, userId)
+                .eq(ProductFavoriteDO::getSpuId, spuId)
+                .eq(skuId != null, ProductFavoriteDO::getSkuId, skuId)
+                .isNull(skuId == null, ProductFavoriteDO::getSkuId));
+    }
+
     default PageResult<ProductFavoriteDO> selectPageByUserAndType(Long userId, AppFavoritePageReqVO reqVO) {
         return selectPage(reqVO, new LambdaQueryWrapper<ProductFavoriteDO>()
                 .eq(ProductFavoriteDO::getUserId, userId)

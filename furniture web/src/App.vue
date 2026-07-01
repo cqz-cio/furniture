@@ -1,36 +1,8 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import CartDrawer from "./components/CartDrawer.vue";
 import RhFooter from "./components/RhFooter.vue";
 import RhHeader from "./components/RhHeader.vue";
-import AccountAddressBookPage from "./pages/AccountAddressBookPage.vue";
-import AccountBillingPage from "./pages/AccountBillingPage.vue";
-import AccountMembershipPage from "./pages/AccountMembershipPage.vue";
-import AccountPage from "./pages/AccountPage.vue";
-import AccountProfilePage from "./pages/AccountProfilePage.vue";
-import BabyChildCategoryPage from "./pages/BabyChildCategoryPage.vue";
-import BabyChildPage from "./pages/BabyChildPage.vue";
-import CheckoutAuthPage from "./pages/CheckoutAuthPage.vue";
-import CheckoutPage from "./pages/CheckoutPage.vue";
-import GiftRegistryCreatePage from "./pages/GiftRegistryCreatePage.vue";
-import GiftRegistryFindPage from "./pages/GiftRegistryFindPage.vue";
-import GiftRegistryManagePage from "./pages/GiftRegistryManagePage.vue";
-import GiftRegistryPage from "./pages/GiftRegistryPage.vue";
-import HomePage from "./pages/HomePage.vue";
-import MembershipEnrollmentPage from "./pages/MembershipEnrollmentPage.vue";
-import MembershipFaqPage from "./pages/MembershipFaqPage.vue";
-import MembershipPage from "./pages/MembershipPage.vue";
-import MembershipTermsPage from "./pages/MembershipTermsPage.vue";
-import MissingExtractionPage from "./pages/MissingExtractionPage.vue";
-import OrdersPage from "./pages/OrdersPage.vue";
-import OutdoorPage from "./pages/OutdoorPage.vue";
-import SalePage from "./pages/SalePage.vue";
-import SofaPdpPage from "./pages/SofaPdpPage.vue";
-import SofasPlpPage from "./pages/SofasPlpPage.vue";
-import TeenPage from "./pages/TeenPage.vue";
-import TradeApplicationPage from "./pages/TradeApplicationPage.vue";
-import TradeFaqPage from "./pages/TradeFaqPage.vue";
-import TradeSignInPage from "./pages/TradeSignInPage.vue";
 import {
   addLocalCartItem,
   normalizeCartQuantity,
@@ -41,9 +13,41 @@ import {
 } from "./services/localCart.js";
 import { clearYudaoSession, readYudaoSession, redactSecret } from "./services/authSession.js";
 import { playAddToCartFlyAnimation } from "./services/cartFlyAnimation.js";
+import { addLocalWishlistItem } from "./services/localWishlist.js";
 import { getCheckoutEntryRoute } from "./services/membershipNavigation.js";
 import { addCartItem, deleteCartItems, getRemoteCartItems, updateCartItemCount } from "./services/yudaoCartApi.js";
-import { getYudaoAppTenantId, isYudaoAuthError } from "./services/yudaoRequest.js";
+import { createFavorite } from "./services/yudaoFavoriteApi.js";
+import { getYudaoAppTenantId, isYudaoAuthError, isYudaoBusinessError, readYudaoToken } from "./services/yudaoRequest.js";
+
+const AccountAddressBookPage = defineAsyncComponent(() => import("./pages/AccountAddressBookPage.vue"));
+const AccountBillingPage = defineAsyncComponent(() => import("./pages/AccountBillingPage.vue"));
+const AccountMembershipPage = defineAsyncComponent(() => import("./pages/AccountMembershipPage.vue"));
+const AccountPage = defineAsyncComponent(() => import("./pages/AccountPage.vue"));
+const AccountProfilePage = defineAsyncComponent(() => import("./pages/AccountProfilePage.vue"));
+const AccountWishlistPage = defineAsyncComponent(() => import("./pages/AccountWishlistPage.vue"));
+const BabyChildCategoryPage = defineAsyncComponent(() => import("./pages/BabyChildCategoryPage.vue"));
+const BabyChildPage = defineAsyncComponent(() => import("./pages/BabyChildPage.vue"));
+const CheckoutAuthPage = defineAsyncComponent(() => import("./pages/CheckoutAuthPage.vue"));
+const CheckoutPage = defineAsyncComponent(() => import("./pages/CheckoutPage.vue"));
+const GiftRegistryCreatePage = defineAsyncComponent(() => import("./pages/GiftRegistryCreatePage.vue"));
+const GiftRegistryFindPage = defineAsyncComponent(() => import("./pages/GiftRegistryFindPage.vue"));
+const GiftRegistryManagePage = defineAsyncComponent(() => import("./pages/GiftRegistryManagePage.vue"));
+const GiftRegistryPage = defineAsyncComponent(() => import("./pages/GiftRegistryPage.vue"));
+const HomePage = defineAsyncComponent(() => import("./pages/HomePage.vue"));
+const MembershipEnrollmentPage = defineAsyncComponent(() => import("./pages/MembershipEnrollmentPage.vue"));
+const MembershipFaqPage = defineAsyncComponent(() => import("./pages/MembershipFaqPage.vue"));
+const MembershipPage = defineAsyncComponent(() => import("./pages/MembershipPage.vue"));
+const MembershipTermsPage = defineAsyncComponent(() => import("./pages/MembershipTermsPage.vue"));
+const MissingExtractionPage = defineAsyncComponent(() => import("./pages/MissingExtractionPage.vue"));
+const OrdersPage = defineAsyncComponent(() => import("./pages/OrdersPage.vue"));
+const OutdoorPage = defineAsyncComponent(() => import("./pages/OutdoorPage.vue"));
+const SalePage = defineAsyncComponent(() => import("./pages/SalePage.vue"));
+const SofaPdpPage = defineAsyncComponent(() => import("./pages/SofaPdpPage.vue"));
+const SofasPlpPage = defineAsyncComponent(() => import("./pages/SofasPlpPage.vue"));
+const TeenPage = defineAsyncComponent(() => import("./pages/TeenPage.vue"));
+const TradeApplicationPage = defineAsyncComponent(() => import("./pages/TradeApplicationPage.vue"));
+const TradeFaqPage = defineAsyncComponent(() => import("./pages/TradeFaqPage.vue"));
+const TradeSignInPage = defineAsyncComponent(() => import("./pages/TradeSignInPage.vue"));
 
 const pageRoutes = {
   home: "/",
@@ -76,6 +80,7 @@ const pageRoutes = {
   "account-address-book": "/account/address-book",
   "account-orders": "/account/orders",
   "account-billing": "/account/billing",
+  "account-wishlist": "/account/wishlist",
   "checkout-auth": "/checkout/auth",
   "gift-registry": "/gift-registry",
   "gift-registry-create": "/gift-registry/create",
@@ -95,7 +100,6 @@ const routeAliases = {
   "/sofa-pdp": "sofa-pdp",
   "/orders": "account-orders",
   "/account/payment-methods": "account",
-  "/account/wishlist": "account",
   "/account/gift-registry": "gift-registry",
   "/account/sign-in": "account",
   "/account/register": "account",
@@ -122,6 +126,7 @@ const cartMode = ref("local");
 const cartNoticeKey = ref("");
 const cartNoticeDetail = ref("");
 const cartDebugInfo = ref("");
+const cartWishlistNoticeKey = ref("");
 const authVersion = ref(0);
 let remoteCartRequestId = 0;
 
@@ -143,6 +148,7 @@ const pageComponent = computed(() => {
   if (currentPage.value === "account-profile") return AccountProfilePage;
   if (currentPage.value === "account-address-book") return AccountAddressBookPage;
   if (currentPage.value === "account-billing") return AccountBillingPage;
+  if (currentPage.value === "account-wishlist") return AccountWishlistPage;
   if (currentPage.value === "account-orders") return OrdersPage;
   if (currentPage.value === "checkout-auth") return CheckoutAuthPage;
   if (currentPage.value === "gift-registry") return GiftRegistryPage;
@@ -185,6 +191,10 @@ const pageSeo = {
   "baby-child": {
     title: "Baby & Child Furniture | Oakved",
     description: "Explore nursery, playroom and child bedroom furniture with calm material palettes.",
+  },
+  "account-wishlist": {
+    title: "Wishlist | Oakved",
+    description: "Review saved Oakved furniture, add pieces to the bag, or remove items from your wishlist.",
   },
 };
 
@@ -374,6 +384,31 @@ const removeFromCart = async (item) => {
   cartItems.value = removeLocalCartItem(cartItems.value, item.skuId);
 };
 
+const addToWishlist = async (item) => {
+  const favoriteId = item?.spuId || item?.id;
+  if (readYudaoToken() && favoriteId) {
+    try {
+      await createFavorite(item);
+      cartWishlistNoticeKey.value = "cart.wishlistAdded";
+      authVersion.value += 1;
+      return;
+    } catch (caught) {
+      if (isYudaoAuthError(caught)) {
+        switchToAuthRequiredCart();
+        return;
+      }
+      if (isYudaoBusinessError(caught)) {
+        cartWishlistNoticeKey.value = "cart.wishlistAlreadyAdded";
+        return;
+      }
+    }
+  }
+
+  const result = addLocalWishlistItem(item);
+  cartWishlistNoticeKey.value = result.added ? "cart.wishlistAdded" : "cart.wishlistAlreadyAdded";
+  authVersion.value += 1;
+};
+
 const openOrderDetail = (orderId) => {
   currentPage.value = "account-orders";
   window.history.pushState({ page: "account-orders" }, "", `/account/orders?id=${orderId}`);
@@ -444,6 +479,7 @@ onBeforeUnmount(() => {
       :auth-version="authVersion"
       :items="cartItems"
       @add-to-cart="addToCart"
+      @add-to-wishlist="addToWishlist"
       @continue-checkout="continueCheckout"
       @open-cart="cartOpen = true"
       @order-created="handleOrderCreated"
@@ -456,10 +492,12 @@ onBeforeUnmount(() => {
     :notice-detail="cartNoticeDetail"
     :notice-key="cartNoticeKey"
     :open="cartOpen"
+    :wishlist-notice-key="cartWishlistNoticeKey"
     @checkout="startCheckout"
     @close="cartOpen = false"
     @remove="removeFromCart"
     @resync="loadRemoteCart"
     @update-quantity="updateCartQuantity"
+    @wishlist="addToWishlist"
   />
 </template>

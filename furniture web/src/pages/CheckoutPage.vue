@@ -417,6 +417,16 @@ const loadCheckoutData = async (options = {}) => {
 };
 
 const submitOrder = async () => {
+  if (!canUseYudaoCheckout(props.items)) {
+    errorKey.value = "checkout.errors.orderUnavailable";
+    checkoutStage.value = "shipping";
+    return;
+  }
+  if (!readYudaoToken()) {
+    errorKey.value = "checkout.errors.sessionExpired";
+    checkoutStage.value = "shipping";
+    return;
+  }
   if (!addressConfirmationRecord.value) {
     errorKey.value = "checkout.errors.addressConfirmationRequired";
     checkoutStage.value = "shipping";

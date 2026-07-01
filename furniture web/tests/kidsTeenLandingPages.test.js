@@ -33,7 +33,7 @@ describe("baby and teen landing pages", () => {
     const categoryPage = readSource("../src/pages/BabyChildCategoryPage.vue");
     const styles = readSource("../src/styles.css");
 
-    expect(app).toContain('import BabyChildCategoryPage from "./pages/BabyChildCategoryPage.vue";');
+    expect(app).toContain('const BabyChildCategoryPage = defineAsyncComponent(() => import("./pages/BabyChildCategoryPage.vue"));');
     expect(app).toContain('"baby-child-furniture": "/baby-child/furniture"');
     expect(app).toContain('"baby-child-bedding": "/baby-child/bedding"');
     expect(app).toContain('"baby-child-nursery": "/baby-child/nursery"');

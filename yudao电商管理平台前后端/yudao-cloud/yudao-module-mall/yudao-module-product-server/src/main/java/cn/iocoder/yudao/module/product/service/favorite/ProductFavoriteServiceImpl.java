@@ -3,6 +3,7 @@ package cn.iocoder.yudao.module.product.service.favorite;
 import cn.iocoder.yudao.framework.common.pojo.PageResult;
 import cn.iocoder.yudao.module.product.controller.admin.favorite.vo.ProductFavoritePageReqVO;
 import cn.iocoder.yudao.module.product.controller.app.favorite.vo.AppFavoritePageReqVO;
+import cn.iocoder.yudao.module.product.controller.app.favorite.vo.AppFavoriteReqVO;
 import cn.iocoder.yudao.module.product.convert.favorite.ProductFavoriteConvert;
 import cn.iocoder.yudao.module.product.dal.dataobject.favorite.ProductFavoriteDO;
 import cn.iocoder.yudao.module.product.dal.mysql.favorite.ProductFavoriteMapper;
@@ -30,24 +31,51 @@ public class ProductFavoriteServiceImpl implements ProductFavoriteService {
 
     @Override
     public Long createFavorite(Long userId, Long spuId) {
-        ProductFavoriteDO favorite = productFavoriteMapper.selectByUserIdAndSpuId(userId, spuId);
+        AppFavoriteReqVO reqVO = new AppFavoriteReqVO();
+        reqVO.setSpuId(spuId);
+        return createFavorite(userId, reqVO);
+    }
+
+    @Override
+    public Long createFavorite(Long userId, AppFavoriteReqVO reqVO) {
+        ProductFavoriteDO favorite = productFavoriteMapper.selectByUserIdAndSpuIdAndSkuId(userId, reqVO.getSpuId(), reqVO.getSkuId());
         if (favorite != null) {
             throw exception(FAVORITE_EXISTS);
         }
 
-        ProductFavoriteDO entity = ProductFavoriteConvert.INSTANCE.convert(userId, spuId);
+        ProductFavoriteDO entity = ProductFavoriteConvert.INSTANCE.convert(userId, reqVO);
         productFavoriteMapper.insert(entity);
         return entity.getId();
     }
 
     @Override
     public void deleteFavorite(Long userId, Long spuId) {
-        ProductFavoriteDO favorite = productFavoriteMapper.selectByUserIdAndSpuId(userId, spuId);
+        AppFavoriteReqVO reqVO = new AppFavoriteReqVO();
+        reqVO.setSpuId(spuId);
+        deleteFavorite(userId, reqVO);
+    }
+
+    @Override
+    public void deleteFavorite(Long userId, AppFavoriteReqVO reqVO) {
+        ProductFavoriteDO favorite = reqVO.getSkuId() != null
+                ? productFavoriteMapper.selectByUserIdAndSpuIdAndSkuId(userId, reqVO.getSpuId(), reqVO.getSkuId())
+                : productFavoriteMapper.selectByUserIdAndSpuId(userId, reqVO.getSpuId());
         if (favorite == null) {
             throw exception(FAVORITE_NOT_EXISTS);
         }
 
         productFavoriteMapper.deleteById(favorite.getId());
+    }
+
+    @Override
+    public void updateFavoriteCount(Long userId, AppFavoriteReqVO reqVO) {
+        ProductFavoriteDO favorite = productFavoriteMapper.selectByUserIdAndSpuIdAndSkuId(userId, reqVO.getSpuId(), reqVO.getSkuId());
+        if (favorite == null) {
+            throw exception(FAVORITE_NOT_EXISTS);
+        }
+
+        favorite.setCount(reqVO.getCount() == null || reqVO.getCount() < 1 ? 1 : reqVO.getCount());
+        productFavoriteMapper.updateById(favorite);
     }
 
     @Override

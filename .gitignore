@@ -7,9 +7,33 @@ _git-backups/
 **/sql/**/*.sql
 .pnpm-store/
 .worktrees/
+.codex/
+demo-package/
+demo-package.zip
+furniture-rag-sample.md
 
 tools/
 /furniture web/captures/local/
+/furniture web/captures/
+/furniture web/debug.log
+/furniture web/vite*.log
+/furniture web/vite*.err.log
+/furniture web/vite*.out.log
+/furniture web/harness/phase-b/.tmp-dist/
+/白底黑logo-标注-01.png
+
+!/yudao电商管理平台前后端/yudao-cloud/sql/mysql/product-favorite-sku-wishlist.sql
+!/yudao电商管理平台前后端/yudao-cloud/sql/mysql/trade-order-address-verification.sql
+!/yudao电商管理平台前后端/yudao-cloud/sql/mysql/member-address-address-verification.sql
 
 # package files
 *.tar
+
+# launch secrets and evidence
+/furniture web/.env.production
+/furniture web/.env.launch-smoke
+/furniture web/.env.backend-production
+/furniture web/launch-evidence/
+!/furniture web/.env.production.example
+!/furniture web/.env.launch-smoke.example
+!/furniture web/.env.backend-production.example

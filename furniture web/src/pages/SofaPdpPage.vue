@@ -3,15 +3,27 @@ import { computed, onMounted, ref, watch } from "vue";
 import { demoProducts } from "../data/demoProducts.js";
 import { useI18n } from "../i18n.js";
 import { buildProductDetailModel } from "../services/productDetailModel.js";
+import {
+  isWishlistItemSaved,
+  loadWishlistIdentityState,
+  withWishlistItemSaved,
+} from "../services/wishlistState.js";
 import { getProductDetail } from "../services/yudaoProductApi.js";
 
-const emit = defineEmits(["add-to-cart"]);
+const props = defineProps({
+  authVersion: {
+    type: Number,
+    default: 0,
+  },
+});
+const emit = defineEmits(["add-to-cart", "add-to-wishlist"]);
 const { t } = useI18n();
 
 const product = ref(demoProducts[0]);
 const loading = ref(true);
 const source = ref("demo");
 const quantity = ref(1);
+const wishlistIdentityKeys = ref(new Set());
 
 const productId = computed(() => new URLSearchParams(window.location.search).get("id"));
 const sourceLabel = computed(() => (source.value === "yudao" ? t("connectedCatalog") : t("offlineCatalog")));
@@ -27,6 +39,7 @@ const normalizedPurchaseQuantity = computed(() => {
   if (!canPurchase.value) return 0;
   return Math.max(1, Math.min(Math.floor(Number(quantity.value) || 1), maxPurchaseQuantity.value));
 });
+const isCurrentProductSaved = computed(() => isWishlistItemSaved(product.value, wishlistIdentityKeys.value));
 
 const setGalleryIndex = (index) => {
   const total = detail.value.gallery.length;
@@ -67,10 +80,20 @@ const handleAddToCart = (event) => {
   if (!canPurchase.value) return;
   emit("add-to-cart", product.value, normalizedPurchaseQuantity.value, { trigger: event?.currentTarget });
 };
+const loadProductWishlistState = async () => {
+  const state = await loadWishlistIdentityState();
+  wishlistIdentityKeys.value = state.keys;
+};
+const handleAddToWishlist = () => {
+  wishlistIdentityKeys.value = withWishlistItemSaved(wishlistIdentityKeys.value, product.value);
+  emit("add-to-wishlist", product.value);
+};
 
 watch(detail, applyProductSeo);
+watch(() => props.authVersion, loadProductWishlistState);
 
 onMounted(async () => {
+  loadProductWishlistState();
   const id = productId.value;
   if (!id) {
     loading.value = false;
@@ -182,6 +205,9 @@ onMounted(async () => {
           <button type="button" :disabled="!canPurchase" @click="handleAddToCart($event)">
             {{ canPurchase ? t("addToCart") : t("product.unavailable") }}
           </button>
+          <button type="button" :aria-pressed="isCurrentProductSaved" @click="handleAddToWishlist">
+            {{ t(isCurrentProductSaved ? "wishlist.saved" : "wishlist.save") }}
+          </button>
         </div>
         <nav class="product-related-links" aria-label="Related product options">
           <a v-for="link in detail.relatedLinks" :key="link.label" :href="link.href">{{ link.label }}</a>
@@ -248,6 +274,9 @@ onMounted(async () => {
           </label>
           <button type="button" :disabled="!canPurchase" @click="handleAddToCart($event)">
             {{ canPurchase ? t("addToCart") : t("product.unavailable") }}
+          </button>
+          <button class="product-wishlist-button" type="button" :aria-pressed="isCurrentProductSaved" @click="handleAddToWishlist">
+            {{ t(isCurrentProductSaved ? "wishlist.saved" : "wishlist.save") }}
           </button>
         </div>
 

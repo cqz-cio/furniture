@@ -36,13 +36,20 @@ public class AppFavoriteController {
     @PostMapping(value = "/create")
     @Operation(summary = "添加商品收藏")
     public CommonResult<Long> createFavorite(@RequestBody @Valid AppFavoriteReqVO reqVO) {
-        return success(productFavoriteService.createFavorite(getLoginUserId(), reqVO.getSpuId()));
+        return success(productFavoriteService.createFavorite(getLoginUserId(), reqVO));
     }
 
     @DeleteMapping(value = "/delete")
     @Operation(summary = "取消单个商品收藏")
     public CommonResult<Boolean> deleteFavorite(@RequestBody @Valid AppFavoriteReqVO reqVO) {
-        productFavoriteService.deleteFavorite(getLoginUserId(), reqVO.getSpuId());
+        productFavoriteService.deleteFavorite(getLoginUserId(), reqVO);
+        return success(Boolean.TRUE);
+    }
+
+    @PutMapping(value = "/update-count")
+    @Operation(summary = "更新商品收藏数量")
+    public CommonResult<Boolean> updateFavoriteCount(@RequestBody @Valid AppFavoriteReqVO reqVO) {
+        productFavoriteService.updateFavoriteCount(getLoginUserId(), reqVO);
         return success(Boolean.TRUE);
     }
 

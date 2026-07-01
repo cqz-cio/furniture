@@ -11,7 +11,7 @@ export const membershipRoutes = {
   accountAddressBook: "/account/address-book",
   accountBilling: "/account/billing",
   accountPaymentMethods: "/account",
-  accountWishlist: "/account",
+  accountWishlist: "/account/wishlist",
   accountProfile: "/account/profile",
   accountGiftRegistry: "/gift-registry",
   checkoutAuth: "/checkout/auth",

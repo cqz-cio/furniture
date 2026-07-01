@@ -15,5 +15,12 @@ public class ProductFavoriteRespVO  extends ProductSpuRespVO {
 
     @Schema(description = "spuId", requiredMode = Schema.RequiredMode.REQUIRED, example = "111")
     private Long spuId;
+    private Long skuId;
+    private Integer count;
+    private String color;
+    private String fabric;
+    private String width;
+    private String delivery;
+    private String dimensions;
 
 }

@@ -17,6 +17,7 @@ describe("membership navigation model", () => {
     expect(membershipRoutes.membershipFaqs).toBe("/membership/faqs");
     expect(membershipRoutes.accountMembership).toBe("/account/membership");
     expect(membershipRoutes.accountOrders).toBe("/account/orders");
+    expect(membershipRoutes.accountWishlist).toBe("/account/wishlist");
     expect(membershipRoutes.accountGiftRegistry).toBe("/gift-registry");
     expect(membershipRoutes.checkoutAuth).toBe("/checkout/auth");
     expect(membershipRoutes.checkout).toBe("/checkout");

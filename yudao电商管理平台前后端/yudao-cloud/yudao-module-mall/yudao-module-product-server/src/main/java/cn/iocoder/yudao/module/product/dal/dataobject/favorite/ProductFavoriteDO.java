@@ -39,5 +39,16 @@ public class ProductFavoriteDO extends BaseDO {
      * 关联 {@link ProductSpuDO#getId()}
      */
     private Long spuId;
+    private Long skuId;
+    private Integer count;
+    private String spuName;
+    private String picUrl;
+    private Integer price;
+    private Integer marketPrice;
+    private String color;
+    private String fabric;
+    private String width;
+    private String delivery;
+    private String dimensions;
 
 }

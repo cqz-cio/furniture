@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import ProductImage from "../components/ProductImage.vue";
 import { demoProducts } from "../data/demoProducts.js";
 import { useI18n } from "../i18n.js";
@@ -12,9 +12,20 @@ import {
   resolveProductListingQuery,
   supplementMissingCompanyTypes,
 } from "../services/productListingModel.js";
+import {
+  isWishlistItemSaved,
+  loadWishlistIdentityState,
+  withWishlistItemSaved,
+} from "../services/wishlistState.js";
 import { getProductPage } from "../services/yudaoProductApi.js";
 
-const emit = defineEmits(["add-to-cart"]);
+const props = defineProps({
+  authVersion: {
+    type: Number,
+    default: 0,
+  },
+});
+const emit = defineEmits(["add-to-cart", "add-to-wishlist"]);
 const { t } = useI18n();
 
 const loading = ref(true);
@@ -28,6 +39,7 @@ const selectedFacets = ref({ ...emptyFacetState(), ...initialListingQuery.facets
 const selectedSort = ref("featured");
 const mobileFiltersOpen = ref(false);
 const quickAddMessage = ref("");
+const wishlistIdentityKeys = ref(new Set());
 const skeletonCards = [0, 1, 2, 3];
 
 const sourceLabel = computed(() => (source.value === "yudao" ? t("connectedCatalog") : t("offlineCatalog")));
@@ -105,6 +117,16 @@ const handleQuickAdd = (product, options) => {
   emit("add-to-cart", product, 1, options);
   quickAddMessage.value = `${product.name} added to bag`;
 };
+const loadProductWishlistState = async () => {
+  const state = await loadWishlistIdentityState();
+  wishlistIdentityKeys.value = state.keys;
+};
+const isProductSaved = (product) => isWishlistItemSaved(product, wishlistIdentityKeys.value);
+const handleWishlistSave = (product) => {
+  wishlistIdentityKeys.value = withWishlistItemSaved(wishlistIdentityKeys.value, product);
+  emit("add-to-wishlist", product);
+  quickAddMessage.value = t("wishlist.saved");
+};
 const syncListingQueryFromLocation = () => {
   const listingQuery = resolveProductListingQuery(window.location.search);
   selectedProductType.value = listingQuery.filter;
@@ -115,6 +137,7 @@ const syncListingQueryFromLocation = () => {
 onMounted(async () => {
   window.addEventListener("popstate", syncListingQueryFromLocation);
   window.addEventListener("oakved:navigation", syncListingQueryFromLocation);
+  loadProductWishlistState();
   try {
     const page = await getProductPage({ pageNo: 1, pageSize: 24 });
     if (page.list.length > 0) {
@@ -127,6 +150,8 @@ onMounted(async () => {
     loading.value = false;
   }
 });
+
+watch(() => props.authVersion, loadProductWishlistState);
 
 onBeforeUnmount(() => {
   window.removeEventListener("popstate", syncListingQueryFromLocation);
@@ -268,6 +293,14 @@ onBeforeUnmount(() => {
           </div>
           <div class="product-card-actions">
             <a :href="`/sofa-pdp?id=${product.id}`">{{ t("viewDetails") }}</a>
+            <button
+              class="product-card-wishlist"
+              type="button"
+              :aria-pressed="isProductSaved(product)"
+              @click="handleWishlistSave(product)"
+            >
+              {{ t(isProductSaved(product) ? "wishlist.saved" : "wishlist.save") }}
+            </button>
             <button
               type="button"
               :disabled="!isProductAvailable(product)"

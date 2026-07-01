@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mapAddressResponse, mapOrderDetail, mapSpuToProduct } from "../src/services/yudaoMappers.js";
+import { mapAddressResponse, mapFavoritePageToItems, mapOrderDetail, mapSpuToProduct } from "../src/services/yudaoMappers.js";
 
 describe("yudao mapper module", () => {
   it("maps SPU records from the dedicated mapper module", () => {
@@ -20,6 +20,50 @@ describe("yudao mapper module", () => {
       price: 2599,
       marketPrice: 3299,
       source: "yudao",
+    });
+  });
+
+  it("maps favorite page records into wishlist item rows", () => {
+    expect(
+      mapFavoritePageToItems({
+        total: 1,
+        list: [
+          {
+            id: 7,
+            spuId: 12,
+            skuId: 99,
+            count: 3,
+            spuName: "Cloud Sofa",
+            picUrl: "https://cdn.example/sofa.jpg",
+            price: 259900,
+            marketPrice: 329900,
+            color: "Wheat",
+            fabric: "Performance Linen",
+            dimensions: "92W",
+            delivery: "Ships in 3-7 days",
+          },
+        ],
+      }),
+    ).toMatchObject({
+      total: 1,
+      list: [
+        {
+          favoriteId: 7,
+          id: 12,
+          spuId: 12,
+          skuId: 99,
+          name: "Cloud Sofa",
+          cover: "https://cdn.example/sofa.jpg",
+          price: 2599,
+          marketPrice: 3299,
+          color: "Wheat",
+          fabric: "Performance Linen",
+          dimensions: "92W",
+          delivery: "Ships in 3-7 days",
+          quantity: 3,
+          source: "yudao",
+        },
+      ],
     });
   });
 
