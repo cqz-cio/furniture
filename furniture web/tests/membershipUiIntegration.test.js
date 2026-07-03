@@ -34,6 +34,8 @@ describe("membership UI integration", () => {
     expect(source).toContain("getMembershipCartNotice");
     expect(source).toContain("membershipSubtotal");
     expect(source).toContain("memberDiscount");
+    expect(source).not.toContain("memberDiscount || Math.round");
+    expect(source).not.toContain("membershipSubtotal || 200");
   });
 
   it("animates the cart drawer as a full-screen shopping bag overlay", () => {
@@ -56,6 +58,8 @@ describe("membership UI integration", () => {
     expect(source).toContain("getMembershipPricing");
     expect(source).toContain("memberDiscount");
     expect(source).toContain("displayEstimatedTotal");
+    expect(source).not.toContain("memberDiscount || Math.round");
+    expect(source).not.toContain("membershipSubtotal || 200");
   });
 
   it("keeps guest checkout restriction copy limited to disabled membership checkout", () => {

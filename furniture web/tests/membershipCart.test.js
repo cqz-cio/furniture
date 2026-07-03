@@ -67,13 +67,13 @@ describe("membership cart pricing", () => {
     });
   });
 
-  it("discounts merchandise and keeps membership fee separate when membership is in the cart", () => {
+  it("keeps membership fee separate without activating benefits before real membership status", () => {
     expect(getMembershipPricing([sofaItem, ANNUAL_MEMBERSHIP_PRODUCT])).toEqual({
       merchandiseSubtotal: 2000,
       membershipSubtotal: 200,
-      memberDiscount: 500,
-      estimatedTotal: 1700,
-      memberPricingActive: true,
+      memberDiscount: 0,
+      estimatedTotal: 2200,
+      memberPricingActive: false,
     });
   });
 
@@ -103,15 +103,18 @@ describe("membership cart pricing", () => {
     expect(getMembershipPricing([accentItem, fabricItem, fractionalMembership])).toEqual({
       merchandiseSubtotal: 0.03,
       membershipSubtotal: 200.01,
-      memberDiscount: 0.01,
-      estimatedTotal: 200.03,
-      memberPricingActive: true,
+      memberDiscount: 0,
+      estimatedTotal: 200.04,
+      memberPricingActive: false,
     });
   });
 
   it("returns the correct cart notice for each membership state", () => {
     expect(getMembershipCartNotice([sofaItem]).title).toBe("Join the Members Program");
     expect(getMembershipCartNotice([sofaItem], { activeMember: true }).title).toBe("Member savings applied");
-    expect(getMembershipCartNotice([sofaItem, ANNUAL_MEMBERSHIP_PRODUCT]).title).toBe("Membership added to bag");
+    expect(getMembershipCartNotice([sofaItem, ANNUAL_MEMBERSHIP_PRODUCT])).toEqual({
+      title: "Membership checkout required",
+      message: "Member benefits apply after account sign-in and successful membership checkout.",
+    });
   });
 });

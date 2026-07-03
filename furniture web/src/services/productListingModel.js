@@ -195,7 +195,14 @@ export const inferListingType = (product = {}) => {
   return product.productType || "uncategorized";
 };
 
-export const supplementMissingCompanyTypes = (liveProducts = [], fallbackProducts = []) => {
+export const canSupplementListingWithFallbackProducts = (env = import.meta.env) => !env?.PROD;
+
+export const supplementMissingCompanyTypes = (liveProducts = [], fallbackProducts = [], options = {}) => {
+  const env = options.env ?? import.meta.env;
+  if (!canSupplementListingWithFallbackProducts(env)) {
+    return liveProducts;
+  }
+
   const liveTypes = new Set(liveProducts.map((product) => inferListingType(product)));
   const missingFallbackProducts = fallbackProducts.filter((product) => !liveTypes.has(product.productType));
   return [...liveProducts, ...missingFallbackProducts];

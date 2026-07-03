@@ -45,6 +45,15 @@ describe("checkout session helpers", () => {
     });
   });
 
+  it("rejects preview cart items before building a live yudao order payload", () => {
+    expect(() =>
+      buildYudaoOrderPayload([{ ...yudaoItems[0], source: "demo" }], { addressId: 2001 }),
+    ).toThrow("Live Yudao orders require remote cart items with cartId, skuId and product identity.");
+    expect(() =>
+      buildYudaoOrderPayload([{ ...yudaoItems[0], cartId: undefined }], { addressId: 2001 }),
+    ).toThrow("Live Yudao orders require remote cart items with cartId, skuId and product identity.");
+  });
+
   it("builds yudao address payload from checkout shipping form fields", () => {
     expect(
       buildYudaoAddressPayload({

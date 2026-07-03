@@ -191,6 +191,20 @@ describe("product listing model", () => {
     expect(listing.products.map((product) => product.name)).toEqual(["End-of-Bed Bench"]);
   });
 
+  it("does not supplement demo products into production live catalog data", () => {
+    const liveProducts = [
+      { id: 1, name: "Live Nightstand", productType: "nightstand", source: "yudao" },
+      { id: 2, name: "Live Dresser", productType: "dresser", source: "yudao" },
+    ];
+
+    const supplementedProducts = supplementMissingCompanyTypes(liveProducts, demoProducts, {
+      env: { PROD: true },
+    });
+
+    expect(supplementedProducts).toEqual(liveProducts);
+    expect(supplementedProducts.some((product) => product.source === "demo")).toBe(false);
+  });
+
   it("keeps explicit company productType ahead of descriptive words", () => {
     expect(
       inferListingType({

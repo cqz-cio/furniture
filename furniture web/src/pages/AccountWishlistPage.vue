@@ -102,18 +102,22 @@ const availability = (item) => item.delivery || t("wishlist.defaultAvailability"
 const setQuantity = async (item, quantity) => {
   const nextQuantity = Math.max(1, Math.floor(Number(quantity) || 1));
   if (wishlistMode.value === "yudao" || item.source === "yudao") {
+    if (!readYudaoToken()) {
+      statusKey.value = "wishlist.signInRequired";
+      return;
+    }
+    const previousItems = wishlistItems.value;
     wishlistItems.value = wishlistItems.value.map((row) =>
       row.skuId === item.skuId ? { ...row, quantity: nextQuantity } : row,
     );
-    if (readYudaoToken()) {
-      try {
-        await updateFavoriteCount(item, nextQuantity);
-        statusKey.value = "";
-        statusDetail.value = "";
-      } catch (error) {
-        statusDetail.value = getErrorDetail(error);
-        statusKey.value = isYudaoAuthError(error) ? "wishlist.signInRequired" : "wishlist.remoteUnavailable";
-      }
+    try {
+      await updateFavoriteCount(item, nextQuantity);
+      statusKey.value = "";
+      statusDetail.value = "";
+    } catch (error) {
+      wishlistItems.value = previousItems;
+      statusDetail.value = getErrorDetail(error);
+      statusKey.value = isYudaoAuthError(error) ? "wishlist.signInRequired" : "wishlist.remoteUnavailable";
     }
     return;
   }
@@ -130,7 +134,11 @@ const addToCart = (item) => {
 };
 
 const removeItem = async (item) => {
-  if ((wishlistMode.value === "yudao" || item.source === "yudao") && readYudaoToken()) {
+  if (wishlistMode.value === "yudao" || item.source === "yudao") {
+    if (!readYudaoToken()) {
+      statusKey.value = "wishlist.signInRequired";
+      return;
+    }
     try {
       await deleteFavorite(item);
       await loadWishlist();
@@ -139,6 +147,7 @@ const removeItem = async (item) => {
     } catch (error) {
       statusDetail.value = getErrorDetail(error);
       statusKey.value = isYudaoAuthError(error) ? "wishlist.signInRequired" : "wishlist.remoteUnavailable";
+      return;
     }
   }
   wishlistItems.value = removeLocalWishlistItem(item.skuId);

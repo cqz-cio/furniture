@@ -93,6 +93,10 @@ export const buildAddressVerificationAudit = (confirmation) => {
 };
 
 export const buildYudaoOrderPayload = (items, options = {}) => {
+  if (!canUseYudaoCheckout(items)) {
+    throw new Error("Live Yudao orders require remote cart items with cartId, skuId and product identity.");
+  }
+
   const addressVerification = buildAddressVerificationAudit(options.addressConfirmation);
 
   return {

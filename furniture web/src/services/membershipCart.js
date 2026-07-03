@@ -27,7 +27,7 @@ export const getMembershipPricing = (items = [], options = {}) => {
   const merchandiseSubtotal = moneyRound(
     items.filter((item) => !isMembershipItem(item)).reduce((sum, item) => sum + lineTotal(item), 0),
   );
-  const memberPricingActive = Boolean(options.activeMember) || hasMembershipService(items);
+  const memberPricingActive = Boolean(options.activeMember);
   const memberDiscount = memberPricingActive ? moneyRound(merchandiseSubtotal * MEMBER_DISCOUNT_RATE) : 0;
 
   return {
@@ -42,8 +42,8 @@ export const getMembershipPricing = (items = [], options = {}) => {
 export const getMembershipCartNotice = (items = [], options = {}) => {
   if (hasMembershipService(items)) {
     return {
-      title: "Membership added to bag",
-      message: "Member pricing is applied to eligible merchandise in this bag.",
+      title: "Membership checkout required",
+      message: "Member benefits apply after account sign-in and successful membership checkout.",
     };
   }
 

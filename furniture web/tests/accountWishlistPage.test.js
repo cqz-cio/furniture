@@ -62,6 +62,42 @@ describe("account wishlist page", () => {
     expect(i18nSource).toContain("retrySync:");
   });
 
+  it("does not report remote wishlist deletion as removed when the API fails", () => {
+    const source = readSource("../src/pages/AccountWishlistPage.vue");
+    const removeItemBody = source.slice(
+      source.indexOf("const removeItem = async (item) => {"),
+      source.indexOf("onMounted(loadWishlist);"),
+    );
+    const remoteDeleteCatch = removeItemBody.slice(
+      removeItemBody.indexOf("} catch (error) {"),
+      removeItemBody.indexOf("wishlistItems.value = removeLocalWishlistItem"),
+    );
+
+    expect(remoteDeleteCatch).toContain('statusKey.value = isYudaoAuthError(error) ? "wishlist.signInRequired" : "wishlist.remoteUnavailable"');
+    expect(remoteDeleteCatch).toContain("return;");
+    expect(remoteDeleteCatch).not.toContain('noticeKey.value = "wishlist.removed"');
+  });
+
+  it("rolls back remote wishlist quantity changes when the API fails", () => {
+    const source = readSource("../src/pages/AccountWishlistPage.vue");
+    const setQuantityBody = source.slice(
+      source.indexOf("const setQuantity = async (item, quantity) => {"),
+      source.indexOf("const adjustQuantity = (item, delta) => {"),
+    );
+    const remoteBranch = setQuantityBody.slice(
+      setQuantityBody.indexOf('if (wishlistMode.value === "yudao" || item.source === "yudao")'),
+      setQuantityBody.indexOf("wishlistItems.value = updateLocalWishlistItemQuantity"),
+    );
+    const remoteCatch = remoteBranch.slice(remoteBranch.indexOf("} catch (error) {"));
+
+    expect(remoteBranch.indexOf("if (!readYudaoToken())")).toBeLessThan(
+      remoteBranch.indexOf("wishlistItems.value = wishlistItems.value.map"),
+    );
+    expect(remoteBranch).toContain("const previousItems = wishlistItems.value;");
+    expect(remoteCatch).toContain("wishlistItems.value = previousItems;");
+    expect(remoteCatch).toContain('statusKey.value = isYudaoAuthError(error) ? "wishlist.signInRequired" : "wishlist.remoteUnavailable"');
+  });
+
   it("marks wishlist-specific layout hooks for Product Design polish", () => {
     const pageSource = readSource("../src/pages/AccountWishlistPage.vue");
     const styles = readSource("../src/styles.css");

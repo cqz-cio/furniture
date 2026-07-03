@@ -67,7 +67,7 @@ const canResyncCart = computed(() =>
 const showNoticeDetail = computed(() => Boolean(props.noticeDetail) && import.meta.env.DEV);
 const showDebugInfo = computed(() => Boolean(props.debugInfo) && import.meta.env.DEV);
 const money = (value) => `$${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-const displaySavings = computed(() => membershipPricing.value.memberDiscount || Math.round(membershipPricing.value.merchandiseSubtotal * 0.3));
+const displaySavings = computed(() => membershipPricing.value.memberDiscount);
 const displayDelivery = computed(() => (props.items.length ? 299 : 0));
 const displaySummaryTotal = computed(() => membershipPricing.value.estimatedTotal + displayDelivery.value);
 const handleQuantityChange = (item, value) => {
@@ -287,7 +287,7 @@ onBeforeUnmount(() => setBodyCartState(false));
               </div>
               <div class="cart-foot-row">
                 <span>RH Members Program</span>
-                <strong>{{ money(membershipPricing.membershipSubtotal || 200) }}</strong>
+                <strong>{{ money(membershipPricing.membershipSubtotal) }}</strong>
               </div>
               <div class="cart-foot-row">
                 <span><u>Unlimited Furniture Delivery</u></span>

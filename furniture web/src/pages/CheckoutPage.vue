@@ -131,7 +131,7 @@ const paymentRequired = computed(() => Number(settlement.value?.payPrice ?? disp
 const displayZip = computed(() => shippingForm.value.postalCode || checkoutAddress.value?.postalCode || "94925");
 const displaySalesTax = computed(() => (checkoutStage.value === "payment" ? Math.round(displayEstimatedTotal.value * 0.07336 * 100) / 100 : 0));
 const displayOrderTotal = computed(() =>
-  displayEstimatedTotal.value + (displayDelivery.value || 299) + (membershipPricing.value.membershipSubtotal || 200) + displaySalesTax.value,
+  displayEstimatedTotal.value + (displayDelivery.value || 299) + displaySalesTax.value,
 );
 const formattedAddressLines = computed(() => {
   const form = shippingForm.value;
@@ -858,7 +858,7 @@ watch(paymentForm, () => {
           </header>
           <div class="summary-row muted">
             <span>Member Savings</span>
-            <strong>{{ money(membershipPricing.memberDiscount || Math.round(displayItemTotal * 0.3)) }}</strong>
+            <strong>{{ money(membershipPricing.memberDiscount) }}</strong>
           </div>
           <div class="summary-row">
             <span>Subtotal with member savings</span>
@@ -866,7 +866,7 @@ watch(paymentForm, () => {
           </div>
           <div class="summary-row">
             <span>RH Members Program</span>
-            <strong>{{ money(membershipPricing.membershipSubtotal || 200) }}</strong>
+            <strong>{{ money(membershipPricing.membershipSubtotal) }}</strong>
           </div>
           <div class="summary-row">
             <span><u>Unlimited Furniture Delivery</u></span>
