@@ -10,6 +10,7 @@ import {
 } from "../scripts/create-launch-evidence.mjs";
 
 const readProjectFile = (path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
+const validImageDigest = `sha256:${"a".repeat(64)}`;
 
 describe("launch evidence bundle", () => {
   it("exposes a repeatable launch evidence command", () => {
@@ -26,7 +27,7 @@ describe("launch evidence bundle", () => {
         "--image-tag",
         "oakved-storefront:abc123",
         "--image-digest",
-        "sha256:123",
+        validImageDigest,
         "--base-url",
         "https://shop.oakvedhome.com",
         "--launch-env-file",
@@ -39,7 +40,7 @@ describe("launch evidence bundle", () => {
     ).toMatchObject({
       dir: "launch-evidence/test",
       imageTag: "oakved-storefront:abc123",
-      imageDigest: "sha256:123",
+      imageDigest: validImageDigest,
       baseUrl: "https://shop.oakvedhome.com",
       envFile: ".env.production",
       smokeEnvFile: ".env.launch-smoke",
@@ -51,7 +52,7 @@ describe("launch evidence bundle", () => {
     const manifest = buildLaunchEvidenceManifest({
       commitSha: "abc123",
       imageTag: "oakved-storefront:abc123",
-      imageDigest: "sha256:123",
+      imageDigest: validImageDigest,
       baseUrl: "https://shop.oakvedhome.com",
       envFile: ".env.production",
       smokeEnvFile: ".env.launch-smoke",
@@ -62,7 +63,7 @@ describe("launch evidence bundle", () => {
     expect(manifest).toMatchObject({
       commitSha: "abc123",
       imageTag: "oakved-storefront:abc123",
-      imageDigest: "sha256:123",
+      imageDigest: validImageDigest,
       baseUrl: "https://shop.oakvedhome.com",
       envFile: ".env.production",
       smokeEnvFile: ".env.launch-smoke",
@@ -100,7 +101,7 @@ describe("launch evidence bundle", () => {
       buildLaunchEvidenceManifest({
         commitSha: "abc123",
         imageTag: "oakved-storefront:abc123",
-        imageDigest: "sha256:123",
+        imageDigest: validImageDigest,
       }),
     ).toThrow("Launch evidence baseUrl is required");
 
@@ -108,7 +109,7 @@ describe("launch evidence bundle", () => {
       buildLaunchEvidenceManifest({
         commitSha: "abc123",
         imageTag: "oakved-storefront:abc123",
-        imageDigest: "sha256:123",
+        imageDigest: validImageDigest,
         baseUrl: "https://shop.example.com",
       }),
     ).toThrow("Launch evidence baseUrl must not use a documentation/example domain");
@@ -117,7 +118,7 @@ describe("launch evidence bundle", () => {
       buildLaunchEvidenceManifest({
         commitSha: "abc123",
         imageTag: "oakved-storefront:abc123",
-        imageDigest: "sha256:123",
+        imageDigest: validImageDigest,
         baseUrl: "shop.oakvedhome.com",
       }),
     ).toThrow("Launch evidence baseUrl must be an absolute http(s) URL");
@@ -132,7 +133,7 @@ describe("launch evidence bundle", () => {
         dir: evidenceDir,
         commitSha: "abc123",
         imageTag: "oakved-storefront:abc123",
-        imageDigest: "sha256:123",
+        imageDigest: validImageDigest,
         baseUrl: "https://shop.oakvedhome.com",
         envFile: ".env.production",
         smokeEnvFile: ".env.launch-smoke",

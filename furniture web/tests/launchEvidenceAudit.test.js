@@ -10,6 +10,8 @@ import {
 } from "../scripts/audit-launch-evidence.mjs";
 
 const readProjectFile = (path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
+const validCommitSha = "a".repeat(40);
+const validImageDigest = `sha256:${"a".repeat(64)}`;
 
 const successOutputByFile = {
   "production-env.txt": "Production env check passed: .env.production\n",
@@ -69,19 +71,19 @@ Real account readiness smoke passed.
   "post-deploy-health.txt": "Post-deploy health check passed: 5 check(s)\n",
 };
 
-const tinyPng = Buffer.from([
-  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
-  0x00, 0x00, 0x00, 0x01,
-]);
+const tinyPng = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=",
+  "base64",
+);
 
 const createCompleteEvidence = () => {
   const tempRoot = mkdtempSync(join(tmpdir(), "oakved-launch-audit-"));
   const evidenceDir = join(tempRoot, "launch");
   const bundle = createLaunchEvidenceBundle({
     dir: evidenceDir,
-    commitSha: "abc123",
+    commitSha: validCommitSha,
     imageTag: "oakved-storefront:abc123",
-    imageDigest: "sha256:123",
+    imageDigest: validImageDigest,
     baseUrl: "https://shop.oakvedhome.com",
     envFile: ".env.production",
     smokeEnvFile: ".env.launch-smoke",
@@ -179,6 +181,88 @@ describe("launch evidence audit", () => {
     }
   });
 
+  it("fails when required evidence files are not produced by manifest commands", () => {
+    const { tempRoot, evidenceDir } = createCompleteEvidence();
+
+    try {
+      const manifestPath = join(evidenceDir, "launch-manifest.json");
+      const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+      manifest.requiredEvidenceFiles = [...manifest.requiredEvidenceFiles, "manual-note.txt"];
+      writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+      writeFileSync(join(evidenceDir, "manual-note.txt"), "Manual note: checked by operator.\n", "utf8");
+
+      const result = auditLaunchEvidence({ dir: evidenceDir });
+
+      expect(result.ok).toBe(false);
+      expect(result.errors.join("\n")).toContain("requiredEvidenceFiles must not include untracked file manual-note.txt");
+    } finally {
+      rmSync(tempRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("fails when a manifest command does not declare an output file", () => {
+    const { tempRoot, evidenceDir } = createCompleteEvidence();
+
+    try {
+      const manifestPath = join(evidenceDir, "launch-manifest.json");
+      const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+      const command = manifest.commands.find((item) => item.name === "launch-readiness");
+      delete command.outputFile;
+      writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+
+      const result = auditLaunchEvidence({ dir: evidenceDir });
+
+      expect(result.ok).toBe(false);
+      expect(result.errors.join("\n")).toContain("launch-readiness command outputFile is required");
+    } finally {
+      rmSync(tempRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("fails when manifest commands share the same output file", () => {
+    const { tempRoot, evidenceDir } = createCompleteEvidence();
+
+    try {
+      const manifestPath = join(evidenceDir, "launch-manifest.json");
+      const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+      const command = manifest.commands.find((item) => item.name === "launch-smoke-env");
+      command.outputFile = "production-env.txt";
+      manifest.requiredEvidenceFiles = manifest.requiredEvidenceFiles.filter((file) => file !== "launch-smoke-env.txt");
+      writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+
+      const result = auditLaunchEvidence({ dir: evidenceDir });
+
+      expect(result.ok).toBe(false);
+      expect(result.errors.join("\n")).toContain("launch-smoke-env command outputFile duplicates production-env.txt");
+    } finally {
+      rmSync(tempRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("fails when manifest evidence files escape the evidence directory", () => {
+    const { tempRoot, evidenceDir } = createCompleteEvidence();
+
+    try {
+      const manifestPath = join(evidenceDir, "launch-manifest.json");
+      const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+      const command = manifest.commands.find((item) => item.name === "production-env");
+      command.outputFile = "../production-env.txt";
+      manifest.requiredEvidenceFiles = manifest.requiredEvidenceFiles.map((file) =>
+        file === "production-env.txt" ? "../production-env.txt" : file,
+      );
+      writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+      writeFileSync(join(tempRoot, "production-env.txt"), successOutputByFile["production-env.txt"], "utf8");
+
+      const result = auditLaunchEvidence({ dir: evidenceDir });
+
+      expect(result.ok).toBe(false);
+      expect(result.errors.join("\n")).toContain("production-env command outputFile must be a simple evidence file name");
+      expect(result.errors.join("\n")).toContain("requiredEvidenceFiles must use simple evidence file names");
+    } finally {
+      rmSync(tempRoot, { recursive: true, force: true });
+    }
+  });
+
   it("fails when the manifest omits the standalone real-account smoke command", () => {
     const { tempRoot, evidenceDir } = createCompleteEvidence();
 
@@ -244,6 +328,24 @@ describe("launch evidence audit", () => {
 
       expect(result.ok).toBe(false);
       expect(result.errors.join("\n")).toContain("launch-readiness.txt must contain success marker: Launch readiness check passed.");
+    } finally {
+      rmSync(tempRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("fails when a command output file mixes a success marker with failure output", () => {
+    const { tempRoot, evidenceDir } = createCompleteEvidence();
+
+    try {
+      writeFileSync(
+        join(evidenceDir, "production-env.txt"),
+        "Production env check passed: .env.production\nError: VITE_YUDAO_API_BASE_URL is missing\n",
+        "utf8",
+      );
+      const result = auditLaunchEvidence({ dir: evidenceDir });
+
+      expect(result.ok).toBe(false);
+      expect(result.errors.join("\n")).toContain("production-env.txt must not include failure output");
     } finally {
       rmSync(tempRoot, { recursive: true, force: true });
     }
@@ -540,6 +642,27 @@ describe("launch evidence audit", () => {
     }
   });
 
+  it("fails when real-account smoke evidence uses a documentation-domain trade email", () => {
+    const { tempRoot, evidenceDir } = createCompleteEvidence();
+
+    try {
+      writeFileSync(
+        join(evidenceDir, "real-account-smoke.txt"),
+        successOutputByFile["real-account-smoke.txt"].replace(
+          '"tradeEmail": "designer@oakvedhome.com"',
+          '"tradeEmail": "designer@oakved.example"',
+        ),
+        "utf8",
+      );
+      const result = auditLaunchEvidence({ dir: evidenceDir });
+
+      expect(result.ok).toBe(false);
+      expect(result.errors.join("\n")).toContain("real-account-smoke.txt seeded tradeEmail must not use a documentation/example domain");
+    } finally {
+      rmSync(tempRoot, { recursive: true, force: true });
+    }
+  });
+
   it("fails when real-account smoke evidence mixes success with skipped or failed readiness output", () => {
     const { tempRoot, evidenceDir } = createCompleteEvidence();
 
@@ -613,9 +736,9 @@ Error: Real account readiness failed: module-membership-blocked
     const evidenceDir = join(tempRoot, "launch");
     const bundle = createLaunchEvidenceBundle({
       dir: evidenceDir,
-      commitSha: "abc123",
+      commitSha: validCommitSha,
       imageTag: "oakved-storefront:abc123",
-      imageDigest: "sha256:123",
+      imageDigest: validImageDigest,
       baseUrl: "https://shop.oakvedhome.com",
       envFile: ".env.production",
       smokeEnvFile: ".env.launch-smoke",
@@ -664,6 +787,23 @@ Error: Real account readiness failed: module-membership-blocked
     }
   });
 
+  it("fails when screenshot evidence is only a truncated PNG header", () => {
+    const { tempRoot, evidenceDir } = createCompleteEvidence();
+
+    try {
+      const truncatedPng = Buffer.from([
+        0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
+      ]);
+      writeFileSync(join(evidenceDir, "browser-home.png"), truncatedPng);
+      const result = auditLaunchEvidence({ dir: evidenceDir });
+
+      expect(result.ok).toBe(false);
+      expect(result.errors.join("\n")).toContain("browser-home.png must be a valid PNG, JPEG, or WebP image.");
+    } finally {
+      rmSync(tempRoot, { recursive: true, force: true });
+    }
+  });
+
   it("fails when launch metadata is missing", () => {
     const { tempRoot, evidenceDir } = createCompleteEvidence();
 
@@ -686,6 +826,60 @@ Error: Real account readiness failed: module-membership-blocked
     }
   });
 
+  it("fails when launch manifest createdAt is not an ISO timestamp", () => {
+    const { tempRoot, evidenceDir } = createCompleteEvidence();
+
+    try {
+      const manifestPath = join(evidenceDir, "launch-manifest.json");
+      const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+      manifest.createdAt = "not-a-date";
+      writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+
+      const result = auditLaunchEvidence({ dir: evidenceDir });
+
+      expect(result.ok).toBe(false);
+      expect(result.errors.join("\n")).toContain("createdAt must be an ISO timestamp");
+    } finally {
+      rmSync(tempRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("fails when launch manifest commitSha is not a full git SHA", () => {
+    const { tempRoot, evidenceDir } = createCompleteEvidence();
+
+    try {
+      const manifestPath = join(evidenceDir, "launch-manifest.json");
+      const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+      manifest.commitSha = "abc123";
+      writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+
+      const result = auditLaunchEvidence({ dir: evidenceDir });
+
+      expect(result.ok).toBe(false);
+      expect(result.errors.join("\n")).toContain("commitSha must be a full git SHA");
+    } finally {
+      rmSync(tempRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("fails when launch manifest imageDigest is not a full sha256 digest", () => {
+    const { tempRoot, evidenceDir } = createCompleteEvidence();
+
+    try {
+      const manifestPath = join(evidenceDir, "launch-manifest.json");
+      const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+      manifest.imageDigest = "sha256:123";
+      writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+
+      const result = auditLaunchEvidence({ dir: evidenceDir });
+
+      expect(result.ok).toBe(false);
+      expect(result.errors.join("\n")).toContain("imageDigest must be a full sha256 image digest");
+    } finally {
+      rmSync(tempRoot, { recursive: true, force: true });
+    }
+  });
+
   it("fails when launch manifest baseUrl uses a documentation domain", () => {
     const { tempRoot, evidenceDir } = createCompleteEvidence();
 
@@ -699,6 +893,42 @@ Error: Real account readiness failed: module-membership-blocked
 
       expect(result.ok).toBe(false);
       expect(result.errors.join("\n")).toContain("baseUrl must not use a documentation/example domain");
+    } finally {
+      rmSync(tempRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("fails when launch manifest baseUrl is not an absolute http URL", () => {
+    const { tempRoot, evidenceDir } = createCompleteEvidence();
+
+    try {
+      const manifestPath = join(evidenceDir, "launch-manifest.json");
+      const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+      manifest.baseUrl = "shop.oakvedhome.com";
+      writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+
+      const result = auditLaunchEvidence({ dir: evidenceDir });
+
+      expect(result.ok).toBe(false);
+      expect(result.errors.join("\n")).toContain("baseUrl must be an absolute http(s) URL");
+    } finally {
+      rmSync(tempRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("fails when launch manifest baseUrl points to localhost", () => {
+    const { tempRoot, evidenceDir } = createCompleteEvidence();
+
+    try {
+      const manifestPath = join(evidenceDir, "launch-manifest.json");
+      const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+      manifest.baseUrl = "http://localhost:4173";
+      writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+
+      const result = auditLaunchEvidence({ dir: evidenceDir });
+
+      expect(result.ok).toBe(false);
+      expect(result.errors.join("\n")).toContain("baseUrl must not point to localhost");
     } finally {
       rmSync(tempRoot, { recursive: true, force: true });
     }

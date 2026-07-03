@@ -10,6 +10,8 @@ import {
 } from "../scripts/audit-initial-launch-readiness.mjs";
 
 const readProjectFile = (path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
+const validCommitSha = "a".repeat(40);
+const validImageDigest = `sha256:${"a".repeat(64)}`;
 
 const productionEnv = `VITE_YUDAO_APP_API_BASE=https://api.oakvedhome.com/app-api
 VITE_YUDAO_APP_TENANT_ID=121
@@ -124,10 +126,10 @@ Real account readiness smoke passed.
   "post-deploy-health.txt": "Post-deploy health check passed: 5 check(s)\n",
 };
 
-const tinyPng = Buffer.from([
-  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
-  0x00, 0x00, 0x00, 0x01,
-]);
+const tinyPng = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=",
+  "base64",
+);
 
 const createCompleteLaunchFixture = () => {
   const tempRoot = mkdtempSync(join(tmpdir(), "oakved-initial-launch-"));
@@ -141,9 +143,9 @@ const createCompleteLaunchFixture = () => {
 
   const bundle = createLaunchEvidenceBundle({
     dir: evidenceDir,
-    commitSha: "abc123",
+    commitSha: validCommitSha,
     imageTag: "oakved-storefront:abc123",
-    imageDigest: "sha256:123",
+    imageDigest: validImageDigest,
     baseUrl: "https://shop.oakvedhome.com",
     envFile,
     smokeEnvFile,

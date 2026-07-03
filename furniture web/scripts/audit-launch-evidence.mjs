@@ -106,6 +106,26 @@ const hasPlaceholderText = (content) => {
 
 const isScreenshotFile = (file) => /\.(?:png|jpe?g|webp)$/i.test(file);
 
+const hasPngIendChunk = (content) => {
+  if (content.length < 12) return false;
+  const iendStart = content.length - 12;
+  return (
+    content[iendStart] === 0x00 &&
+    content[iendStart + 1] === 0x00 &&
+    content[iendStart + 2] === 0x00 &&
+    content[iendStart + 3] === 0x00 &&
+    content.toString("ascii", iendStart + 4, iendStart + 8) === "IEND"
+  );
+};
+
+const hasJpegEndMarker = (content) => content.length >= 4 && content[content.length - 2] === 0xff && content[content.length - 1] === 0xd9;
+
+const hasConsistentWebpLength = (content) => {
+  if (content.length < 12) return false;
+  const declaredSize = content.readUInt32LE(4);
+  return declaredSize + 8 <= content.length;
+};
+
 const isValidScreenshotImage = (file, content) => {
   const normalized = file.toLowerCase();
   if (normalized.endsWith(".png")) {
@@ -118,17 +138,19 @@ const isValidScreenshotImage = (file, content) => {
       content[4] === 0x0d &&
       content[5] === 0x0a &&
       content[6] === 0x1a &&
-      content[7] === 0x0a
+      content[7] === 0x0a &&
+      hasPngIendChunk(content)
     );
   }
   if (normalized.endsWith(".jpg") || normalized.endsWith(".jpeg")) {
-    return content.length >= 3 && content[0] === 0xff && content[1] === 0xd8 && content[2] === 0xff;
+    return content.length >= 4 && content[0] === 0xff && content[1] === 0xd8 && content[2] === 0xff && hasJpegEndMarker(content);
   }
   if (normalized.endsWith(".webp")) {
     return (
       content.length >= 12 &&
       content.toString("ascii", 0, 4) === "RIFF" &&
-      content.toString("ascii", 8, 12) === "WEBP"
+      content.toString("ascii", 8, 12) === "WEBP" &&
+      hasConsistentWebpLength(content)
     );
   }
   return false;
@@ -146,17 +168,84 @@ const requireManifestValue = (errors, manifest, key) => {
   }
 };
 
+const isIsoTimestamp = (value) => {
+  const source = String(value || "").trim();
+  if (!source) return false;
+  const timestamp = Date.parse(source);
+  return Number.isFinite(timestamp) && new Date(timestamp).toISOString() === source;
+};
+
+const requireIsoTimestamp = (errors, manifest, key) => {
+  const value = String(manifest[key] || "").trim();
+  if (value && !isIsoTimestamp(value)) {
+    errors.push(`${key} must be an ISO timestamp`);
+  }
+};
+
+const requireSha256Digest = (errors, manifest, key) => {
+  const value = String(manifest[key] || "").trim();
+  if (value && !/^sha256:[a-f0-9]{64}$/i.test(value)) {
+    errors.push(`${key} must be a full sha256 image digest`);
+  }
+};
+
+const requireGitSha = (errors, manifest, key) => {
+  const value = String(manifest[key] || "").trim();
+  if (value && !/^[a-f0-9]{40}$/i.test(value)) {
+    errors.push(`${key} must be a full git SHA`);
+  }
+};
+
+const isSimpleEvidenceFileName = (value) => {
+  const file = String(value || "").trim();
+  return /^[A-Za-z0-9._-]+$/.test(file) && file !== "." && file !== ".." && !file.startsWith(".");
+};
+
+const isDocumentationDomain = (hostname) => {
+  const normalized = String(hostname || "").toLowerCase();
+  return normalized === "example.com" || normalized.endsWith(".example.com") || normalized.endsWith(".example");
+};
+
 const isDocumentationDomainUrl = (value) => {
   try {
     const hostname = new URL(value).hostname.toLowerCase();
-    return hostname === "example.com" || hostname.endsWith(".example.com") || hostname.endsWith(".example");
+    return isDocumentationDomain(hostname);
   } catch {
     return false;
   }
 };
 
-const requireNonDocumentationUrl = (errors, manifest, key) => {
+const isDocumentationDomainEmail = (value) => {
+  const domain = String(value || "").trim().split("@").pop();
+  return isDocumentationDomain(domain);
+};
+
+const parseHttpUrl = (value) => {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:" ? url : null;
+  } catch {
+    return null;
+  }
+};
+
+const isLocalhostUrl = (value) => {
+  const url = parseHttpUrl(value);
+  if (!url) return false;
+  const hostname = url.hostname.toLowerCase();
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1" || hostname === "[::1]";
+};
+
+const requireLaunchUrl = (errors, manifest, key) => {
   const value = String(manifest[key] || "").trim();
+  if (!value) return;
+  if (!parseHttpUrl(value)) {
+    errors.push(`${key} must be an absolute http(s) URL`);
+    return;
+  }
+  if (isLocalhostUrl(value)) {
+    errors.push(`${key} must not point to localhost`);
+  }
   if (value && isDocumentationDomainUrl(value)) {
     errors.push(`${key} must not use a documentation/example domain`);
   }
@@ -166,6 +255,18 @@ const requireSuccessMarker = (errors, file, content) => {
   const marker = SUCCESS_MARKERS_BY_FILE[file];
   if (marker && !String(content || "").includes(marker)) {
     errors.push(`${file} must contain success marker: ${marker}`);
+  }
+};
+
+const requireNoFailureOutput = (errors, file, content) => {
+  const normalized = String(content || "").toLowerCase();
+  if (
+    /\berror\s*:/i.test(normalized) ||
+    /\bfailed\b/i.test(normalized) ||
+    /\bfailures?\b/i.test(normalized) ||
+    /\bexit code\s*[1-9]\d*\b/i.test(normalized)
+  ) {
+    errors.push(`${file} must not include failure output`);
   }
 };
 
@@ -235,6 +336,9 @@ const requireRealAccountReadySnapshot = (errors, file, content) => {
   if (tradeEmail && /@example\.com$/i.test(tradeEmail)) {
     errors.push(`${file} seeded tradeEmail must not use example.com`);
   }
+  if (tradeEmail && isDocumentationDomainEmail(tradeEmail)) {
+    errors.push(`${file} seeded tradeEmail must not use a documentation/example domain`);
+  }
 };
 
 const requireRealAccountOrderDetailStep = (errors, file, content, manifest) => {
@@ -285,10 +389,37 @@ const rejectManifestCommandFragments = (errors, manifest, forbiddenFragments = [
 
 const requireCommandOutputFilesInEvidenceList = (errors, manifest, requiredEvidenceFiles) => {
   const commands = Array.isArray(manifest.commands) ? manifest.commands : [];
+  const commandOutputFiles = new Set();
   for (const command of commands) {
     const outputFile = String(command?.outputFile || "").trim();
-    if (outputFile && !requiredEvidenceFiles.includes(outputFile)) {
+    if (!outputFile) {
+      errors.push(`${command?.name || "unnamed"} command outputFile is required`);
+      continue;
+    }
+    if (outputFile && !isSimpleEvidenceFileName(outputFile)) {
+      errors.push(`${command?.name || "unnamed"} command outputFile must be a simple evidence file name`);
+      continue;
+    }
+    if (commandOutputFiles.has(outputFile)) {
+      errors.push(`${command?.name || "unnamed"} command outputFile duplicates ${outputFile}`);
+      continue;
+    }
+    commandOutputFiles.add(outputFile);
+    if (!requiredEvidenceFiles.includes(outputFile)) {
       errors.push(`requiredEvidenceFiles must include outputFile ${outputFile} from ${command?.name || "unnamed"} command`);
+    }
+  }
+  for (const file of requiredEvidenceFiles) {
+    if (isSimpleEvidenceFileName(file) && !commandOutputFiles.has(file)) {
+      errors.push(`requiredEvidenceFiles must not include untracked file ${file}`);
+    }
+  }
+};
+
+const requireSimpleRequiredEvidenceFiles = (errors, requiredEvidenceFiles) => {
+  for (const file of requiredEvidenceFiles) {
+    if (!isSimpleEvidenceFileName(file)) {
+      errors.push("requiredEvidenceFiles must use simple evidence file names");
     }
   }
 };
@@ -320,15 +451,19 @@ export const auditLaunchEvidence = (options = {}) => {
     };
   }
 
-  for (const key of ["commitSha", "imageTag", "imageDigest", "baseUrl", "envFile", "smokeEnvFile", "backendEnvFile"]) {
+  for (const key of ["commitSha", "imageTag", "imageDigest", "baseUrl", "envFile", "smokeEnvFile", "backendEnvFile", "createdAt"]) {
     requireManifestValue(errors, manifest, key);
   }
-  requireNonDocumentationUrl(errors, manifest, "baseUrl");
+  requireIsoTimestamp(errors, manifest, "createdAt");
+  requireGitSha(errors, manifest, "commitSha");
+  requireSha256Digest(errors, manifest, "imageDigest");
+  requireLaunchUrl(errors, manifest, "baseUrl");
 
   const requiredEvidenceFiles = Array.isArray(manifest.requiredEvidenceFiles) ? manifest.requiredEvidenceFiles : [];
   if (!requiredEvidenceFiles.length) {
     errors.push("requiredEvidenceFiles must list launch command output files");
   }
+  requireSimpleRequiredEvidenceFiles(errors, requiredEvidenceFiles);
   for (const file of REQUIRED_LAUNCH_EVIDENCE_FILES) {
     if (!requiredEvidenceFiles.includes(file)) {
       errors.push(`requiredEvidenceFiles must include ${file}`);
@@ -374,6 +509,9 @@ export const auditLaunchEvidence = (options = {}) => {
   }
 
   for (const file of requiredEvidenceFiles) {
+    if (!isSimpleEvidenceFileName(file)) {
+      continue;
+    }
     const evidencePath = join(dir, file);
     if (!existsSync(evidencePath)) {
       errors.push(`${file} is missing`);
@@ -386,6 +524,7 @@ export const auditLaunchEvidence = (options = {}) => {
       errors.push(`${file} still contains placeholder text`);
     }
     requireSuccessMarker(errors, file, content);
+    requireNoFailureOutput(errors, file, content);
     requireRealAccountReadySnapshot(errors, file, content);
     requireRealAccountStepLogs(errors, file, content);
     requireRealAccountOrderDetailStep(errors, file, content, manifest);
