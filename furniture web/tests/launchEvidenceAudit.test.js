@@ -11,6 +11,7 @@ import {
 
 const readProjectFile = (path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 const validCommitSha = "a".repeat(40);
+const validImageTag = `oakved-storefront:${validCommitSha.slice(0, 12)}`;
 const validImageDigest = `sha256:${"a".repeat(64)}`;
 
 const successOutputByFile = {
@@ -82,7 +83,7 @@ const createCompleteEvidence = () => {
   const bundle = createLaunchEvidenceBundle({
     dir: evidenceDir,
     commitSha: validCommitSha,
-    imageTag: "oakved-storefront:abc123",
+    imageTag: validImageTag,
     imageDigest: validImageDigest,
     baseUrl: "https://shop.oakvedhome.com",
     envFile: ".env.production",
@@ -737,7 +738,7 @@ Error: Real account readiness failed: module-membership-blocked
     const bundle = createLaunchEvidenceBundle({
       dir: evidenceDir,
       commitSha: validCommitSha,
-      imageTag: "oakved-storefront:abc123",
+      imageTag: validImageTag,
       imageDigest: validImageDigest,
       baseUrl: "https://shop.oakvedhome.com",
       envFile: ".env.production",
@@ -857,6 +858,24 @@ Error: Real account readiness failed: module-membership-blocked
 
       expect(result.ok).toBe(false);
       expect(result.errors.join("\n")).toContain("commitSha must be a full git SHA");
+    } finally {
+      rmSync(tempRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("fails when launch manifest imageTag does not reference the commit SHA", () => {
+    const { tempRoot, evidenceDir } = createCompleteEvidence();
+
+    try {
+      const manifestPath = join(evidenceDir, "launch-manifest.json");
+      const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+      manifest.imageTag = "oakved-storefront:latest";
+      writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+
+      const result = auditLaunchEvidence({ dir: evidenceDir });
+
+      expect(result.ok).toBe(false);
+      expect(result.errors.join("\n")).toContain("imageTag must include the commit SHA or its 12-character prefix");
     } finally {
       rmSync(tempRoot, { recursive: true, force: true });
     }

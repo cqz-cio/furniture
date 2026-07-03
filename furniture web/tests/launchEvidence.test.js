@@ -10,6 +10,8 @@ import {
 } from "../scripts/create-launch-evidence.mjs";
 
 const readProjectFile = (path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
+const validCommitSha = "a".repeat(40);
+const validImageTag = `oakved-storefront:${validCommitSha.slice(0, 12)}`;
 const validImageDigest = `sha256:${"a".repeat(64)}`;
 
 describe("launch evidence bundle", () => {
@@ -25,7 +27,7 @@ describe("launch evidence bundle", () => {
         "--dir",
         "launch-evidence/test",
         "--image-tag",
-        "oakved-storefront:abc123",
+        validImageTag,
         "--image-digest",
         validImageDigest,
         "--base-url",
@@ -39,7 +41,7 @@ describe("launch evidence bundle", () => {
       ]),
     ).toMatchObject({
       dir: "launch-evidence/test",
-      imageTag: "oakved-storefront:abc123",
+      imageTag: validImageTag,
       imageDigest: validImageDigest,
       baseUrl: "https://shop.oakvedhome.com",
       envFile: ".env.production",
@@ -50,8 +52,8 @@ describe("launch evidence bundle", () => {
 
   it("builds a manifest with launch commands and required evidence files", () => {
     const manifest = buildLaunchEvidenceManifest({
-      commitSha: "abc123",
-      imageTag: "oakved-storefront:abc123",
+      commitSha: validCommitSha,
+      imageTag: validImageTag,
       imageDigest: validImageDigest,
       baseUrl: "https://shop.oakvedhome.com",
       envFile: ".env.production",
@@ -61,8 +63,8 @@ describe("launch evidence bundle", () => {
     });
 
     expect(manifest).toMatchObject({
-      commitSha: "abc123",
-      imageTag: "oakved-storefront:abc123",
+      commitSha: validCommitSha,
+      imageTag: validImageTag,
       imageDigest: validImageDigest,
       baseUrl: "https://shop.oakvedhome.com",
       envFile: ".env.production",
@@ -100,15 +102,15 @@ describe("launch evidence bundle", () => {
     expect(() =>
       buildLaunchEvidenceManifest({
         commitSha: "abc123",
-        imageTag: "oakved-storefront:abc123",
+        imageTag: validImageTag,
         imageDigest: validImageDigest,
       }),
     ).toThrow("Launch evidence baseUrl is required");
 
     expect(() =>
       buildLaunchEvidenceManifest({
-        commitSha: "abc123",
-        imageTag: "oakved-storefront:abc123",
+        commitSha: validCommitSha,
+        imageTag: validImageTag,
         imageDigest: validImageDigest,
         baseUrl: "https://shop.example.com",
       }),
@@ -116,12 +118,41 @@ describe("launch evidence bundle", () => {
 
     expect(() =>
       buildLaunchEvidenceManifest({
-        commitSha: "abc123",
-        imageTag: "oakved-storefront:abc123",
+        commitSha: validCommitSha,
+        imageTag: validImageTag,
         imageDigest: validImageDigest,
         baseUrl: "shop.oakvedhome.com",
       }),
     ).toThrow("Launch evidence baseUrl must be an absolute http(s) URL");
+  });
+
+  it("refuses to build launch evidence with non-reproducible image metadata", () => {
+    expect(() =>
+      buildLaunchEvidenceManifest({
+        commitSha: "abc123",
+        imageTag: "oakved-storefront:abc123",
+        imageDigest: validImageDigest,
+        baseUrl: "https://shop.oakvedhome.com",
+      }),
+    ).toThrow("Launch evidence commitSha must be a full git SHA");
+
+    expect(() =>
+      buildLaunchEvidenceManifest({
+        commitSha: validCommitSha,
+        imageTag: "oakved-storefront:latest",
+        imageDigest: validImageDigest,
+        baseUrl: "https://shop.oakvedhome.com",
+      }),
+    ).toThrow("Launch evidence imageTag must include the commit SHA or its 12-character prefix");
+
+    expect(() =>
+      buildLaunchEvidenceManifest({
+        commitSha: validCommitSha,
+        imageTag: validImageTag,
+        imageDigest: "sha256:123",
+        baseUrl: "https://shop.oakvedhome.com",
+      }),
+    ).toThrow("Launch evidence imageDigest must be a full sha256 image digest");
   });
 
   it("creates manifest, README, and evidence placeholders", () => {
@@ -131,8 +162,8 @@ describe("launch evidence bundle", () => {
     try {
       const result = createLaunchEvidenceBundle({
         dir: evidenceDir,
-        commitSha: "abc123",
-        imageTag: "oakved-storefront:abc123",
+        commitSha: validCommitSha,
+        imageTag: validImageTag,
         imageDigest: validImageDigest,
         baseUrl: "https://shop.oakvedhome.com",
         envFile: ".env.production",
@@ -146,7 +177,7 @@ describe("launch evidence bundle", () => {
       const readme = readFileSync(join(evidenceDir, "README.md"), "utf8");
       const placeholder = readFileSync(join(evidenceDir, "production-env.txt"), "utf8");
 
-      expect(manifest.commitSha).toBe("abc123");
+      expect(manifest.commitSha).toBe(validCommitSha);
       expect(readme).toContain("Do not commit real launch evidence");
       expect(placeholder).toContain("Paste command output here");
     } finally {

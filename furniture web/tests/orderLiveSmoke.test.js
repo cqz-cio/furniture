@@ -12,10 +12,12 @@ const orderLiveSmokeScriptPath = new URL("../scripts/order-live-smoke.mjs", impo
 
 describe("order live smoke gate", () => {
   const requiredRuntimeEnv = {
+    YUDAO_ORDER_SMOKE_BASE_URL: "https://api.oakvedhome.com/app-api",
     YUDAO_SMOKE_TOKEN: "launch-token",
     YUDAO_ORDER_SMOKE_SKU_ID: "5001",
     YUDAO_ORDER_SMOKE_CART_ID: "7001",
     YUDAO_ORDER_SMOKE_ADDRESS_ID: "8101",
+    YUDAO_ORDER_SMOKE_RETURN_ORIGIN: "https://shop.oakvedhome.com",
   };
 
   it("exposes a repeatable order live smoke command", () => {
@@ -31,7 +33,7 @@ describe("order live smoke gate", () => {
     const plan = buildOrderLiveSmokePlan(config);
 
     expect(config).toMatchObject({
-      baseUrl: "https://api.oakved.example/app-api",
+      baseUrl: "https://api.oakvedhome.com/app-api",
       tenantId: "121",
       token: "launch-token",
       skuId: "5001",
@@ -68,14 +70,56 @@ describe("order live smoke gate", () => {
         id: 9201,
         channelCode: "alipay_pc",
         displayMode: "url",
+        returnUrl: "https://shop.oakvedhome.com/account/orders?id=9101&payOrderId=9201",
       },
     });
+  });
+
+  it("rejects documentation or localhost order smoke URLs before touching live APIs", () => {
+    const options = parseOrderLiveSmokeArgs(["--env-file", ".env.production.example"]);
+
+    expect(() =>
+      buildOrderLiveSmokeConfig(options, {
+        ...requiredRuntimeEnv,
+        YUDAO_ORDER_SMOKE_BASE_URL: "https://api.oakved.example/app-api",
+      }),
+    ).toThrow(/YUDAO_ORDER_SMOKE_BASE_URL must not use a documentation\/example domain/);
+    expect(() =>
+      buildOrderLiveSmokeConfig(options, {
+        ...requiredRuntimeEnv,
+        YUDAO_ORDER_SMOKE_BASE_URL: "http://localhost:48080/app-api",
+      }),
+    ).toThrow(/YUDAO_ORDER_SMOKE_BASE_URL must not point to localhost/);
+    expect(() =>
+      buildOrderLiveSmokeConfig(options, {
+        ...requiredRuntimeEnv,
+        YUDAO_ORDER_SMOKE_RETURN_ORIGIN: "https://shop.example.com",
+      }),
+    ).toThrow(/YUDAO_ORDER_SMOKE_RETURN_ORIGIN must not use a documentation\/example domain/);
+    expect(() =>
+      buildOrderLiveSmokeConfig(options, {
+        ...requiredRuntimeEnv,
+        YUDAO_ORDER_SMOKE_RETURN_URL: "http://127.0.0.1:4173/account/orders",
+      }),
+    ).toThrow(/YUDAO_ORDER_SMOKE_RETURN_URL must not point to localhost/);
+  });
+
+  it("requires a real return URL or return origin when live order creation is enabled", () => {
+    const options = parseOrderLiveSmokeArgs(["--env-file=.env.production.example", "--create-order"]);
+    const envWithoutReturnTarget = { ...requiredRuntimeEnv };
+    delete envWithoutReturnTarget.YUDAO_ORDER_SMOKE_RETURN_ORIGIN;
+
+    expect(() => buildOrderLiveSmokeConfig(options, envWithoutReturnTarget)).toThrow(
+      /YUDAO_ORDER_SMOKE_RETURN_ORIGIN or YUDAO_ORDER_SMOKE_RETURN_URL is required/,
+    );
   });
 
   it("requires a token and smoke cart identifiers before touching live order APIs", () => {
     const options = parseOrderLiveSmokeArgs(["--env-file", ".env.production.example"]);
 
-    expect(() => buildOrderLiveSmokeConfig(options, {})).toThrow(/YUDAO_SMOKE_TOKEN/);
+    expect(() => buildOrderLiveSmokeConfig(options, { YUDAO_ORDER_SMOKE_BASE_URL: "https://api.oakvedhome.com/app-api" })).toThrow(
+      /YUDAO_SMOKE_TOKEN/,
+    );
     expect(() => buildOrderLiveSmokeConfig(options, { ...requiredRuntimeEnv, YUDAO_ORDER_SMOKE_CART_ID: "" })).toThrow(
       /YUDAO_ORDER_SMOKE_CART_ID/,
     );

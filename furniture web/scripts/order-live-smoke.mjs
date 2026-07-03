@@ -45,11 +45,42 @@ const required = (value, key) => {
   return normalized;
 };
 
+const isDocumentationDomain = (hostname = "") => {
+  const normalized = String(hostname || "").trim().toLowerCase();
+  return normalized === "example.com" || normalized.endsWith(".example.com") || normalized.endsWith(".example");
+};
+
+const isLocalhost = (hostname = "") => {
+  const normalized = String(hostname || "").trim().toLowerCase();
+  return normalized === "localhost" || normalized === "127.0.0.1" || normalized === "0.0.0.0" || normalized === "::1" || normalized === "[::1]";
+};
+
+const requireLaunchUrl = (value, key) => {
+  const normalized = required(value, key).replace(/\/$/, "");
+  try {
+    const url = new URL(normalized);
+    if (!["http:", "https:"].includes(url.protocol)) throw new Error(`${key} must be an absolute http(s) URL.`);
+    if (isLocalhost(url.hostname)) throw new Error(`${key} must not point to localhost`);
+    if (isDocumentationDomain(url.hostname)) throw new Error(`${key} must not use a documentation/example domain`);
+  } catch (error) {
+    if (error.message.includes("absolute http(s) URL")) throw error;
+    if (error.message.includes("must not point to localhost")) throw error;
+    if (error.message.includes("documentation/example domain")) throw error;
+    throw new Error(`${key} must be an absolute http(s) URL.`);
+  }
+  return normalized;
+};
+
+const optionalLaunchUrl = (value, key) => {
+  const normalized = String(value || "").trim();
+  return normalized ? requireLaunchUrl(normalized, key) : "";
+};
+
 const buildReturnUrl = (config, orderResult = {}) => {
   const explicitReturnUrl = String(config.returnUrl || "").trim();
   if (explicitReturnUrl) return explicitReturnUrl;
 
-  const origin = String(config.returnOrigin || "https://smoke.oakved.example").replace(/\/$/, "");
+  const origin = String(config.returnOrigin || "").replace(/\/$/, "");
   const search = new URLSearchParams();
   search.set("id", String(orderResult.orderId || ""));
   if (orderResult.payOrderId) search.set("payOrderId", String(orderResult.payOrderId));
@@ -62,8 +93,15 @@ export const buildOrderLiveSmokeConfig = (options = {}, runtimeEnv = process.env
   const createOrder =
     options.createOrder === true || String(runtimeEnv.YUDAO_ORDER_SMOKE_CREATE_ORDER || "").toLowerCase() === "true";
 
+  const returnOrigin = optionalLaunchUrl(firstValue(runtimeEnv.YUDAO_ORDER_SMOKE_RETURN_ORIGIN, fileEnv.YUDAO_ORDER_SMOKE_RETURN_ORIGIN), "YUDAO_ORDER_SMOKE_RETURN_ORIGIN");
+  const returnUrl = optionalLaunchUrl(firstValue(runtimeEnv.YUDAO_ORDER_SMOKE_RETURN_URL, fileEnv.YUDAO_ORDER_SMOKE_RETURN_URL), "YUDAO_ORDER_SMOKE_RETURN_URL");
+
+  if (createOrder && !returnOrigin && !returnUrl) {
+    throw new Error("YUDAO_ORDER_SMOKE_RETURN_ORIGIN or YUDAO_ORDER_SMOKE_RETURN_URL is required for order live smoke.");
+  }
+
   return {
-    baseUrl: required(
+    baseUrl: requireLaunchUrl(
       firstValue(
         runtimeEnv.YUDAO_ORDER_SMOKE_BASE_URL,
         runtimeEnv.YUDAO_SMOKE_BASE_URL,
@@ -72,7 +110,7 @@ export const buildOrderLiveSmokeConfig = (options = {}, runtimeEnv = process.env
         fileEnv.VITE_YUDAO_APP_API_BASE,
       ),
       "YUDAO_ORDER_SMOKE_BASE_URL",
-    ).replace(/\/$/, ""),
+    ),
     tenantId: required(
       firstValue(
         runtimeEnv.YUDAO_ORDER_SMOKE_TENANT_ID,
@@ -103,8 +141,8 @@ export const buildOrderLiveSmokeConfig = (options = {}, runtimeEnv = process.env
       ),
       "YUDAO_ORDER_SMOKE_PAY_CHANNEL_CODE",
     ),
-    returnOrigin: firstValue(runtimeEnv.YUDAO_ORDER_SMOKE_RETURN_ORIGIN, fileEnv.YUDAO_ORDER_SMOKE_RETURN_ORIGIN),
-    returnUrl: firstValue(runtimeEnv.YUDAO_ORDER_SMOKE_RETURN_URL, fileEnv.YUDAO_ORDER_SMOKE_RETURN_URL),
+    returnOrigin,
+    returnUrl,
     createOrder,
   };
 };

@@ -196,6 +196,15 @@ const requireGitSha = (errors, manifest, key) => {
   }
 };
 
+const requireImageTagReferencesCommit = (errors, manifest) => {
+  const imageTag = String(manifest.imageTag || "").trim().toLowerCase();
+  const commitSha = String(manifest.commitSha || "").trim().toLowerCase();
+  if (!imageTag || !/^[a-f0-9]{40}$/.test(commitSha)) return;
+  if (!imageTag.includes(commitSha) && !imageTag.includes(commitSha.slice(0, 12))) {
+    errors.push("imageTag must include the commit SHA or its 12-character prefix");
+  }
+};
+
 const isSimpleEvidenceFileName = (value) => {
   const file = String(value || "").trim();
   return /^[A-Za-z0-9._-]+$/.test(file) && file !== "." && file !== ".." && !file.startsWith(".");
@@ -456,6 +465,7 @@ export const auditLaunchEvidence = (options = {}) => {
   }
   requireIsoTimestamp(errors, manifest, "createdAt");
   requireGitSha(errors, manifest, "commitSha");
+  requireImageTagReferencesCommit(errors, manifest);
   requireSha256Digest(errors, manifest, "imageDigest");
   requireLaunchUrl(errors, manifest, "baseUrl");
 

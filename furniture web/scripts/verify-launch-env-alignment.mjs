@@ -36,6 +36,15 @@ const isDocumentationDomainUrl = (value) => {
   }
 };
 
+const isLocalhostUrl = (value) => {
+  try {
+    const hostname = new URL(value).hostname.toLowerCase();
+    return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "0.0.0.0" || hostname === "::1" || hostname === "[::1]";
+  } catch {
+    return false;
+  }
+};
+
 const isHttpUrl = (value) => {
   try {
     const url = new URL(value);
@@ -56,6 +65,13 @@ const pushDocumentationDomain = (errors, key, value, options) => {
   if (options.allowPlaceholders || !value) return;
   if (isDocumentationDomainUrl(value)) {
     errors.push(`${key} must not use a documentation/example domain.`);
+  }
+};
+
+const pushLocalhostUrl = (errors, key, value, options) => {
+  if (options.allowPlaceholders || !value) return;
+  if (isLocalhostUrl(value)) {
+    errors.push(`${key} must not point to localhost.`);
   }
 };
 
@@ -129,6 +145,7 @@ export const validateLaunchEnvAlignment = ({ productionEnv = {}, smokeEnv = {}, 
     ["--base-url", baseUrl],
   ]) {
     pushInvalidUrl(errors, key, value, options);
+    pushLocalhostUrl(errors, key, value, options);
     pushDocumentationDomain(errors, key, value, options);
   }
 

@@ -115,6 +115,46 @@ describe("launch env alignment", () => {
     );
   });
 
+  it("rejects localhost URLs even when all launch endpoints are aligned", () => {
+    const result = validateLaunchEnvAlignment({
+      productionEnv: {
+        ...productionEnv,
+        VITE_YUDAO_APP_API_BASE: "http://localhost:48080/app-api",
+      },
+      smokeEnv: {
+        ...smokeEnv,
+        YUDAO_SMOKE_BASE_URL: "http://localhost:48080/app-api",
+        YUDAO_ORDER_SMOKE_RETURN_ORIGIN: "http://127.0.0.1:4173",
+        YUDAO_REAL_ACCOUNT_SMOKE_BASE_URL: "http://localhost:48080/app-api",
+        YUDAO_REAL_ACCOUNT_ADMIN_BASE_URL: "http://localhost:48080/admin-api",
+      },
+      backendEnv: {
+        ...backendEnv,
+        YUDAO_APP_UI_URL: "http://127.0.0.1:4173",
+        YUDAO_PAY_ORDER_NOTIFY_URL: "http://localhost:48080/admin-api/pay/notify/order",
+        YUDAO_PAY_REFUND_NOTIFY_URL: "http://localhost:48080/admin-api/pay/notify/refund",
+        YUDAO_PAY_TRANSFER_NOTIFY_URL: "http://localhost:48080/admin-api/pay/notify/transfer",
+      },
+      baseUrl: "http://127.0.0.1:4173",
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.errors).toEqual(
+      expect.arrayContaining([
+        "VITE_YUDAO_APP_API_BASE must not point to localhost.",
+        "YUDAO_SMOKE_BASE_URL must not point to localhost.",
+        "YUDAO_ORDER_SMOKE_RETURN_ORIGIN must not point to localhost.",
+        "YUDAO_REAL_ACCOUNT_SMOKE_BASE_URL must not point to localhost.",
+        "YUDAO_REAL_ACCOUNT_ADMIN_BASE_URL must not point to localhost.",
+        "YUDAO_APP_UI_URL must not point to localhost.",
+        "YUDAO_PAY_ORDER_NOTIFY_URL must not point to localhost.",
+        "YUDAO_PAY_REFUND_NOTIFY_URL must not point to localhost.",
+        "YUDAO_PAY_TRANSFER_NOTIFY_URL must not point to localhost.",
+        "--base-url must not point to localhost.",
+      ]),
+    );
+  });
+
   it("rejects non-http launch URLs even when the values are internally aligned", () => {
     const result = validateLaunchEnvAlignment({
       productionEnv: {

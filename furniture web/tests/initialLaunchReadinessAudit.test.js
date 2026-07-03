@@ -11,6 +11,7 @@ import {
 
 const readProjectFile = (path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 const validCommitSha = "a".repeat(40);
+const validImageTag = `oakved-storefront:${validCommitSha.slice(0, 12)}`;
 const validImageDigest = `sha256:${"a".repeat(64)}`;
 
 const productionEnv = `VITE_YUDAO_APP_API_BASE=https://api.oakvedhome.com/app-api
@@ -144,7 +145,7 @@ const createCompleteLaunchFixture = () => {
   const bundle = createLaunchEvidenceBundle({
     dir: evidenceDir,
     commitSha: validCommitSha,
-    imageTag: "oakved-storefront:abc123",
+    imageTag: validImageTag,
     imageDigest: validImageDigest,
     baseUrl: "https://shop.oakvedhome.com",
     envFile,

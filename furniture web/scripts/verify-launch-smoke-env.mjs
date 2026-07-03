@@ -81,6 +81,15 @@ const isDocumentationDomainUrl = (value) => {
   }
 };
 
+const isLocalhostUrl = (value) => {
+  try {
+    const hostname = new URL(value).hostname.toLowerCase();
+    return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "0.0.0.0" || hostname === "::1" || hostname === "[::1]";
+  } catch {
+    return false;
+  }
+};
+
 const isPlaceholder = (value) => {
   const normalized = String(value || "").trim().toLowerCase();
   return !normalized || normalized.includes("<") || normalized.includes(">") || normalized.includes("replace-me");
@@ -154,6 +163,9 @@ export const validateLaunchSmokeEnv = (env, options = {}) => {
     "YUDAO_REAL_ACCOUNT_ADMIN_BASE_URL",
     ...OPTIONAL_URL_KEYS,
   ]) {
+    if (env[key] && !options.allowPlaceholders && isLocalhostUrl(env[key])) {
+      errors.push(`${key} must not point to localhost.`);
+    }
     if (env[key] && !options.allowPlaceholders && isDocumentationDomainUrl(env[key])) {
       errors.push(`${key} must not use a documentation/example domain.`);
     }

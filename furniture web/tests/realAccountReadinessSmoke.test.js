@@ -237,6 +237,18 @@ describe("real account readiness smoke gate", () => {
         YUDAO_REAL_ACCOUNT_ADMIN_BASE_URL: "ftp://api.oakvedhome.com/admin-api",
       }),
     ).toThrow(/YUDAO_REAL_ACCOUNT_ADMIN_BASE_URL must be an absolute http\(s\) URL/);
+    expect(() =>
+      buildRealAccountReadinessConfig(options, {
+        ...baseline,
+        YUDAO_REAL_ACCOUNT_SMOKE_BASE_URL: "http://localhost:48080/app-api",
+      }),
+    ).toThrow(/YUDAO_REAL_ACCOUNT_SMOKE_BASE_URL must not point to localhost/);
+    expect(() =>
+      buildRealAccountReadinessConfig(options, {
+        ...baseline,
+        YUDAO_REAL_ACCOUNT_ADMIN_BASE_URL: "http://127.0.0.1:48080/admin-api",
+      }),
+    ).toThrow(/YUDAO_REAL_ACCOUNT_ADMIN_BASE_URL must not point to localhost/);
   });
 
   it("rejects placeholder values before touching real-account smoke APIs", () => {

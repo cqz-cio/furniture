@@ -282,6 +282,27 @@ describe("launch smoke env readiness", () => {
     );
   });
 
+  it("rejects localhost URLs in launch smoke values by default", () => {
+    const result = validateLaunchSmokeEnv(
+      createValidLaunchSmokeEnv({
+        YUDAO_SMOKE_BASE_URL: "http://localhost:48080/app-api",
+        YUDAO_ORDER_SMOKE_RETURN_ORIGIN: "http://127.0.0.1:4173",
+        YUDAO_REAL_ACCOUNT_SMOKE_BASE_URL: "http://0.0.0.0:48080/app-api",
+        YUDAO_REAL_ACCOUNT_ADMIN_BASE_URL: "http://[::1]:48080/admin-api",
+      }),
+    );
+
+    expect(result.ok).toBe(false);
+    expect(result.errors).toEqual(
+      expect.arrayContaining([
+        "YUDAO_SMOKE_BASE_URL must not point to localhost.",
+        "YUDAO_ORDER_SMOKE_RETURN_ORIGIN must not point to localhost.",
+        "YUDAO_REAL_ACCOUNT_SMOKE_BASE_URL must not point to localhost.",
+        "YUDAO_REAL_ACCOUNT_ADMIN_BASE_URL must not point to localhost.",
+      ]),
+    );
+  });
+
   it("can validate the checked-in example when placeholders are allowed", () => {
     const result = readAndValidateLaunchSmokeEnv(".env.launch-smoke.example", { allowPlaceholders: true });
 

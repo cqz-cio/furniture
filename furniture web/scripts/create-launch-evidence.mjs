@@ -102,11 +102,40 @@ const requireLaunchBaseUrl = (value) => {
   return baseUrl;
 };
 
+const requireLaunchCommitSha = (value) => {
+  const commitSha = String(value || "").trim();
+  if (!/^[a-f0-9]{40}$/i.test(commitSha)) {
+    throw new Error("Launch evidence commitSha must be a full git SHA");
+  }
+  return commitSha;
+};
+
+const requireLaunchImageDigest = (value) => {
+  const imageDigest = String(value || "").trim();
+  if (!/^sha256:[a-f0-9]{64}$/i.test(imageDigest)) {
+    throw new Error("Launch evidence imageDigest must be a full sha256 image digest");
+  }
+  return imageDigest;
+};
+
+const requireLaunchImageTag = (value, commitSha) => {
+  const imageTag = String(value || "").trim();
+  const normalizedImageTag = imageTag.toLowerCase();
+  const normalizedCommitSha = String(commitSha || "").trim().toLowerCase();
+  if (!imageTag || (!normalizedImageTag.includes(normalizedCommitSha) && !normalizedImageTag.includes(normalizedCommitSha.slice(0, 12)))) {
+    throw new Error("Launch evidence imageTag must include the commit SHA or its 12-character prefix");
+  }
+  return imageTag;
+};
+
 export const buildLaunchEvidenceManifest = (options = {}) => {
   const envFile = options.envFile || DEFAULT_ENV_FILE;
   const smokeEnvFile = options.smokeEnvFile || DEFAULT_SMOKE_ENV_FILE;
   const backendEnvFile = options.backendEnvFile || DEFAULT_BACKEND_ENV_FILE;
   const baseUrl = requireLaunchBaseUrl(options.baseUrl);
+  const commitSha = requireLaunchCommitSha(options.commitSha);
+  const imageTag = requireLaunchImageTag(options.imageTag, commitSha);
+  const imageDigest = requireLaunchImageDigest(options.imageDigest);
 
   const commands = [
     command("production-env", `npm.cmd run verify:production-env -- --env-file ${envFile}`, "production-env.txt"),
@@ -135,9 +164,9 @@ export const buildLaunchEvidenceManifest = (options = {}) => {
 
   return {
     createdAt: options.createdAt || new Date().toISOString(),
-    commitSha: options.commitSha || "",
-    imageTag: options.imageTag || "",
-    imageDigest: options.imageDigest || "",
+    commitSha,
+    imageTag,
+    imageDigest,
     baseUrl,
     envFile,
     smokeEnvFile,

@@ -77,6 +77,11 @@ const isDocumentationDomain = (hostname = "") => {
   return normalized === "example.com" || normalized.endsWith(".example.com") || normalized.endsWith(".example");
 };
 
+const isLocalhost = (hostname = "") => {
+  const normalized = String(hostname || "").trim().toLowerCase();
+  return normalized === "localhost" || normalized === "127.0.0.1" || normalized === "0.0.0.0" || normalized === "::1" || normalized === "[::1]";
+};
+
 const requireLaunchUrl = (value, key) => {
   const normalized = required(value, key).replace(/\/$/, "");
   try {
@@ -84,11 +89,15 @@ const requireLaunchUrl = (value, key) => {
     if (!["http:", "https:"].includes(url.protocol)) {
       throw new Error(`${key} must be an absolute http(s) URL.`);
     }
+    if (isLocalhost(url.hostname)) {
+      throw new Error(`${key} must not point to localhost`);
+    }
     if (isDocumentationDomain(url.hostname)) {
       throw new Error(`${key} must not use a documentation/example domain`);
     }
   } catch (error) {
     if (error.message.includes("absolute http(s) URL")) throw error;
+    if (error.message.includes("must not point to localhost")) throw error;
     if (error.message.includes("documentation/example domain")) throw error;
     throw new Error(`${key} must be an absolute http(s) URL.`);
   }
