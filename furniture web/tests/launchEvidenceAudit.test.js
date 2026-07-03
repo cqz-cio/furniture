@@ -571,6 +571,41 @@ describe("launch evidence audit", () => {
     }
   });
 
+  it("fails when real-account smoke evidence contains multiple seededAccount blocks", () => {
+    const { tempRoot, evidenceDir } = createCompleteEvidence();
+
+    try {
+      writeFileSync(
+        join(evidenceDir, "real-account-smoke.txt"),
+        `${successOutputByFile["real-account-smoke.txt"]}
+{
+  "seededAccount": {
+    "userId": "2",
+    "cartId": "7002",
+    "skuId": "6002",
+    "addressId": "8102",
+    "orderId": "9002",
+    "giftRegistryPublicCode": "reg-other",
+    "tradeId": "RH-TRADE-OTHER",
+    "tradeEmail": "other@oakvedhome.com",
+    "membershipStatus": "inactive",
+    "membershipPlanCode": "monthly_membership",
+    "giftRegistryItemSpuId": "5002",
+    "giftRegistryItemSkuId": "6002"
+  }
+}
+`,
+        "utf8",
+      );
+      const result = auditLaunchEvidence({ dir: evidenceDir });
+
+      expect(result.ok).toBe(false);
+      expect(result.errors.join("\n")).toContain("real-account-smoke.txt must include exactly one seededAccount block");
+    } finally {
+      rmSync(tempRoot, { recursive: true, force: true });
+    }
+  });
+
   it("fails when real-account smoke evidence uses placeholder seeded account identifiers", () => {
     const { tempRoot, evidenceDir } = createCompleteEvidence();
 

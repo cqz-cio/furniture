@@ -130,9 +130,14 @@ const validateRealAccountSeedAlignment = ({ smokeEnvFile, evidenceDir }) => {
   }
 
   const env = parseEnvFileContent(readFileSync(smokeEnvPath, "utf8"));
-  const seededAccount = extractSeededAccount(readFileSync(realAccountSmokePath, "utf8"));
+  const realAccountSmoke = readFileSync(realAccountSmokePath, "utf8");
+  const seededAccountBlockCount = [...realAccountSmoke.matchAll(/"seededAccount"\s*:\s*\{/g)].length;
+  const seededAccount = extractSeededAccount(realAccountSmoke);
   if (!seededAccount) {
     return { ok: false, errors: ["real-account-smoke.txt must include seededAccount block"], warnings: [] };
+  }
+  if (seededAccountBlockCount !== 1) {
+    return { ok: false, errors: ["real-account-smoke.txt must include exactly one seededAccount block"], warnings: [] };
   }
   if (String(env.YUDAO_REAL_ACCOUNT_SMOKE_CHECK_ORDER || "").trim().toLowerCase() !== "true") {
     errors.push("YUDAO_REAL_ACCOUNT_SMOKE_CHECK_ORDER must be true for final initial launch evidence");

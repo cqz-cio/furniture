@@ -38,4 +38,16 @@ describe("cart quantity normalization", () => {
     expect(remoteUpdateIndex).toBeGreaterThan(-1);
     expect(localUpdateIndex).toBeLessThan(remoteUpdateIndex);
   });
+
+  it("does not remove local cart rows after a failed remote cart delete", () => {
+    const appSource = readSource("../src/App.vue");
+    const removeBody = appSource.slice(appSource.indexOf("const removeFromCart = async"), appSource.indexOf("const addToWishlist"));
+    const mutationNoticeIndex = removeBody.indexOf('noticeKey: "cart.remoteMutationUnavailable"');
+    const localRemoveIndex = removeBody.indexOf("cartItems.value = removeLocalCartItem(cartItems.value, item.skuId)");
+    const remoteFailureBranch = removeBody.slice(mutationNoticeIndex, localRemoveIndex);
+
+    expect(mutationNoticeIndex).toBeGreaterThan(-1);
+    expect(localRemoveIndex).toBeGreaterThan(-1);
+    expect(remoteFailureBranch).toContain("return;");
+  });
 });

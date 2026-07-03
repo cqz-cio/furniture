@@ -41,6 +41,13 @@ let addressRequestId = 0;
 
 const isEditing = computed(() => Boolean(form.id));
 
+const handleAddressAuthError = (error) => {
+  if (!isYudaoAuthError(error)) return false;
+  tokenRequired.value = true;
+  addresses.value = [];
+  return true;
+};
+
 const flattenAreaOptions = (nodes = [], prefix = "") =>
   nodes.flatMap((node) => {
     const label = [prefix, node.name || node.label].filter(Boolean).join(" / ");
@@ -91,10 +98,7 @@ const loadAddresses = async () => {
     addresses.value = nextAddresses;
   } catch (error) {
     if (requestId !== addressRequestId) return;
-    if (isYudaoAuthError(error)) {
-      tokenRequired.value = true;
-      return;
-    }
+    if (handleAddressAuthError(error)) return;
     error.value = t("membership.account.addressBook.error");
   } finally {
     if (requestId === addressRequestId) loading.value = false;
@@ -123,7 +127,8 @@ const submitAddress = async () => {
     }
     resetForm();
     await loadAddresses();
-  } catch {
+  } catch (error) {
+    if (handleAddressAuthError(error)) return;
     error.value = t("membership.account.addressBook.saveError");
   } finally {
     saving.value = false;
@@ -140,7 +145,8 @@ const removeAddress = async (address) => {
     notice.value = t("membership.account.addressBook.deleted");
     if (form.id === address.id) resetForm();
     await loadAddresses();
-  } catch {
+  } catch (error) {
+    if (handleAddressAuthError(error)) return;
     error.value = t("membership.account.addressBook.deleteError");
   } finally {
     saving.value = false;
@@ -163,7 +169,8 @@ const setDefaultAddress = async (address) => {
     });
     notice.value = t("membership.account.addressBook.defaultUpdated");
     await loadAddresses();
-  } catch {
+  } catch (error) {
+    if (handleAddressAuthError(error)) return;
     error.value = t("membership.account.addressBook.defaultError");
   } finally {
     saving.value = false;
@@ -248,7 +255,7 @@ watch(() => props.authVersion, loadAddresses);
         </button>
       </form>
 
-      <section v-if="addresses.length" class="address-book-list" :aria-label="t('membership.account.addressBook.listAria')">
+      <section v-if="!tokenRequired && addresses.length" class="address-book-list" :aria-label="t('membership.account.addressBook.listAria')">
         <article v-for="address in addresses" :key="address.id" class="address-book-card">
           <div>
             <strong>{{ address.name }}</strong>

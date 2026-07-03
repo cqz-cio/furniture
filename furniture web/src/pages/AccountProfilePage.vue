@@ -9,7 +9,7 @@ import {
   updateMemberProfile,
 } from "../services/yudaoMemberApi.js";
 import { sendMemberSmsCode } from "../services/yudaoAuthApi.js";
-import { readYudaoToken } from "../services/yudaoRequest.js";
+import { isYudaoAuthError, readYudaoToken } from "../services/yudaoRequest.js";
 import { useI18n } from "../i18n.js";
 
 const props = defineProps({
@@ -55,6 +55,13 @@ const emailStatusLabel = computed(() => {
   return profile.value?.emailVerified ? t("membership.account.profile.emailVerified") : t("membership.account.profile.emailVerificationNeeded");
 });
 const canEditProfile = computed(() => !loading.value && !tokenRequired.value && errorAction.value !== "retryProfile");
+
+const handleProfileAuthError = (error) => {
+  if (!isYudaoAuthError(error)) return false;
+  tokenRequired.value = true;
+  profile.value = null;
+  return true;
+};
 
 const flattenAreaOptions = (nodes = [], prefix = "") =>
   nodes.flatMap((node) => {
@@ -115,8 +122,9 @@ const loadProfile = async () => {
     if (requestId !== profileRequestId) return;
     profile.value = nextProfile;
     syncForm(nextProfile);
-  } catch {
+  } catch (error) {
     if (requestId !== profileRequestId) return;
+    if (handleProfileAuthError(error)) return;
     error.value = t("membership.account.profile.error");
     errorAction.value = "retryProfile";
   } finally {
@@ -140,7 +148,8 @@ const submitProfile = async () => {
     });
     notice.value = t("membership.account.profile.profileUpdated");
     await loadProfile();
-  } catch {
+  } catch (error) {
+    if (handleProfileAuthError(error)) return;
     error.value = t("membership.account.profile.saveError");
     errorAction.value = "profileForm";
   } finally {
@@ -157,7 +166,8 @@ const requestEmailVerification = async () => {
   try {
     await requestEmailVerificationLink(form.email.trim());
     notice.value = t("membership.account.profile.verificationSent");
-  } catch {
+  } catch (error) {
+    if (handleProfileAuthError(error)) return;
     error.value = t("membership.account.profile.verificationError");
     errorAction.value = "profileForm";
   } finally {
@@ -175,7 +185,8 @@ const requestMobileCode = async () => {
     await sendMemberSmsCode(mobileForm.mobile.trim());
     notice.value = t("membership.account.profile.codeSent");
     startMobileCodeCountdown();
-  } catch {
+  } catch (error) {
+    if (handleProfileAuthError(error)) return;
     error.value = t("membership.account.profile.codeError");
     errorAction.value = "mobileForm";
   } finally {
@@ -196,7 +207,8 @@ const submitMobile = async () => {
     });
     notice.value = t("membership.account.profile.phoneUpdated");
     await loadProfile();
-  } catch {
+  } catch (error) {
+    if (handleProfileAuthError(error)) return;
     error.value = t("membership.account.profile.phoneError");
     errorAction.value = "mobileForm";
   } finally {

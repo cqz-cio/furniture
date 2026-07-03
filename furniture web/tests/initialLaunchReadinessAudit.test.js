@@ -259,6 +259,48 @@ describe("initial launch readiness audit", () => {
     }
   });
 
+  it("fails when real-account smoke evidence contains multiple seededAccount blocks", () => {
+    const { tempRoot, envFile, smokeEnvFile, backendEnvFile, evidenceDir } = createCompleteLaunchFixture();
+
+    try {
+      writeFileSync(
+        join(evidenceDir, "real-account-smoke.txt"),
+        `${readFileSync(join(evidenceDir, "real-account-smoke.txt"), "utf8")}
+{
+  "seededAccount": {
+    "userId": "2",
+    "cartId": "7002",
+    "skuId": "6002",
+    "addressId": "8102",
+    "orderId": "9002",
+    "giftRegistryPublicCode": "reg-other",
+    "tradeId": "RH-TRADE-OTHER",
+    "tradeEmail": "other@oakvedhome.com",
+    "membershipStatus": "inactive",
+    "membershipPlanCode": "monthly_membership",
+    "giftRegistryItemSpuId": "5002",
+    "giftRegistryItemSkuId": "6002"
+  }
+}
+`,
+        "utf8",
+      );
+
+      const result = auditInitialLaunchReadiness({
+        envFile,
+        smokeEnvFile,
+        backendEnvFile,
+        baseUrl: "https://shop.oakvedhome.com",
+        evidenceDir,
+      });
+
+      expect(result.ok).toBe(false);
+      expect(result.blockers.join("\n")).toContain("real-account-smoke.txt must include exactly one seededAccount block");
+    } finally {
+      rmSync(tempRoot, { recursive: true, force: true });
+    }
+  });
+
   it("fails when final launch smoke env does not explicitly enable real-account order detail checking", () => {
     const { tempRoot, envFile, smokeEnvFile, backendEnvFile, evidenceDir } = createCompleteLaunchFixture();
 

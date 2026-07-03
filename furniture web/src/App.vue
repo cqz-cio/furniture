@@ -381,6 +381,7 @@ const removeFromCart = async (item) => {
         noticeKey: "cart.remoteMutationUnavailable",
         noticeDetail: getYudaoCartErrorDetail(caught),
       });
+      return;
     }
   }
   cartItems.value = removeLocalCartItem(cartItems.value, item.skuId);

@@ -312,9 +312,12 @@ const requireRealAccountReadySnapshot = (errors, file, content) => {
     }
   }
 
+  const seededAccountMatches = [...source.matchAll(/"seededAccount"\s*:\s*\{/g)];
   const seededAccountMatch = source.match(/"seededAccount"\s*:\s*\{([\s\S]*?)\}/);
   if (!seededAccountMatch) {
     errors.push(`${file} must include seededAccount block`);
+  } else if (seededAccountMatches.length !== 1) {
+    errors.push(`${file} must include exactly one seededAccount block`);
   }
 
   const seededAccountSource = seededAccountMatch?.[1] || "";
