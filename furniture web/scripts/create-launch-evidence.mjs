@@ -71,11 +71,42 @@ const command = (name, commandText, outputFile) => ({
   outputFile,
 });
 
+const isDocumentationDomainUrl = (value) => {
+  try {
+    const hostname = new URL(value).hostname.toLowerCase();
+    return hostname === "example.com" || hostname.endsWith(".example.com") || hostname.endsWith(".example");
+  } catch {
+    return false;
+  }
+};
+
+const requireLaunchBaseUrl = (value) => {
+  const baseUrl = String(value || "").trim();
+  if (!baseUrl) {
+    throw new Error("Launch evidence baseUrl is required");
+  }
+
+  let parsed;
+  try {
+    parsed = new URL(baseUrl);
+  } catch {
+    throw new Error("Launch evidence baseUrl must be an absolute http(s) URL");
+  }
+
+  if (!["http:", "https:"].includes(parsed.protocol)) {
+    throw new Error("Launch evidence baseUrl must be an absolute http(s) URL");
+  }
+  if (isDocumentationDomainUrl(baseUrl)) {
+    throw new Error("Launch evidence baseUrl must not use a documentation/example domain");
+  }
+  return baseUrl;
+};
+
 export const buildLaunchEvidenceManifest = (options = {}) => {
   const envFile = options.envFile || DEFAULT_ENV_FILE;
   const smokeEnvFile = options.smokeEnvFile || DEFAULT_SMOKE_ENV_FILE;
   const backendEnvFile = options.backendEnvFile || DEFAULT_BACKEND_ENV_FILE;
-  const baseUrl = options.baseUrl || "https://shop.example.com";
+  const baseUrl = requireLaunchBaseUrl(options.baseUrl);
 
   const commands = [
     command("production-env", `npm.cmd run verify:production-env -- --env-file ${envFile}`, "production-env.txt"),
@@ -90,8 +121,13 @@ export const buildLaunchEvidenceManifest = (options = {}) => {
     command("db-migrations", "npm.cmd run verify:db-migrations", "db-migrations.txt"),
     command(
       "launch-readiness",
-      `npm.cmd run verify:launch-readiness -- --env-file ${envFile} --smoke-env-file ${smokeEnvFile} --include-db-migrations --include-backend-prod-config --include-backend-prod-env --backend-env-file ${backendEnvFile} --include-launch-env-alignment --base-url ${baseUrl} --include-live-business-smoke --include-order-live-smoke`,
+      `npm.cmd run verify:launch-readiness -- --env-file ${envFile} --smoke-env-file ${smokeEnvFile} --include-db-migrations --include-backend-prod-config --include-backend-prod-env --backend-env-file ${backendEnvFile} --include-launch-env-alignment --base-url ${baseUrl} --include-admin-check --include-admin-build --include-backend-build --include-live-business-smoke --include-order-live-smoke --include-real-account-smoke --real-account-check-order`,
       "launch-readiness.txt",
+    ),
+    command(
+      "real-account-smoke",
+      `npm.cmd run test:smoke:real-account -- --env-file ${smokeEnvFile} --check-order`,
+      "real-account-smoke.txt",
     ),
     command("order-create-smoke", `npm.cmd run test:smoke:order-live -- --env-file ${smokeEnvFile} --create-order`, "order-create-smoke.txt"),
     command("post-deploy-health", `npm.cmd run test:deploy:health -- --base-url ${baseUrl}`, "post-deploy-health.txt"),

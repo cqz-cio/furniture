@@ -28,7 +28,7 @@ describe("launch evidence bundle", () => {
         "--image-digest",
         "sha256:123",
         "--base-url",
-        "https://shop.example.com",
+        "https://shop.oakvedhome.com",
         "--launch-env-file",
         ".env.production",
         "--launch-smoke-env-file",
@@ -40,7 +40,7 @@ describe("launch evidence bundle", () => {
       dir: "launch-evidence/test",
       imageTag: "oakved-storefront:abc123",
       imageDigest: "sha256:123",
-      baseUrl: "https://shop.example.com",
+      baseUrl: "https://shop.oakvedhome.com",
       envFile: ".env.production",
       smokeEnvFile: ".env.launch-smoke",
       backendEnvFile: ".env.backend-production",
@@ -52,7 +52,7 @@ describe("launch evidence bundle", () => {
       commitSha: "abc123",
       imageTag: "oakved-storefront:abc123",
       imageDigest: "sha256:123",
-      baseUrl: "https://shop.example.com",
+      baseUrl: "https://shop.oakvedhome.com",
       envFile: ".env.production",
       smokeEnvFile: ".env.launch-smoke",
       backendEnvFile: ".env.backend-production",
@@ -63,7 +63,7 @@ describe("launch evidence bundle", () => {
       commitSha: "abc123",
       imageTag: "oakved-storefront:abc123",
       imageDigest: "sha256:123",
-      baseUrl: "https://shop.example.com",
+      baseUrl: "https://shop.oakvedhome.com",
       envFile: ".env.production",
       smokeEnvFile: ".env.launch-smoke",
       backendEnvFile: ".env.backend-production",
@@ -75,18 +75,52 @@ describe("launch evidence bundle", () => {
         expect.objectContaining({ name: "backend-production-config", command: "npm.cmd run verify:backend-production-config" }),
         expect.objectContaining({
           name: "launch-env-alignment",
-          command: "npm.cmd run verify:launch-env-alignment -- --env-file .env.production --smoke-env-file .env.launch-smoke --backend-env-file .env.backend-production --base-url https://shop.example.com",
+          command: "npm.cmd run verify:launch-env-alignment -- --env-file .env.production --smoke-env-file .env.launch-smoke --backend-env-file .env.backend-production --base-url https://shop.oakvedhome.com",
         }),
         expect.objectContaining({ name: "launch-readiness", command: expect.stringContaining("--smoke-env-file .env.launch-smoke") }),
         expect.objectContaining({ name: "launch-readiness", command: expect.stringContaining("--include-backend-prod-env --backend-env-file .env.backend-production") }),
-        expect.objectContaining({ name: "post-deploy-health", command: "npm.cmd run test:deploy:health -- --base-url https://shop.example.com" }),
+        expect.objectContaining({ name: "launch-readiness", command: expect.stringContaining("--include-admin-check") }),
+        expect.objectContaining({ name: "launch-readiness", command: expect.stringContaining("--include-admin-build") }),
+        expect.objectContaining({ name: "launch-readiness", command: expect.stringContaining("--include-backend-build") }),
+        expect.objectContaining({ name: "launch-readiness", command: expect.stringContaining("--include-real-account-smoke --real-account-check-order") }),
+        expect.objectContaining({ name: "real-account-smoke", command: "npm.cmd run test:smoke:real-account -- --env-file .env.launch-smoke --check-order" }),
+        expect.objectContaining({ name: "post-deploy-health", command: "npm.cmd run test:deploy:health -- --base-url https://shop.oakvedhome.com" }),
       ]),
     );
     expect(manifest.requiredEvidenceFiles).toContain("production-env.txt");
     expect(manifest.requiredEvidenceFiles).toContain("backend-production-env.txt");
     expect(manifest.requiredEvidenceFiles).toContain("backend-production-config.txt");
     expect(manifest.requiredEvidenceFiles).toContain("launch-env-alignment.txt");
+    expect(manifest.requiredEvidenceFiles).toContain("real-account-smoke.txt");
     expect(manifest.requiredEvidenceFiles).toContain("post-deploy-health.txt");
+  });
+
+  it("refuses to build launch evidence without a real production base URL", () => {
+    expect(() =>
+      buildLaunchEvidenceManifest({
+        commitSha: "abc123",
+        imageTag: "oakved-storefront:abc123",
+        imageDigest: "sha256:123",
+      }),
+    ).toThrow("Launch evidence baseUrl is required");
+
+    expect(() =>
+      buildLaunchEvidenceManifest({
+        commitSha: "abc123",
+        imageTag: "oakved-storefront:abc123",
+        imageDigest: "sha256:123",
+        baseUrl: "https://shop.example.com",
+      }),
+    ).toThrow("Launch evidence baseUrl must not use a documentation/example domain");
+
+    expect(() =>
+      buildLaunchEvidenceManifest({
+        commitSha: "abc123",
+        imageTag: "oakved-storefront:abc123",
+        imageDigest: "sha256:123",
+        baseUrl: "shop.oakvedhome.com",
+      }),
+    ).toThrow("Launch evidence baseUrl must be an absolute http(s) URL");
   });
 
   it("creates manifest, README, and evidence placeholders", () => {
@@ -99,7 +133,7 @@ describe("launch evidence bundle", () => {
         commitSha: "abc123",
         imageTag: "oakved-storefront:abc123",
         imageDigest: "sha256:123",
-        baseUrl: "https://shop.example.com",
+        baseUrl: "https://shop.oakvedhome.com",
         envFile: ".env.production",
         smokeEnvFile: ".env.launch-smoke",
         backendEnvFile: ".env.backend-production",

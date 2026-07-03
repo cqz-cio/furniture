@@ -9,6 +9,7 @@ describe("product wishlist actions", () => {
 
     expect(source).toContain('const emit = defineEmits(["add-to-cart", "add-to-wishlist"])');
     expect(source).toContain("loadWishlistIdentityState");
+    expect(source).toContain("wishlistIdentityStatusKey");
     expect(source).toContain("isWishlistItemSaved(product, wishlistIdentityKeys.value)");
     expect(source).toContain('emit("add-to-wishlist", product)');
     expect(source).toContain('t(isProductSaved(product) ? "wishlist.saved" : "wishlist.save")');
@@ -19,6 +20,7 @@ describe("product wishlist actions", () => {
 
     expect(source).toContain('const emit = defineEmits(["add-to-cart", "add-to-wishlist"])');
     expect(source).toContain("loadWishlistIdentityState");
+    expect(source).toContain("wishlistStatusMessage");
     expect(source).toContain("isCurrentProductSaved");
     expect(source).toContain('emit("add-to-wishlist", product.value)');
     expect(source).toContain('t(isCurrentProductSaved ? "wishlist.saved" : "wishlist.save")');

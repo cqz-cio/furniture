@@ -39,6 +39,8 @@ export const parseLaunchReadinessArgs = (argv = []) => {
     includeBackendBuild: false,
     includeLiveBusinessSmoke: false,
     includeOrderLiveSmoke: false,
+    includeRealAccountSmoke: false,
+    realAccountCheckOrder: false,
     includeWishlistSmoke: false,
     dockerTag: DEFAULT_DOCKER_TAG,
     wishlistSmokeMode: "live",
@@ -92,6 +94,10 @@ export const parseLaunchReadinessArgs = (argv = []) => {
       options.includeLiveBusinessSmoke = true;
     } else if (arg === "--include-order-live-smoke") {
       options.includeOrderLiveSmoke = true;
+    } else if (arg === "--include-real-account-smoke") {
+      options.includeRealAccountSmoke = true;
+    } else if (arg === "--real-account-check-order") {
+      options.realAccountCheckOrder = true;
     } else if (arg === "--include-wishlist-smoke") {
       options.includeWishlistSmoke = true;
     } else if (arg === "--wishlist-smoke-mode") {
@@ -276,6 +282,14 @@ export const buildLaunchReadinessSteps = (options = {}) => {
     });
   }
 
+  if (options.includeLiveBusinessSmoke || options.includeOrderLiveSmoke || options.includeRealAccountSmoke) {
+    steps.push({
+      name: "launch-smoke-env",
+      command: "npm",
+      args: ["run", "verify:launch-smoke-env", "--", "--env-file", smokeEnvFile],
+    });
+  }
+
   if (options.includeWishlistSmoke) {
     steps.push({
       name: "wishlist-smoke",
@@ -300,6 +314,21 @@ export const buildLaunchReadinessSteps = (options = {}) => {
       name: "order-live-smoke",
       command: "npm",
       args: ["run", "test:smoke:order-live", "--", "--env-file", smokeEnvFile],
+    });
+  }
+
+  if (options.includeRealAccountSmoke) {
+    steps.push({
+      name: "real-account-smoke",
+      command: "npm",
+      args: [
+        "run",
+        "test:smoke:real-account",
+        "--",
+        "--env-file",
+        smokeEnvFile,
+        ...(options.realAccountCheckOrder ? ["--check-order"] : []),
+      ],
     });
   }
 

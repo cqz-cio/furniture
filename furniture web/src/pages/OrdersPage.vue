@@ -19,7 +19,7 @@ import { membershipRoutes } from "../services/membershipNavigation.js";
 import { buildOrderAddressVerificationSummary } from "../services/orderAddressVerification.js";
 import { getOrderDetail, getOrderPage } from "../services/yudaoOrderApi.js";
 import { getPayOrder, submitPayOrder } from "../services/yudaoPaymentApi.js";
-import { readYudaoToken } from "../services/yudaoRequest.js";
+import { isYudaoAuthError, readYudaoToken } from "../services/yudaoRequest.js";
 import { useI18n } from "../i18n.js";
 
 const props = defineProps({
@@ -174,8 +174,12 @@ const loadOrders = async () => {
     if (requestId !== ordersRequestId) return;
     orders.value = page.list;
     total.value = page.total;
-  } catch {
+  } catch (error) {
     if (requestId !== ordersRequestId) return;
+    if (isYudaoAuthError(error)) {
+      tokenRequired.value = true;
+      return;
+    }
     error.value = t("orders.error");
   } finally {
     if (requestId === ordersRequestId) loading.value = false;

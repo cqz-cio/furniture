@@ -1,24 +1,36 @@
 <script setup>
-import { computed, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { accountMenuItems, accountMenuLabelKeys, membershipRoutes } from "../services/membershipNavigation.js";
 import {
   MEMBERSHIP_ACCOUNT_SCENARIOS,
   MEMBERSHIP_STATUSES,
+  createMembershipProfile,
   getEmailBindingState,
+  getLiveMembershipAccountScenario,
   getMembershipEligibilityReview,
   getMembershipAccountScenario,
   getMembershipBenefits,
   getMembershipGrowth,
   getMembershipStatusView,
 } from "../services/membershipAccount.js";
+import { readYudaoToken } from "../services/yudaoRequest.js";
+import { getYudaoMembershipProfile } from "../services/yudaoMembershipApi.js";
+import { getOrderPage } from "../services/yudaoOrderApi.js";
 import { useI18n } from "../i18n.js";
 
 const { t } = useI18n();
 const selectedScenarioKey = ref("activeAnnual");
 const statePreviewKeys = Object.keys(MEMBERSHIP_ACCOUNT_SCENARIOS);
+const membershipProfile = ref(createMembershipProfile({ status: MEMBERSHIP_STATUSES.loggedOut }));
+const liveOrders = ref([]);
+const membershipLoadState = ref("idle");
+const membershipLoadError = ref("");
+const membershipOrdersLoadError = ref("");
+const showScenarioPreview = import.meta.env.DEV;
 
 const statusLabelKeys = {
   [MEMBERSHIP_STATUSES.notMember]: "membership.account.statusNotMember",
+  [MEMBERSHIP_STATUSES.loggedOut]: "membership.account.statusLoggedOut",
   [MEMBERSHIP_STATUSES.activeAnnual]: "membership.account.statusActiveAnnual",
   [MEMBERSHIP_STATUSES.activeWholeRoom]: "membership.account.statusActiveWholeRoom",
   [MEMBERSHIP_STATUSES.expired]: "membership.account.statusExpired",
@@ -41,7 +53,11 @@ const benefitKeyByTitle = {
   "Whole-Room Project Planning": "wholeRoom",
 };
 
-const currentScenario = computed(() => getMembershipAccountScenario(selectedScenarioKey.value));
+const scenarioPreview = computed(() => getMembershipAccountScenario(selectedScenarioKey.value));
+const currentScenario = computed(() => {
+  if (showScenarioPreview && selectedScenarioKey.value !== "live") return scenarioPreview.value;
+  return getLiveMembershipAccountScenario(membershipProfile.value, liveOrders.value);
+});
 const profile = computed(() => currentScenario.value.profile);
 const membershipValue = computed(() => currentScenario.value.membershipValue);
 const statusView = computed(() => getMembershipStatusView(profile.value));
@@ -78,6 +94,44 @@ const renewalActions = ["changePayment", "turnOffAutoRenew", "renewEarly"];
 const emailActions = ["verify", "changeEmail"];
 const recentOrders = computed(() => currentScenario.value.orders);
 const money = (value) => `$${Number(value || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+const loadMembershipOrders = async () => {
+  membershipOrdersLoadError.value = "";
+  try {
+    const orderPage = await getOrderPage({ pageNo: 1, pageSize: 5 });
+    liveOrders.value = orderPage.list || [];
+  } catch {
+    liveOrders.value = [];
+    membershipOrdersLoadError.value = t("membership.account.ordersUnavailable");
+  }
+};
+
+const loadMembershipProfile = async () => {
+  if (!readYudaoToken()) {
+    membershipProfile.value = createMembershipProfile({ status: MEMBERSHIP_STATUSES.loggedOut });
+    liveOrders.value = [];
+    membershipOrdersLoadError.value = "";
+    membershipLoadState.value = "logged-out";
+    return;
+  }
+  membershipLoadState.value = "loading";
+  membershipLoadError.value = "";
+  try {
+    const nextProfile = await getYudaoMembershipProfile();
+    membershipProfile.value = nextProfile;
+    await loadMembershipOrders();
+    selectedScenarioKey.value = "live";
+    membershipLoadState.value = "loaded";
+  } catch (error) {
+    membershipLoadError.value = error?.message || "Membership profile unavailable";
+    membershipProfile.value = createMembershipProfile({ status: MEMBERSHIP_STATUSES.pendingLink });
+    liveOrders.value = [];
+    selectedScenarioKey.value = "live";
+    membershipLoadState.value = "error";
+  }
+};
+
+onMounted(loadMembershipProfile);
 </script>
 
 <template>
@@ -94,12 +148,35 @@ const money = (value) => `$${Number(value || 0).toLocaleString("en-US", { minimu
       <h1>{{ t("membership.account.title") }}</h1>
       <p>{{ t("membership.account.intro") }}</p>
 
-      <section class="membership-account-state-strip" :aria-label="t('membership.account.states.aria')">
+      <section v-if="membershipLoadState === 'loading'" class="membership-state-empty">
+        <div>
+          <p class="eyebrow">{{ t("membership.account.loadingEyebrow") }}</p>
+          <h2>{{ t("membership.account.loadingTitle") }}</h2>
+          <p>{{ t("membership.account.loadingDescription") }}</p>
+        </div>
+      </section>
+
+      <section v-if="membershipLoadError" class="membership-state-empty">
+        <div>
+          <p class="eyebrow">{{ t("membership.account.errorEyebrow") }}</p>
+          <h2>{{ t("membership.account.errorTitle") }}</h2>
+          <p>{{ membershipLoadError }}</p>
+        </div>
+      </section>
+
+      <section v-if="showScenarioPreview" class="membership-account-state-strip" :aria-label="t('membership.account.states.aria')">
         <header>
           <p class="eyebrow">{{ t("membership.account.states.eyebrow") }}</p>
           <h2>{{ t("membership.account.states.title") }}</h2>
         </header>
         <div>
+          <button
+            type="button"
+            :class="{ 'is-selected': selectedScenarioKey === 'live' }"
+            @click="selectedScenarioKey = 'live'"
+          >
+            Live API
+          </button>
           <button
             v-for="key in statePreviewKeys"
             :key="key"
@@ -232,11 +309,12 @@ const money = (value) => `$${Number(value || 0).toLocaleString("en-US", { minimu
           <p class="eyebrow">{{ t("membership.account.savingsEyebrow") }}</p>
           <h2>{{ t("membership.account.savingsTitle", { amount: membershipValue.annualSavings }) }}</h2>
           <p>{{ t("membership.account.savingsIntro", { spend: membershipValue.eligibleSpend }) }}</p>
+          <p v-if="membershipOrdersLoadError" class="orders-payment-warning">{{ membershipOrdersLoadError }}</p>
         </div>
         <section class="membership-order-list" :aria-label="t('membership.account.ordersAria')">
           <article v-for="order in recentOrders" :key="order.id">
             <div>
-              <h3>{{ t(`membership.account.orders.${order.key}`) }}</h3>
+              <h3>{{ order.label || t(`membership.account.orders.${order.key}`) }}</h3>
               <p>{{ t("membership.account.orderMeta", { id: order.id, date: order.date }) }}</p>
             </div>
             <strong>{{ t("membership.account.orderSavings", { amount: order.savings }) }}</strong>

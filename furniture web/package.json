@@ -13,6 +13,7 @@
     "test:smoke:wishlist": "node scripts/wishlist-api-smoke.mjs",
     "test:smoke:live-business": "node scripts/live-business-smoke.mjs",
     "test:smoke:order-live": "node scripts/order-live-smoke.mjs",
+    "test:smoke:real-account": "node scripts/real-account-readiness-smoke.mjs",
     "test:deploy:health": "node scripts/post-deploy-health-check.mjs",
     "create:launch-evidence": "node scripts/create-launch-evidence.mjs",
     "audit:launch-evidence": "node scripts/audit-launch-evidence.mjs",

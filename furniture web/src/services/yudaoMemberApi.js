@@ -53,7 +53,7 @@ export const updateMemberMobile = (payload, options = {}) =>
   });
 
 export const requestEmailVerificationLink = (email, options = {}) =>
-  requestYudao("/member/user/send-email-verify-link", {
+  requestYudao("/member/auth/email-verify-link", {
     ...options,
     method: "POST",
     body: JSON.stringify({ email }),

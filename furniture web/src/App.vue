@@ -323,7 +323,7 @@ const playCartFlyAnimation = (options = {}) => {
 const addToCart = async (product, quantity = 1, options = {}) => {
   if (product.source === "yudao") {
     try {
-      await addCartItem(product.skuId, quantity);
+      await addCartItem(product.skuId, quantity, { registryContext: options.registryContext || product.registryContext });
       await loadRemoteCart();
       playCartFlyAnimation(options);
       return;
@@ -339,7 +339,9 @@ const addToCart = async (product, quantity = 1, options = {}) => {
     }
   }
 
-  cartItems.value = addLocalCartItem(cartItems.value, product, quantity);
+  const localPreviewProduct =
+    product.source === "yudao" && !product.cartId ? { ...product, source: "local-preview", cartId: undefined } : product;
+  cartItems.value = addLocalCartItem(cartItems.value, localPreviewProduct, quantity);
   playCartFlyAnimation(options);
 };
 

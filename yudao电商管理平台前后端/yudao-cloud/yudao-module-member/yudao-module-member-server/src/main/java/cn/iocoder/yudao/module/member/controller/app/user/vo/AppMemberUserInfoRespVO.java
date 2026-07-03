@@ -17,6 +17,18 @@ public class AppMemberUserInfoRespVO {
     @Schema(description = "用户昵称", requiredMode = Schema.RequiredMode.REQUIRED, example = "芋艿")
     private String nickname;
 
+    @Schema(description = "真实名字", example = "Ada Lovelace")
+    private String name;
+
+    @Schema(description = "用户邮箱", example = "designer@example.com")
+    private String email;
+
+    @Schema(description = "邮箱是否已验证", example = "true")
+    private Boolean emailVerified;
+
+    @Schema(description = "RH Trade Program 账号编号", example = "RH-TRADE-10086")
+    private String tradeId;
+
     @Schema(description = "用户头像", requiredMode = Schema.RequiredMode.REQUIRED, example = "https://www.iocoder.cn/xxx.png")
     private String avatar;
 
@@ -25,6 +37,9 @@ public class AppMemberUserInfoRespVO {
 
     @Schema(description = "用户性别", requiredMode = Schema.RequiredMode.REQUIRED, example = "1")
     private Integer sex;
+
+    @Schema(description = "所在地编号", example = "110000")
+    private Integer areaId;
 
     @Schema(description = "积分", requiredMode = Schema.RequiredMode.REQUIRED, example = "10")
     private Integer point;

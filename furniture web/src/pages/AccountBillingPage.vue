@@ -2,7 +2,7 @@
 import { onMounted, ref, watch } from "vue";
 import { accountMenuItems, accountMenuLabelKeys, membershipRoutes } from "../services/membershipNavigation.js";
 import { getOrderPage } from "../services/yudaoOrderApi.js";
-import { readYudaoToken } from "../services/yudaoRequest.js";
+import { isYudaoAuthError, readYudaoToken } from "../services/yudaoRequest.js";
 import { useI18n } from "../i18n.js";
 
 const props = defineProps({
@@ -39,8 +39,12 @@ const loadBilling = async () => {
     const page = await getOrderPage({ pageNo: 1, pageSize: 20 });
     if (requestId !== billingRequestId) return;
     orders.value = page.list;
-  } catch {
+  } catch (error) {
     if (requestId !== billingRequestId) return;
+    if (isYudaoAuthError(error)) {
+      tokenRequired.value = true;
+      return;
+    }
     error.value = t("membership.account.billingHistory.error");
   } finally {
     if (requestId === billingRequestId) loading.value = false;

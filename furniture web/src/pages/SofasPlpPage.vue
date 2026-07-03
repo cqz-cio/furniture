@@ -4,6 +4,7 @@ import ProductImage from "../components/ProductImage.vue";
 import { demoProducts } from "../data/demoProducts.js";
 import { useI18n } from "../i18n.js";
 import { PRODUCT_SORT_OPTIONS } from "../services/productListControls.js";
+import { resolveProductBackendFailure } from "../services/productBackendFallback.js";
 import {
   buildProductListingModel,
   productFacetGroups,
@@ -31,6 +32,7 @@ const { t } = useI18n();
 const loading = ref(true);
 const source = ref("demo");
 const products = ref(demoProducts);
+const catalogError = ref(false);
 const searchQuery = ref("");
 const initialListingQuery = resolveProductListingQuery(typeof window === "undefined" ? "" : window.location.search);
 const emptyFacetState = () => Object.fromEntries(productFacetGroups.map((group) => [group.key, "all"]));
@@ -40,9 +42,14 @@ const selectedSort = ref("featured");
 const mobileFiltersOpen = ref(false);
 const quickAddMessage = ref("");
 const wishlistIdentityKeys = ref(new Set());
+const wishlistIdentityStatusKey = ref("");
 const skeletonCards = [0, 1, 2, 3];
 
-const sourceLabel = computed(() => (source.value === "yudao" ? t("connectedCatalog") : t("offlineCatalog")));
+const sourceLabel = computed(() => {
+  if (source.value === "yudao") return t("connectedCatalog");
+  if (source.value === "error") return t("productList.backendUnavailable.eyebrow");
+  return t("offlineCatalog");
+});
 const normalizeValue = (value) => String(value ?? "").trim().toLowerCase();
 const sortForListingModel = computed(() => {
   if (selectedSort.value === "priceAsc") return "price-asc";
@@ -120,6 +127,7 @@ const handleQuickAdd = (product, options) => {
 const loadProductWishlistState = async () => {
   const state = await loadWishlistIdentityState();
   wishlistIdentityKeys.value = state.keys;
+  wishlistIdentityStatusKey.value = state.statusKey || "";
 };
 const isProductSaved = (product) => isWishlistItemSaved(product, wishlistIdentityKeys.value);
 const handleWishlistSave = (product) => {
@@ -143,9 +151,18 @@ onMounted(async () => {
     if (page.list.length > 0) {
       products.value = supplementMissingCompanyTypes(page.list, demoProducts);
       source.value = "yudao";
+      catalogError.value = false;
+    } else {
+      const failure = resolveProductBackendFailure({ demoProducts });
+      products.value = failure.products;
+      source.value = failure.source;
+      catalogError.value = failure.error;
     }
   } catch {
-    source.value = "demo";
+    const failure = resolveProductBackendFailure({ demoProducts });
+    products.value = failure.products;
+    source.value = failure.source;
+    catalogError.value = failure.error;
   } finally {
     loading.value = false;
   }
@@ -253,8 +270,15 @@ onBeforeUnmount(() => {
     </section>
 
     <p v-if="quickAddMessage" class="product-quick-add-status" role="status">{{ quickAddMessage }}</p>
+    <p v-if="wishlistIdentityStatusKey" class="product-quick-add-status" role="status">{{ t(wishlistIdentityStatusKey) }}</p>
 
-    <div v-if="!loading && visibleProducts.length === 0" class="product-list-empty">
+    <div v-if="!loading && catalogError" class="product-list-empty">
+      <p class="eyebrow">{{ t("productList.backendUnavailable.eyebrow") }}</p>
+      <h2>{{ t("productList.backendUnavailable.title") }}</h2>
+      <p>{{ t("productList.backendUnavailable.description") }}</p>
+    </div>
+
+    <div v-else-if="!loading && visibleProducts.length === 0" class="product-list-empty">
       <p class="eyebrow">{{ t("productList.empty.eyebrow") }}</p>
       <h2>{{ t("productList.empty.title") }}</h2>
       <p>{{ t("productList.empty.description") }}</p>

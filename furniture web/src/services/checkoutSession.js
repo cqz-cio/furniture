@@ -13,8 +13,11 @@ const supportedAddressSources = new Set(["new", "saved"]);
 const supportedAddressVerificationStatuses = new Set(["verified", "suggested", "unverified"]);
 const supportedAddressVerificationChoices = new Set(["original", "suggested"]);
 
+export const hasYudaoProductIdentity = (item = {}) => Boolean(item.spuId || item.id);
+
 export const canUseYudaoCheckout = (items) =>
-  items.length > 0 && items.every((item) => item.source === "yudao" && item.cartId && item.skuId);
+  items.length > 0 &&
+  items.every((item) => item.source === "yudao" && item.cartId && item.skuId && hasYudaoProductIdentity(item));
 
 const compactAddressLine = (address = {}) =>
   [address.street, [address.city, [address.state, address.postalCode].filter(Boolean).join(" ")].filter(Boolean).join(", ")]
@@ -160,7 +163,7 @@ export const getCheckoutPresentation = (mode) => {
     },
     "local-preview": {
       title: "Review Your Selections",
-      message: "Review your Oakved selections before final account checkout is connected.",
+      message: "This bag contains preview-only items. Demo, local, or membership preview items are not persisted to Yudao and cannot create a live Yudao order.",
       cta: "Review Only",
       canSubmit: false,
     },

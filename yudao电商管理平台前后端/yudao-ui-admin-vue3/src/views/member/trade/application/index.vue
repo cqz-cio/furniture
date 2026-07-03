@@ -31,7 +31,7 @@
         />
       </el-form-item>
       <el-form-item>
-        <el-button @click="handleQuery">
+        <el-button v-hasPermi="['member:trade-application:query']" @click="handleQuery">
           <Icon class="mr-5px" icon="ep:search" />
           Search
         </el-button>
@@ -62,7 +62,7 @@
       <el-table-column align="center" label="Created" prop="createTime" width="180" />
       <el-table-column align="center" fixed="right" label="Actions" width="220">
         <template #default="{ row }">
-          <el-button link type="primary" @click="openDetail(row.id)">Detail</el-button>
+          <el-button v-hasPermi="['member:trade-application:query']" link type="primary" @click="openDetail(row.id)">Detail</el-button>
           <el-button
             v-if="row.status === TRADE_APPLICATION_STATUS.pending"
             v-hasPermi="['member:trade-application:review']"

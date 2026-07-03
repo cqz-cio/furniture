@@ -299,7 +299,7 @@ public class MemberAuthServiceImpl implements MemberAuthService {
 
     private MemberUserDO getMatchedTradeUser(String tradeId, String email) {
         MemberUserDO user = userService.getUserByEmail(email);
-        if (user == null || !StrUtil.equals(StrUtil.trim(tradeId), user.getTradeId())) {
+        if (user == null || !StrUtil.equalsIgnoreCase(StrUtil.trim(tradeId), StrUtil.trim(user.getTradeId()))) {
             createLoginLog(user != null ? user.getId() : null, email, LoginLogTypeEnum.LOGIN_USERNAME,
                     LoginResultEnum.BAD_CREDENTIALS);
             throw exception(AUTH_TRADE_ACCOUNT_NOT_FOUND);

@@ -8,12 +8,15 @@ New application code should import from the domain module that owns the operatio
 
 | Module | Use for |
 | --- | --- |
-| `yudaoAuthApi.js` | Sign-in, registration, captcha, trade application upload, logout |
+| `yudaoAuthApi.js` | Sign-in, registration, captcha, trade login, logout |
 | `yudaoCartApi.js` | Remote cart add, update, delete, and list operations |
 | `yudaoMemberApi.js` | Member profile, addresses, mobile update, email verification, area tree |
 | `yudaoOrderApi.js` | Checkout settlement, order creation, order list, order detail |
 | `yudaoPaymentApi.js` | Yudao pay order submission and pay order lookup |
 | `yudaoProductApi.js` | Product list and product detail requests |
+| `yudaoGiftRegistryApi.js` | Gift Registry App API CRUD, public search/detail, and registry item operations |
+| `yudaoMembershipApi.js` | Membership status, checkout intent, and account membership operations |
+| `yudaoTradeApi.js` | Trade application submission, attachment upload, and signed-in trade profile status |
 | `yudaoRequest.js` | Shared request wrapper, tenant headers, token read/write, token refresh |
 | `yudaoMappers.js` | Backend response mapping into storefront product, cart, address, profile, order models |
 
@@ -42,7 +45,7 @@ These modules are frontend-only helpers and should stay independent from Yudao r
 | `membershipAccount.js` | Membership account display models |
 | `membershipNavigation.js` | Account, checkout, and membership route constants |
 | `productDetailModel.js` | Product detail view model shaping |
-| `giftRegistry.js` | Registry demo workflows |
+| `giftRegistry.js` | Gift Registry view-model helpers and API payload mapping |
 | `tradeProgram.js` | Trade program form options and routes |
 | `authSession.js` | Browser session persistence and redaction helpers |
 

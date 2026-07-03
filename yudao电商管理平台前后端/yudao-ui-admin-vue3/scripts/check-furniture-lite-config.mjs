@@ -37,6 +37,30 @@ const productSpuList = readRequired(
   'src/views/mall/product/spu/index.vue',
   'The product list should expose a frontend product preview action for furniture operators.'
 )
+const membershipApi = readRequired(
+  'src/api/member/membership/index.ts',
+  'Real-account launch readiness requires the Membership admin API wiring.'
+)
+const membershipView = readRequired(
+  'src/views/member/membership/index.vue',
+  'Real-account launch readiness requires the Membership admin page.'
+)
+const giftRegistryApi = readRequired(
+  'src/api/member/giftRegistry/index.ts',
+  'Real-account launch readiness requires the Gift Registry admin API wiring.'
+)
+const giftRegistryView = readRequired(
+  'src/views/member/gift-registry/index.vue',
+  'Real-account launch readiness requires the Gift Registry admin page.'
+)
+const tradeApplicationApi = readRequired(
+  'src/api/member/trade/application/index.ts',
+  'Real-account launch readiness requires the Trade Application admin API wiring.'
+)
+const tradeApplicationView = readRequired(
+  'src/views/member/trade/application/index.vue',
+  'Real-account launch readiness requires the Trade Application admin review page.'
+)
 
 const requiredEnvLines = [
   'VITE_ADMIN_MODE=furniture-lite',
@@ -78,6 +102,9 @@ const requiredFurnitureLiteConfigTokens = [
   '/mall/statistics',
   '/mall/statistics/product',
   '/mall/trade/order',
+  '/member/membership',
+  '/member/gift-registry',
+  '/member/trade-application',
   '/system/role',
   '/infra/file/file-config',
   'deniedFixedRoutePrefixes',
@@ -140,5 +167,48 @@ assert.ok(
     productSpuList.includes('前台预览'),
   'src/views/mall/product/spu/index.vue must provide a furniture web preview action'
 )
+
+const requiredRealAccountAdminTokens = [
+  [membershipApi, '/member/membership/page', 'src/api/member/membership/index.ts must read membership pages'],
+  [membershipApi, '/member/membership/get', 'src/api/member/membership/index.ts must read membership details'],
+  [membershipApi, '/member/membership/open', 'src/api/member/membership/index.ts must keep Admin membership opening'],
+  [membershipApi, '/member/membership/update', 'src/api/member/membership/index.ts must update membership status'],
+  [membershipView, 'member:membership:query', 'src/views/member/membership/index.vue must guard membership queries'],
+  [membershipView, 'member:membership:update', 'src/views/member/membership/index.vue must guard membership updates'],
+  [giftRegistryApi, '/member/gift-registry/page', 'src/api/member/giftRegistry/index.ts must read registry pages'],
+  [giftRegistryApi, '/member/gift-registry/get', 'src/api/member/giftRegistry/index.ts must read registry details'],
+  [giftRegistryApi, '/member/gift-registry/status', 'src/api/member/giftRegistry/index.ts must update registry status'],
+  [giftRegistryView, 'member:gift-registry:query', 'src/views/member/gift-registry/index.vue must guard registry queries'],
+  [giftRegistryView, 'member:gift-registry:update', 'src/views/member/gift-registry/index.vue must guard registry updates'],
+  [
+    tradeApplicationApi,
+    '/member/trade-application/page',
+    'src/api/member/trade/application/index.ts must read trade application pages'
+  ],
+  [
+    tradeApplicationApi,
+    '/member/trade-application/approve',
+    'src/api/member/trade/application/index.ts must approve trade applications'
+  ],
+  [
+    tradeApplicationApi,
+    '/member/trade-application/reject',
+    'src/api/member/trade/application/index.ts must reject trade applications'
+  ],
+  [
+    tradeApplicationView,
+    'member:trade-application:query',
+    'src/views/member/trade/application/index.vue must guard trade application queries'
+  ],
+  [
+    tradeApplicationView,
+    'member:trade-application:review',
+    'src/views/member/trade/application/index.vue must guard trade application reviews'
+  ]
+]
+
+for (const [source, token, message] of requiredRealAccountAdminTokens) {
+  assert.ok(source.includes(token), message)
+}
 
 console.log('Furniture lite config checks passed')

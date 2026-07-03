@@ -4,12 +4,20 @@ import { describe, expect, it } from "vitest";
 const readSource = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
 
 describe("membership UI integration", () => {
-  it("lets the enrollment page emit the annual membership product into the cart", () => {
+  it("requires a real account before membership enrollment instead of adding preview membership to the cart", () => {
     const source = readSource("../src/pages/MembershipEnrollmentPage.vue");
 
-    expect(source).toContain("ANNUAL_MEMBERSHIP_PRODUCT");
-    expect(source).toContain('defineEmits(["add-to-cart"])');
-    expect(source).toContain("emit(\"add-to-cart\", ANNUAL_MEMBERSHIP_PRODUCT");
+    expect(source).toContain("createYudaoMembershipCheckoutIntent");
+    expect(source).not.toContain("activateAnnualMembership");
+    expect(source).toContain("readYudaoToken");
+    expect(source).toContain('statusMessageKey.value = "membership.enrollment.signInRequired"');
+    expect(source).toContain('statusMessageKey.value = "membership.enrollment.checkoutReady"');
+    expect(source).toContain("membershipRoutes.checkoutAuth");
+    expect(source).not.toContain("ANNUAL_MEMBERSHIP_PRODUCT");
+    expect(source).not.toContain('defineEmits(["add-to-cart"])');
+    expect(source).not.toContain('emit("add-to-cart"');
+    expect(source).not.toContain("membership.enrollment.previewAdded");
+    expect(source).not.toContain("membership.enrollment.activated");
   });
 
   it("routes membership enrollment add-to-cart through App.vue", () => {

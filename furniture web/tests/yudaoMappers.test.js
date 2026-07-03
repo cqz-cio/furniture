@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { mapAddressResponse, mapFavoritePageToItems, mapOrderDetail, mapSpuToProduct } from "../src/services/yudaoMappers.js";
+import {
+  mapAddressResponse,
+  mapCartResponseToItems,
+  mapFavoritePageToItems,
+  mapOrderDetail,
+  mapSpuToProduct,
+} from "../src/services/yudaoMappers.js";
 
 describe("yudao mapper module", () => {
   it("maps SPU records from the dedicated mapper module", () => {
@@ -15,6 +21,7 @@ describe("yudao mapper module", () => {
 
     expect(mapSpuToProduct(spu)).toMatchObject({
       id: 12,
+      spuId: 12,
       skuId: 99,
       name: "Cloud Sofa",
       price: 2599,
@@ -65,6 +72,32 @@ describe("yudao mapper module", () => {
         },
       ],
     });
+  });
+
+  it("preserves Gift Registry context from remote cart rows", () => {
+    expect(
+      mapCartResponseToItems({
+        validList: [
+          {
+            id: 77,
+            count: 2,
+            selected: true,
+            registryId: 1001,
+            registryItemId: 2002,
+            spu: { id: 12, name: "Cloud Sofa", picUrl: "https://cdn.example/sofa.jpg" },
+            sku: { id: 99, price: 259900, stock: 8 },
+          },
+        ],
+      }),
+    ).toMatchObject([
+      {
+        cartId: 77,
+        registryContext: {
+          registryId: 1001,
+          registryItemId: 2002,
+        },
+      },
+    ]);
   });
 
   it("maps order detail from the dedicated mapper module", () => {

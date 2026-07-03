@@ -23,6 +23,7 @@ describe("account wishlist page", () => {
     expect(source).toContain("deleteFavorite(item)");
     expect(source).toContain("updateFavoriteCount");
     expect(source).toContain("readLocalWishlist");
+    expect(source).toContain("writeLocalWishlist");
     expect(source).toContain("removeLocalWishlistItem");
     expect(source).toContain("updateLocalWishlistItemQuantity");
     expect(source).toContain("readYudaoToken");
@@ -35,6 +36,16 @@ describe("account wishlist page", () => {
     expect(source).toContain("wishlist-line");
     expect(source).toContain("wishlist-spec-list");
     expect(source).toContain("wishlist-price-panel");
+  });
+
+  it("does not clear local wishlist rows that fail during login sync", () => {
+    const source = readSource("../src/pages/AccountWishlistPage.vue");
+
+    expect(source).toContain("const result = await syncLocalWishlistToRemote(localItems)");
+    expect(source).toContain("if (result.failedItems?.length)");
+    expect(source).toContain("writeLocalWishlist(result.failedItems)");
+    expect(source).toContain("clearLocalWishlist()");
+    expect(source).toContain('noticeKey.value = "wishlist.partialSync"');
   });
 
   it("surfaces remote wishlist loading, retry, and auth states", () => {

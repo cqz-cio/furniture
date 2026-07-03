@@ -24,6 +24,7 @@ import {
   buildYudaoOrderPayload,
   canUseYudaoCheckout,
   getCheckoutMode,
+  getCheckoutPresentation,
   getOrderDetailPath,
   getSelectedAddressId,
   savedAddressToShippingForm,
@@ -121,6 +122,7 @@ const addressVerificationProvider = createRemoteAddressVerificationProvider();
 const membershipPricing = computed(() => getMembershipPricing(props.items));
 const mode = computed(() => getCheckoutMode(props.items, readYudaoToken()));
 const checkoutModeKey = computed(() => `checkout.mode.${mode.value}`);
+const checkoutPresentation = computed(() => getCheckoutPresentation(mode.value));
 const displaySubtotal = computed(() => settlement.value?.payPrice ?? membershipPricing.value.estimatedTotal);
 const displayDelivery = computed(() => settlement.value?.deliveryPrice ?? 0);
 const displayItemTotal = computed(() => settlement.value?.totalPrice ?? membershipPricing.value.merchandiseSubtotal);
@@ -519,7 +521,7 @@ const handlePrimaryAction = async () => {
     return;
   }
   if (mode.value === "local-preview") {
-    errorKey.value = "checkout.errors.orderUnavailable";
+    errorKey.value = "checkout.errors.previewOnlyOrderUnavailable";
     return;
   }
   if (primaryActionDisabled.value && checkoutStage.value !== "payment") {
@@ -682,6 +684,12 @@ watch(paymentForm, () => {
             <span class="muted">Confirmation</span>
           </nav>
         </header>
+
+        <section class="checkout-status-card">
+          <span>{{ t(`${checkoutModeKey}.status`) }}</span>
+          <h2>{{ checkoutPresentation.title }}</h2>
+          <p>{{ checkoutPresentation.message }}</p>
+        </section>
 
         <section v-if="checkoutStage === 'shipping'" class="rh-shipping-card">
           <h2>{{ t("checkout.shipping.title") }}</h2>

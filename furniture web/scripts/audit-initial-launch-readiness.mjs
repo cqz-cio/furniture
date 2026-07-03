@@ -1,7 +1,8 @@
 import { fileURLToPath } from "node:url";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-import { readAndValidateProductionEnv } from "./verify-production-env.mjs";
+import { parseEnvFileContent, readAndValidateProductionEnv } from "./verify-production-env.mjs";
 import { readAndValidateLaunchSmokeEnv } from "./verify-launch-smoke-env.mjs";
 import { readAndValidateBackendProductionEnv } from "./verify-backend-production-env.mjs";
 import { readAndValidateLaunchEnvAlignment } from "./verify-launch-env-alignment.mjs";
@@ -62,6 +63,107 @@ const check = (name, result, okMessage) => ({
   warnings: result.warnings || [],
 });
 
+const extractSeededAccount = (content = "") => {
+  const match = String(content).match(/"seededAccount"\s*:\s*\{([\s\S]*?)\}/);
+  if (!match) return null;
+  const seeded = {};
+  for (const [, key, value] of match[1].matchAll(/"([^"]+)"\s*:\s*"([^"]*)"/g)) {
+    seeded[key] = value.trim();
+  }
+  return seeded;
+};
+
+const firstValue = (...values) => values.find((value) => String(value ?? "").trim());
+
+const normalizeSeedValue = (value) => String(value ?? "").trim();
+const normalizeSeedEmail = (value) => normalizeSeedValue(value).toLowerCase();
+const normalizePathValue = (value) => resolve(process.cwd(), String(value || "").trim());
+const normalizeUrlValue = (value) => String(value || "").trim().replace(/\/+$/, "");
+
+const readLaunchManifest = (evidenceDir) => {
+  const manifestPath = resolve(process.cwd(), evidenceDir, "launch-manifest.json");
+  if (!existsSync(manifestPath)) {
+    return { manifest: null, error: `launch-manifest.json is missing at ${manifestPath}` };
+  }
+
+  try {
+    return { manifest: JSON.parse(readFileSync(manifestPath, "utf8")), error: "" };
+  } catch (error) {
+    return { manifest: null, error: `launch-manifest.json is not valid JSON: ${error.message}` };
+  }
+};
+
+const validateLaunchManifestAlignment = ({ envFile, smokeEnvFile, backendEnvFile, baseUrl, evidenceDir }) => {
+  const { manifest, error } = readLaunchManifest(evidenceDir);
+  if (error) return { ok: false, errors: [error], warnings: [] };
+
+  const errors = [];
+  const pathMappings = [
+    ["envFile", envFile, "--env-file"],
+    ["smokeEnvFile", smokeEnvFile, "--smoke-env-file"],
+    ["backendEnvFile", backendEnvFile, "--backend-env-file"],
+  ];
+
+  for (const [manifestKey, expectedValue, flagName] of pathMappings) {
+    if (normalizePathValue(manifest[manifestKey]) !== normalizePathValue(expectedValue)) {
+      errors.push(`launch-manifest.json ${manifestKey} must match ${flagName}`);
+    }
+  }
+
+  if (normalizeUrlValue(manifest.baseUrl) !== normalizeUrlValue(baseUrl)) {
+    errors.push("launch-manifest.json baseUrl must match --base-url");
+  }
+
+  return { ok: errors.length === 0, errors, warnings: [] };
+};
+
+const validateRealAccountSeedAlignment = ({ smokeEnvFile, evidenceDir }) => {
+  const errors = [];
+  const smokeEnvPath = resolve(process.cwd(), smokeEnvFile);
+  const realAccountSmokePath = resolve(process.cwd(), evidenceDir, "real-account-smoke.txt");
+
+  if (!existsSync(smokeEnvPath)) {
+    return { ok: false, errors: [`Launch smoke env file not found: ${smokeEnvPath}`], warnings: [] };
+  }
+  if (!existsSync(realAccountSmokePath)) {
+    return { ok: false, errors: [`real-account-smoke.txt is missing at ${realAccountSmokePath}`], warnings: [] };
+  }
+
+  const env = parseEnvFileContent(readFileSync(smokeEnvPath, "utf8"));
+  const seededAccount = extractSeededAccount(readFileSync(realAccountSmokePath, "utf8"));
+  if (!seededAccount) {
+    return { ok: false, errors: ["real-account-smoke.txt must include seededAccount block"], warnings: [] };
+  }
+  if (String(env.YUDAO_REAL_ACCOUNT_SMOKE_CHECK_ORDER || "").trim().toLowerCase() !== "true") {
+    errors.push("YUDAO_REAL_ACCOUNT_SMOKE_CHECK_ORDER must be true for final initial launch evidence");
+  }
+
+  const mappings = [
+    ["userId", "YUDAO_REAL_ACCOUNT_SMOKE_USER_ID", env.YUDAO_REAL_ACCOUNT_SMOKE_USER_ID],
+    ["cartId", "YUDAO_REAL_ACCOUNT_SMOKE_CART_ID", firstValue(env.YUDAO_REAL_ACCOUNT_SMOKE_CART_ID, env.YUDAO_ORDER_SMOKE_CART_ID)],
+    ["skuId", "YUDAO_REAL_ACCOUNT_SMOKE_SKU_ID", firstValue(env.YUDAO_REAL_ACCOUNT_SMOKE_SKU_ID, env.YUDAO_ORDER_SMOKE_SKU_ID)],
+    ["addressId", "YUDAO_REAL_ACCOUNT_SMOKE_ADDRESS_ID", env.YUDAO_REAL_ACCOUNT_SMOKE_ADDRESS_ID],
+    ["orderId", "YUDAO_REAL_ACCOUNT_SMOKE_ORDER_ID", env.YUDAO_REAL_ACCOUNT_SMOKE_ORDER_ID],
+    ["giftRegistryPublicCode", "YUDAO_REAL_ACCOUNT_SMOKE_GIFT_REGISTRY_PUBLIC_CODE", env.YUDAO_REAL_ACCOUNT_SMOKE_GIFT_REGISTRY_PUBLIC_CODE],
+    ["tradeId", "YUDAO_REAL_ACCOUNT_SMOKE_TRADE_ID", env.YUDAO_REAL_ACCOUNT_SMOKE_TRADE_ID],
+    ["tradeEmail", "YUDAO_REAL_ACCOUNT_SMOKE_TRADE_EMAIL", env.YUDAO_REAL_ACCOUNT_SMOKE_TRADE_EMAIL],
+    ["membershipStatus", "YUDAO_REAL_ACCOUNT_SMOKE_MEMBERSHIP_STATUS", env.YUDAO_REAL_ACCOUNT_SMOKE_MEMBERSHIP_STATUS],
+    ["membershipPlanCode", "YUDAO_REAL_ACCOUNT_SMOKE_MEMBERSHIP_PLAN_CODE", env.YUDAO_REAL_ACCOUNT_SMOKE_MEMBERSHIP_PLAN_CODE],
+    ["giftRegistryItemSpuId", "YUDAO_REAL_ACCOUNT_SMOKE_GIFT_REGISTRY_ITEM_SPU_ID", env.YUDAO_REAL_ACCOUNT_SMOKE_GIFT_REGISTRY_ITEM_SPU_ID],
+    ["giftRegistryItemSkuId", "YUDAO_REAL_ACCOUNT_SMOKE_GIFT_REGISTRY_ITEM_SKU_ID", env.YUDAO_REAL_ACCOUNT_SMOKE_GIFT_REGISTRY_ITEM_SKU_ID],
+  ];
+
+  for (const [seedKey, envKey, expected] of mappings) {
+    const expectedValue = seedKey === "tradeEmail" ? normalizeSeedEmail(expected) : normalizeSeedValue(expected);
+    const actualValue = seedKey === "tradeEmail" ? normalizeSeedEmail(seededAccount[seedKey]) : normalizeSeedValue(seededAccount[seedKey]);
+    if (expectedValue && actualValue && actualValue !== expectedValue) {
+      errors.push(`real-account-smoke.txt seeded ${seedKey} must match ${envKey}`);
+    }
+  }
+
+  return { ok: errors.length === 0, errors, warnings: [] };
+};
+
 export const auditInitialLaunchReadiness = (options = {}) => {
   const envFile = options.envFile || DEFAULT_ENV_FILE;
   const smokeEnvFile = options.smokeEnvFile || DEFAULT_SMOKE_ENV_FILE;
@@ -92,11 +194,27 @@ export const auditInitialLaunchReadiness = (options = {}) => {
   if (evidenceDir) {
     const launchEvidence = auditLaunchEvidence({ dir: evidenceDir });
     checks.push(check("launch-evidence", launchEvidence, `Launch evidence is complete: ${launchEvidence.dir}`));
+    const launchManifestAlignment = validateLaunchManifestAlignment({ envFile, smokeEnvFile, backendEnvFile, baseUrl, evidenceDir });
+    checks.push(check("launch-manifest-alignment", launchManifestAlignment, "Launch manifest matches audited env files and base URL"));
+    const realAccountSeedAlignment = validateRealAccountSeedAlignment({ smokeEnvFile, evidenceDir });
+    checks.push(check("real-account-seed-alignment", realAccountSeedAlignment, "Real-account smoke evidence matches launch smoke env"));
   } else {
     checks.push({
       name: "launch-evidence",
       ok: false,
       details: ["Launch evidence directory is required. Pass --evidence-dir launch-evidence/<timestamp>."],
+      warnings: [],
+    });
+    checks.push({
+      name: "launch-manifest-alignment",
+      ok: false,
+      details: ["Launch evidence directory is required before checking launch manifest alignment."],
+      warnings: [],
+    });
+    checks.push({
+      name: "real-account-seed-alignment",
+      ok: false,
+      details: ["Launch evidence directory is required before checking real-account seed alignment."],
       warnings: [],
     });
   }

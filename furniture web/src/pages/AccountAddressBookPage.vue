@@ -8,7 +8,7 @@ import {
   getAreaTree,
   updateMemberAddress,
 } from "../services/yudaoMemberApi.js";
-import { readYudaoToken } from "../services/yudaoRequest.js";
+import { isYudaoAuthError, readYudaoToken } from "../services/yudaoRequest.js";
 import { useI18n } from "../i18n.js";
 
 const props = defineProps({
@@ -89,8 +89,12 @@ const loadAddresses = async () => {
     const nextAddresses = await getAddressList();
     if (requestId !== addressRequestId) return;
     addresses.value = nextAddresses;
-  } catch {
+  } catch (error) {
     if (requestId !== addressRequestId) return;
+    if (isYudaoAuthError(error)) {
+      tokenRequired.value = true;
+      return;
+    }
     error.value = t("membership.account.addressBook.error");
   } finally {
     if (requestId === addressRequestId) loading.value = false;

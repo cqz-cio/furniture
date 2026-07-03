@@ -48,10 +48,23 @@ describe("production environment readiness", () => {
     expect(result.errors).toContain("VITE_SHOW_AUTH_TOKEN_PANEL must not be true in production.");
   });
 
+  it("rejects documentation domains in the storefront production API URL", () => {
+    const result = validateProductionEnv({
+      VITE_YUDAO_APP_API_BASE: "https://api.oakved.example/app-api",
+      VITE_YUDAO_APP_TENANT_ID: "121",
+      VITE_YUDAO_US_DEFAULT_AREA_ID: "100200",
+      VITE_YUDAO_PAY_CHANNEL_CODE: "alipay_pc",
+      VITE_SHOW_AUTH_TOKEN_PANEL: "false",
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.errors).toContain("VITE_YUDAO_APP_API_BASE must not use a documentation/example domain.");
+  });
+
   it("accepts production-shaped env files and normalizes comments and quotes", () => {
     const env = parseEnvFileContent(`
       # Production API
-      VITE_YUDAO_APP_API_BASE="https://api.oakved.example/app-api"
+      VITE_YUDAO_APP_API_BASE="https://api.oakvedhome.com/app-api"
       VITE_YUDAO_APP_TENANT_ID=121
       VITE_YUDAO_US_DEFAULT_AREA_ID=100200
       VITE_YUDAO_PAY_CHANNEL_CODE=alipay_pc
@@ -69,7 +82,7 @@ describe("production environment readiness", () => {
     writeFileSync(
       envFile,
       [
-        "VITE_YUDAO_APP_API_BASE=https://api.oakved.example/app-api",
+        "VITE_YUDAO_APP_API_BASE=https://api.oakvedhome.com/app-api",
         "VITE_YUDAO_APP_TENANT_ID=121",
         "VITE_YUDAO_US_DEFAULT_AREA_ID=100200",
         "VITE_YUDAO_PAY_CHANNEL_CODE=alipay_pc",

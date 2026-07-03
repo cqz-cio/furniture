@@ -65,6 +65,15 @@ const isSafeProductionApiBase = (value) => {
   }
 };
 
+const isDocumentationDomainUrl = (value) => {
+  try {
+    const hostname = new URL(value).hostname.toLowerCase();
+    return hostname === "example.com" || hostname.endsWith(".example.com") || hostname.endsWith(".example");
+  } catch {
+    return false;
+  }
+};
+
 const isPath = (value) => !value || String(value).startsWith("/");
 
 export const validateProductionEnv = (env) => {
@@ -79,6 +88,9 @@ export const validateProductionEnv = (env) => {
 
   if (env.VITE_YUDAO_APP_API_BASE && !isSafeProductionApiBase(env.VITE_YUDAO_APP_API_BASE)) {
     errors.push("VITE_YUDAO_APP_API_BASE must be an absolute http(s) URL that is not localhost.");
+  }
+  if (env.VITE_YUDAO_APP_API_BASE && isDocumentationDomainUrl(env.VITE_YUDAO_APP_API_BASE)) {
+    errors.push("VITE_YUDAO_APP_API_BASE must not use a documentation/example domain.");
   }
 
   if (env.VITE_YUDAO_US_DEFAULT_AREA_ID && !isPositiveInteger(env.VITE_YUDAO_US_DEFAULT_AREA_ID)) {

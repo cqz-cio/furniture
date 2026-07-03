@@ -27,6 +27,38 @@ const originOf = (value) => {
 
 const shouldSkip = (value, options) => options.allowPlaceholders && isPlaceholder(value);
 
+const isDocumentationDomainUrl = (value) => {
+  try {
+    const hostname = new URL(value).hostname.toLowerCase();
+    return hostname === "example.com" || hostname.endsWith(".example.com") || hostname.endsWith(".example");
+  } catch {
+    return false;
+  }
+};
+
+const isHttpUrl = (value) => {
+  try {
+    const url = new URL(value);
+    return ["http:", "https:"].includes(url.protocol);
+  } catch {
+    return false;
+  }
+};
+
+const pushInvalidUrl = (errors, key, value, options) => {
+  if (options.allowPlaceholders || !value || shouldSkip(value, options)) return;
+  if (!isHttpUrl(value)) {
+    errors.push(`${key} must be an absolute http(s) URL.`);
+  }
+};
+
+const pushDocumentationDomain = (errors, key, value, options) => {
+  if (options.allowPlaceholders || !value) return;
+  if (isDocumentationDomainUrl(value)) {
+    errors.push(`${key} must not use a documentation/example domain.`);
+  }
+};
+
 const pushMismatch = (errors, left, right, message, options) => {
   if (shouldSkip(left, options) || shouldSkip(right, options)) return;
   if (normalizeUrl(left) !== normalizeUrl(right)) errors.push(message);
@@ -84,6 +116,22 @@ export const validateLaunchEnvAlignment = ({ productionEnv = {}, smokeEnv = {}, 
   const storefrontUrl = backendEnv.YUDAO_APP_UI_URL;
   const smokeReturnOrigin = smokeEnv.YUDAO_ORDER_SMOKE_RETURN_ORIGIN || smokeEnv.YUDAO_ORDER_SMOKE_RETURN_URL;
 
+  for (const [key, value] of [
+    ["VITE_YUDAO_APP_API_BASE", appApiBase],
+    ["YUDAO_SMOKE_BASE_URL", smokeApiBase],
+    ["YUDAO_ORDER_SMOKE_RETURN_ORIGIN", smokeReturnOrigin],
+    ["YUDAO_REAL_ACCOUNT_SMOKE_BASE_URL", smokeEnv.YUDAO_REAL_ACCOUNT_SMOKE_BASE_URL],
+    ["YUDAO_REAL_ACCOUNT_ADMIN_BASE_URL", smokeEnv.YUDAO_REAL_ACCOUNT_ADMIN_BASE_URL],
+    ["YUDAO_APP_UI_URL", storefrontUrl],
+    ["YUDAO_PAY_ORDER_NOTIFY_URL", backendEnv.YUDAO_PAY_ORDER_NOTIFY_URL],
+    ["YUDAO_PAY_REFUND_NOTIFY_URL", backendEnv.YUDAO_PAY_REFUND_NOTIFY_URL],
+    ["YUDAO_PAY_TRANSFER_NOTIFY_URL", backendEnv.YUDAO_PAY_TRANSFER_NOTIFY_URL],
+    ["--base-url", baseUrl],
+  ]) {
+    pushInvalidUrl(errors, key, value, options);
+    pushDocumentationDomain(errors, key, value, options);
+  }
+
   pushMismatch(
     errors,
     appApiBase,
@@ -96,6 +144,34 @@ export const validateLaunchEnvAlignment = ({ productionEnv = {}, smokeEnv = {}, 
     productionEnv.VITE_YUDAO_APP_TENANT_ID,
     smokeEnv.YUDAO_SMOKE_TENANT_ID,
     "VITE_YUDAO_APP_TENANT_ID must match YUDAO_SMOKE_TENANT_ID.",
+    options,
+  );
+  pushMismatch(
+    errors,
+    appApiBase,
+    smokeEnv.YUDAO_REAL_ACCOUNT_SMOKE_BASE_URL,
+    "VITE_YUDAO_APP_API_BASE must match YUDAO_REAL_ACCOUNT_SMOKE_BASE_URL.",
+    options,
+  );
+  pushMismatch(
+    errors,
+    productionEnv.VITE_YUDAO_APP_TENANT_ID,
+    smokeEnv.YUDAO_REAL_ACCOUNT_SMOKE_TENANT_ID,
+    "VITE_YUDAO_APP_TENANT_ID must match YUDAO_REAL_ACCOUNT_SMOKE_TENANT_ID.",
+    options,
+  );
+  pushOriginMismatch(
+    errors,
+    smokeEnv.YUDAO_REAL_ACCOUNT_ADMIN_BASE_URL,
+    appApiBase,
+    "YUDAO_REAL_ACCOUNT_ADMIN_BASE_URL origin must match VITE_YUDAO_APP_API_BASE origin.",
+    options,
+  );
+  pushMismatch(
+    errors,
+    productionEnv.VITE_YUDAO_APP_TENANT_ID,
+    smokeEnv.YUDAO_REAL_ACCOUNT_ADMIN_TENANT_ID,
+    "VITE_YUDAO_APP_TENANT_ID must match YUDAO_REAL_ACCOUNT_ADMIN_TENANT_ID.",
     options,
   );
   pushMismatch(

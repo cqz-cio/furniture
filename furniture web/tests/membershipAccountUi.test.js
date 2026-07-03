@@ -10,6 +10,11 @@ describe("account membership UI integration", () => {
     expect(source).toContain("MEMBERSHIP_ACCOUNT_SCENARIOS");
     expect(source).toContain("accountMenuLabelKeys");
     expect(source).toContain("getMembershipAccountScenario");
+    expect(source).toContain("getLiveMembershipAccountScenario");
+    expect(source).toContain("getYudaoMembershipProfile");
+    expect(source).toContain("getOrderPage");
+    expect(source).toContain("readYudaoToken");
+    expect(source).toContain("showScenarioPreview");
     expect(source).toContain("getMembershipStatusView");
     expect(source).toContain("getMembershipGrowth");
     expect(source).toContain("getEmailBindingState");
@@ -23,6 +28,14 @@ describe("account membership UI integration", () => {
     expect(source).toContain("membership-growth-panel");
     expect(source).toContain("membership-email-panel");
     expect(source).toContain("membership-benefit-grid");
+  });
+
+  it("keeps live order-summary failures separate from membership profile failures", () => {
+    const source = readSource("../src/pages/AccountMembershipPage.vue");
+
+    expect(source).toContain("membershipOrdersLoadError");
+    expect(source).toContain("membership.account.ordersUnavailable");
+    expect(source).toContain("loadMembershipOrders");
   });
 
   it("renders membership eligibility review details", () => {

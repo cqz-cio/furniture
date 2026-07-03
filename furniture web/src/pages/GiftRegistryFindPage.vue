@@ -1,20 +1,54 @@
 <script setup>
+import { onMounted, reactive, ref } from "vue";
+import { canUseGiftRegistryDemoFallback, createGiftRegistryDraft } from "../services/giftRegistry.js";
 import { membershipRoutes } from "../services/membershipNavigation.js";
+import { searchPublicYudaoGiftRegistries } from "../services/yudaoGiftRegistryApi.js";
 
-const sampleRegistries = [
-  {
-    name: "Avery Stone & Morgan Vale",
-    event: "Wedding",
-    date: "2026-10-01",
-    location: "Boston, MA",
-  },
-  {
-    name: "Jordan Lee",
-    event: "Housewarming",
-    date: "2026-09-15",
-    location: "Chicago, IL",
-  },
-];
+const query = reactive({
+  keyword: "",
+  eventMonth: "",
+});
+const results = ref([]);
+const total = ref(0);
+const searchState = ref("idle");
+const searchMessage = ref("");
+
+const runSearch = async () => {
+  searchState.value = "loading";
+  searchMessage.value = "";
+  try {
+    const page = await searchPublicYudaoGiftRegistries({
+      keyword: query.keyword,
+      eventMonth: query.eventMonth,
+      pageNo: 1,
+      pageSize: 10,
+    });
+    results.value = page.list;
+    total.value = page.total;
+    searchState.value = page.list.length ? "loaded" : "empty";
+    searchMessage.value = page.list.length ? "" : "No public registries matched that search.";
+  } catch (error) {
+    if (!import.meta.env.PROD && canUseGiftRegistryDemoFallback(import.meta.env)) {
+      results.value = [
+        createGiftRegistryDraft({
+          publicCode: "local-preview-registry",
+          event: { type: "Preview", date: "2026-10-01", location: "Local preview" },
+          registrants: { primaryName: "Local Preview", coRegistrantName: "Registry" },
+        }),
+      ];
+      total.value = 1;
+      searchState.value = "preview";
+      searchMessage.value = "Local preview is shown because the backend is unavailable.";
+      return;
+    }
+    results.value = [];
+    total.value = 0;
+    searchState.value = "error";
+    searchMessage.value = error?.message || "Public registry search is unavailable.";
+  }
+};
+
+onMounted(runSearch);
 </script>
 
 <template>
@@ -34,28 +68,26 @@ const sampleRegistries = [
 
     <section class="registry-search-panel" aria-label="Find registry search">
       <label>
-        Registrant Name
-        <input value="Avery Stone" aria-label="Registrant name" />
+        Registrant Name or Email
+        <input v-model="query.keyword" aria-label="Registrant name or email" />
       </label>
       <label>
         Event Month
-        <select aria-label="Event month">
-          <option>October 2026</option>
-          <option>September 2026</option>
-          <option>August 2026</option>
-        </select>
+        <input v-model="query.eventMonth" aria-label="Event month" placeholder="YYYY-MM" />
       </label>
-      <button type="button">Search</button>
+      <button type="button" @click="runSearch">Search</button>
     </section>
 
+    <p v-if="searchMessage">{{ searchMessage }}</p>
+
     <section class="registry-result-list" aria-label="Registry results">
-      <article v-for="registry in sampleRegistries" :key="registry.name">
+      <article v-for="registry in results" :key="registry.publicCode || registry.id">
         <div>
-          <p class="eyebrow">{{ registry.event }}</p>
-          <h2>{{ registry.name }}</h2>
-          <p>{{ registry.date }} - {{ registry.location }}</p>
+          <p class="eyebrow">{{ registry.event.type }}</p>
+          <h2>{{ registry.registrants.primaryName }} {{ registry.registrants.coRegistrantName }}</h2>
+          <p>{{ registry.event.date }} - {{ registry.event.location || "Location private" }}</p>
         </div>
-        <a :href="membershipRoutes.giftRegistry">View Registry</a>
+        <a :href="`/gift-registry/${registry.publicCode}`">View Registry</a>
       </article>
     </section>
   </section>

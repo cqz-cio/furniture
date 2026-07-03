@@ -72,6 +72,25 @@ describe("wishlist identity state", () => {
     expect(isWishlistItemSaved({ id: 88, skuId: 8801 }, state.keys)).toBe(true);
   });
 
+  it("reports a remote wishlist state error for authenticated Yudao visitors", async () => {
+    writeYudaoToken("member-token", storage);
+    addLocalWishlistItem({ id: 88, skuId: 8801, name: "Oak Chair" }, storage);
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ code: 500, msg: "favorite service down" }),
+    });
+
+    const state = await loadWishlistIdentityState({ storage });
+
+    expect(state).toMatchObject({
+      source: "local",
+      statusKey: "wishlist.remoteUnavailable",
+      remoteUnavailable: true,
+    });
+    expect(state.error.message).toContain("favorite service down");
+    expect(isWishlistItemSaved({ id: 88, skuId: 8801 }, state.keys)).toBe(true);
+  });
+
   it("optimistically marks a product as saved for immediate UI feedback", () => {
     const state = withWishlistItemSaved(new Set(), { id: 88, skuId: 8801 });
 

@@ -7,6 +7,7 @@ describe("orders page recovery actions", () => {
   it("offers recovery actions for token, service, and empty states", () => {
     const source = readSource("../src/pages/OrdersPage.vue");
 
+    expect(source).toContain("isYudaoAuthError");
     expect(source).toContain("membershipRoutes.checkoutAuth");
     expect(source).toContain('error.value = t("orders.error")');
     expect(source).toContain('t("orders.actions.connectAccount")');
@@ -14,6 +15,15 @@ describe("orders page recovery actions", () => {
     expect(source).toContain('t("orders.actions.shop")');
     expect(source).toContain('@click="loadOrders"');
     expect(source).not.toContain("Order service is unavailable. Please try again later.");
+  });
+
+  it("treats expired Yudao sessions as sign-in-required instead of a generic order load error", () => {
+    const source = readSource("../src/pages/OrdersPage.vue");
+
+    expect(source).toContain("if (isYudaoAuthError(error))");
+    expect(source).toContain("tokenRequired.value = true");
+    expect(source).toContain("return");
+    expect(source).toContain('error.value = t("orders.error")');
   });
 
   it("refreshes pay order status when returning from a payment channel", () => {

@@ -88,17 +88,19 @@ export const getRemoteWishlistItems = async (params = {}, options = {}) => {
 };
 
 export const syncLocalWishlistToRemote = async (items = [], options = {}) => {
-  const spuIds = [...new Set(items.map(favoriteSpuId).filter(Boolean))];
+  const uniqueItems = [...new Map(items.filter(favoriteSpuId).map((item) => [favoriteSpuId(item), item])).values()];
   let succeeded = 0;
+  const failedItems = [];
 
-  for (const spuId of spuIds) {
+  for (const item of uniqueItems) {
     try {
-      await createFavorite(items.find((item) => favoriteSpuId(item) === spuId), options);
+      await createFavorite(item, options);
       succeeded += 1;
     } catch (error) {
       if (!isYudaoBusinessError(error)) throw error;
+      failedItems.push(item);
     }
   }
 
-  return { attempted: spuIds.length, succeeded };
+  return { attempted: uniqueItems.length, succeeded, failedItems };
 };

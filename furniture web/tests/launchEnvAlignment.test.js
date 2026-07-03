@@ -13,23 +13,27 @@ import { parseEnvFileContent } from "../scripts/verify-production-env.mjs";
 const readSource = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
 
 const productionEnv = {
-  VITE_YUDAO_APP_API_BASE: "https://api.oakved.example/app-api",
+  VITE_YUDAO_APP_API_BASE: "https://api.oakvedhome.com/app-api",
   VITE_YUDAO_APP_TENANT_ID: "121",
   VITE_YUDAO_PAY_CHANNEL_CODE: "alipay_pc",
 };
 
 const smokeEnv = {
-  YUDAO_SMOKE_BASE_URL: "https://api.oakved.example/app-api",
+  YUDAO_SMOKE_BASE_URL: "https://api.oakvedhome.com/app-api",
   YUDAO_SMOKE_TENANT_ID: "121",
   YUDAO_ORDER_SMOKE_PAY_CHANNEL_CODE: "alipay_pc",
-  YUDAO_ORDER_SMOKE_RETURN_ORIGIN: "https://shop.oakved.example",
+  YUDAO_ORDER_SMOKE_RETURN_ORIGIN: "https://shop.oakvedhome.com",
+  YUDAO_REAL_ACCOUNT_SMOKE_BASE_URL: "https://api.oakvedhome.com/app-api",
+  YUDAO_REAL_ACCOUNT_SMOKE_TENANT_ID: "121",
+  YUDAO_REAL_ACCOUNT_ADMIN_BASE_URL: "https://api.oakvedhome.com/admin-api",
+  YUDAO_REAL_ACCOUNT_ADMIN_TENANT_ID: "121",
 };
 
 const backendEnv = {
-  YUDAO_APP_UI_URL: "https://shop.oakved.example",
-  YUDAO_PAY_ORDER_NOTIFY_URL: "https://api.oakved.example/admin-api/pay/notify/order",
-  YUDAO_PAY_REFUND_NOTIFY_URL: "https://api.oakved.example/admin-api/pay/notify/refund",
-  YUDAO_PAY_TRANSFER_NOTIFY_URL: "https://api.oakved.example/admin-api/pay/notify/transfer",
+  YUDAO_APP_UI_URL: "https://shop.oakvedhome.com",
+  YUDAO_PAY_ORDER_NOTIFY_URL: "https://api.oakvedhome.com/admin-api/pay/notify/order",
+  YUDAO_PAY_REFUND_NOTIFY_URL: "https://api.oakvedhome.com/admin-api/pay/notify/refund",
+  YUDAO_PAY_TRANSFER_NOTIFY_URL: "https://api.oakvedhome.com/admin-api/pay/notify/transfer",
 };
 
 describe("launch env alignment", () => {
@@ -48,14 +52,14 @@ describe("launch env alignment", () => {
         "--backend-env-file",
         ".env.backend-production",
         "--base-url",
-        "https://shop.oakved.example",
+        "https://shop.oakvedhome.com",
         "--allow-placeholders",
       ]),
     ).toEqual({
       envFile: ".env.production",
       smokeEnvFile: ".env.launch-smoke",
       backendEnvFile: ".env.backend-production",
-      baseUrl: "https://shop.oakved.example",
+      baseUrl: "https://shop.oakvedhome.com",
       allowPlaceholders: true,
     });
   });
@@ -66,9 +70,89 @@ describe("launch env alignment", () => {
         productionEnv,
         smokeEnv,
         backendEnv,
-        baseUrl: "https://shop.oakved.example",
+        baseUrl: "https://shop.oakvedhome.com",
       }),
     ).toEqual({ ok: true, errors: [], warnings: [] });
+  });
+
+  it("rejects documentation domains even when all launch endpoints are aligned", () => {
+    const result = validateLaunchEnvAlignment({
+      productionEnv: {
+        ...productionEnv,
+        VITE_YUDAO_APP_API_BASE: "https://api.example.com/app-api",
+      },
+      smokeEnv: {
+        ...smokeEnv,
+        YUDAO_SMOKE_BASE_URL: "https://api.example.com/app-api",
+        YUDAO_ORDER_SMOKE_RETURN_ORIGIN: "https://shop.example.com",
+        YUDAO_REAL_ACCOUNT_SMOKE_BASE_URL: "https://api.example.com/app-api",
+        YUDAO_REAL_ACCOUNT_ADMIN_BASE_URL: "https://api.example.com/admin-api",
+      },
+      backendEnv: {
+        ...backendEnv,
+        YUDAO_APP_UI_URL: "https://shop.example.com",
+        YUDAO_PAY_ORDER_NOTIFY_URL: "https://api.example.com/admin-api/pay/notify/order",
+        YUDAO_PAY_REFUND_NOTIFY_URL: "https://api.example.com/admin-api/pay/notify/refund",
+        YUDAO_PAY_TRANSFER_NOTIFY_URL: "https://api.example.com/admin-api/pay/notify/transfer",
+      },
+      baseUrl: "https://shop.example.com",
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.errors).toEqual(
+      expect.arrayContaining([
+        "VITE_YUDAO_APP_API_BASE must not use a documentation/example domain.",
+        "YUDAO_SMOKE_BASE_URL must not use a documentation/example domain.",
+        "YUDAO_ORDER_SMOKE_RETURN_ORIGIN must not use a documentation/example domain.",
+        "YUDAO_REAL_ACCOUNT_SMOKE_BASE_URL must not use a documentation/example domain.",
+        "YUDAO_REAL_ACCOUNT_ADMIN_BASE_URL must not use a documentation/example domain.",
+        "YUDAO_APP_UI_URL must not use a documentation/example domain.",
+        "YUDAO_PAY_ORDER_NOTIFY_URL must not use a documentation/example domain.",
+        "YUDAO_PAY_REFUND_NOTIFY_URL must not use a documentation/example domain.",
+        "YUDAO_PAY_TRANSFER_NOTIFY_URL must not use a documentation/example domain.",
+        "--base-url must not use a documentation/example domain.",
+      ]),
+    );
+  });
+
+  it("rejects non-http launch URLs even when the values are internally aligned", () => {
+    const result = validateLaunchEnvAlignment({
+      productionEnv: {
+        ...productionEnv,
+        VITE_YUDAO_APP_API_BASE: "api.oakvedhome.com/app-api",
+      },
+      smokeEnv: {
+        ...smokeEnv,
+        YUDAO_SMOKE_BASE_URL: "api.oakvedhome.com/app-api",
+        YUDAO_ORDER_SMOKE_RETURN_ORIGIN: "shop.oakvedhome.com",
+        YUDAO_REAL_ACCOUNT_SMOKE_BASE_URL: "api.oakvedhome.com/app-api",
+        YUDAO_REAL_ACCOUNT_ADMIN_BASE_URL: "api.oakvedhome.com/admin-api",
+      },
+      backendEnv: {
+        ...backendEnv,
+        YUDAO_APP_UI_URL: "shop.oakvedhome.com",
+        YUDAO_PAY_ORDER_NOTIFY_URL: "api.oakvedhome.com/admin-api/pay/notify/order",
+        YUDAO_PAY_REFUND_NOTIFY_URL: "api.oakvedhome.com/admin-api/pay/notify/refund",
+        YUDAO_PAY_TRANSFER_NOTIFY_URL: "api.oakvedhome.com/admin-api/pay/notify/transfer",
+      },
+      baseUrl: "shop.oakvedhome.com",
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.errors).toEqual(
+      expect.arrayContaining([
+        "VITE_YUDAO_APP_API_BASE must be an absolute http(s) URL.",
+        "YUDAO_SMOKE_BASE_URL must be an absolute http(s) URL.",
+        "YUDAO_ORDER_SMOKE_RETURN_ORIGIN must be an absolute http(s) URL.",
+        "YUDAO_REAL_ACCOUNT_SMOKE_BASE_URL must be an absolute http(s) URL.",
+        "YUDAO_REAL_ACCOUNT_ADMIN_BASE_URL must be an absolute http(s) URL.",
+        "YUDAO_APP_UI_URL must be an absolute http(s) URL.",
+        "YUDAO_PAY_ORDER_NOTIFY_URL must be an absolute http(s) URL.",
+        "YUDAO_PAY_REFUND_NOTIFY_URL must be an absolute http(s) URL.",
+        "YUDAO_PAY_TRANSFER_NOTIFY_URL must be an absolute http(s) URL.",
+        "--base-url must be an absolute http(s) URL.",
+      ]),
+    );
   });
 
   it("rejects mismatched API, tenant, payment, storefront, and callback origins", () => {
@@ -80,6 +164,10 @@ describe("launch env alignment", () => {
         YUDAO_SMOKE_TENANT_ID: "122",
         YUDAO_ORDER_SMOKE_PAY_CHANNEL_CODE: "stripe",
         YUDAO_ORDER_SMOKE_RETURN_ORIGIN: "https://staging-shop.oakved.example",
+        YUDAO_REAL_ACCOUNT_SMOKE_BASE_URL: "https://real-account-api.oakved.example/app-api",
+        YUDAO_REAL_ACCOUNT_SMOKE_TENANT_ID: "123",
+        YUDAO_REAL_ACCOUNT_ADMIN_BASE_URL: "https://admin-smoke.oakved.example/admin-api",
+        YUDAO_REAL_ACCOUNT_ADMIN_TENANT_ID: "124",
       },
       backendEnv: {
         ...backendEnv,
@@ -93,6 +181,10 @@ describe("launch env alignment", () => {
     expect(result.errors).toContain("VITE_YUDAO_APP_API_BASE must match YUDAO_SMOKE_BASE_URL.");
     expect(result.errors).toContain("VITE_YUDAO_APP_TENANT_ID must match YUDAO_SMOKE_TENANT_ID.");
     expect(result.errors).toContain("VITE_YUDAO_PAY_CHANNEL_CODE must match YUDAO_ORDER_SMOKE_PAY_CHANNEL_CODE.");
+    expect(result.errors).toContain("VITE_YUDAO_APP_API_BASE must match YUDAO_REAL_ACCOUNT_SMOKE_BASE_URL.");
+    expect(result.errors).toContain("VITE_YUDAO_APP_TENANT_ID must match YUDAO_REAL_ACCOUNT_SMOKE_TENANT_ID.");
+    expect(result.errors).toContain("YUDAO_REAL_ACCOUNT_ADMIN_BASE_URL origin must match VITE_YUDAO_APP_API_BASE origin.");
+    expect(result.errors).toContain("VITE_YUDAO_APP_TENANT_ID must match YUDAO_REAL_ACCOUNT_ADMIN_TENANT_ID.");
     expect(result.errors).toContain("YUDAO_APP_UI_URL must match --base-url.");
     expect(result.errors).toContain("YUDAO_ORDER_SMOKE_RETURN_ORIGIN must match --base-url.");
     expect(result.errors).toContain("YUDAO_PAY_ORDER_NOTIFY_URL origin must match VITE_YUDAO_APP_API_BASE origin.");
@@ -118,7 +210,7 @@ describe("launch env alignment", () => {
           envFile,
           smokeEnvFile,
           backendEnvFile,
-          baseUrl: "https://shop.oakved.example",
+          baseUrl: "https://shop.oakvedhome.com",
         }).ok,
       ).toBe(true);
     } finally {

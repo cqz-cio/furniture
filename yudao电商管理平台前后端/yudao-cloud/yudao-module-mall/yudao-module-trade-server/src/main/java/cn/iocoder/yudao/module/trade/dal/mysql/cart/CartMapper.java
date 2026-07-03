@@ -17,8 +17,19 @@ import java.util.Set;
 public interface CartMapper extends BaseMapperX<CartDO> {
 
     default CartDO selectByUserIdAndSkuId(Long userId, Long skuId) {
-        return selectOne(CartDO::getUserId, userId,
-                CartDO::getSkuId, skuId);
+        return selectOne(new LambdaQueryWrapper<CartDO>()
+                .eq(CartDO::getUserId, userId)
+                .eq(CartDO::getSkuId, skuId)
+                .isNull(CartDO::getRegistryItemId)
+                .last("LIMIT 1"));
+    }
+
+    default CartDO selectByUserIdAndSkuIdAndRegistryItemId(Long userId, Long skuId, Long registryItemId) {
+        return selectOne(new LambdaQueryWrapper<CartDO>()
+                .eq(CartDO::getUserId, userId)
+                .eq(CartDO::getSkuId, skuId)
+                .eq(CartDO::getRegistryItemId, registryItemId)
+                .last("LIMIT 1"));
     }
 
     default Integer selectSumByUserId(Long userId) {

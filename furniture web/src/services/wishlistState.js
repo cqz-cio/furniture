@@ -32,11 +32,17 @@ export const loadWishlistIdentityState = async (options = {}) => {
   if (readYudaoToken(options.storage)) {
     try {
       const page = await getRemoteWishlistItems({ pageNo: 1, pageSize: 200 }, options);
-      return { source: "yudao", keys: createWishlistIdentitySet(page.list) };
-    } catch {
-      return { source: "local", keys: createWishlistIdentitySet(readLocalWishlist(options.storage)) };
+      return { source: "yudao", keys: createWishlistIdentitySet(page.list), statusKey: "", remoteUnavailable: false };
+    } catch (error) {
+      return {
+        source: "local",
+        keys: createWishlistIdentitySet(readLocalWishlist(options.storage)),
+        statusKey: "wishlist.remoteUnavailable",
+        remoteUnavailable: true,
+        error,
+      };
     }
   }
 
-  return { source: "local", keys: createWishlistIdentitySet(readLocalWishlist(options.storage)) };
+  return { source: "local", keys: createWishlistIdentitySet(readLocalWishlist(options.storage)), statusKey: "", remoteUnavailable: false };
 };

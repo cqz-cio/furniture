@@ -46,6 +46,8 @@ public class TradeOrderItemDO extends BaseDO {
      * 关联 {@link CartDO#getId()}
      */
     private Long cartId;
+    private Long registryId;
+    private Long registryItemId;
 
     // ========== 商品基本信息; 冗余较多字段，减少关联查询 ==========
     /**

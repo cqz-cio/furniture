@@ -11,7 +11,7 @@ import {
   stateOptions,
   tradeRoutes,
 } from "../services/tradeProgram.js";
-import { submitTradeApplication, uploadTradeApplicationAttachment } from "../services/yudaoAuthApi.js";
+import { submitTradeApplication, uploadTradeApplicationAttachment } from "../services/yudaoTradeApi.js";
 
 const { t } = useI18n();
 

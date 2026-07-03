@@ -1,5 +1,6 @@
 param(
-  [switch] $VerifyOnly
+  [switch] $VerifyOnly,
+  [string] $Profile = "local"
 )
 
 $ErrorActionPreference = "Stop"
@@ -29,6 +30,7 @@ if ($VerifyOnly) {
   Write-Host "JAVA_HOME=$env:JAVA_HOME"
   Write-Host "MAVEN_HOME=$env:MAVEN_HOME"
   Write-Host "BACKEND_ROOT=$backendRoot"
+  Write-Host "SPRING_PROFILES_ACTIVE=$Profile"
   & java -version
   & $mvn -v
   exit 0
@@ -42,4 +44,4 @@ if (-not (Test-Path -LiteralPath $serverJar)) {
   throw "Cannot find packaged backend jar: $serverJar"
 }
 
-& java -jar $serverJar
+& java -jar $serverJar "--spring.profiles.active=$Profile"

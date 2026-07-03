@@ -176,7 +176,7 @@ describe("Yudao favorite API module", () => {
       { storage },
     );
 
-    expect(result).toEqual({ attempted: 2, succeeded: 2 });
+    expect(result).toEqual({ attempted: 2, succeeded: 2, failedItems: [] });
     expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
       `${API_BASE}/product/favorite/create`,
       `${API_BASE}/product/favorite/create`,
@@ -185,5 +185,25 @@ describe("Yudao favorite API module", () => {
       { spuId: 88, skuId: 8801, count: 1, spuName: "Oak Chair" },
       { spuId: 89, skuId: 8901, count: 1, spuName: "Cloud Sofa" },
     ]);
+  });
+
+  it("reports wishlist rows that failed to sync with a backend business error", async () => {
+    fetchMock
+      .mockResolvedValueOnce(mockYudaoResponse(1))
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ code: 500, msg: "favorite validation failed" }),
+      });
+
+    const failedItem = { spuId: 89, skuId: 8901, name: "Cloud Sofa" };
+    const result = await syncLocalWishlistToRemote(
+      [
+        { id: 88, skuId: 8801, name: "Oak Chair" },
+        failedItem,
+      ],
+      { storage },
+    );
+
+    expect(result).toEqual({ attempted: 2, succeeded: 1, failedItems: [failedItem] });
   });
 });

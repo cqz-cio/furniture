@@ -34,6 +34,12 @@ public class AppCartListRespVO {
         @Schema(description = "是否选中", requiredMode = Schema.RequiredMode.REQUIRED, example = "true")
         private Boolean selected;
 
+        @Schema(description = "Gift Registry 编号", example = "1001")
+        private Long registryId;
+
+        @Schema(description = "Gift Registry 商品编号", example = "2001")
+        private Long registryItemId;
+
         /**
          * 商品 SPU
          */

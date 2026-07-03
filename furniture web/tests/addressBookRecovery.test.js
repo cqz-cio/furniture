@@ -7,6 +7,7 @@ describe("address book recovery actions", () => {
   it("offers recovery actions for sign-in, load errors, and empty addresses", () => {
     const source = readSource("../src/pages/AccountAddressBookPage.vue");
 
+    expect(source).toContain("isYudaoAuthError");
     expect(source).toContain("membershipRoutes.checkoutAuth");
     expect(source).toContain('t("membership.account.addressBook.actions.connectAccount")');
     expect(source).toContain('t("membership.account.addressBook.actions.retry")');
@@ -14,6 +15,15 @@ describe("address book recovery actions", () => {
     expect(source).toContain('@click="loadAddresses"');
     expect(source).toContain('id="address-book-form"');
     expect(source).toContain('href="#address-book-form"');
+  });
+
+  it("treats expired Yudao sessions as sign-in-required instead of a generic address load error", () => {
+    const source = readSource("../src/pages/AccountAddressBookPage.vue");
+
+    expect(source).toContain("if (isYudaoAuthError(error))");
+    expect(source).toContain("tokenRequired.value = true");
+    expect(source).toContain("return");
+    expect(source).toContain('error.value = t("membership.account.addressBook.error")');
   });
 
   it("uses shared recovery action styling", () => {

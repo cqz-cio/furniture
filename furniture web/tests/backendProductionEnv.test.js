@@ -19,11 +19,11 @@ const validBackendEnv = {
   YUDAO_DB_PASSWORD: "replace-with-strong-password",
   YUDAO_REDIS_HOST: "redis.internal",
   YUDAO_REDIS_PORT: "6379",
-  YUDAO_ADMIN_UI_URL: "https://admin.oakved.example",
-  YUDAO_APP_UI_URL: "https://shop.oakved.example",
-  YUDAO_PAY_ORDER_NOTIFY_URL: "https://api.oakved.example/admin-api/pay/notify/order",
-  YUDAO_PAY_REFUND_NOTIFY_URL: "https://api.oakved.example/admin-api/pay/notify/refund",
-  YUDAO_PAY_TRANSFER_NOTIFY_URL: "https://api.oakved.example/admin-api/pay/notify/transfer",
+  YUDAO_ADMIN_UI_URL: "https://admin.oakvedhome.com",
+  YUDAO_APP_UI_URL: "https://shop.oakvedhome.com",
+  YUDAO_PAY_ORDER_NOTIFY_URL: "https://api.oakvedhome.com/admin-api/pay/notify/order",
+  YUDAO_PAY_REFUND_NOTIFY_URL: "https://api.oakvedhome.com/admin-api/pay/notify/refund",
+  YUDAO_PAY_TRANSFER_NOTIFY_URL: "https://api.oakvedhome.com/admin-api/pay/notify/transfer",
   YUDAO_GOOGLE_ADDRESS_VALIDATION_API_KEY: "replace-with-real-google-address-validation-key",
 };
 
@@ -92,6 +92,32 @@ describe("backend production runtime environment", () => {
     expect(result.errors).toContain("YUDAO_PAY_TRANSFER_NOTIFY_URL must be an absolute https URL.");
     expect(result.errors).toContain("YUDAO_GOOGLE_ADDRESS_VALIDATION_API_KEY is required.");
     expect(result.errors).toContain("YUDAO_SECURITY_MOCK_ENABLE must not be true in production.");
+  });
+
+  it("rejects documentation domains in backend production endpoints", () => {
+    const result = validateBackendProductionEnv({
+      ...validBackendEnv,
+      YUDAO_DB_URL: "jdbc:mysql://mysql.example.com:3306/oakved?useSSL=true",
+      YUDAO_REDIS_HOST: "redis.example.com",
+      YUDAO_ADMIN_UI_URL: "https://admin.example.com",
+      YUDAO_APP_UI_URL: "https://shop.example.com",
+      YUDAO_PAY_ORDER_NOTIFY_URL: "https://api.example.com/admin-api/pay/notify/order",
+      YUDAO_PAY_REFUND_NOTIFY_URL: "https://api.example.com/admin-api/pay/notify/refund",
+      YUDAO_PAY_TRANSFER_NOTIFY_URL: "https://api.example.com/admin-api/pay/notify/transfer",
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.errors).toEqual(
+      expect.arrayContaining([
+        "YUDAO_DB_URL must not use a documentation/example domain.",
+        "YUDAO_REDIS_HOST must not use a documentation/example domain.",
+        "YUDAO_ADMIN_UI_URL must not use a documentation/example domain.",
+        "YUDAO_APP_UI_URL must not use a documentation/example domain.",
+        "YUDAO_PAY_ORDER_NOTIFY_URL must not use a documentation/example domain.",
+        "YUDAO_PAY_REFUND_NOTIFY_URL must not use a documentation/example domain.",
+        "YUDAO_PAY_TRANSFER_NOTIFY_URL must not use a documentation/example domain.",
+      ]),
+    );
   });
 
   it("can validate a concrete backend env file path", async () => {

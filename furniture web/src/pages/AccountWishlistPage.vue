@@ -8,6 +8,7 @@ import {
   readLocalWishlist,
   removeLocalWishlistItem,
   updateLocalWishlistItemQuantity,
+  writeLocalWishlist,
 } from "../services/localWishlist.js";
 import {
   deleteFavorite,
@@ -48,7 +49,12 @@ const useLocalWishlist = (key = "") => {
 const mergeLocalWishlist = async () => {
   const localItems = readLocalWishlist();
   if (!localItems.length) return;
-  await syncLocalWishlistToRemote(localItems);
+  const result = await syncLocalWishlistToRemote(localItems);
+  if (result.failedItems?.length) {
+    writeLocalWishlist(result.failedItems);
+    noticeKey.value = "wishlist.partialSync";
+    return;
+  }
   clearLocalWishlist();
 };
 

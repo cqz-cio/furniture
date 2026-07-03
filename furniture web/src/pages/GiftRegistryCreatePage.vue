@@ -1,4 +1,5 @@
 <script setup>
+import { computed, ref } from "vue";
 import {
   REGISTRY_VISIBILITY,
   createGiftRegistryDraft,
@@ -6,52 +7,47 @@ import {
   getRegistryShareState,
 } from "../services/giftRegistry.js";
 import { membershipRoutes } from "../services/membershipNavigation.js";
+import { createYudaoGiftRegistry } from "../services/yudaoGiftRegistryApi.js";
+import { readYudaoToken } from "../services/yudaoRequest.js";
 
-const draft = createGiftRegistryDraft({
-  id: "registry-stone-2026",
-  event: {
-    type: "Wedding",
-    date: "2026-10-01",
-  },
-  registrants: {
-    primaryName: "Avery Stone",
-    coRegistrantName: "Morgan Vale",
-    email: "avery@example.com",
-    phone: "(415) 555-0198",
-  },
-  addresses: {
-    beforeEvent: {
-      line1: "123 Oak Road",
-      city: "Boston",
-      region: "MA",
-      postalCode: "02116",
-    },
-    afterEvent: {
-      kind: "custom",
-      line1: "48 Gallery Lane",
-      city: "New York",
-      region: "NY",
-      postalCode: "10013",
-    },
-  },
-  privacy: {
-    visibility: REGISTRY_VISIBILITY.public,
-    emailSubscription: true,
-    giftCardPreference: true,
-  },
-});
+const draft = ref(
+  createGiftRegistryDraft({
+    event: { type: "Wedding" },
+    privacy: { visibility: REGISTRY_VISIBILITY.public },
+  }),
+);
+const saveState = ref("idle");
+const saveMessage = ref("");
 
-const steps = getGiftRegistrySteps(draft);
-const shareState = getRegistryShareState(draft);
-const addressRows = [
-  ["Before Event", draft.addresses.beforeEvent],
-  ["After Event", draft.addresses.afterEvent],
-];
+const steps = computed(() => getGiftRegistrySteps(draft.value));
+const shareState = computed(() => getRegistryShareState(draft.value));
+const addressRows = computed(() => [
+  ["Before Event", draft.value.addresses.beforeEvent],
+  ["After Event", draft.value.addresses.afterEvent],
+]);
 const visibilityOptions = [
   ["Public", REGISTRY_VISIBILITY.public],
   ["Searchable by Email", REGISTRY_VISIBILITY.searchableByEmail],
   ["Invite Only", REGISTRY_VISIBILITY.inviteOnly],
 ];
+
+const createRegistry = async () => {
+  if (!readYudaoToken()) {
+    saveState.value = "auth_required";
+    saveMessage.value = "Sign in before creating a persistent gift registry.";
+    return;
+  }
+  saveState.value = "saving";
+  saveMessage.value = "";
+  try {
+    draft.value = await createYudaoGiftRegistry(draft.value);
+    saveState.value = "saved";
+    saveMessage.value = "Registry saved to your Oakved account.";
+  } catch (error) {
+    saveState.value = "error";
+    saveMessage.value = error?.message || "Gift registry could not be saved.";
+  }
+};
 </script>
 
 <template>
@@ -83,69 +79,86 @@ const visibilityOptions = [
       <div class="registry-form-stack">
         <section class="registry-form-section">
           <p class="eyebrow">1. Event Details</p>
-          <h2>{{ draft.event.type }}</h2>
-          <dl>
-            <div>
-              <dt>Event Date</dt>
-              <dd>{{ draft.event.date }}</dd>
-            </div>
-            <div>
-              <dt>Registry Rule</dt>
-              <dd>Event type and event date are required before sharing is enabled.</dd>
-            </div>
-          </dl>
+          <label>
+            Event Type
+            <input v-model="draft.event.type" aria-label="Event type" />
+          </label>
+          <label>
+            Event Date
+            <input v-model="draft.event.date" aria-label="Event date" type="date" />
+          </label>
+          <label>
+            Event Location
+            <input v-model="draft.event.location" aria-label="Event location" />
+          </label>
         </section>
 
         <section class="registry-form-section">
           <p class="eyebrow">2. Registrant Information</p>
-          <h2>{{ draft.registrants.primaryName }} & {{ draft.registrants.coRegistrantName }}</h2>
-          <dl>
-            <div>
-              <dt>Email</dt>
-              <dd>{{ draft.registrants.email }}</dd>
-            </div>
-            <div>
-              <dt>Phone</dt>
-              <dd>{{ draft.registrants.phone }}</dd>
-            </div>
-          </dl>
+          <label>
+            Primary Name
+            <input v-model="draft.registrants.primaryName" aria-label="Primary registrant name" />
+          </label>
+          <label>
+            Co-Registrant
+            <input v-model="draft.registrants.coRegistrantName" aria-label="Co-registrant name" />
+          </label>
+          <label>
+            Email
+            <input v-model="draft.registrants.email" aria-label="Registrant email" type="email" />
+          </label>
+          <label>
+            Phone
+            <input v-model="draft.registrants.phone" aria-label="Registrant phone" />
+          </label>
         </section>
 
         <section class="registry-form-section">
           <p class="eyebrow">3. Gift Delivery Addresses</p>
-          <h2>Before and after event delivery</h2>
           <div class="registry-address-grid">
             <article v-for="[label, address] in addressRows" :key="label">
               <h3>{{ label }}</h3>
-              <p>{{ address.line1 }}</p>
-              <p>{{ address.city }}, {{ address.region }} {{ address.postalCode }}</p>
-              <small>{{ address.kind === "custom" ? "Custom delivery address" : "Local delivery address" }}</small>
+              <label>
+                Address
+                <input v-model="address.line1" :aria-label="`${label} address`" />
+              </label>
+              <label>
+                City
+                <input v-model="address.city" :aria-label="`${label} city`" />
+              </label>
+              <label>
+                Region
+                <input v-model="address.region" :aria-label="`${label} region`" />
+              </label>
+              <label>
+                Postal Code
+                <input v-model="address.postalCode" :aria-label="`${label} postal code`" />
+              </label>
             </article>
           </div>
         </section>
 
         <section class="registry-form-section">
           <p class="eyebrow">4. Privacy & Subscription</p>
-          <h2>Visibility and registry communications</h2>
           <div class="registry-choice-row" aria-label="Registry visibility">
-            <span
+            <button
               v-for="[label, value] in visibilityOptions"
               :key="value"
+              type="button"
               :class="{ selected: draft.privacy.visibility === value }"
+              @click="draft.privacy.visibility = value"
             >
               {{ label }}
-            </span>
+            </button>
           </div>
-          <dl>
-            <div>
-              <dt>Gift Card Preference</dt>
-              <dd>{{ draft.privacy.giftCardPreference ? "Accepted" : "Hidden" }}</dd>
-            </div>
-            <div>
-              <dt>Email Subscription</dt>
-              <dd>{{ draft.privacy.emailSubscription ? "Enabled" : "Disabled" }}</dd>
-            </div>
-          </dl>
+          <label>
+            <input v-model="draft.privacy.giftCardPreference" type="checkbox" />
+            Accept gift card preference
+          </label>
+          <label>
+            <input v-model="draft.privacy.emailSubscription" type="checkbox" />
+            Registry email messages
+          </label>
         </section>
 
         <section class="registry-share-panel">
@@ -154,12 +167,15 @@ const visibilityOptions = [
             <h2>{{ shareState.ready ? "Ready to share" : "Complete required sections" }}</h2>
             <p>
               Public page: <a :href="shareState.publicUrl || membershipRoutes.giftRegistryCreate">{{
-                shareState.publicUrl || "Unavailable"
+                shareState.publicUrl || "Unavailable until saved"
               }}</a>
             </p>
-            <p>Purchased items are {{ shareState.purchasedAutoMarking ? "automatically marked" : "not yet tracked" }}.</p>
+            <p>Purchased item updates are reserved for the later order callback phase.</p>
+            <p v-if="saveMessage">{{ saveMessage }}</p>
           </div>
-          <a class="membership-primary-link" :href="membershipRoutes.giftRegistryManage">Review Registry</a>
+          <button class="membership-primary-link" type="button" :disabled="saveState === 'saving'" @click="createRegistry">
+            {{ saveState === "saving" ? "Saving" : "Create Registry" }}
+          </button>
         </section>
       </div>
     </section>

@@ -268,6 +268,10 @@ watch(() => props.authVersion, loadProfile);
               </span>
             </dd>
           </div>
+          <div v-if="profile?.tradeId">
+            <dt>{{ t("auth.fields.tradeId") }}</dt>
+            <dd>{{ profile.tradeId }}</dd>
+          </div>
         </dl>
         <p>{{ t("membership.account.profile.identityIntro") }}</p>
         <a :href="membershipRoutes.accountMembership">{{ t("membership.account.profile.reviewMembership") }}</a>

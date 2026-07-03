@@ -27,6 +27,7 @@ export const addLocalCartItem = (items, product, quantity = 1) => {
     ...items,
     {
       id: product.id,
+      spuId: product.spuId || product.id,
       skuId,
       cartId: product.cartId,
       name: product.name,
@@ -39,6 +40,7 @@ export const addLocalCartItem = (items, product, quantity = 1) => {
       productType: product.productType || product.detailConfig?.productType || "",
       quantity: nextQuantity,
       source: product.source || "local",
+      registryContext: product.registryContext,
     },
   ];
 };

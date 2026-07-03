@@ -84,13 +84,29 @@ describe("launch readiness gate", () => {
       "--smoke-env-file=.env.launch-smoke",
       "--include-live-business-smoke",
       "--include-order-live-smoke",
+      "--include-real-account-smoke",
     ]);
     const steps = buildLaunchReadinessSteps(options);
     const liveStep = steps.find((step) => step.name === "live-business-smoke");
     const orderStep = steps.find((step) => step.name === "order-live-smoke");
+    const realAccountStep = steps.find((step) => step.name === "real-account-smoke");
 
+    expect(steps.map((step) => step.name)).toEqual(
+      expect.arrayContaining(["launch-smoke-env", "live-business-smoke", "order-live-smoke", "real-account-smoke"]),
+    );
+    expect(steps.findIndex((step) => step.name === "launch-smoke-env")).toBeLessThan(
+      steps.findIndex((step) => step.name === "live-business-smoke"),
+    );
+    expect(steps.find((step) => step.name === "launch-smoke-env")?.args).toEqual([
+      "run",
+      "verify:launch-smoke-env",
+      "--",
+      "--env-file",
+      ".env.launch-smoke",
+    ]);
     expect(liveStep.args).toEqual(["run", "test:smoke:live-business", "--", "--env-file", ".env.launch-smoke"]);
     expect(orderStep.args).toEqual(["run", "test:smoke:order-live", "--", "--env-file", ".env.launch-smoke"]);
+    expect(realAccountStep.args).toEqual(["run", "test:smoke:real-account", "--", "--env-file", ".env.launch-smoke"]);
   });
 
   it("can include the order live smoke gate with the selected env file", () => {
@@ -99,6 +115,25 @@ describe("launch readiness gate", () => {
 
     expect(orderStep.command).toBe("npm");
     expect(orderStep.args).toEqual(["run", "test:smoke:order-live", "--", "--env-file", ".env.production.example"]);
+  });
+
+  it("can include the real account smoke gate with optional order detail checking", () => {
+    const options = parseLaunchReadinessArgs([
+      "--env-file=.env.production.example",
+      "--include-real-account-smoke",
+      "--real-account-check-order",
+    ]);
+    const realAccountStep = buildLaunchReadinessSteps(options).find((step) => step.name === "real-account-smoke");
+
+    expect(realAccountStep.command).toBe("npm");
+    expect(realAccountStep.args).toEqual([
+      "run",
+      "test:smoke:real-account",
+      "--",
+      "--env-file",
+      ".env.production.example",
+      "--check-order",
+    ]);
   });
 
   it("can include admin and backend launch gates from the monorepo workspace", () => {

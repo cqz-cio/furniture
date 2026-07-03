@@ -238,7 +238,8 @@ public interface TradeOrderConvert {
                 continue;
             }
             reqBO.getItems().add(new TradePriceCalculateReqBO.Item().setSkuId(cart.getSkuId()).setCount(cart.getCount())
-                    .setCartId(item.getCartId()).setSelected(true)); // true 的原因，下单一定选中
+                    .setCartId(item.getCartId()).setRegistryId(cart.getRegistryId()).setRegistryItemId(cart.getRegistryItemId())
+                    .setSelected(true)); // true 的原因，下单一定选中
         }
         return reqBO;
     }

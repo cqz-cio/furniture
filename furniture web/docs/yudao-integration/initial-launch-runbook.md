@@ -19,19 +19,19 @@ Create the launch evidence bundle:
 
 ```powershell
 cd "D:\code\furniture web"
-npm.cmd run create:launch-evidence -- --launch-env-file .env.production --launch-smoke-env-file .env.launch-smoke --backend-env-file .env.backend-production --base-url https://shop.example.com --image-tag oakved-storefront:launch
+npm.cmd run create:launch-evidence -- --launch-env-file .env.production --launch-smoke-env-file .env.launch-smoke --backend-env-file .env.backend-production --base-url https://shop.oakvedhome.com --image-tag oakved-storefront:launch
 ```
 
 This creates `launch-manifest.json`, a README, and placeholder files for each required command output under `launch-evidence/<timestamp>/`.
 
-Do not proceed if the launch commit is not frozen or if database backup evidence is missing.
+Use the actual reachable production storefront URL for `--base-url`; the evidence generator rejects missing, relative, `.example`, and `example.com` documentation URLs. Do not proceed if the launch commit is not frozen or if database backup evidence is missing.
 
 ## 2. Prepare Production Configuration
 
 Create `D:\code\furniture web\.env.production` from `.env.production.example`, then set real values:
 
 ```text
-VITE_YUDAO_APP_API_BASE=https://api.example.com/app-api
+VITE_YUDAO_APP_API_BASE=https://api.oakvedhome.com/app-api
 VITE_YUDAO_APP_TENANT_ID=121
 VITE_YUDAO_US_DEFAULT_AREA_ID=100200
 VITE_YUDAO_PAY_CHANNEL_CODE=<real-yudao-pay-channel-code>
@@ -47,7 +47,7 @@ cd "D:\code\furniture web"
 npm.cmd run verify:production-env -- --env-file .env.production
 ```
 
-Expected result: `Production env check passed: .env.production`.
+Expected result: `Production env check passed: .env.production`. The storefront App API base must be a reachable production URL, not localhost and not a `.example` or `example.com` documentation domain.
 
 Do not proceed if the production env file points to localhost, exposes the auth token panel, or lacks the payment channel code.
 
@@ -55,16 +55,16 @@ Create `D:\code\furniture web\.env.backend-production` from `.env.backend-produc
 
 ```text
 SPRING_PROFILES_ACTIVE=prod
-YUDAO_DB_URL=jdbc:mysql://mysql.example.com:3306/oakved?useSSL=true&serverTimezone=Asia/Shanghai
+YUDAO_DB_URL=jdbc:mysql://mysql.oakvedhome.com:3306/oakved?useSSL=true&serverTimezone=Asia/Shanghai
 YUDAO_DB_USERNAME=<real-backend-db-user>
 YUDAO_DB_PASSWORD=<real-backend-db-password>
-YUDAO_REDIS_HOST=redis.example.com
+YUDAO_REDIS_HOST=redis.oakvedhome.com
 YUDAO_REDIS_PORT=6379
-YUDAO_ADMIN_UI_URL=https://admin.example.com
-YUDAO_APP_UI_URL=https://shop.example.com
-YUDAO_PAY_ORDER_NOTIFY_URL=https://api.example.com/admin-api/pay/notify/order
-YUDAO_PAY_REFUND_NOTIFY_URL=https://api.example.com/admin-api/pay/notify/refund
-YUDAO_PAY_TRANSFER_NOTIFY_URL=https://api.example.com/admin-api/pay/notify/transfer
+YUDAO_ADMIN_UI_URL=https://admin.oakvedhome.com
+YUDAO_APP_UI_URL=https://shop.oakvedhome.com
+YUDAO_PAY_ORDER_NOTIFY_URL=https://api.oakvedhome.com/admin-api/pay/notify/order
+YUDAO_PAY_REFUND_NOTIFY_URL=https://api.oakvedhome.com/admin-api/pay/notify/refund
+YUDAO_PAY_TRANSFER_NOTIFY_URL=https://api.oakvedhome.com/admin-api/pay/notify/transfer
 YUDAO_GOOGLE_ADDRESS_VALIDATION_API_KEY=<real-google-address-validation-key>
 YUDAO_SECURITY_MOCK_ENABLE=false
 ```
@@ -76,9 +76,9 @@ cd "D:\code\furniture web"
 npm.cmd run verify:backend-production-env -- --env-file .env.backend-production
 ```
 
-Expected result: `Backend production env check passed: .env.backend-production`.
+Expected result: `Backend production env check passed: .env.backend-production`. Backend DB, Redis, Admin/App UI, and pay notify callback values must be reachable production values, not localhost and not `.example` or `example.com` documentation domains.
 
-Do not proceed if `SPRING_PROFILES_ACTIVE` is not `prod`, if database or Redis points to localhost, if the database user is `root`, if the password is the default development password, if payment callbacks are not HTTPS, or if mock login is enabled.
+Do not proceed if `SPRING_PROFILES_ACTIVE` is not `prod`, if database or Redis points to localhost or a documentation/example domain, if the database user is `root`, if the password is the default development password, if payment callbacks are not HTTPS, or if mock login is enabled.
 
 Validate the checked-in backend production profile before packaging:
 
@@ -95,12 +95,12 @@ Validate that the storefront env, smoke env, backend storefront URL, and payment
 
 ```powershell
 cd "D:\code\furniture web"
-npm.cmd run verify:launch-env-alignment -- --env-file .env.production --smoke-env-file .env.launch-smoke --backend-env-file .env.backend-production --base-url https://shop.example.com
+npm.cmd run verify:launch-env-alignment -- --env-file .env.production --smoke-env-file .env.launch-smoke --backend-env-file .env.backend-production --base-url https://shop.oakvedhome.com
 ```
 
-Expected result: `Launch env alignment check passed.`.
+Expected result: `Launch env alignment check passed.`. This gate must fail if the environment is merely internally aligned while still using `.example` or `example.com` documentation domains.
 
-Do not proceed if the smoke runner points to a different API base than the storefront build, if tenant/payment channel values differ, if the backend app URL differs from the public storefront URL, or if payment notify URLs point to another API origin.
+Do not proceed if the smoke runner or real-account smoke points to a different API base than the storefront build, if tenant/payment channel values differ, if the backend app URL differs from the public storefront URL, or if payment notify URLs point to another API origin.
 
 ## 3. Apply Database Migrations
 
@@ -110,6 +110,10 @@ Apply these backend SQL migrations to the target database before deploying the f
 D:\code\yudao...yudao-cloud\sql\mysql\product-favorite-sku-wishlist.sql
 D:\code\yudao...yudao-cloud\sql\mysql\trade-order-address-verification.sql
 D:\code\yudao...yudao-cloud\sql\mysql\member-address-address-verification.sql
+D:\code\yudao...yudao-cloud\sql\mysql\member-trade-application.sql
+D:\code\yudao...yudao-cloud\sql\mysql\member-membership.sql
+D:\code\yudao...yudao-cloud\sql\mysql\member-gift-registry.sql
+D:\code\yudao...yudao-cloud\sql\mysql\trade-gift-registry-context.sql
 ```
 
 Migration filenames that must be present in the launch evidence:
@@ -118,6 +122,10 @@ Migration filenames that must be present in the launch evidence:
 product-favorite-sku-wishlist.sql
 trade-order-address-verification.sql
 member-address-address-verification.sql
+member-trade-application.sql
+member-membership.sql
+member-gift-registry.sql
+trade-gift-registry-context.sql
 ```
 
 After applying them, run the local migration gate:
@@ -127,7 +135,7 @@ cd "D:\code\furniture web"
 npm.cmd run verify:db-migrations
 ```
 
-Expected result: `Database migration check passed: 3 file(s)`.
+Expected result: `Database migration check passed: 7 file(s)`.
 
 Do not proceed if any migration was skipped, manually edited in production, or applied to the wrong database.
 
@@ -137,7 +145,7 @@ Run the automated launch gate with database, admin, and backend checks:
 
 ```powershell
 cd "D:\code\furniture web"
-npm.cmd run verify:launch-readiness -- --env-file .env.production --include-db-migrations --include-backend-prod-config --include-backend-prod-env --backend-env-file .env.backend-production --include-launch-env-alignment --base-url https://shop.example.com --include-admin-check --include-admin-build --include-backend-build
+npm.cmd run verify:launch-readiness -- --env-file .env.production --include-db-migrations --include-backend-prod-config --include-backend-prod-env --backend-env-file .env.backend-production --include-launch-env-alignment --base-url https://shop.oakvedhome.com --include-admin-check --include-admin-build --include-backend-build
 ```
 
 This command covers:
@@ -165,7 +173,7 @@ Use a real Yudao App user token from the target environment. The user must own t
 Create `D:\code\furniture web\.env.launch-smoke` from `.env.launch-smoke.example`, then set real values:
 
 ```text
-YUDAO_SMOKE_BASE_URL=https://api.example.com/app-api
+YUDAO_SMOKE_BASE_URL=https://api.oakvedhome.com/app-api
 YUDAO_SMOKE_TENANT_ID=121
 YUDAO_SMOKE_TOKEN=<real-app-user-token>
 YUDAO_ORDER_SMOKE_SKU_ID=<real-in-stock-sku-id>
@@ -173,8 +181,28 @@ YUDAO_ORDER_SMOKE_CART_ID=<real-cart-row-id-for-that-user>
 YUDAO_ORDER_SMOKE_ADDRESS_ID=<real-saved-address-id-for-that-user>
 YUDAO_ORDER_SMOKE_COUNT=1
 YUDAO_ORDER_SMOKE_PAY_CHANNEL_CODE=<real-yudao-pay-channel-code>
-YUDAO_ORDER_SMOKE_RETURN_ORIGIN=https://shop.example.com
+YUDAO_ORDER_SMOKE_RETURN_ORIGIN=https://shop.oakvedhome.com
 YUDAO_ORDER_SMOKE_CREATE_ORDER=false
+YUDAO_REAL_ACCOUNT_SMOKE_BASE_URL=https://api.oakvedhome.com/app-api
+YUDAO_REAL_ACCOUNT_SMOKE_TENANT_ID=121
+YUDAO_REAL_ACCOUNT_SMOKE_TOKEN=<real-app-user-token>
+YUDAO_REAL_ACCOUNT_SMOKE_SPU_ID=<real-spu-id-with-sku>
+YUDAO_REAL_ACCOUNT_SMOKE_ADDRESS_ID=<real-saved-address-id-for-token-owner>
+YUDAO_REAL_ACCOUNT_SMOKE_WISHLIST_SPU_ID=<real-wishlist-spu-id-for-token-owner>
+YUDAO_REAL_ACCOUNT_SMOKE_WISHLIST_SKU_ID=<real-wishlist-sku-id-for-token-owner>
+YUDAO_REAL_ACCOUNT_SMOKE_MEMBERSHIP_STATUS=<real-membership-status-for-token-owner>
+YUDAO_REAL_ACCOUNT_SMOKE_MEMBERSHIP_PLAN_CODE=<real-membership-plan-code-for-token-owner>
+YUDAO_REAL_ACCOUNT_SMOKE_GIFT_REGISTRY_ITEM_SPU_ID=<real-registry-item-spu-id-for-token-owner>
+YUDAO_REAL_ACCOUNT_SMOKE_GIFT_REGISTRY_ITEM_SKU_ID=<real-registry-item-sku-id-for-token-owner>
+YUDAO_REAL_ACCOUNT_SMOKE_ORDER_ID=<real-order-id-for-token-owner>
+YUDAO_REAL_ACCOUNT_SMOKE_USER_ID=<real-user-id-for-token-owner>
+YUDAO_REAL_ACCOUNT_SMOKE_GIFT_REGISTRY_PUBLIC_CODE=<real-gift-registry-public-code-for-token-owner>
+YUDAO_REAL_ACCOUNT_SMOKE_TRADE_ID=<real-trade-id-for-token-owner>
+YUDAO_REAL_ACCOUNT_SMOKE_TRADE_EMAIL=<real-trade-application-email-for-token-owner>
+YUDAO_REAL_ACCOUNT_SMOKE_CHECK_ORDER=true
+YUDAO_REAL_ACCOUNT_ADMIN_BASE_URL=https://api.oakvedhome.com/admin-api
+YUDAO_REAL_ACCOUNT_ADMIN_TENANT_ID=121
+YUDAO_REAL_ACCOUNT_ADMIN_TOKEN=<real-admin-user-token>
 ```
 
 Validate the smoke env file:
@@ -184,13 +212,14 @@ cd "D:\code\furniture web"
 npm.cmd run verify:launch-smoke-env -- --env-file .env.launch-smoke
 ```
 
-Expected result: `Launch smoke env check passed: .env.launch-smoke`.
+Expected result: `Launch smoke env check passed: .env.launch-smoke`. Real smoke URLs must not use `.example` or `example.com` documentation domains, and the Trade email must not use `example.com`.
+`YUDAO_REAL_ACCOUNT_SMOKE_CHECK_ORDER` must be explicitly set to `true` or `false`; keep it `true` for final launch evidence and run the standalone smoke with `--check-order`.
 
 Run the live business smoke through the unified gate:
 
 ```powershell
 cd "D:\code\furniture web"
-npm.cmd run verify:launch-readiness -- --env-file .env.production --smoke-env-file .env.launch-smoke --include-db-migrations --include-live-business-smoke --include-order-live-smoke
+npm.cmd run verify:launch-readiness -- --env-file .env.production --smoke-env-file .env.launch-smoke --include-db-migrations --include-live-business-smoke --include-order-live-smoke --include-real-account-smoke --real-account-check-order
 ```
 
 This performs:
@@ -200,6 +229,8 @@ This performs:
 - wishlist count update
 - wishlist delete
 - order settlement only
+- real account module readiness across product, cart, checkout, orders, billing, profile, address book, wishlist, membership, Gift Registry, and Trade Program
+- admin-api visibility for the same seeded Membership, Gift Registry list/detail, and Trade Application records by user id, registry public code, registry item SPU/SKU, trade id, and Trade application email
 
 Expected result: `Launch readiness check passed.`
 
@@ -212,7 +243,7 @@ npm.cmd run test:smoke:order-live -- --env-file .env.launch-smoke --create-order
 
 Use `--create-order` only when the team is ready to create a real order record. Record the returned order id and pay order id.
 
-Do not proceed if wishlist smoke leaves test rows behind, if order settlement does not reflect the backend price, or if the smoke user cannot see the created order in Yudao.
+Do not proceed if wishlist smoke leaves test rows behind, if order settlement does not reflect the backend price, if the smoke user cannot see the created order in Yudao, or if the real-account smoke reports any module as `partial` or `blocked`.
 
 ## 6. Build And Publish The Storefront Image
 
@@ -226,8 +257,8 @@ docker build -t oakved-storefront:launch .
 If your deployment tags images by commit SHA, also tag the image:
 
 ```powershell
-docker tag oakved-storefront:launch registry.example.com/oakved-storefront:<commit-sha>
-docker push registry.example.com/oakved-storefront:<commit-sha>
+docker tag oakved-storefront:launch registry.oakvedhome.com/oakved-storefront:<commit-sha>
+docker push registry.oakvedhome.com/oakved-storefront:<commit-sha>
 ```
 
 Record the image tag:
@@ -246,7 +277,7 @@ Run the automated deployed-site health check:
 
 ```powershell
 cd "D:\code\furniture web"
-npm.cmd run test:deploy:health -- --base-url https://shop.example.com
+npm.cmd run test:deploy:health -- --base-url https://shop.oakvedhome.com
 ```
 
 Expected result: `Post-deploy health check passed`.
@@ -293,17 +324,31 @@ Do not proceed with another launch attempt until the failing gate has a reproduc
 Before declaring the initial launch ready, the launch folder must contain:
 
 - `launch-manifest.json`
+- `launch-manifest.json` `baseUrl` must be the reachable production storefront URL, not `.example` or `example.com`
 - frozen commit SHA
 - database backup record
 - output from `npm.cmd run verify:production-env -- --env-file .env.production`
 - output from `npm.cmd run verify:backend-production-env -- --env-file .env.backend-production`
-- output from `npm.cmd run verify:launch-env-alignment -- --env-file .env.production --smoke-env-file .env.launch-smoke --backend-env-file .env.backend-production --base-url https://shop.example.com`
+- output from `npm.cmd run verify:launch-env-alignment -- --env-file .env.production --smoke-env-file .env.launch-smoke --backend-env-file .env.backend-production --base-url https://shop.oakvedhome.com`
 - output from `npm.cmd run verify:db-migrations`
 - output from `npm.cmd run verify:backend-production-config`
-- output from `npm.cmd run verify:launch-readiness -- --env-file .env.production --include-db-migrations --include-backend-prod-config --include-backend-prod-env --backend-env-file .env.backend-production --include-launch-env-alignment --base-url https://shop.example.com --include-admin-check --include-admin-build --include-backend-build`
+- output from `npm.cmd run verify:launch-readiness -- --env-file .env.production --include-db-migrations --include-backend-prod-config --include-backend-prod-env --backend-env-file .env.backend-production --include-launch-env-alignment --base-url https://shop.oakvedhome.com --include-admin-check --include-admin-build --include-backend-build`
 - output from the live business smoke command with `--include-live-business-smoke`
 - output from the order smoke command with `--include-order-live-smoke`
-- output from `npm.cmd run test:deploy:health -- --base-url https://shop.example.com`
+- output from the standalone real account smoke command: `npm.cmd run test:smoke:real-account -- --env-file .env.launch-smoke --check-order`
+- `launch-manifest.json` `requiredEvidenceFiles` must include `real-account-smoke.txt`, and its `real-account-smoke` command must include `--check-order`
+- `launch-manifest.json` every command `outputFile` must be listed in `requiredEvidenceFiles`
+- `launch-manifest.json` `envFile`, `smokeEnvFile`, `backendEnvFile`, and `baseUrl` must match the final `audit:initial-launch-readiness` arguments
+- `launch-manifest.json` commands must not include `--allow-placeholders`; that flag is only for validating checked-in example env files, not final launch evidence
+- `real-account-smoke.txt` must include the `==> ...` step logs for product, cart, order page, profile, address, wishlist, membership, Gift Registry, Admin membership, Admin Gift Registry list/detail, and Admin Trade checks
+- `real-account-smoke.txt` must include the JSON module snapshot with every module set to `ready`
+- `real-account-smoke.txt` must include `==> order-detail` when the standalone command uses `--check-order`
+- `real-account-smoke.txt` must include the `seededAccount` JSON block with positive-integer `userId`, `cartId`, `skuId`, `addressId`, `orderId`, `giftRegistryItemSpuId`, `giftRegistryItemSkuId`, plus `giftRegistryPublicCode`, `tradeId`, `membershipStatus`, `membershipPlanCode`, and a valid non-`example.com` `tradeEmail`; these identifiers must be inside `seededAccount`, not only elsewhere in the log
+- The `seededAccount` values in `real-account-smoke.txt` must match the corresponding `.env.launch-smoke` `YUDAO_REAL_ACCOUNT_SMOKE_*` values for user, membership, registry, Trade, address, and order data, with cart/SKU falling back to `YUDAO_ORDER_SMOKE_CART_ID` / `YUDAO_ORDER_SMOKE_SKU_ID` when dedicated real-account cart/SKU values are not set
+- `.env.launch-smoke` `YUDAO_REAL_ACCOUNT_SMOKE_CHECK_ORDER` must be `true` for the final `audit:initial-launch-readiness` gate
+- `real-account-smoke.txt` `seededAccount` values must be real seeded account values, not placeholders such as `<real-...>` or `replace-me`
+- `real-account-smoke.txt` must not include `Optional readiness step skipped`, `Real account readiness failed`, `"partial"`, `"blocked"`, or mixed output from a previous failed run
+- output from `npm.cmd run test:deploy:health -- --base-url https://shop.oakvedhome.com`
 - image tag and image digest
 - post-deploy browser screenshots
 - smoke order id and pay order id if `--create-order` was used
@@ -321,7 +366,7 @@ Finally, run the full initial launch readiness audit:
 
 ```powershell
 cd "D:\code\furniture web"
-npm.cmd run audit:initial-launch-readiness -- --env-file .env.production --smoke-env-file .env.launch-smoke --backend-env-file .env.backend-production --base-url https://shop.example.com --evidence-dir launch-evidence/<timestamp>
+npm.cmd run audit:initial-launch-readiness -- --env-file .env.production --smoke-env-file .env.launch-smoke --backend-env-file .env.backend-production --base-url https://shop.oakvedhome.com --evidence-dir launch-evidence/<timestamp>
 ```
 
 Expected result: `Initial launch readiness audit passed`. This is the local evidence gate for declaring the storefront ready for initial launch. If it fails, use the reported blockers as the remaining launch checklist.

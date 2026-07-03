@@ -48,6 +48,30 @@ const isLocalish = (value) => {
   return /(^|[/:@])(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[?::1\]?)(?=[:/?#]|$)/i.test(normalized);
 };
 
+const hostOf = (value) => {
+  const normalized = String(value || "").trim();
+  if (!normalized) return "";
+
+  try {
+    const url = new URL(normalized);
+    if (url.hostname) return url.hostname.toLowerCase();
+  } catch {
+    // Some backend values, such as JDBC URLs, are not parseable as standard URLs.
+  }
+
+  const authority = normalized.match(/\/\/([^/?#]+)/)?.[1] || normalized;
+  const hostWithPort = authority.split("@").pop() || "";
+  if (hostWithPort.startsWith("[")) {
+    return hostWithPort.slice(1, hostWithPort.indexOf("]")).toLowerCase();
+  }
+  return hostWithPort.split(/[/:?#]/)[0].toLowerCase();
+};
+
+const isDocumentationDomainHost = (value) => {
+  const hostname = hostOf(value);
+  return hostname === "example.com" || hostname.endsWith(".example.com") || hostname.endsWith(".example");
+};
+
 const isHttpsUrl = (value) => {
   try {
     const url = new URL(value);
@@ -107,6 +131,10 @@ export const validateBackendProductionEnv = (env, options = {}) => {
     errors.push("YUDAO_DB_URL must not point to localhost.");
   }
 
+  if (!options.allowPlaceholders && isDocumentationDomainHost(valueOf(env, "YUDAO_DB_URL"))) {
+    errors.push("YUDAO_DB_URL must not use a documentation/example domain.");
+  }
+
   if (valueOf(env, "YUDAO_DB_USERNAME").toLowerCase() === "root") {
     errors.push("YUDAO_DB_USERNAME must not be root.");
   }
@@ -123,9 +151,16 @@ export const validateBackendProductionEnv = (env, options = {}) => {
     errors.push("YUDAO_REDIS_PORT must be a valid TCP port.");
   }
 
+  if (!options.allowPlaceholders && isDocumentationDomainHost(valueOf(env, "YUDAO_REDIS_HOST"))) {
+    errors.push("YUDAO_REDIS_HOST must not use a documentation/example domain.");
+  }
+
   for (const key of ["YUDAO_ADMIN_UI_URL", "YUDAO_APP_UI_URL"]) {
     if (!shouldSkipPlaceholderFormat(env, key, options) && !isSafeHttpsUrl(valueOf(env, key))) {
       errors.push(`${key} must be an absolute https URL that is not localhost.`);
+    }
+    if (!options.allowPlaceholders && isDocumentationDomainHost(valueOf(env, key))) {
+      errors.push(`${key} must not use a documentation/example domain.`);
     }
   }
 
@@ -133,6 +168,9 @@ export const validateBackendProductionEnv = (env, options = {}) => {
     if (!valueOf(env, key)) continue;
     if (!shouldSkipPlaceholderFormat(env, key, options) && !isHttpsUrl(valueOf(env, key))) {
       errors.push(`${key} must be an absolute https URL.`);
+    }
+    if (!options.allowPlaceholders && isDocumentationDomainHost(valueOf(env, key))) {
+      errors.push(`${key} must not use a documentation/example domain.`);
     }
   }
 

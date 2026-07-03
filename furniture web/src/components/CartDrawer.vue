@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, watch } from "vue";
 import ProductImage from "./ProductImage.vue";
 import RhFooter from "./RhFooter.vue";
+import { canUseYudaoCheckout, getCheckoutPresentation } from "../services/checkoutSession.js";
 import { getCartTotals, normalizeCartQuantity } from "../services/localCart.js";
 import { getMembershipCartNotice, getMembershipPricing, isMembershipItem } from "../services/membershipCart.js";
 import { useI18n } from "../i18n.js";
@@ -39,6 +40,12 @@ const totals = computed(() => getCartTotals(props.items));
 const membershipPricing = computed(() => getMembershipPricing(props.items));
 const membershipNotice = computed(() => getMembershipCartNotice(props.items));
 const hasRemoteItems = computed(() => props.items.some((item) => item.source === "yudao"));
+const checkoutPresentation = computed(() =>
+  getCheckoutPresentation(props.items.length && canUseYudaoCheckout(props.items) ? "yudao" : "local-preview"),
+);
+const cartCheckoutPreviewMessage = computed(() =>
+  props.items.length && !canUseYudaoCheckout(props.items) ? checkoutPresentation.value.message : "",
+);
 const cartPrimaryNavItems = [
   { key: "navigation.primary.living", href: "/sofas-plp" },
   { key: "navigation.primary.dining", href: "/sofas-plp" },
@@ -290,7 +297,12 @@ onBeforeUnmount(() => setBodyCartState(false));
                 <span>Total (excluding sales tax)</span>
                 <strong>{{ money(displaySummaryTotal) }}</strong>
               </div>
-              <button type="button" :disabled="items.length === 0" @click="emit('checkout')">Checkout</button>
+              <small v-if="cartCheckoutPreviewMessage" class="cart-checkout-preview-note">
+                {{ cartCheckoutPreviewMessage }}
+              </small>
+              <button type="button" :disabled="items.length === 0" @click="emit('checkout')">
+                {{ cartCheckoutPreviewMessage ? checkoutPresentation.cta : "Checkout" }}
+              </button>
             </footer>
           </section>
 

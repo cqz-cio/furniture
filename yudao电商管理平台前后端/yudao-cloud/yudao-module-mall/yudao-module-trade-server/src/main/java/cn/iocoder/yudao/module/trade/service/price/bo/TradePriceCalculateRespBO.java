@@ -165,6 +165,14 @@ public class TradePriceCalculateRespBO {
          */
         private Long cartId;
         /**
+         * Gift Registry 编号
+         */
+        private Long registryId;
+        /**
+         * Gift Registry 商品编号
+         */
+        private Long registryItemId;
+        /**
          * 是否选中
          */
         private Boolean selected;

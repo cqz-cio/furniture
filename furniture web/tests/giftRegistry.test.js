@@ -4,6 +4,8 @@ import {
   createGiftRegistryDraft,
   getGiftRegistrySteps,
   getRegistryShareState,
+  registryItemToCartProduct,
+  registryProductToItemPayload,
   normalizeRegistryAddress,
   updateGiftRegistryDraft,
 } from "../src/services/giftRegistry.js";
@@ -47,7 +49,7 @@ describe("gift registry model", () => {
       privacy: { visibility: REGISTRY_VISIBILITY.inviteOnly },
     });
 
-    expect(draft.event).toEqual({ type: "Housewarming", date: "2026-09-15" });
+    expect(draft.event).toEqual({ type: "Housewarming", date: "2026-09-15", location: "" });
     expect(draft.privacy.visibility).toBe("invite_only");
     expect(draft.registrants.primaryName).toBe("");
   });
@@ -79,7 +81,55 @@ describe("gift registry model", () => {
     expect(getRegistryShareState(draft)).toMatchObject({
       ready: true,
       publicUrl: "/gift-registry/registry-avery-2026",
-      purchasedAutoMarking: true,
+      purchasedAutoMarking: false,
+    });
+  });
+
+  it("maps real products and registry items into gift registry purchase payloads", () => {
+    expect(
+      registryProductToItemPayload(
+        {
+          id: 1001,
+          spuId: 1001,
+          skuId: 2001,
+          name: "Walnut Sofa",
+          cover: "/sofa.jpg",
+          price: 1299,
+        },
+        { registryId: 88, quantityRequested: 2, note: "Most wanted" },
+      ),
+    ).toEqual({
+      registryId: 88,
+      spuId: 1001,
+      skuId: 2001,
+      productName: "Walnut Sofa",
+      picUrl: "/sofa.jpg",
+      price: 1299,
+      quantityRequested: 2,
+      priority: "normal",
+      note: "Most wanted",
+    });
+
+    expect(
+      registryItemToCartProduct({
+        id: 501,
+        registryId: 88,
+        spuId: 1001,
+        skuId: 2001,
+        productName: "Walnut Sofa",
+        picUrl: "/sofa.jpg",
+        price: 1299,
+      }),
+    ).toMatchObject({
+      id: 1001,
+      spuId: 1001,
+      skuId: 2001,
+      name: "Walnut Sofa",
+      source: "yudao",
+      registryContext: {
+        registryId: 88,
+        registryItemId: 501,
+      },
     });
   });
 });

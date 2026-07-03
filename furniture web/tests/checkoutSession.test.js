@@ -21,13 +21,14 @@ const readSource = (path) => readFileSync(new URL(path, import.meta.url), "utf8"
 
 describe("checkout session helpers", () => {
   const yudaoItems = [
-    { skuId: 11, cartId: 101, quantity: 2, price: 1200, source: "yudao", name: "Sofa" },
-    { skuId: 12, cartId: 102, quantity: 1, price: 400, source: "yudao", name: "Chair" },
+    { id: 1, spuId: 1, skuId: 11, cartId: 101, quantity: 2, price: 1200, source: "yudao", name: "Sofa" },
+    { id: 2, spuId: 2, skuId: 12, cartId: 102, quantity: 1, price: 400, source: "yudao", name: "Chair" },
   ];
 
   it("allows yudao checkout only when every item has a remote cart id", () => {
     expect(canUseYudaoCheckout(yudaoItems)).toBe(true);
     expect(canUseYudaoCheckout([{ ...yudaoItems[0], cartId: undefined }])).toBe(false);
+    expect(canUseYudaoCheckout([{ ...yudaoItems[0], id: undefined, spuId: undefined }])).toBe(false);
     expect(canUseYudaoCheckout([{ ...yudaoItems[0], source: "demo" }])).toBe(false);
   });
 
@@ -319,7 +320,7 @@ describe("checkout session helpers", () => {
       canSubmit: false,
     });
     expect(getCheckoutPresentation("local-preview")).toMatchObject({
-      message: "Review your Oakved selections before final account checkout is connected.",
+      message: "This bag contains preview-only items. Demo, local, or membership preview items are not persisted to Yudao and cannot create a live Yudao order.",
       cta: "Review Only",
       canSubmit: false,
     });

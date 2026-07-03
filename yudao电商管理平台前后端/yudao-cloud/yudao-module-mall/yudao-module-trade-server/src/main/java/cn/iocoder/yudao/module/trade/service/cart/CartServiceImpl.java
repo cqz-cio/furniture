@@ -22,6 +22,7 @@ import static cn.iocoder.yudao.module.product.enums.ErrorCodeConstants.SKU_NOT_E
 import static cn.iocoder.yudao.module.product.enums.ErrorCodeConstants.SKU_STOCK_NOT_ENOUGH;
 import static cn.iocoder.yudao.module.trade.enums.ErrorCodeConstants.CARD_ITEM_NOT_FOUND;
 import static java.util.Collections.emptyList;
+import static java.util.Objects.nonNull;
 
 /**
  * 购物车 Service 实现类
@@ -45,7 +46,9 @@ public class CartServiceImpl implements CartService {
     @Override
     public Long addCart(Long userId, AppCartAddReqVO addReqVO) {
         // 查询 TradeCartDO
-        CartDO cart = cartMapper.selectByUserIdAndSkuId(userId, addReqVO.getSkuId());
+        CartDO cart = nonNull(addReqVO.getRegistryItemId())
+                ? cartMapper.selectByUserIdAndSkuIdAndRegistryItemId(userId, addReqVO.getSkuId(), addReqVO.getRegistryItemId())
+                : cartMapper.selectByUserIdAndSkuId(userId, addReqVO.getSkuId());
         // 校验 SKU
         Integer count = addReqVO.getCount();
         ProductSkuRespDTO sku = checkProductSku(addReqVO.getSkuId(), count);
@@ -53,12 +56,16 @@ public class CartServiceImpl implements CartService {
         // 情况一：存在，则进行数量更新
         if (cart != null) {
             cartMapper.updateById(new CartDO().setId(cart.getId()).setSelected(true)
-                    .setCount(cart.getCount() + count));
+                    .setCount(cart.getCount() + count)
+                    .setRegistryId(addReqVO.getRegistryId())
+                    .setRegistryItemId(addReqVO.getRegistryItemId()));
             return cart.getId();
             // 情况二：不存在，则进行插入
         } else {
             cart = new CartDO().setUserId(userId).setSelected(true)
-                    .setSpuId(sku.getSpuId()).setSkuId(sku.getId()).setCount(count);
+                    .setSpuId(sku.getSpuId()).setSkuId(sku.getId()).setCount(count)
+                    .setRegistryId(addReqVO.getRegistryId())
+                    .setRegistryItemId(addReqVO.getRegistryItemId());
             cartMapper.insert(cart);
         }
         return cart.getId();

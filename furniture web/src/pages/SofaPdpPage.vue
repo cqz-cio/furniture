@@ -2,13 +2,17 @@
 import { computed, onMounted, ref, watch } from "vue";
 import { demoProducts } from "../data/demoProducts.js";
 import { useI18n } from "../i18n.js";
+import { registryProductToItemPayload } from "../services/giftRegistry.js";
 import { buildProductDetailModel } from "../services/productDetailModel.js";
+import { resolveProductBackendFailure } from "../services/productBackendFallback.js";
 import {
   isWishlistItemSaved,
   loadWishlistIdentityState,
   withWishlistItemSaved,
 } from "../services/wishlistState.js";
+import { addYudaoGiftRegistryItem, getMyYudaoGiftRegistry } from "../services/yudaoGiftRegistryApi.js";
 import { getProductDetail } from "../services/yudaoProductApi.js";
+import { readYudaoToken } from "../services/yudaoRequest.js";
 
 const props = defineProps({
   authVersion: {
@@ -22,11 +26,19 @@ const { t } = useI18n();
 const product = ref(demoProducts[0]);
 const loading = ref(true);
 const source = ref("demo");
+const catalogError = ref(false);
 const quantity = ref(1);
 const wishlistIdentityKeys = ref(new Set());
+const wishlistStatusMessage = ref("");
+const registryStatusMessage = ref("");
+const registryBusy = ref(false);
 
 const productId = computed(() => new URLSearchParams(window.location.search).get("id"));
-const sourceLabel = computed(() => (source.value === "yudao" ? t("connectedCatalog") : t("offlineCatalog")));
+const sourceLabel = computed(() => {
+  if (source.value === "yudao") return t("connectedCatalog");
+  if (source.value === "error") return t("productList.backendUnavailable.eyebrow");
+  return t("offlineCatalog");
+});
 const money = (value) => `$${value.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 const activeGalleryIndex = ref(0);
 const detail = computed(() => buildProductDetailModel(product.value));
@@ -83,10 +95,42 @@ const handleAddToCart = (event) => {
 const loadProductWishlistState = async () => {
   const state = await loadWishlistIdentityState();
   wishlistIdentityKeys.value = state.keys;
+  wishlistStatusMessage.value = state.statusKey ? t(state.statusKey) : "";
 };
 const handleAddToWishlist = () => {
   wishlistIdentityKeys.value = withWishlistItemSaved(wishlistIdentityKeys.value, product.value);
   emit("add-to-wishlist", product.value);
+  wishlistStatusMessage.value = t("wishlist.saved");
+};
+const handleAddToRegistry = async () => {
+  registryStatusMessage.value = "";
+  if (source.value !== "yudao") {
+    registryStatusMessage.value = "Only connected Yudao products can be added to a gift registry.";
+    return;
+  }
+  if (!readYudaoToken()) {
+    registryStatusMessage.value = "Sign in before adding this item to your gift registry.";
+    return;
+  }
+  registryBusy.value = true;
+  try {
+    const registry = await getMyYudaoGiftRegistry();
+    if (!registry?.id) {
+      registryStatusMessage.value = "Create a gift registry before adding products.";
+      return;
+    }
+    await addYudaoGiftRegistryItem(
+      registryProductToItemPayload(product.value, {
+        registryId: registry.id,
+        quantityRequested: normalizedPurchaseQuantity.value || 1,
+      }),
+    );
+    registryStatusMessage.value = "Added to your gift registry.";
+  } catch (error) {
+    registryStatusMessage.value = error?.message || "This item could not be added to your gift registry.";
+  } finally {
+    registryBusy.value = false;
+  }
 };
 
 watch(detail, applyProductSeo);
@@ -103,9 +147,12 @@ onMounted(async () => {
   try {
     product.value = await getProductDetail(id);
     source.value = "yudao";
+    catalogError.value = false;
   } catch {
-    product.value = demoProducts.find((item) => String(item.id) === String(id)) || demoProducts[0];
-    source.value = "demo";
+    const failure = resolveProductBackendFailure({ demoProducts });
+    product.value = failure.products.find((item) => String(item.id) === String(id)) || demoProducts[0];
+    source.value = failure.source;
+    catalogError.value = failure.error;
   } finally {
     activeGalleryIndex.value = 0;
     loading.value = false;
@@ -117,7 +164,13 @@ onMounted(async () => {
   <section class="product-detail-page">
     <p v-if="loading" class="product-loading">{{ t("loadingProducts") }}</p>
 
-    <div class="product-detail-grid">
+    <div v-if="!loading && catalogError" class="product-list-empty">
+      <p class="eyebrow">{{ t("productList.backendUnavailable.eyebrow") }}</p>
+      <h2>{{ t("productList.backendUnavailable.title") }}</h2>
+      <p>{{ t("productList.backendUnavailable.description") }}</p>
+    </div>
+
+    <div v-else class="product-detail-grid">
       <div class="product-detail-media">
         <figure
           class="product-gallery-main"
@@ -208,6 +261,9 @@ onMounted(async () => {
           <button type="button" :aria-pressed="isCurrentProductSaved" @click="handleAddToWishlist">
             {{ t(isCurrentProductSaved ? "wishlist.saved" : "wishlist.save") }}
           </button>
+          <button class="product-registry-button" type="button" :disabled="registryBusy" @click="handleAddToRegistry">
+            {{ registryBusy ? t("common.working") : "Add to Gift Registry" }}
+          </button>
         </div>
         <nav class="product-related-links" aria-label="Related product options">
           <a v-for="link in detail.relatedLinks" :key="link.label" :href="link.href">{{ link.label }}</a>
@@ -278,7 +334,12 @@ onMounted(async () => {
           <button class="product-wishlist-button" type="button" :aria-pressed="isCurrentProductSaved" @click="handleAddToWishlist">
             {{ t(isCurrentProductSaved ? "wishlist.saved" : "wishlist.save") }}
           </button>
+          <button class="product-registry-button" type="button" :disabled="registryBusy" @click="handleAddToRegistry">
+            {{ registryBusy ? t("common.working") : "Add to Gift Registry" }}
+          </button>
         </div>
+        <p v-if="wishlistStatusMessage" class="product-registry-status" role="status">{{ wishlistStatusMessage }}</p>
+        <p v-if="registryStatusMessage" class="product-registry-status" role="status">{{ registryStatusMessage }}</p>
 
         <section class="product-accordion-list" aria-label="Product details">
           <details v-for="(item, index) in detail.accordions" :key="item.title" :open="index === 0">

@@ -5,7 +5,12 @@ export const addCartItem = (skuId, count = 1, options = {}) =>
   requestYudao("/trade/cart/add", {
     ...options,
     method: "POST",
-    body: JSON.stringify({ skuId, count }),
+    body: JSON.stringify({
+      skuId,
+      count,
+      ...(options.registryContext?.registryId ? { registryId: options.registryContext.registryId } : {}),
+      ...(options.registryContext?.registryItemId ? { registryItemId: options.registryContext.registryItemId } : {}),
+    }),
   });
 
 export const updateCartItemCount = (cartId, count, options = {}) =>

@@ -72,4 +72,11 @@ public interface ErrorCodeConstants {
     ErrorCode TRADE_APPLICATION_REVIEWED = new ErrorCode(1_004_013_002, "Trade application has already been reviewed");
     ErrorCode TRADE_APPLICATION_USER_NOT_EXISTS = new ErrorCode(1_004_013_003, "Trade application email is not registered");
 
+    //========== Membership 1-004-014-000 ==========
+    ErrorCode MEMBERSHIP_NOT_EXISTS = new ErrorCode(1_004_014_000, "Membership does not exist");
+
+    //========== Gift Registry 1-004-015-000 ==========
+    ErrorCode GIFT_REGISTRY_NOT_EXISTS = new ErrorCode(1_004_015_000, "Gift registry does not exist");
+    ErrorCode GIFT_REGISTRY_ACCESS_DENIED = new ErrorCode(1_004_015_001, "Gift registry access denied");
+
 }

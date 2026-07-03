@@ -5,6 +5,7 @@ import {
   getEmailBindingState,
   getMembershipEligibilityReview,
   getMembershipEligibilityItemsFromOrderItems,
+  getLiveMembershipAccountScenario,
   getMembershipBenefits,
   getMembershipGrowth,
   getMembershipStatusView,
@@ -92,5 +93,40 @@ describe("membership account model", () => {
       { name: "White Glove Delivery Service", category: "service", regularPrice: 299, memberPrice: 299 },
       { name: "Gift Card", category: "gift_card", regularPrice: 100, memberPrice: 100 },
     ]);
+  });
+
+  it("builds live membership savings and eligibility from real orders", () => {
+    const scenario = getLiveMembershipAccountScenario(
+      createMembershipProfile({ status: MEMBERSHIP_STATUSES.activeAnnual }),
+      [
+        {
+          id: 1001,
+          no: "SO1001",
+          createTime: "2026-07-01T10:00:00",
+          items: [
+            { name: "Cloud Sofa", price: 3000, regularPrice: 4000, count: 1 },
+            { name: "White Glove Delivery", price: 299, regularPrice: 299, category: "service" },
+          ],
+        },
+        {
+          id: 1002,
+          no: "SO1002",
+          createTime: "2026-07-02T10:00:00",
+          items: [{ name: "Dining Chair", price: 500, regularPrice: 700, count: 2 }],
+        },
+      ],
+    );
+
+    expect(scenario.membershipValue).toMatchObject({
+      annualSavings: "$1,400",
+      eligibleSpend: "$5,400",
+    });
+    expect(scenario.orders).toEqual([
+      { key: "liveOrder", id: "SO1001", label: "SO1001", date: "2026-07-01T10:00:00", savings: "$1,000" },
+      { key: "liveOrder", id: "SO1002", label: "SO1002", date: "2026-07-02T10:00:00", savings: "$400" },
+    ]);
+    expect(scenario.eligibilityItems).toHaveLength(3);
+    expect(scenario.hasActiveBenefits).toBe(true);
+    expect(scenario.emptyStateKey).toBe("");
   });
 });

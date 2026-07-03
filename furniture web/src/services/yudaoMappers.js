@@ -14,6 +14,7 @@ export const mapSpuToProduct = (spu) => {
 
   return {
     id: spu.id,
+    spuId: spu.id,
     skuId: sku.id || spu.skuId || spu.id,
     name: spu.name || "Untitled product",
     subtitle: spu.introduction || spu.keyword || "",
@@ -45,6 +46,13 @@ export const mapCartResponseToItems = (cartResponse) => {
       quantity: Number(row.count) || 1,
       selected: row.selected !== false,
       source: "yudao",
+      registryContext:
+        row.registryId || row.registryItemId
+          ? {
+              registryId: row.registryId,
+              registryItemId: row.registryItemId,
+            }
+          : undefined,
     };
   });
 };
@@ -96,6 +104,7 @@ export const mapMemberProfile = (profile = {}) => ({
   name: profile.name || "",
   email: profile.email || "",
   mobile: profile.mobile || "",
+  tradeId: String(profile.tradeId || "").trim(),
   areaId: profile.areaId,
   areaName: profile.areaName || "",
   sex: profile.sex,

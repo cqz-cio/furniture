@@ -43,6 +43,26 @@ describe("Yudao cart API module", () => {
     expect(JSON.parse(init.body)).toEqual({ skuId: 12345, count: 2 });
   });
 
+  it("carries gift registry context when adding registry gifts to the remote cart", async () => {
+    fetchMock.mockResolvedValueOnce(mockYudaoResponse(78));
+
+    await addCartItem(12345, 1, {
+      storage,
+      registryContext: {
+        registryId: 88,
+        registryItemId: 501,
+      },
+    });
+
+    const [, init] = fetchMock.mock.calls[0];
+    expect(JSON.parse(init.body)).toEqual({
+      skuId: 12345,
+      count: 1,
+      registryId: 88,
+      registryItemId: 501,
+    });
+  });
+
   it("maps remote valid and invalid cart rows into local cart items", async () => {
     fetchMock.mockResolvedValueOnce(
       mockYudaoResponse({
@@ -71,8 +91,8 @@ describe("Yudao cart API module", () => {
 
     expect(fetchMock.mock.calls[0][0]).toBe(`${API_BASE}/trade/cart/list`);
     expect(items).toMatchObject([
-      { cartId: 501, skuId: 20, name: "Linen sofa", quantity: 3, price: 1299, selected: true },
-      { cartId: 502, skuId: 21, name: "Oak chair", quantity: 1, price: 499, selected: false },
+      { cartId: 501, spuId: 10, skuId: 20, name: "Linen sofa", quantity: 3, price: 1299, selected: true },
+      { cartId: 502, spuId: 11, skuId: 21, name: "Oak chair", quantity: 1, price: 499, selected: false },
     ]);
   });
 });

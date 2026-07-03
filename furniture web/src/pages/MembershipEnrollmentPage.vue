@@ -1,10 +1,14 @@
 <script setup>
-import { ANNUAL_MEMBERSHIP_PRODUCT } from "../services/membershipCart.js";
+import { ref } from "vue";
 import { membershipRoutes } from "../services/membershipNavigation.js";
+import { readYudaoToken } from "../services/yudaoRequest.js";
+import { createYudaoMembershipCheckoutIntent } from "../services/yudaoMembershipApi.js";
 import { useI18n } from "../i18n.js";
 
-const emit = defineEmits(["add-to-cart"]);
 const { t } = useI18n();
+const statusMessageKey = ref("");
+const busy = ref(false);
+const checkoutHref = ref(`${membershipRoutes.checkoutAuth}?intent=membership`);
 
 const plans = [
   {
@@ -19,8 +23,22 @@ const plans = [
   },
 ];
 
-const addAnnualMembership = () => {
-  emit("add-to-cart", ANNUAL_MEMBERSHIP_PRODUCT, 1);
+const startMembershipCheckout = async () => {
+  statusMessageKey.value = "";
+  if (!readYudaoToken()) {
+    statusMessageKey.value = "membership.enrollment.signInRequired";
+    return;
+  }
+  busy.value = true;
+  try {
+    const intent = await createYudaoMembershipCheckoutIntent({ planCode: "annual_membership" });
+    checkoutHref.value = intent?.checkoutPath || checkoutHref.value;
+    statusMessageKey.value = "membership.enrollment.checkoutReady";
+  } catch {
+    statusMessageKey.value = "membership.enrollment.checkoutFailed";
+  } finally {
+    busy.value = false;
+  }
 };
 </script>
 
@@ -51,10 +69,11 @@ const addAnnualMembership = () => {
     </section>
 
     <div class="membership-actions">
-      <button class="membership-primary-button" type="button" @click="addAnnualMembership">
-        {{ t("membership.enrollment.addToBag") }}
+      <button class="membership-primary-button" type="button" :disabled="busy" @click="startMembershipCheckout">
+        {{ busy ? t("common.working") : t("membership.enrollment.addToBag") }}
       </button>
-      <a :href="membershipRoutes.checkoutAuth">{{ t("membership.enrollment.continueCheckout") }}</a>
+      <a :href="checkoutHref">{{ t("membership.enrollment.continueCheckout") }}</a>
     </div>
+    <p v-if="statusMessageKey" class="membership-enrollment-status" role="status">{{ t(statusMessageKey) }}</p>
   </section>
 </template>

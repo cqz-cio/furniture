@@ -48,6 +48,14 @@ describe("cart recovery notices", () => {
     expect(drawerSource).toContain("t(item.cartProblemKey)");
   });
 
+  it("marks failed remote cart mutations as local preview instead of real Yudao cart rows", () => {
+    const source = readSource("../src/App.vue");
+
+    expect(source).toContain("localPreviewProduct");
+    expect(source).toContain('source: "local-preview"');
+    expect(source).toContain("addLocalCartItem(cartItems.value, localPreviewProduct, quantity)");
+  });
+
   it("styles the cart drawer notice", () => {
     const source = readSource("../src/styles.css");
 

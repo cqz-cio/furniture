@@ -54,4 +54,13 @@ public class CartDO extends BaseDO {
      */
     private Boolean selected;
 
+    /**
+     * Gift Registry 编号
+     */
+    private Long registryId;
+    /**
+     * Gift Registry 商品编号
+     */
+    private Long registryItemId;
+
 }

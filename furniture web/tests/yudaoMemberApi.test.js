@@ -95,6 +95,7 @@ describe("Yudao member API module", () => {
         name: "Ada Lovelace",
         email: "ada@example.com",
         mobile: "555-0100",
+        tradeId: "RH-TRADE-10086",
         areaId: 10,
         areaName: "Boston, MA",
         sex: 2,
@@ -106,6 +107,7 @@ describe("Yudao member API module", () => {
     await expect(getMemberProfile({ storage })).resolves.toMatchObject({
       id: 88,
       nickname: "Ada",
+      tradeId: "RH-TRADE-10086",
       emailVerified: true,
     });
     await updateMemberProfile({ nickname: "Ada L.", areaId: 10 }, { storage });
@@ -119,13 +121,13 @@ describe("Yudao member API module", () => {
     });
   });
 
-  it("posts email verification requests to the member user endpoint", async () => {
+  it("posts email verification requests to the member auth endpoint", async () => {
     fetchMock.mockResolvedValueOnce(mockYudaoResponse(true));
 
     await requestEmailVerificationLink("ada@example.com", { storage });
 
     const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toBe(`${API_BASE}/member/user/send-email-verify-link`);
+    expect(url).toBe(`${API_BASE}/member/auth/email-verify-link`);
     expect(init.method).toBe("POST");
     expect(JSON.parse(init.body)).toEqual({ email: "ada@example.com" });
   });

@@ -94,6 +94,9 @@ $mysqlSqlDir = Resolve-Path (Join-Path $PSScriptRoot "..\..\sql\mysql")
 Invoke-MySqlMigration (Join-Path $mysqlSqlDir "yudao-module-tables.sql")
 Invoke-MySqlMigration (Join-Path $mysqlSqlDir "member-email-auth.sql")
 Invoke-MySqlMigration (Join-Path $mysqlSqlDir "member-trade-application.sql")
+Invoke-MySqlMigration (Join-Path $mysqlSqlDir "member-membership.sql")
+Invoke-MySqlMigration (Join-Path $mysqlSqlDir "member-gift-registry.sql")
+Invoke-MySqlMigration (Join-Path $mysqlSqlDir "trade-gift-registry-context.sql")
 
 Write-Host ""
 Write-Host "Yudao local infrastructure:"
