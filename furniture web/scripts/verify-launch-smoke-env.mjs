@@ -92,7 +92,7 @@ const isLocalhostUrl = (value) => {
 
 const isPlaceholder = (value) => {
   const normalized = String(value || "").trim().toLowerCase();
-  return !normalized || normalized.includes("<") || normalized.includes(">") || normalized.includes("replace-me");
+  return !normalized || normalized.includes("<") || normalized.includes(">") || normalized.includes("replace-me") || normalized.includes("your-");
 };
 
 const isEmailAddress = (value) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(value || "").trim());

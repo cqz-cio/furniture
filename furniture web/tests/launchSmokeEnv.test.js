@@ -105,6 +105,20 @@ describe("launch smoke env readiness", () => {
         YUDAO_ORDER_SMOKE_PAY_CHANNEL_CODE: "alipay_pc",
       }).ok,
     ).toBe(false);
+
+    expect(
+      validateLaunchSmokeEnv(
+        createValidLaunchSmokeEnv({
+          YUDAO_SMOKE_TOKEN: "your-token",
+          YUDAO_REAL_ACCOUNT_ADMIN_TOKEN: "your-admin-token",
+        }),
+      ).errors,
+    ).toEqual(
+      expect.arrayContaining([
+        "YUDAO_SMOKE_TOKEN must be replaced with a real launch smoke value.",
+        "YUDAO_REAL_ACCOUNT_ADMIN_TOKEN must be replaced with a real launch smoke value.",
+      ]),
+    );
   });
 
   it("requires an explicit boolean real-account order check flag", () => {

@@ -284,6 +284,18 @@ describe("real account readiness smoke gate", () => {
     expect(() =>
       buildRealAccountReadinessConfig(options, {
         ...baseline,
+        YUDAO_REAL_ACCOUNT_SMOKE_TOKEN: "your-token",
+      }),
+    ).toThrow(/YUDAO_REAL_ACCOUNT_SMOKE_TOKEN must be replaced with a real account smoke value/);
+    expect(() =>
+      buildRealAccountReadinessConfig(options, {
+        ...baseline,
+        YUDAO_REAL_ACCOUNT_ADMIN_TOKEN: "your-admin-token",
+      }),
+    ).toThrow(/YUDAO_REAL_ACCOUNT_ADMIN_TOKEN must be replaced with a real account smoke value/);
+    expect(() =>
+      buildRealAccountReadinessConfig(options, {
+        ...baseline,
         YUDAO_REAL_ACCOUNT_SMOKE_USER_ID: "<real-user-id>",
       }),
     ).toThrow(/YUDAO_REAL_ACCOUNT_SMOKE_USER_ID must be replaced with a real account smoke value/);

@@ -158,6 +158,7 @@ export const buildLaunchEvidenceManifest = (options = {}) => {
       `npm.cmd run test:smoke:real-account -- --env-file ${smokeEnvFile} --check-order`,
       "real-account-smoke.txt",
     ),
+    command("live-business-smoke", `npm.cmd run test:smoke:live-business -- --env-file ${smokeEnvFile}`, "live-business-smoke.txt"),
     command("order-create-smoke", `npm.cmd run test:smoke:order-live -- --env-file ${smokeEnvFile} --create-order`, "order-create-smoke.txt"),
     command("post-deploy-health", `npm.cmd run test:deploy:health -- --base-url ${baseUrl}`, "post-deploy-health.txt"),
   ];

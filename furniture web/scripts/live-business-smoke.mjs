@@ -39,6 +39,41 @@ const required = (env, key) => {
   return value;
 };
 
+const isDocumentationDomain = (hostname = "") => {
+  const normalized = String(hostname || "").trim().toLowerCase();
+  return normalized === "example.com" || normalized.endsWith(".example.com") || normalized.endsWith(".example");
+};
+
+const isLocalhost = (hostname = "") => {
+  const normalized = String(hostname || "").trim().toLowerCase();
+  return normalized === "localhost" || normalized === "127.0.0.1" || normalized === "0.0.0.0" || normalized === "::1" || normalized === "[::1]";
+};
+
+const requireLaunchUrl = (env, key) => {
+  const normalized = required(env, key).replace(/\/$/, "");
+  try {
+    const url = new URL(normalized);
+    if (!["http:", "https:"].includes(url.protocol)) throw new Error(`${key} must be an absolute http(s) URL.`);
+    if (isLocalhost(url.hostname)) throw new Error(`${key} must not point to localhost`);
+    if (isDocumentationDomain(url.hostname)) throw new Error(`${key} must not use a documentation/example domain`);
+  } catch (error) {
+    if (error.message.includes("absolute http(s) URL")) throw error;
+    if (error.message.includes("must not point to localhost")) throw error;
+    if (error.message.includes("documentation/example domain")) throw error;
+    throw new Error(`${key} must be an absolute http(s) URL.`);
+  }
+  return normalized;
+};
+
+const requireRealToken = (env, key) => {
+  const token = required(env, key);
+  const normalized = token.toLowerCase();
+  if (normalized.includes("<") || normalized.includes(">") || normalized.includes("replace-me") || normalized.includes("your-token")) {
+    throw new Error(`${key} must be a real live token.`);
+  }
+  return token;
+};
+
 export const buildLiveBusinessSmokeSteps = (options = {}, runtimeEnv = process.env) => {
   const envFile = options.envFile || DEFAULT_ENV_FILE;
   const fileEnv = readEnvFile(envFile);
@@ -51,9 +86,9 @@ export const buildLiveBusinessSmokeSteps = (options = {}, runtimeEnv = process.e
     YUDAO_SMOKE_TOKEN: runtimeEnv.YUDAO_SMOKE_TOKEN || fileEnv.YUDAO_SMOKE_TOKEN,
   };
 
-  required(smokeEnv, "YUDAO_SMOKE_BASE_URL");
+  smokeEnv.YUDAO_SMOKE_TOKEN = requireRealToken(smokeEnv, "YUDAO_SMOKE_TOKEN");
+  smokeEnv.YUDAO_SMOKE_BASE_URL = requireLaunchUrl(smokeEnv, "YUDAO_SMOKE_BASE_URL");
   required(smokeEnv, "YUDAO_SMOKE_TENANT_ID");
-  required(smokeEnv, "YUDAO_SMOKE_TOKEN");
 
   return [
     {

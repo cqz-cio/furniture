@@ -20,6 +20,7 @@ describe("live business smoke gate", () => {
   it("maps production env into the live wishlist smoke step", () => {
     const options = parseLiveBusinessSmokeArgs(["--env-file", ".env.production.example"]);
     const steps = buildLiveBusinessSmokeSteps(options, {
+      YUDAO_SMOKE_BASE_URL: "https://api.oakvedhome.com/app-api",
       YUDAO_SMOKE_TOKEN: "launch-token",
     });
 
@@ -30,7 +31,7 @@ describe("live business smoke gate", () => {
       args: ["run", "test:smoke:wishlist"],
       env: {
         WISHLIST_SMOKE_MODE: "live",
-        YUDAO_SMOKE_BASE_URL: "https://api.oakved.example/app-api",
+        YUDAO_SMOKE_BASE_URL: "https://api.oakvedhome.com/app-api",
         YUDAO_SMOKE_TENANT_ID: "121",
         YUDAO_SMOKE_TOKEN: "launch-token",
       },
@@ -41,5 +42,33 @@ describe("live business smoke gate", () => {
     const options = parseLiveBusinessSmokeArgs(["--env-file", ".env.production.example"]);
 
     expect(() => buildLiveBusinessSmokeSteps(options, {})).toThrow(/YUDAO_SMOKE_TOKEN/);
+  });
+
+  it("rejects documentation and localhost base URLs for live smoke", () => {
+    const options = parseLiveBusinessSmokeArgs(["--env-file", ".env.production.example"]);
+
+    expect(() =>
+      buildLiveBusinessSmokeSteps(options, {
+        YUDAO_SMOKE_TOKEN: "launch-token",
+      }),
+    ).toThrow(/YUDAO_SMOKE_BASE_URL must not use a documentation\/example domain/);
+
+    expect(() =>
+      buildLiveBusinessSmokeSteps(options, {
+        YUDAO_SMOKE_BASE_URL: "http://localhost:48080/app-api",
+        YUDAO_SMOKE_TOKEN: "launch-token",
+      }),
+    ).toThrow(/YUDAO_SMOKE_BASE_URL must not point to localhost/);
+  });
+
+  it("rejects placeholder live smoke tokens", () => {
+    const options = parseLiveBusinessSmokeArgs(["--env-file", ".env.production.example"]);
+
+    expect(() =>
+      buildLiveBusinessSmokeSteps(options, {
+        YUDAO_SMOKE_BASE_URL: "https://api.oakvedhome.com/app-api",
+        YUDAO_SMOKE_TOKEN: "<real-app-user-token>",
+      }),
+    ).toThrow(/YUDAO_SMOKE_TOKEN must be a real live token/);
   });
 });

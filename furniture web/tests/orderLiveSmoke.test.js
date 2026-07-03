@@ -120,6 +120,12 @@ describe("order live smoke gate", () => {
     expect(() => buildOrderLiveSmokeConfig(options, { YUDAO_ORDER_SMOKE_BASE_URL: "https://api.oakvedhome.com/app-api" })).toThrow(
       /YUDAO_SMOKE_TOKEN/,
     );
+    expect(() =>
+      buildOrderLiveSmokeConfig(options, {
+        ...requiredRuntimeEnv,
+        YUDAO_SMOKE_TOKEN: "<real-app-user-token>",
+      }),
+    ).toThrow(/YUDAO_SMOKE_TOKEN must be a real live token/);
     expect(() => buildOrderLiveSmokeConfig(options, { ...requiredRuntimeEnv, YUDAO_ORDER_SMOKE_CART_ID: "" })).toThrow(
       /YUDAO_ORDER_SMOKE_CART_ID/,
     );

@@ -22,6 +22,7 @@ const successOutputByFile = {
   "launch-env-alignment.txt": "Launch env alignment check passed.\n",
   "db-migrations.txt": "Database migration check passed: 7 file(s)\n",
   "launch-readiness.txt": "Launch readiness check passed.\n",
+  "live-business-smoke.txt": "Wishlist API smoke passed: mode=live, base=https://api.oakvedhome.com/app-api, sku=91000101\nLive business smoke passed.\n",
   "real-account-smoke.txt": `==> product-catalog-page
 ==> product-detail
 ==> cart-list
@@ -123,7 +124,7 @@ describe("launch evidence audit", () => {
 
       expect(result).toMatchObject({ ok: true, errors: [] });
       expect(result.checkedFiles).toEqual(
-        expect.arrayContaining(["production-env.txt", "launch-readiness.txt", "real-account-smoke.txt", "post-deploy-health.txt"]),
+        expect.arrayContaining(["production-env.txt", "launch-readiness.txt", "live-business-smoke.txt", "real-account-smoke.txt", "post-deploy-health.txt"]),
       );
     } finally {
       rmSync(tempRoot, { recursive: true, force: true });
@@ -157,6 +158,24 @@ describe("launch evidence audit", () => {
 
       expect(result.ok).toBe(false);
       expect(result.errors.join("\n")).toContain("requiredEvidenceFiles must include real-account-smoke.txt");
+    } finally {
+      rmSync(tempRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("fails when the manifest omits live business smoke from required evidence files", () => {
+    const { tempRoot, evidenceDir } = createCompleteEvidence();
+
+    try {
+      const manifestPath = join(evidenceDir, "launch-manifest.json");
+      const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+      manifest.requiredEvidenceFiles = manifest.requiredEvidenceFiles.filter((file) => file !== "live-business-smoke.txt");
+      writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+
+      const result = auditLaunchEvidence({ dir: evidenceDir });
+
+      expect(result.ok).toBe(false);
+      expect(result.errors.join("\n")).toContain("requiredEvidenceFiles must include live-business-smoke.txt");
     } finally {
       rmSync(tempRoot, { recursive: true, force: true });
     }
@@ -277,6 +296,67 @@ describe("launch evidence audit", () => {
 
       expect(result.ok).toBe(false);
       expect(result.errors.join("\n")).toContain("real-account-smoke command is required in launch-manifest.json");
+    } finally {
+      rmSync(tempRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("fails when the manifest omits the standalone live business smoke command", () => {
+    const { tempRoot, evidenceDir } = createCompleteEvidence();
+
+    try {
+      const manifestPath = join(evidenceDir, "launch-manifest.json");
+      const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+      manifest.commands = manifest.commands.filter((command) => command.name !== "live-business-smoke");
+      writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+
+      const result = auditLaunchEvidence({ dir: evidenceDir });
+
+      expect(result.ok).toBe(false);
+      expect(result.errors.join("\n")).toContain("live-business-smoke command is required in launch-manifest.json");
+    } finally {
+      rmSync(tempRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("fails when live business smoke evidence is not a live remote wishlist run", () => {
+    const { tempRoot, evidenceDir } = createCompleteEvidence();
+
+    try {
+      writeFileSync(
+        join(evidenceDir, "live-business-smoke.txt"),
+        "Wishlist API smoke passed: mode=mock, base=http://127.0.0.1:48080/app-api, sku=91000101\nLive business smoke passed.\n",
+        "utf8",
+      );
+
+      const result = auditLaunchEvidence({ dir: evidenceDir });
+
+      expect(result.ok).toBe(false);
+      expect(result.errors.join("\n")).toContain("live-business-smoke.txt must include a live wishlist smoke run");
+      expect(result.errors.join("\n")).toContain("live-business-smoke.txt must not point to localhost");
+    } finally {
+      rmSync(tempRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("fails when order create smoke evidence does not prove a created order and pay order", () => {
+    const { tempRoot, evidenceDir } = createCompleteEvidence();
+
+    try {
+      writeFileSync(join(evidenceDir, "order-create-smoke.txt"), "Order live smoke passed: settlement only\n", "utf8");
+
+      let result = auditLaunchEvidence({ dir: evidenceDir });
+
+      expect(result.ok).toBe(false);
+      expect(result.errors.join("\n")).toContain("order-create-smoke.txt must include a created orderId");
+      expect(result.errors.join("\n")).toContain("order-create-smoke.txt must include a created payOrderId");
+
+      writeFileSync(join(evidenceDir, "order-create-smoke.txt"), "Order live smoke passed: orderId=1001\n", "utf8");
+
+      result = auditLaunchEvidence({ dir: evidenceDir });
+
+      expect(result.ok).toBe(false);
+      expect(result.errors.join("\n")).toContain("order-create-smoke.txt must include a created payOrderId");
     } finally {
       rmSync(tempRoot, { recursive: true, force: true });
     }

@@ -77,6 +77,7 @@ const successOutputByFile = {
   "launch-env-alignment.txt": "Launch env alignment check passed.\n",
   "db-migrations.txt": "Database migration check passed: 7 file(s)\n",
   "launch-readiness.txt": "Launch readiness check passed.\n",
+  "live-business-smoke.txt": "Wishlist API smoke passed: mode=live, base=https://api.oakvedhome.com/app-api, sku=91000101\nLive business smoke passed.\n",
   "real-account-smoke.txt": `==> product-catalog-page
 ==> product-detail
 ==> cart-list

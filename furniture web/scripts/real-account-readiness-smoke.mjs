@@ -69,7 +69,7 @@ const optionalPositiveInteger = (value, key) => {
 
 const isPlaceholder = (value) => {
   const normalized = String(value || "").trim().toLowerCase();
-  return normalized.includes("<") || normalized.includes(">") || normalized.includes("replace-me");
+  return normalized.includes("<") || normalized.includes(">") || normalized.includes("replace-me") || normalized.includes("your-");
 };
 
 const isDocumentationDomain = (hostname = "") => {

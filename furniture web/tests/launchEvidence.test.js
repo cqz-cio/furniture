@@ -86,6 +86,7 @@ describe("launch evidence bundle", () => {
         expect.objectContaining({ name: "launch-readiness", command: expect.stringContaining("--include-admin-build") }),
         expect.objectContaining({ name: "launch-readiness", command: expect.stringContaining("--include-backend-build") }),
         expect.objectContaining({ name: "launch-readiness", command: expect.stringContaining("--include-real-account-smoke --real-account-check-order") }),
+        expect.objectContaining({ name: "live-business-smoke", command: "npm.cmd run test:smoke:live-business -- --env-file .env.launch-smoke" }),
         expect.objectContaining({ name: "real-account-smoke", command: "npm.cmd run test:smoke:real-account -- --env-file .env.launch-smoke --check-order" }),
         expect.objectContaining({ name: "post-deploy-health", command: "npm.cmd run test:deploy:health -- --base-url https://shop.oakvedhome.com" }),
       ]),
@@ -94,6 +95,7 @@ describe("launch evidence bundle", () => {
     expect(manifest.requiredEvidenceFiles).toContain("backend-production-env.txt");
     expect(manifest.requiredEvidenceFiles).toContain("backend-production-config.txt");
     expect(manifest.requiredEvidenceFiles).toContain("launch-env-alignment.txt");
+    expect(manifest.requiredEvidenceFiles).toContain("live-business-smoke.txt");
     expect(manifest.requiredEvidenceFiles).toContain("real-account-smoke.txt");
     expect(manifest.requiredEvidenceFiles).toContain("post-deploy-health.txt");
   });

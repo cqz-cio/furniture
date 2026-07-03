@@ -45,6 +45,15 @@ const required = (value, key) => {
   return normalized;
 };
 
+const requireRealToken = (value, key) => {
+  const token = required(value, key);
+  const normalized = token.toLowerCase();
+  if (normalized.includes("<") || normalized.includes(">") || normalized.includes("replace-me") || normalized.includes("your-token")) {
+    throw new Error(`${key} must be a real live token.`);
+  }
+  return token;
+};
+
 const isDocumentationDomain = (hostname = "") => {
   const normalized = String(hostname || "").trim().toLowerCase();
   return normalized === "example.com" || normalized.endsWith(".example.com") || normalized.endsWith(".example");
@@ -121,7 +130,7 @@ export const buildOrderLiveSmokeConfig = (options = {}, runtimeEnv = process.env
       ),
       "YUDAO_ORDER_SMOKE_TENANT_ID",
     ),
-    token: required(firstValue(runtimeEnv.YUDAO_ORDER_SMOKE_TOKEN, runtimeEnv.YUDAO_SMOKE_TOKEN, fileEnv.YUDAO_SMOKE_TOKEN), "YUDAO_SMOKE_TOKEN"),
+    token: requireRealToken(firstValue(runtimeEnv.YUDAO_ORDER_SMOKE_TOKEN, runtimeEnv.YUDAO_SMOKE_TOKEN, fileEnv.YUDAO_SMOKE_TOKEN), "YUDAO_SMOKE_TOKEN"),
     skuId: required(firstValue(runtimeEnv.YUDAO_ORDER_SMOKE_SKU_ID, fileEnv.YUDAO_ORDER_SMOKE_SKU_ID), "YUDAO_ORDER_SMOKE_SKU_ID"),
     cartId: required(firstValue(runtimeEnv.YUDAO_ORDER_SMOKE_CART_ID, fileEnv.YUDAO_ORDER_SMOKE_CART_ID), "YUDAO_ORDER_SMOKE_CART_ID"),
     addressId: required(

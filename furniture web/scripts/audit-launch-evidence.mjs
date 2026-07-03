@@ -12,6 +12,7 @@ const SUCCESS_MARKERS_BY_FILE = {
   "launch-env-alignment.txt": "Launch env alignment check passed.",
   "db-migrations.txt": "Database migration check passed:",
   "launch-readiness.txt": "Launch readiness check passed.",
+  "live-business-smoke.txt": "Live business smoke passed.",
   "real-account-smoke.txt": "Real account readiness smoke passed.",
   "order-create-smoke.txt": "Order live smoke passed:",
   "post-deploy-health.txt": "Post-deploy health check passed",
@@ -71,7 +72,7 @@ const NUMERIC_REAL_ACCOUNT_IDENTIFIERS = [
   "giftRegistryItemSkuId",
 ];
 
-const REQUIRED_LAUNCH_EVIDENCE_FILES = ["real-account-smoke.txt"];
+const REQUIRED_LAUNCH_EVIDENCE_FILES = ["live-business-smoke.txt", "real-account-smoke.txt"];
 
 export const parseLaunchEvidenceAuditArgs = (argv = [], env = process.env) => {
   const options = {
@@ -281,7 +282,7 @@ const requireNoFailureOutput = (errors, file, content) => {
 
 const isPlaceholderValue = (value) => {
   const normalized = String(value || "").trim().toLowerCase();
-  return !normalized || normalized.includes("<") || normalized.includes(">") || normalized.includes("replace-me");
+  return !normalized || normalized.includes("<") || normalized.includes(">") || normalized.includes("replace-me") || normalized.includes("your-");
 };
 
 const isPositiveInteger = (value) => /^[1-9]\d*$/.test(String(value || "").trim());
@@ -366,6 +367,48 @@ const requireRealAccountStepLogs = (errors, file, content) => {
     if (!source.includes(`==> ${step}`)) {
       errors.push(`${file} must include the real-account smoke step: ${step}`);
     }
+  }
+};
+
+const requireLiveBusinessSmokeOutput = (errors, file, content) => {
+  if (file !== "live-business-smoke.txt") return;
+  const source = String(content || "");
+  const normalized = source.toLowerCase();
+  if (!normalized.includes("wishlist api smoke passed:") || !normalized.includes("mode=live")) {
+    errors.push(`${file} must include a live wishlist smoke run`);
+  }
+  if (normalized.includes("mode=mock")) {
+    errors.push(`${file} must not include mock wishlist smoke output`);
+  }
+
+  const baseMatch = source.match(/\bbase=([^\s,]+)/i);
+  if (baseMatch) {
+    const baseUrl = baseMatch[1].trim();
+    if (!parseHttpUrl(baseUrl)) {
+      errors.push(`${file} base must be an absolute http(s) URL`);
+    } else {
+      if (isLocalhostUrl(baseUrl)) {
+        errors.push(`${file} must not point to localhost`);
+      }
+      if (isDocumentationDomainUrl(baseUrl)) {
+        errors.push(`${file} must not use a documentation/example domain`);
+      }
+    }
+  } else {
+    errors.push(`${file} must include the wishlist smoke base URL`);
+  }
+};
+
+const requireOrderCreateSmokeOutput = (errors, file, content) => {
+  if (file !== "order-create-smoke.txt") return;
+  const source = String(content || "");
+  const orderId = source.match(/\borderId=(\d+)/i)?.[1] || "";
+  const payOrderId = source.match(/\bpayOrderId=(\d+)/i)?.[1] || "";
+  if (!isPositiveInteger(orderId)) {
+    errors.push(`${file} must include a created orderId`);
+  }
+  if (!isPositiveInteger(payOrderId)) {
+    errors.push(`${file} must include a created payOrderId`);
   }
 };
 
@@ -499,6 +542,10 @@ export const auditLaunchEvidence = (options = {}) => {
     "--env-file",
     "--check-order",
   ]);
+  requireManifestCommandIncludes(errors, manifest, "live-business-smoke", [
+    "test:smoke:live-business",
+    "--env-file",
+  ]);
   rejectManifestCommandFragments(errors, manifest, ["--allow-placeholders"]);
 
   const screenshotFiles = readdirSync(dir).filter(isScreenshotFile);
@@ -538,6 +585,8 @@ export const auditLaunchEvidence = (options = {}) => {
     requireRealAccountReadySnapshot(errors, file, content);
     requireRealAccountStepLogs(errors, file, content);
     requireRealAccountOrderDetailStep(errors, file, content, manifest);
+    requireLiveBusinessSmokeOutput(errors, file, content);
+    requireOrderCreateSmokeOutput(errors, file, content);
   }
 
   return {

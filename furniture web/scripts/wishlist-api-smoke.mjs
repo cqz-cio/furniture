@@ -24,6 +24,51 @@ const ok = (data) => ({ code: 0, data, msg: "" });
 
 const parseBody = (body) => (typeof body === "string" ? JSON.parse(body || "{}") : body || {});
 
+const isDocumentationDomain = (hostname = "") => {
+  const normalized = String(hostname || "").trim().toLowerCase();
+  return normalized === "example.com" || normalized.endsWith(".example.com") || normalized.endsWith(".example");
+};
+
+const isLocalhost = (hostname = "") => {
+  const normalized = String(hostname || "").trim().toLowerCase();
+  return normalized === "localhost" || normalized === "127.0.0.1" || normalized === "0.0.0.0" || normalized === "::1" || normalized === "[::1]";
+};
+
+const validateLiveSmokeConfig = () => {
+  if (mode !== "live") return;
+
+  if (!token) {
+    throw new Error("YUDAO_SMOKE_TOKEN is required when WISHLIST_SMOKE_MODE=live");
+  }
+
+  const normalizedToken = token.toLowerCase();
+  if (
+    normalizedToken.includes("<") ||
+    normalizedToken.includes(">") ||
+    normalizedToken.includes("replace-me") ||
+    normalizedToken.includes("your-token")
+  ) {
+    throw new Error("YUDAO_SMOKE_TOKEN must be a real live token");
+  }
+
+  let url;
+  try {
+    url = new URL(baseUrl);
+  } catch {
+    throw new Error("YUDAO_SMOKE_BASE_URL must be an absolute http(s) URL");
+  }
+
+  if (!["http:", "https:"].includes(url.protocol)) {
+    throw new Error("YUDAO_SMOKE_BASE_URL must be an absolute http(s) URL");
+  }
+  if (isLocalhost(url.hostname)) {
+    throw new Error("YUDAO_SMOKE_BASE_URL must not point to localhost");
+  }
+  if (isDocumentationDomain(url.hostname)) {
+    throw new Error("YUDAO_SMOKE_BASE_URL must not use a documentation/example domain");
+  }
+};
+
 const createMockClient = () => {
   let rows = [];
 
@@ -61,10 +106,6 @@ const createMockClient = () => {
 };
 
 const liveRequest = async (path, options = {}) => {
-  if (!token) {
-    throw new Error("YUDAO_SMOKE_TOKEN is required when WISHLIST_SMOKE_MODE=live");
-  }
-
   const response = await fetch(`${baseUrl}${path}`, {
     ...options,
     headers: {
@@ -82,6 +123,8 @@ const liveRequest = async (path, options = {}) => {
 
   return payload.data;
 };
+
+validateLiveSmokeConfig();
 
 const request = mode === "live" ? liveRequest : createMockClient();
 
