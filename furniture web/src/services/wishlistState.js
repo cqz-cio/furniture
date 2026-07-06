@@ -1,6 +1,6 @@
 import { readLocalWishlist } from "./localWishlist.js";
 import { getRemoteWishlistItems } from "./yudaoFavoriteApi.js";
-import { readYudaoToken } from "./yudaoRequest.js";
+import { isYudaoAuthError, readYudaoToken } from "./yudaoRequest.js";
 
 const identity = (item = {}) => ({
   spuId: item.spuId || item.id,
@@ -34,11 +34,13 @@ export const loadWishlistIdentityState = async (options = {}) => {
       const page = await getRemoteWishlistItems({ pageNo: 1, pageSize: 200 }, options);
       return { source: "yudao", keys: createWishlistIdentitySet(page.list), statusKey: "", remoteUnavailable: false };
     } catch (error) {
+      const authRequired = isYudaoAuthError(error);
       return {
         source: "local",
         keys: createWishlistIdentitySet(readLocalWishlist(options.storage)),
-        statusKey: "wishlist.remoteUnavailable",
-        remoteUnavailable: true,
+        statusKey: authRequired ? "wishlist.signInRequired" : "wishlist.remoteUnavailable",
+        remoteUnavailable: !authRequired,
+        authRequired,
         error,
       };
     }

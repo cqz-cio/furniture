@@ -163,6 +163,8 @@ describe("i18n locale helper", () => {
       "membership.account.states.title",
       "membership.account.states.pendingLink.description",
       "membership.account.states.activeWholeRoom.title",
+      "membership.account.signInRequired",
+      "membership.account.actions.connectAccount",
       "membership.account.emptyStates.notMember.title",
       "membership.account.emptyStates.expired.description",
       "membership.account.planWholeRoom",

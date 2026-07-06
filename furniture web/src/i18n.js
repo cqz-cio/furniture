@@ -821,6 +821,7 @@ const messages = {
         title: "Membership status and rules live here.",
         intro:
           "This area manages member status, email matching, renewal controls, benefit snapshots and the member growth system after sign in.",
+        signInRequired: "Sign in to load the persistent membership record for this account.",
         overviewAria: "Membership account overview",
         overview: {
           savings: "Member savings this year",
@@ -1058,6 +1059,7 @@ const messages = {
         verifyEmail: "Verify Email",
         actionsAria: "Membership account actions",
         actions: {
+          connectAccount: "Sign in",
           shopEligible: {
             title: "Shop eligible merchandise",
             description: "Browse products where member pricing may appear before checkout.",
@@ -1960,6 +1962,7 @@ const messages = {
         eyebrow: "会员",
         title: "会员状态和规则在这里管理。",
         intro: "登录后可在这里管理会员状态、邮箱匹配、续费控制、权益快照和会员成长体系。",
+        signInRequired: "请登录后加载该账户的真实会员记录。",
         overviewAria: "会员账户概览",
         overview: {
           savings: "今年会员已节省",
@@ -2186,6 +2189,7 @@ const messages = {
         verifyEmail: "验证邮箱",
         actionsAria: "会员账户操作",
         actions: {
+          connectAccount: "登录",
           shopEligible: {
             title: "购买适用商品",
             description: "浏览结账前可能显示会员价的商品。",
@@ -3188,6 +3192,7 @@ const messages = {
         title: "Le statut et les règles d'adhésion se trouvent ici.",
         intro:
           "Cet espace gère le statut membre, la correspondance e-mail, les renouvellements, les avantages et la progression après connexion.",
+        signInRequired: "Connectez-vous pour charger le dossier membre persistant de ce compte.",
         overviewAria: "Aperçu du compte membre",
         overview: {
           savings: "Économies membres cette année",
@@ -3414,6 +3419,7 @@ const messages = {
         verifyEmail: "Vérifier l'e-mail",
         actionsAria: "Actions du compte membre",
         actions: {
+          connectAccount: "Se connecter",
           shopEligible: {
             title: "Acheter des articles éligibles",
             description: "Parcourez les produits où les prix membres peuvent apparaître avant le paiement.",

@@ -13,7 +13,7 @@ import {
   getMembershipGrowth,
   getMembershipStatusView,
 } from "../services/membershipAccount.js";
-import { readYudaoToken } from "../services/yudaoRequest.js";
+import { isYudaoAuthError, readYudaoToken } from "../services/yudaoRequest.js";
 import { getYudaoMembershipProfile } from "../services/yudaoMembershipApi.js";
 import { getOrderPage } from "../services/yudaoOrderApi.js";
 import { useI18n } from "../i18n.js";
@@ -26,6 +26,7 @@ const liveOrders = ref([]);
 const membershipLoadState = ref("idle");
 const membershipLoadError = ref("");
 const membershipOrdersLoadError = ref("");
+const tokenRequired = ref(false);
 const showScenarioPreview = import.meta.env.DEV;
 
 const statusLabelKeys = {
@@ -106,14 +107,28 @@ const loadMembershipOrders = async () => {
   }
 };
 
+const handleMembershipAuthError = (error) => {
+  if (!isYudaoAuthError(error)) return false;
+  tokenRequired.value = true;
+  membershipLoadError.value = "";
+  membershipProfile.value = createMembershipProfile({ status: MEMBERSHIP_STATUSES.loggedOut });
+  liveOrders.value = [];
+  membershipOrdersLoadError.value = "";
+  selectedScenarioKey.value = "live";
+  membershipLoadState.value = "logged-out";
+  return true;
+};
+
 const loadMembershipProfile = async () => {
   if (!readYudaoToken()) {
+    tokenRequired.value = true;
     membershipProfile.value = createMembershipProfile({ status: MEMBERSHIP_STATUSES.loggedOut });
     liveOrders.value = [];
     membershipOrdersLoadError.value = "";
     membershipLoadState.value = "logged-out";
     return;
   }
+  tokenRequired.value = false;
   membershipLoadState.value = "loading";
   membershipLoadError.value = "";
   try {
@@ -123,8 +138,9 @@ const loadMembershipProfile = async () => {
     selectedScenarioKey.value = "live";
     membershipLoadState.value = "loaded";
   } catch (error) {
+    if (handleMembershipAuthError(error)) return;
     membershipLoadError.value = error?.message || "Membership profile unavailable";
-    membershipProfile.value = createMembershipProfile({ status: MEMBERSHIP_STATUSES.pendingLink });
+    membershipProfile.value = createMembershipProfile({ status: MEMBERSHIP_STATUSES.notMember });
     liveOrders.value = [];
     selectedScenarioKey.value = "live";
     membershipLoadState.value = "error";
@@ -154,6 +170,17 @@ onMounted(loadMembershipProfile);
           <h2>{{ t("membership.account.loadingTitle") }}</h2>
           <p>{{ t("membership.account.loadingDescription") }}</p>
         </div>
+      </section>
+
+      <section v-if="tokenRequired" class="membership-state-empty">
+        <div>
+          <p class="eyebrow">{{ t("membership.account.errorEyebrow") }}</p>
+          <h2>{{ t("membership.account.statusLoggedOut") }}</h2>
+          <p>{{ t("membership.account.signInRequired") }}</p>
+        </div>
+        <a class="orders-recovery-action" :href="membershipRoutes.checkoutAuth">
+          {{ t("membership.account.actions.connectAccount") }}
+        </a>
       </section>
 
       <section v-if="membershipLoadError" class="membership-state-empty">
@@ -189,7 +216,7 @@ onMounted(loadMembershipProfile);
         </div>
       </section>
 
-      <section class="membership-state-card" :class="{ 'is-attention': currentScenario.requiresAttention }">
+      <section v-if="!tokenRequired" class="membership-state-card" :class="{ 'is-attention': currentScenario.requiresAttention }">
         <div>
           <p class="eyebrow">{{ t(`membership.account.states.${currentScenario.key}.eyebrow`) }}</p>
           <h2>{{ t(`membership.account.states.${currentScenario.key}.title`) }}</h2>
@@ -198,14 +225,14 @@ onMounted(loadMembershipProfile);
         <a :href="statusView.ctaHref">{{ t(statusCtaKey) }}</a>
       </section>
 
-      <section class="membership-account-overview" :aria-label="t('membership.account.overviewAria')">
+      <section v-if="!tokenRequired" class="membership-account-overview" :aria-label="t('membership.account.overviewAria')">
         <article v-for="[label, value] in overviewRows" :key="label">
           <strong>{{ value }}</strong>
           <span>{{ t(label) }}</span>
         </article>
       </section>
 
-      <section class="membership-account-command-center">
+      <section v-if="!tokenRequired" class="membership-account-command-center">
         <section class="membership-status-panel" :class="`is-${statusView.tone}`">
           <div>
             <p class="eyebrow">{{ t("membership.account.currentStatus") }}</p>
@@ -224,7 +251,7 @@ onMounted(loadMembershipProfile);
         </dl>
       </section>
 
-      <section class="membership-lifecycle-panel" :aria-label="t('membership.account.lifecycleAria')">
+      <section v-if="!tokenRequired" class="membership-lifecycle-panel" :aria-label="t('membership.account.lifecycleAria')">
         <header>
           <p class="eyebrow">{{ t("membership.account.lifecycleEyebrow") }}</p>
           <h2>{{ t("membership.account.lifecycleTitle") }}</h2>
@@ -322,7 +349,7 @@ onMounted(loadMembershipProfile);
         </section>
       </section>
 
-      <section class="membership-eligibility-panel" :aria-label="t('membership.account.eligibility.aria')">
+      <section v-if="!tokenRequired" class="membership-eligibility-panel" :aria-label="t('membership.account.eligibility.aria')">
         <header>
           <div>
             <p class="eyebrow">{{ t("membership.account.eligibility.eyebrow") }}</p>

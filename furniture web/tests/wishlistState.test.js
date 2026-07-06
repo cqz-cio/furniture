@@ -91,6 +91,26 @@ describe("wishlist identity state", () => {
     expect(isWishlistItemSaved({ id: 88, skuId: 8801 }, state.keys)).toBe(true);
   });
 
+  it("reports expired wishlist identity auth as sign-in required instead of remote unavailable", async () => {
+    writeYudaoToken("expired-token", storage);
+    addLocalWishlistItem({ id: 88, skuId: 8801, name: "Oak Chair" }, storage);
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ code: 401, msg: "token expired" }),
+    });
+
+    const state = await loadWishlistIdentityState({ storage });
+
+    expect(state).toMatchObject({
+      source: "local",
+      statusKey: "wishlist.signInRequired",
+      remoteUnavailable: false,
+      authRequired: true,
+    });
+    expect(state.error.message).toContain("token expired");
+    expect(isWishlistItemSaved({ id: 88, skuId: 8801 }, state.keys)).toBe(true);
+  });
+
   it("optimistically marks a product as saved for immediate UI feedback", () => {
     const state = withWishlistItemSaved(new Set(), { id: 88, skuId: 8801 });
 
