@@ -434,9 +434,9 @@ describe("real account readiness smoke gate", () => {
             },
           ],
         },
-        "order-page": { list: [{ id: 7001, payOrderId: 9001 }], total: 1 },
-        "member-profile": { id: 1, tradeId: "RH-TRADE-10086" },
-        "member-address-list": [{ id: 501, name: "Launch Buyer" }],
+        "order-page": { list: [{ id: 7001, payOrderId: 9001, payPrice: 12900, payStatus: true }], total: 1 },
+        "member-profile": { id: 1, email: "launch.buyer@oakvedhome.com", tradeId: "RH-TRADE-10086" },
+        "member-address-list": [{ id: 501, name: "Launch Buyer", mobile: "4155550100", detailAddress: "1 Launch Way" }],
         "wishlist-page": { list: [{ id: 601, spuId: 10, skuId: 20 }], total: 1 },
         "membership-profile": { id: 90, status: "active" },
         "gift-registry-my": { id: 100, publicCode: "reg-100", status: "active" },
@@ -510,9 +510,9 @@ describe("real account readiness smoke gate", () => {
             },
           ],
         },
-        "order-page": { list: [{ id: 7001, payOrderId: 9001 }], total: 1 },
+        "order-page": { list: [{ id: 7001, payOrderId: 9001, payPrice: 12900, payStatus: true }], total: 1 },
         "member-profile": { id: 1, tradeId: "RH-TRADE-10086" },
-        "member-address-list": [{ id: 501, name: "Launch Buyer" }],
+        "member-address-list": [{ id: 501, name: "Launch Buyer", mobile: "4155550100", detailAddress: "1 Launch Way" }],
         "wishlist-page": { list: [{ id: 601, spuId: 10, skuId: 20 }], total: 1 },
         "membership-profile": { id: 90, status: "active" },
         "gift-registry-my": { id: 100, publicCode: "reg-100", status: "active" },
@@ -547,9 +547,9 @@ describe("real account readiness smoke gate", () => {
             },
           ],
         },
-        "order-page": { list: [{ id: 7001, payOrderId: 9001 }], total: 1 },
-        "member-profile": { id: 1, tradeId: "RH-TRADE-10086" },
-        "member-address-list": [{ id: 501, name: "Launch Buyer" }],
+        "order-page": { list: [{ id: 7001, payOrderId: 9001, payPrice: 12900, payStatus: true }], total: 1 },
+        "member-profile": { id: 1, email: "launch.buyer@oakvedhome.com", tradeId: "RH-TRADE-10086" },
+        "member-address-list": [{ id: 501, name: "Launch Buyer", mobile: "4155550100", detailAddress: "1 Launch Way" }],
         "wishlist-page": { list: [{ id: 601, spuId: 10, skuId: 20 }], total: 1 },
         "membership-profile": { id: 90, userId: 1, status: "active" },
         "gift-registry-my": { id: 100, userId: 1, publicCode: "reg-100", status: "active" },
@@ -590,9 +590,9 @@ describe("real account readiness smoke gate", () => {
             },
           ],
         },
-        "order-page": { list: [{ id: 7001, payOrderId: 9001 }], total: 1 },
-        "member-profile": { id: 1, tradeId: "RH-TRADE-10086" },
-        "member-address-list": [{ id: 501, name: "Launch Buyer" }],
+        "order-page": { list: [{ id: 7001, payOrderId: 9001, payPrice: 12900, payStatus: true }], total: 1 },
+        "member-profile": { id: 1, email: "launch.buyer@oakvedhome.com", tradeId: "RH-TRADE-10086" },
+        "member-address-list": [{ id: 501, name: "Launch Buyer", mobile: "4155550100", detailAddress: "1 Launch Way" }],
         "wishlist-page": { list: [{ id: 601, spuId: 10, skuId: 20 }], total: 1 },
         "membership-profile": { id: 90, userId: 1, status: "active" },
         "gift-registry-my": { id: 100, userId: 1, publicCode: "reg-100", status: "active" },
@@ -624,6 +624,121 @@ describe("real account readiness smoke gate", () => {
     expect(evaluation.failures).toContain("admin-trade-application-seeded-email-missing");
   });
 
+  it("fails billing readiness when the order page lacks payment fields", () => {
+    const evaluation = evaluateRealAccountReadiness(
+      {
+        "product-catalog-page": { list: [{ id: 10 }], total: 1 },
+        "product-detail": { id: 10, skus: [{ id: 20 }] },
+        "cart-list": {
+          validList: [
+            {
+              id: 301,
+              count: 1,
+              spu: { id: 10 },
+              sku: { id: 20 },
+            },
+          ],
+        },
+        "order-page": { list: [{ id: 7001, no: "SO-7001" }], total: 1 },
+        "member-profile": { id: 1, email: "launch.buyer@oakvedhome.com", tradeId: "RH-TRADE-10086" },
+        "member-address-list": [{ id: 501, name: "Launch Buyer", mobile: "4155550100", detailAddress: "1 Launch Way" }],
+        "wishlist-page": { list: [{ id: 601, spuId: 10, skuId: 20 }], total: 1 },
+        "membership-profile": { id: 90, userId: 1, status: "active" },
+        "gift-registry-my": { id: 100, userId: 1, publicCode: "reg-100", status: "active" },
+        "membership-admin-page": { list: [{ id: 90, userId: 1 }], total: 1 },
+        "gift-registry-admin-page": { list: [{ id: 100, userId: 1, publicCode: "reg-100" }], total: 1 },
+        "trade-application-admin-page": { list: [{ id: 300, tradeId: "RH-TRADE-10086" }], total: 1 },
+      },
+      "token",
+      {
+        userId: "1",
+        giftRegistryPublicCode: "reg-100",
+        tradeId: "RH-TRADE-10086",
+      },
+    );
+
+    expect(evaluation.ok).toBe(false);
+    expect(evaluation.moduleSnapshot.billing).toBe("partial");
+    expect(evaluation.failures).toContain("module-billing-partial");
+  });
+
+  it("fails account profile readiness when the member profile lacks contact fields", () => {
+    const evaluation = evaluateRealAccountReadiness(
+      {
+        "product-catalog-page": { list: [{ id: 10 }], total: 1 },
+        "product-detail": { id: 10, skus: [{ id: 20 }] },
+        "cart-list": {
+          validList: [
+            {
+              id: 301,
+              count: 1,
+              spu: { id: 10 },
+              sku: { id: 20 },
+            },
+          ],
+        },
+        "order-page": { list: [{ id: 7001, payOrderId: 9001, payPrice: 12900, payStatus: true }], total: 1 },
+        "member-profile": { id: 1, tradeId: "RH-TRADE-10086" },
+        "member-address-list": [{ id: 501, name: "Launch Buyer", mobile: "4155550100", detailAddress: "1 Launch Way" }],
+        "wishlist-page": { list: [{ id: 601, spuId: 10, skuId: 20 }], total: 1 },
+        "membership-profile": { id: 90, userId: 1, status: "active" },
+        "gift-registry-my": { id: 100, userId: 1, publicCode: "reg-100", status: "active" },
+        "membership-admin-page": { list: [{ id: 90, userId: 1 }], total: 1 },
+        "gift-registry-admin-page": { list: [{ id: 100, userId: 1, publicCode: "reg-100" }], total: 1 },
+        "trade-application-admin-page": { list: [{ id: 300, tradeId: "RH-TRADE-10086" }], total: 1 },
+      },
+      "token",
+      {
+        userId: "1",
+        giftRegistryPublicCode: "reg-100",
+        tradeId: "RH-TRADE-10086",
+      },
+    );
+
+    expect(evaluation.ok).toBe(false);
+    expect(evaluation.moduleSnapshot.accountProfile).toBe("partial");
+    expect(evaluation.failures).toContain("module-accountProfile-partial");
+  });
+
+  it("fails address book readiness when the seeded address lacks delivery fields", () => {
+    const evaluation = evaluateRealAccountReadiness(
+      {
+        "product-catalog-page": { list: [{ id: 10 }], total: 1 },
+        "product-detail": { id: 10, skus: [{ id: 20 }] },
+        "cart-list": {
+          validList: [
+            {
+              id: 301,
+              count: 1,
+              spu: { id: 10 },
+              sku: { id: 20 },
+            },
+          ],
+        },
+        "order-page": { list: [{ id: 7001, payOrderId: 9001, payPrice: 12900, payStatus: true }], total: 1 },
+        "member-profile": { id: 1, email: "launch.buyer@oakvedhome.com", tradeId: "RH-TRADE-10086" },
+        "member-address-list": [{ id: 501, name: "Launch Buyer" }],
+        "wishlist-page": { list: [{ id: 601, spuId: 10, skuId: 20 }], total: 1 },
+        "membership-profile": { id: 90, userId: 1, status: "active" },
+        "gift-registry-my": { id: 100, userId: 1, publicCode: "reg-100", status: "active" },
+        "membership-admin-page": { list: [{ id: 90, userId: 1 }], total: 1 },
+        "gift-registry-admin-page": { list: [{ id: 100, userId: 1, publicCode: "reg-100" }], total: 1 },
+        "trade-application-admin-page": { list: [{ id: 300, tradeId: "RH-TRADE-10086" }], total: 1 },
+      },
+      "token",
+      {
+        userId: "1",
+        addressId: "501",
+        giftRegistryPublicCode: "reg-100",
+        tradeId: "RH-TRADE-10086",
+      },
+    );
+
+    expect(evaluation.ok).toBe(false);
+    expect(evaluation.moduleSnapshot.addressBook).toBe("partial");
+    expect(evaluation.failures).toContain("module-addressBook-partial");
+  });
+
   it("fails when the admin Gift Registry detail does not contain the seeded real product item", () => {
     const evaluation = evaluateRealAccountReadiness(
       {
@@ -639,9 +754,9 @@ describe("real account readiness smoke gate", () => {
             },
           ],
         },
-        "order-page": { list: [{ id: 7001, payOrderId: 9001 }], total: 1 },
-        "member-profile": { id: 1, tradeId: "RH-TRADE-10086" },
-        "member-address-list": [{ id: 501, name: "Launch Buyer" }],
+        "order-page": { list: [{ id: 7001, payOrderId: 9001, payPrice: 12900, payStatus: true }], total: 1 },
+        "member-profile": { id: 1, email: "launch.buyer@oakvedhome.com", tradeId: "RH-TRADE-10086" },
+        "member-address-list": [{ id: 501, name: "Launch Buyer", mobile: "4155550100", detailAddress: "1 Launch Way" }],
         "wishlist-page": { list: [{ id: 601, spuId: 10, skuId: 20 }], total: 1 },
         "membership-profile": { id: 90, userId: 1, status: "active_annual", planCode: "annual_membership" },
         "gift-registry-my": {
@@ -693,10 +808,10 @@ describe("real account readiness smoke gate", () => {
       ["/product/spu/page?pageNo=1&pageSize=1", { list: [{ id: 10 }], total: 1 }],
       ["/product/spu/get-detail?id=5001", { id: 5001, skus: [{ id: 20 }] }],
       ["/trade/cart/list", { validList: [{ id: 301, count: 1, spu: { id: 10 }, sku: { id: 20 } }] }],
-      ["/trade/order/page?pageNo=1&pageSize=1", { list: [{ id: 7001, payOrderId: 9001 }], total: 1 }],
-      ["/trade/order/get-detail?id=7001", { id: 7001, payOrderId: 9001 }],
-      ["/member/user/get", { id: 1, tradeId: "RH-TRADE-10086" }],
-      ["/member/address/list", [{ id: 501, name: "Launch Buyer" }]],
+      ["/trade/order/page?pageNo=1&pageSize=1", { list: [{ id: 7001, payOrderId: 9001, payPrice: 12900, payStatus: true }], total: 1 }],
+      ["/trade/order/get-detail?id=7001", { id: 7001, payOrderId: 9001, payPrice: 12900, payStatus: true }],
+      ["/member/user/get", { id: 1, email: "launch.buyer@oakvedhome.com", tradeId: "RH-TRADE-10086" }],
+      ["/member/address/list", [{ id: 501, name: "Launch Buyer", mobile: "4155550100", detailAddress: "1 Launch Way" }]],
       ["/product/favorite/page?pageNo=1&pageSize=1", { list: [{ id: 601, spuId: 10, skuId: 20 }], total: 1 }],
       ["/member/membership/get", { id: 90, userId: 1, status: "active_annual", planCode: "annual_membership" }],
       [
@@ -758,9 +873,9 @@ describe("real account readiness smoke gate", () => {
             },
           ],
         },
-        "order-page": { list: [{ id: 7001, payOrderId: 9001 }], total: 1 },
-        "member-profile": { id: 1, tradeId: "RH-TRADE-10086" },
-        "member-address-list": [{ id: 501, name: "Launch Buyer" }],
+        "order-page": { list: [{ id: 7001, payOrderId: 9001, payPrice: 12900, payStatus: true }], total: 1 },
+        "member-profile": { id: 1, email: "launch.buyer@oakvedhome.com", tradeId: "RH-TRADE-10086" },
+        "member-address-list": [{ id: 501, name: "Launch Buyer", mobile: "4155550100", detailAddress: "1 Launch Way" }],
         "wishlist-page": { list: [{ id: 601, spuId: 10, skuId: 20 }], total: 1 },
         "membership-profile": { id: 90, userId: 1, status: "active" },
         "gift-registry-my": { id: 100, userId: 1, publicCode: "reg-100", status: "active" },
@@ -819,9 +934,9 @@ describe("real account readiness smoke gate", () => {
             },
           ],
         },
-        "order-page": { list: [{ id: 7001, payOrderId: 9001 }], total: 1 },
+        "order-page": { list: [{ id: 7001, payOrderId: 9001, payPrice: 12900, payStatus: true }], total: 1 },
         "member-profile": { id: 2, tradeId: "RH-TRADE-99999" },
-        "member-address-list": [{ id: 501, name: "Other Buyer" }],
+        "member-address-list": [{ id: 501, name: "Other Buyer", mobile: "4155550101", detailAddress: "2 Launch Way" }],
         "wishlist-page": { list: [{ id: 601, spuId: 10, skuId: 20 }], total: 1 },
         "membership-profile": { id: 90, userId: 2, status: "active" },
         "gift-registry-my": { id: 100, userId: 2, publicCode: "reg-200", status: "active" },
@@ -843,8 +958,10 @@ describe("real account readiness smoke gate", () => {
         "app-profile-seeded-user-mismatch",
         "app-gift-registry-seeded-record-mismatch",
         "app-trade-seeded-id-mismatch",
+        "module-tradeProgram-blocked",
       ]),
     );
+    expect(evaluation.moduleSnapshot.tradeProgram).toBe("blocked");
   });
 
   it("fails when the app membership profile belongs to another seeded user", () => {
@@ -862,9 +979,9 @@ describe("real account readiness smoke gate", () => {
             },
           ],
         },
-        "order-page": { list: [{ id: 7001, payOrderId: 9001 }], total: 1 },
-        "member-profile": { id: 1, tradeId: "RH-TRADE-10086" },
-        "member-address-list": [{ id: 501, name: "Launch Buyer" }],
+        "order-page": { list: [{ id: 7001, payOrderId: 9001, payPrice: 12900, payStatus: true }], total: 1 },
+        "member-profile": { id: 1, email: "launch.buyer@oakvedhome.com", tradeId: "RH-TRADE-10086" },
+        "member-address-list": [{ id: 501, name: "Launch Buyer", mobile: "4155550100", detailAddress: "1 Launch Way" }],
         "wishlist-page": { list: [{ id: 601, spuId: 10, skuId: 20 }], total: 1 },
         "membership-profile": { id: 90, userId: 2, status: "active_annual", planCode: "annual_membership" },
         "gift-registry-my": { id: 100, userId: 1, publicCode: "reg-100", status: "active" },
@@ -899,9 +1016,9 @@ describe("real account readiness smoke gate", () => {
             },
           ],
         },
-        "order-page": { list: [{ id: 7001, payOrderId: 9001 }], total: 1 },
-        "member-profile": { id: 1, tradeId: "RH-TRADE-10086" },
-        "member-address-list": [{ id: 501, name: "Launch Buyer" }],
+        "order-page": { list: [{ id: 7001, payOrderId: 9001, payPrice: 12900, payStatus: true }], total: 1 },
+        "member-profile": { id: 1, email: "launch.buyer@oakvedhome.com", tradeId: "RH-TRADE-10086" },
+        "member-address-list": [{ id: 501, name: "Launch Buyer", mobile: "4155550100", detailAddress: "1 Launch Way" }],
         "wishlist-page": { list: [{ id: 601, spuId: 10, skuId: 20 }], total: 1 },
         "membership-profile": { id: 90, userId: 1, status: "active" },
         "gift-registry-my": { id: 100, userId: 2, publicCode: "reg-100", status: "active" },
@@ -936,9 +1053,9 @@ describe("real account readiness smoke gate", () => {
             },
           ],
         },
-        "order-page": { list: [{ id: 7001, payOrderId: 9001 }], total: 1 },
-        "member-profile": { id: 1, tradeId: "RH-TRADE-10086" },
-        "member-address-list": [{ id: 501, name: "Launch Buyer" }],
+        "order-page": { list: [{ id: 7001, payOrderId: 9001, payPrice: 12900, payStatus: true }], total: 1 },
+        "member-profile": { id: 1, email: "launch.buyer@oakvedhome.com", tradeId: "RH-TRADE-10086" },
+        "member-address-list": [{ id: 501, name: "Launch Buyer", mobile: "4155550100", detailAddress: "1 Launch Way" }],
         "wishlist-page": { list: [{ id: 601, spuId: 10, skuId: 20 }], total: 1 },
         "membership-profile": { id: 90, userId: 1, status: "inactive", planCode: "monthly_membership" },
         "gift-registry-my": { id: 100, userId: 1, publicCode: "reg-100", status: "active" },
@@ -982,9 +1099,9 @@ describe("real account readiness smoke gate", () => {
             },
           ],
         },
-        "order-page": { list: [{ id: 7001, payOrderId: 9001 }], total: 1 },
-        "member-profile": { id: 1, tradeId: "RH-TRADE-10086" },
-        "member-address-list": [{ id: 501, name: "Launch Buyer" }],
+        "order-page": { list: [{ id: 7001, payOrderId: 9001, payPrice: 12900, payStatus: true }], total: 1 },
+        "member-profile": { id: 1, email: "launch.buyer@oakvedhome.com", tradeId: "RH-TRADE-10086" },
+        "member-address-list": [{ id: 501, name: "Launch Buyer", mobile: "4155550100", detailAddress: "1 Launch Way" }],
         "wishlist-page": { list: [{ id: 601, spuId: 10, skuId: 20 }], total: 1 },
         "membership-profile": { id: 90, userId: 1, status: "active" },
         "gift-registry-my": {
@@ -1027,10 +1144,10 @@ describe("real account readiness smoke gate", () => {
             },
           ],
         },
-        "order-page": { list: [{ id: 7001, payOrderId: 9001 }], total: 1 },
-        "order-detail": { id: 7002, payOrderId: 9002 },
-        "member-profile": { id: 1, tradeId: "RH-TRADE-10086" },
-        "member-address-list": [{ id: 501, name: "Launch Buyer" }],
+        "order-page": { list: [{ id: 7001, payOrderId: 9001, payPrice: 12900, payStatus: true }], total: 1 },
+        "order-detail": { id: 7002, payOrderId: 9002, payPrice: 9900, payStatus: true },
+        "member-profile": { id: 1, email: "launch.buyer@oakvedhome.com", tradeId: "RH-TRADE-10086" },
+        "member-address-list": [{ id: 501, name: "Launch Buyer", mobile: "4155550100", detailAddress: "1 Launch Way" }],
         "wishlist-page": { list: [{ id: 601, spuId: 10, skuId: 20 }], total: 1 },
         "membership-profile": { id: 90, status: "active" },
         "gift-registry-my": { id: 100, publicCode: "reg-100", status: "active" },
@@ -1067,10 +1184,10 @@ describe("real account readiness smoke gate", () => {
             },
           ],
         },
-        "order-page": { list: [{ id: 7002, payOrderId: 9002 }], total: 1 },
-        "order-detail": { id: 7001, payOrderId: 9001 },
-        "member-profile": { id: 1, tradeId: "RH-TRADE-10086" },
-        "member-address-list": [{ id: 501, name: "Launch Buyer" }],
+        "order-page": { list: [{ id: 7002, payOrderId: 9002, payPrice: 9900, payStatus: true }], total: 1 },
+        "order-detail": { id: 7001, payOrderId: 9001, payPrice: 12900, payStatus: true },
+        "member-profile": { id: 1, email: "launch.buyer@oakvedhome.com", tradeId: "RH-TRADE-10086" },
+        "member-address-list": [{ id: 501, name: "Launch Buyer", mobile: "4155550100", detailAddress: "1 Launch Way" }],
         "wishlist-page": { list: [{ id: 601, spuId: 10, skuId: 20 }], total: 1 },
         "membership-profile": { id: 90, status: "active" },
         "gift-registry-my": { id: 100, publicCode: "reg-100", status: "active" },
@@ -1107,9 +1224,9 @@ describe("real account readiness smoke gate", () => {
             },
           ],
         },
-        "order-page": { list: [{ id: 7002, payOrderId: 9002 }], total: 1 },
-        "member-profile": { id: 1, tradeId: "RH-TRADE-10086" },
-        "member-address-list": [{ id: 501, name: "Launch Buyer" }],
+        "order-page": { list: [{ id: 7002, payOrderId: 9002, payPrice: 9900, payStatus: true }], total: 1 },
+        "member-profile": { id: 1, email: "launch.buyer@oakvedhome.com", tradeId: "RH-TRADE-10086" },
+        "member-address-list": [{ id: 501, name: "Launch Buyer", mobile: "4155550100", detailAddress: "1 Launch Way" }],
         "wishlist-page": { list: [{ id: 601, spuId: 10, skuId: 20 }], total: 1 },
         "membership-profile": { id: 90, status: "active" },
         "gift-registry-my": { id: 100, publicCode: "reg-100", status: "active" },
@@ -1145,10 +1262,10 @@ describe("real account readiness smoke gate", () => {
             },
           ],
         },
-        "order-page": { list: [{ id: 7001, payOrderId: 9001 }], total: 1 },
-        "order-detail": { id: 7001, payOrderId: 9001 },
-        "member-profile": { id: 1, tradeId: "RH-TRADE-10086" },
-        "member-address-list": [{ id: 501, name: "Launch Buyer" }],
+        "order-page": { list: [{ id: 7001, payOrderId: 9001, payPrice: 12900, payStatus: true }], total: 1 },
+        "order-detail": { id: 7001, payOrderId: 9001, payPrice: 12900, payStatus: true },
+        "member-profile": { id: 1, email: "launch.buyer@oakvedhome.com", tradeId: "RH-TRADE-10086" },
+        "member-address-list": [{ id: 501, name: "Launch Buyer", mobile: "4155550100", detailAddress: "1 Launch Way" }],
         "wishlist-page": { list: [{ id: 601, spuId: 10, skuId: 20 }], total: 1 },
         "membership-profile": { id: 90, status: "active" },
         "gift-registry-my": { id: 100, publicCode: "reg-100", status: "active" },
@@ -1185,7 +1302,7 @@ describe("real account readiness smoke gate", () => {
           ],
         },
         "order-page": { list: [], total: 0 },
-        "member-profile": { id: 1, tradeId: "RH-TRADE-10086" },
+        "member-profile": { id: 1, email: "launch.buyer@oakvedhome.com", tradeId: "RH-TRADE-10086" },
         "member-address-list": [],
         "wishlist-page": { list: [], total: 0 },
         "membership-profile": { id: 90, status: "active" },
@@ -1226,7 +1343,7 @@ describe("real account readiness smoke gate", () => {
           ],
         },
         "order-page": { list: [], total: 0 },
-        "member-profile": { id: 1, tradeId: "RH-TRADE-10086" },
+        "member-profile": { id: 1, email: "launch.buyer@oakvedhome.com", tradeId: "RH-TRADE-10086" },
         "member-address-list": [],
         "wishlist-page": { list: [], total: 0 },
         "membership-profile": null,
@@ -1284,9 +1401,9 @@ describe("real account readiness smoke gate", () => {
             },
           ],
         },
-        "order-page": { list: [{ id: 7001, payOrderId: 9001 }], total: 1 },
-        "member-profile": { id: 1, tradeId: "RH-TRADE-10086" },
-        "member-address-list": [{ id: 501, name: "Launch Buyer" }],
+        "order-page": { list: [{ id: 7001, payOrderId: 9001, payPrice: 12900, payStatus: true }], total: 1 },
+        "member-profile": { id: 1, email: "launch.buyer@oakvedhome.com", tradeId: "RH-TRADE-10086" },
+        "member-address-list": [{ id: 501, name: "Launch Buyer", mobile: "4155550100", detailAddress: "1 Launch Way" }],
         "wishlist-page": { list: [{ id: 601, spuId: 10, skuId: 20 }], total: 1 },
         "membership-profile": { id: 90, status: "active" },
         "gift-registry-my": { id: 100, publicCode: "reg-100", status: "active" },
@@ -1323,9 +1440,9 @@ describe("real account readiness smoke gate", () => {
             },
           ],
         },
-        "order-page": { list: [{ id: 7001, payOrderId: 9001 }], total: 1 },
-        "member-profile": { id: 1, tradeId: "RH-TRADE-10086" },
-        "member-address-list": [{ id: 501, name: "Launch Buyer" }],
+        "order-page": { list: [{ id: 7001, payOrderId: 9001, payPrice: 12900, payStatus: true }], total: 1 },
+        "member-profile": { id: 1, email: "launch.buyer@oakvedhome.com", tradeId: "RH-TRADE-10086" },
+        "member-address-list": [{ id: 501, name: "Launch Buyer", mobile: "4155550100", detailAddress: "1 Launch Way" }],
         "wishlist-page": { list: [{ id: 601, spuId: 10, skuId: 20 }], total: 1 },
         "membership-profile": { id: 90, status: "active" },
         "gift-registry-my": { id: 100, publicCode: "reg-100", status: "active" },
@@ -1362,9 +1479,9 @@ describe("real account readiness smoke gate", () => {
             },
           ],
         },
-        "order-page": { list: [{ id: 7001, payOrderId: 9001 }], total: 1 },
-        "member-profile": { id: 1, tradeId: "RH-TRADE-10086" },
-        "member-address-list": [{ id: 501, name: "Launch Buyer" }],
+        "order-page": { list: [{ id: 7001, payOrderId: 9001, payPrice: 12900, payStatus: true }], total: 1 },
+        "member-profile": { id: 1, email: "launch.buyer@oakvedhome.com", tradeId: "RH-TRADE-10086" },
+        "member-address-list": [{ id: 501, name: "Launch Buyer", mobile: "4155550100", detailAddress: "1 Launch Way" }],
         "wishlist-page": { list: [{ id: 601, spuId: 10, skuId: 20 }], total: 1 },
         "membership-profile": { id: 90, status: "active" },
         "gift-registry-my": { id: 100, publicCode: "reg-100", status: "active" },
@@ -1401,9 +1518,9 @@ describe("real account readiness smoke gate", () => {
             },
           ],
         },
-        "order-page": { list: [{ id: 7001, payOrderId: 9001 }], total: 1 },
-        "member-profile": { id: 1, tradeId: "RH-TRADE-10086" },
-        "member-address-list": [{ id: 502, name: "Other Address" }],
+        "order-page": { list: [{ id: 7001, payOrderId: 9001, payPrice: 12900, payStatus: true }], total: 1 },
+        "member-profile": { id: 1, email: "launch.buyer@oakvedhome.com", tradeId: "RH-TRADE-10086" },
+        "member-address-list": [{ id: 502, name: "Other Address", mobile: "4155550102", detailAddress: "9 Other Way" }],
         "wishlist-page": { list: [{ id: 601, spuId: 10, skuId: 20 }], total: 1 },
         "membership-profile": { id: 90, status: "active" },
         "gift-registry-my": { id: 100, publicCode: "reg-100", status: "active" },
@@ -1439,9 +1556,9 @@ describe("real account readiness smoke gate", () => {
             },
           ],
         },
-        "order-page": { list: [{ id: 7001, payOrderId: 9001 }], total: 1 },
-        "member-profile": { id: 1, tradeId: "RH-TRADE-10086" },
-        "member-address-list": [{ id: 501, name: "Launch Buyer" }],
+        "order-page": { list: [{ id: 7001, payOrderId: 9001, payPrice: 12900, payStatus: true }], total: 1 },
+        "member-profile": { id: 1, email: "launch.buyer@oakvedhome.com", tradeId: "RH-TRADE-10086" },
+        "member-address-list": [{ id: 501, name: "Launch Buyer", mobile: "4155550100", detailAddress: "1 Launch Way" }],
         "wishlist-page": { list: [{ id: 601, spuId: 11, skuId: 21 }], total: 1 },
         "membership-profile": { id: 90, status: "active" },
         "gift-registry-my": { id: 100, publicCode: "reg-100", status: "active" },
@@ -1461,5 +1578,7 @@ describe("real account readiness smoke gate", () => {
 
     expect(evaluation.ok).toBe(false);
     expect(evaluation.failures).toContain("wishlist-seeded-row-missing");
+    expect(evaluation.moduleSnapshot.wishlist).toBe("blocked");
+    expect(evaluation.failures).toContain("module-wishlist-blocked");
   });
 });

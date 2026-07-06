@@ -1,8 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   buildRealAccountModuleSnapshot,
+  getAccountProfileReadiness,
+  getAddressBookReadiness,
+  getBillingReadiness,
   getCartItemReadiness,
   getCartReadiness,
+  getTradeProgramReadiness,
+  getWishlistReadiness,
   getYudaoProductIdentity,
   isRealYudaoProduct,
 } from "../src/services/realAccountReadiness.js";
@@ -106,6 +111,148 @@ describe("real account readiness helpers", () => {
       cart: "partial",
       checkout: "partial",
       wishlist: "partial",
+    });
+  });
+
+  it("blocks Trade readiness when the seeded trade profile belongs to another account", () => {
+    expect(
+      getTradeProgramReadiness({
+        token: "token",
+        hasTradeApi: true,
+        tradeProfile: { userId: 2, tradeId: "RH-TRADE-99999" },
+        expectedUserId: "1",
+        expectedTradeId: "RH-TRADE-10086",
+      }),
+    ).toMatchObject({
+      ready: false,
+      partial: false,
+      issues: ["trade-id-mismatch", "user-id-mismatch"],
+    });
+
+    expect(
+      buildRealAccountModuleSnapshot({
+        token: "token",
+        productCount: 1,
+        cartItems: liveCartItems,
+        hasTradeApi: true,
+        tradeProfile: { userId: 2, tradeId: "RH-TRADE-99999" },
+        expectedUserId: "1",
+        expectedTradeId: "RH-TRADE-10086",
+      }),
+    ).toMatchObject({
+      tradeProgram: "blocked",
+    });
+  });
+
+  it("does not mark billing ready from order rows that lack payment evidence", () => {
+    expect(
+      getBillingReadiness({
+        token: "token",
+        hasBillingReadApi: true,
+        billingRecords: [{ id: 7001, no: "SO-7001" }],
+      }),
+    ).toMatchObject({
+      ready: false,
+      partial: true,
+      issues: ["missing-payment-amount", "missing-payment-status"],
+    });
+
+    expect(
+      buildRealAccountModuleSnapshot({
+        token: "token",
+        productCount: 1,
+        cartItems: liveCartItems,
+        hasBillingReadApi: true,
+        billingRecords: [{ id: 7001, no: "SO-7001" }],
+      }),
+    ).toMatchObject({
+      billing: "partial",
+    });
+  });
+
+  it("does not mark account profile ready without a contact field", () => {
+    expect(
+      getAccountProfileReadiness({
+        token: "token",
+        hasAccountProfileApi: true,
+        profile: { id: 1 },
+        expectedUserId: "1",
+      }),
+    ).toMatchObject({
+      ready: false,
+      partial: true,
+      issues: ["missing-contact"],
+    });
+
+    expect(
+      buildRealAccountModuleSnapshot({
+        token: "token",
+        productCount: 1,
+        cartItems: liveCartItems,
+        hasAccountProfileApi: true,
+        accountProfile: { id: 1 },
+        expectedUserId: "1",
+      }),
+    ).toMatchObject({
+      accountProfile: "partial",
+    });
+  });
+
+  it("does not mark address book ready when saved addresses lack delivery fields", () => {
+    expect(
+      getAddressBookReadiness({
+        token: "token",
+        hasAddressBookApi: true,
+        addresses: [{ id: 501, name: "Launch Buyer" }],
+        expectedAddressId: "501",
+      }),
+    ).toMatchObject({
+      ready: false,
+      partial: true,
+      issues: ["missing-address-mobile", "missing-address-detail"],
+    });
+
+    expect(
+      buildRealAccountModuleSnapshot({
+        token: "token",
+        productCount: 1,
+        cartItems: liveCartItems,
+        hasAddressBookApi: true,
+        addresses: [{ id: 501, name: "Launch Buyer" }],
+        expectedAddressId: "501",
+      }),
+    ).toMatchObject({
+      addressBook: "partial",
+    });
+  });
+
+  it("does not mark wishlist ready when seeded product identifiers are missing", () => {
+    expect(
+      getWishlistReadiness({
+        token: "token",
+        hasWishlistApi: true,
+        wishlistRecords: [{ id: 601, spuId: 11, skuId: 21 }],
+        expectedSpuId: "10",
+        expectedSkuId: "20",
+      }),
+    ).toMatchObject({
+      ready: false,
+      partial: false,
+      issues: ["seeded-wishlist-row-missing"],
+    });
+
+    expect(
+      buildRealAccountModuleSnapshot({
+        token: "token",
+        productCount: 1,
+        cartItems: liveCartItems,
+        hasWishlistApi: true,
+        wishlistRecords: [{ id: 601, spuId: 11, skuId: 21 }],
+        expectedWishlistSpuId: "10",
+        expectedWishlistSkuId: "20",
+      }),
+    ).toMatchObject({
+      wishlist: "blocked",
     });
   });
 });

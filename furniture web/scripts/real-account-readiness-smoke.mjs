@@ -466,9 +466,16 @@ export const evaluateRealAccountReadiness = (results = {}, token = "", expected 
     cartItems,
     hasOrderReadApi: hasPagedRecords(results["order-page"]),
     hasBillingReadApi: hasPagedRecords(results["order-page"]),
+    billingRecords: Array.isArray(results["order-page"]?.list) ? results["order-page"].list : [],
     hasAccountProfileApi: hasPersistedRecord(results["member-profile"], ["id", "userId", "email", "mobile"]),
+    accountProfile: memberProfile,
     hasAddressBookApi: hasListRecords(results["member-address-list"]),
+    addresses: Array.isArray(results["member-address-list"]) ? results["member-address-list"] : [],
+    expectedAddressId,
     hasWishlistApi: hasPagedRecords(results["wishlist-page"]),
+    wishlistRecords: Array.isArray(results["wishlist-page"]?.list) ? results["wishlist-page"].list : [],
+    expectedWishlistSpuId,
+    expectedWishlistSkuId,
     hasMembershipApi:
       hasAvailableResult(results, "membership-profile") &&
       hasPersistedRecord(results["membership-profile"], ["id", "memberId", "userId", "status", "planCode"]),
@@ -476,6 +483,12 @@ export const evaluateRealAccountReadiness = (results = {}, token = "", expected 
       hasAvailableResult(results, "gift-registry-my") &&
       hasPersistedRecord(results["gift-registry-my"], ["id", "publicCode", "status"]),
     hasTradeApi: Boolean(String(memberProfile.tradeId || "").trim()),
+    tradeProfile: {
+      userId: memberProfile.userId || memberProfile.id,
+      tradeId: memberProfile.tradeId,
+    },
+    expectedUserId,
+    expectedTradeId,
   });
 
   const failures = [];
