@@ -224,4 +224,55 @@ describe("i18n locale helper", () => {
       }
     }
   });
+
+  it("provides full visible-copy namespaces for every supported locale", async () => {
+    const { availableLocales, getMessage } = await loadI18n();
+    const keys = [
+      "home.commerce.eyebrow",
+      "home.commerce.title",
+      "home.featured.title",
+      "home.trust.memberPricing.title",
+      "landing.common.collection",
+      "outdoor.hero.title",
+      "outdoor.services.title",
+      "teen.hero.title",
+      "teen.services.cta",
+      "babyChild.hero.title",
+      "babyChild.category.placeholderTitle",
+      "sale.hero.title",
+      "productList.filters.title",
+      "productList.filters.clearAll",
+      "productList.edit.title",
+      "productDetail.gallery.instructions",
+      "productDetail.registry.add",
+      "productDetail.inspiration.title",
+      "productDetail.shopRoom.title",
+      "productDetail.completeRoom.title",
+      "cart.drawerTitle",
+      "cart.summary.title",
+      "cart.membership.description",
+      "checkout.header.title",
+      "checkout.header.shipping",
+      "checkout.header.payment",
+      "checkout.header.confirmation",
+      "checkout.payment.saveCard",
+      "checkout.payment.billingSameAsShipping",
+      "checkout.summary.memberSavings",
+      "checkout.footer.privacy",
+      "giftRegistry.eyebrow",
+      "giftRegistry.home.title",
+      "giftRegistry.find.title",
+      "giftRegistry.create.title",
+      "giftRegistry.manage.title",
+      "giftRegistry.public.noGiftsTitle",
+      "account.dashboard.title",
+      "placeholder.missing.eyebrow",
+    ];
+
+    for (const locale of availableLocales) {
+      for (const key of keys) {
+        expect(getMessage(key, locale.lang), `${key} missing for ${locale.lang}`).toBeTruthy();
+      }
+    }
+  });
 });
