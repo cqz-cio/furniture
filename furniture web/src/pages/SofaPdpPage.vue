@@ -105,18 +105,18 @@ const handleAddToWishlist = () => {
 const handleAddToRegistry = async () => {
   registryStatusMessage.value = "";
   if (source.value !== "yudao") {
-    registryStatusMessage.value = "Only connected Yudao products can be added to a gift registry.";
+    registryStatusMessage.value = t("productDetail.registry.connectedOnly");
     return;
   }
   if (!readYudaoToken()) {
-    registryStatusMessage.value = "Sign in before adding this item to your gift registry.";
+    registryStatusMessage.value = t("productDetail.registry.signInRequired");
     return;
   }
   registryBusy.value = true;
   try {
     const registry = await getMyYudaoGiftRegistry();
     if (!registry?.id) {
-      registryStatusMessage.value = "Create a gift registry before adding products.";
+      registryStatusMessage.value = t("productDetail.registry.createFirst");
       return;
     }
     await addYudaoGiftRegistryItem(
@@ -125,9 +125,9 @@ const handleAddToRegistry = async () => {
         quantityRequested: normalizedPurchaseQuantity.value || 1,
       }),
     );
-    registryStatusMessage.value = "Added to your gift registry.";
+    registryStatusMessage.value = t("productDetail.registry.added");
   } catch (error) {
-    registryStatusMessage.value = error?.message || "This item could not be added to your gift registry.";
+    registryStatusMessage.value = error?.message || t("productDetail.registry.addFailed");
   } finally {
     registryBusy.value = false;
   }
@@ -198,9 +198,9 @@ onMounted(async () => {
           <button class="product-gallery-arrow product-gallery-arrow-next" type="button" aria-label="Next image" @click.stop="showNextGalleryItem">&rsaquo;</button>
         </figure>
         <p class="product-gallery-status" aria-live="polite">
-          <span>{{ activeGalleryItem.label }} view</span>
+          <span>{{ t("productDetail.gallery.view", { label: activeGalleryItem.label }) }}</span>
           <span>{{ activeGalleryIndex + 1 }} / {{ detail.gallery.length }}</span>
-          <small>Click, scroll or use arrow keys to switch views</small>
+          <small>{{ t("productDetail.gallery.instructions") }}</small>
         </p>
         <div class="product-gallery-thumbs" aria-label="Product images">
           <button
@@ -262,7 +262,7 @@ onMounted(async () => {
             {{ t(isCurrentProductSaved ? "wishlist.saved" : "wishlist.save") }}
           </button>
           <button class="product-registry-button" type="button" :disabled="registryBusy" @click="handleAddToRegistry">
-            {{ registryBusy ? t("common.working") : "Add to Gift Registry" }}
+            {{ registryBusy ? t("common.working") : t("productDetail.registry.add") }}
           </button>
         </div>
         <nav class="product-related-links" aria-label="Related product options">
@@ -335,7 +335,7 @@ onMounted(async () => {
             {{ t(isCurrentProductSaved ? "wishlist.saved" : "wishlist.save") }}
           </button>
           <button class="product-registry-button" type="button" :disabled="registryBusy" @click="handleAddToRegistry">
-            {{ registryBusy ? t("common.working") : "Add to Gift Registry" }}
+            {{ registryBusy ? t("common.working") : t("productDetail.registry.add") }}
           </button>
         </div>
         <p v-if="wishlistStatusMessage" class="product-registry-status" role="status">{{ wishlistStatusMessage }}</p>
@@ -357,9 +357,9 @@ onMounted(async () => {
 
     <section class="product-inspiration-section" aria-label="Room inspiration">
       <header>
-        <p class="eyebrow">Room Inspiration</p>
-        <h2>Style the full Oakved room</h2>
-        <p>Use material, scale and surrounding pieces to help customers picture the product before purchase.</p>
+        <p class="eyebrow">{{ t("productDetail.inspiration.eyebrow") }}</p>
+        <h2>{{ t("productDetail.inspiration.title") }}</h2>
+        <p>{{ t("productDetail.inspiration.description") }}</p>
       </header>
       <div class="product-inspiration-grid">
         <article v-for="item in detail.roomInspiration" :key="item.title">
@@ -387,17 +387,17 @@ onMounted(async () => {
         </a>
       </figure>
       <div class="shop-room-copy">
-        <p class="eyebrow">Shop The Room</p>
-        <h2>Build a coordinated wood furniture setting</h2>
-        <p>Each hotspot links the primary item with complementary tables, storage and seating so the page feels closer to a finished showroom.</p>
+        <p class="eyebrow">{{ t("productDetail.shopRoom.eyebrow") }}</p>
+        <h2>{{ t("productDetail.shopRoom.title") }}</h2>
+        <p>{{ t("productDetail.shopRoom.description") }}</p>
       </div>
     </section>
 
     <section class="product-companion-section" aria-label="Complete the room">
       <header>
-        <p class="eyebrow">Complete The Room</p>
-        <h2>Pieces that sit well together</h2>
-        <p>Keep the next step visual and product-led instead of sending customers back to a blank catalog search.</p>
+        <p class="eyebrow">{{ t("productDetail.completeRoom.eyebrow") }}</p>
+        <h2>{{ t("productDetail.completeRoom.title") }}</h2>
+        <p>{{ t("productDetail.completeRoom.description") }}</p>
       </header>
       <div class="product-companion-grid">
         <a v-for="item in detail.companionProducts" :key="item.title" :href="item.href">

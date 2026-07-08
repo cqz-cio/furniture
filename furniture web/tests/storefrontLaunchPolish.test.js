@@ -38,8 +38,8 @@ describe("storefront launch polish", () => {
 
     expect(source).toContain("activeFilterLabels");
     expect(source).toContain('class="product-active-filters"');
-    expect(source).toContain("Showing");
-    expect(source).toContain("Clear all");
+    expect(source).toContain('t("productList.resultSummary"');
+    expect(source).toContain('t("productList.filters.clearAll")');
   });
 
   it("respects reduced-motion settings for launch animations", () => {

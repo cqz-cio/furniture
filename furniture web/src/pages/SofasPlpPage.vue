@@ -70,7 +70,7 @@ const productTypeOptions = computed(() => {
   ];
 });
 const selectedFilterLabel = computed(() => {
-  if (selectedProductType.value === "all") return "All furniture";
+  if (selectedProductType.value === "all") return t("productList.allFurniture");
   return productTypeOptions.value.find((option) => option.value === selectedProductType.value)?.label || productListingQueryFilterLabels[selectedProductType.value] || selectedProductType.value;
 });
 const listingModel = computed(() =>
@@ -92,8 +92,8 @@ const resultSummary = computed(() =>
   t("productList.resultSummary", { visible: visibleProducts.value.length, total: products.value.length })
 );
 const activeFilterLabels = computed(() => {
-  const labels = [`Showing ${visibleProducts.value.length} of ${products.value.length}`];
-  if (searchQuery.value.trim()) labels.push(`Search: ${searchQuery.value.trim()}`);
+  const labels = [resultSummary.value];
+  if (searchQuery.value.trim()) labels.push(t("productList.activeSearch", { query: searchQuery.value.trim() }));
   if (selectedProductType.value !== "all") {
     labels.push(selectedFilterLabel.value);
   }
@@ -109,9 +109,9 @@ const money = (value) => `$${Number(value || 0).toLocaleString("en-US", { maximu
 const isProductAvailable = (product) => Number(product.stock) > 0;
 const productStockLabel = (product) => {
   const stock = Number(product.stock || 0);
-  if (stock <= 0) return "Made to order";
-  if (stock <= 5) return `Only ${stock} left`;
-  return `${stock} ready`;
+  if (stock <= 0) return t("productList.stock.madeToOrder");
+  if (stock <= 5) return t("productList.stock.onlyLeft", { count: stock });
+  return t("productList.stock.ready", { count: stock });
 };
 const resetProductListControls = () => {
   searchQuery.value = "";
@@ -122,7 +122,7 @@ const resetProductListControls = () => {
 };
 const handleQuickAdd = (product, options) => {
   emit("add-to-cart", product, 1, options);
-  quickAddMessage.value = `${product.name} added to bag`;
+  quickAddMessage.value = t("productList.quickAdd", { name: product.name });
 };
 const loadProductWishlistState = async () => {
   const state = await loadWishlistIdentityState();
@@ -212,7 +212,7 @@ onBeforeUnmount(() => {
         </select>
       </label>
       <button class="product-mobile-filter-toggle" type="button" @click="mobileFiltersOpen = true">
-        Filter
+        {{ t("productList.filters.title") }}
         <span v-if="listingModel.summary.activeFacetCount">{{ listingModel.summary.activeFacetCount }}</span>
       </button>
       <p>{{ resultSummary }}</p>
@@ -224,7 +224,7 @@ onBeforeUnmount(() => {
         :class="{ active: selectedProductType === 'all' }"
         @click="selectedProductType = 'all'"
       >
-        All
+        {{ t("productList.allTypes") }}
       </button>
       <button
         v-for="option in productTypeOptions"
@@ -242,10 +242,10 @@ onBeforeUnmount(() => {
       <div class="product-facet-panel">
         <div class="product-facet-head">
           <div>
-            <p class="eyebrow">Filter</p>
+            <p class="eyebrow">{{ t("productList.filters.title") }}</p>
             <h2>{{ selectedFilterLabel }}</h2>
           </div>
-          <button type="button" @click="mobileFiltersOpen = false">Close</button>
+          <button type="button" @click="mobileFiltersOpen = false">{{ t("productList.filters.close") }}</button>
         </div>
         <label v-for="group in productFacetGroups" :key="group.key" class="product-facet-control">
           <span>{{ group.label }}</span>
@@ -260,13 +260,13 @@ onBeforeUnmount(() => {
 
     <section class="product-active-filters" aria-label="Active filters">
       <span v-for="label in activeFilterLabels" :key="label">{{ label }}</span>
-      <button type="button" @click="resetProductListControls">Clear all</button>
+      <button type="button" @click="resetProductListControls">{{ t("productList.filters.clearAll") }}</button>
     </section>
 
     <section class="product-list-confidence" aria-label="Catalog confidence">
-      <span>{{ listingModel.summary.productCount }} matched pieces</span>
-      <span>{{ listingModel.summary.collectionCount }} product groups</span>
-      <span>Images, sizes and stock stay visible while browsing</span>
+      <span>{{ t("productList.matchedPieces", { count: listingModel.summary.productCount }) }}</span>
+      <span>{{ t("productList.productGroups", { count: listingModel.summary.collectionCount }) }}</span>
+      <span>{{ t("productList.browseStatus") }}</span>
     </section>
 
     <p v-if="quickAddMessage" class="product-quick-add-status" role="status">{{ quickAddMessage }}</p>
@@ -299,15 +299,15 @@ onBeforeUnmount(() => {
           </div>
           <dl class="product-card-meta">
             <div>
-              <dt>Member</dt>
+              <dt>{{ t("productList.card.member") }}</dt>
               <dd>{{ money(product.price) }}</dd>
             </div>
             <div v-if="product.marketPrice">
-              <dt>Regular</dt>
+              <dt>{{ t("productList.card.regular") }}</dt>
               <dd>{{ money(product.marketPrice) }}</dd>
             </div>
             <div v-if="product.dimensions">
-              <dt>Size</dt>
+              <dt>{{ t("productList.card.size") }}</dt>
               <dd>{{ product.dimensions }}</dd>
             </div>
           </dl>
@@ -339,10 +339,10 @@ onBeforeUnmount(() => {
       </article>
 
       <aside v-if="visibleProducts.length > 2" class="product-editorial-tile">
-        <p class="eyebrow">Oakved Edit</p>
-        <h2>Wood furniture for the finished bedroom</h2>
-        <p>Build the room around bedside storage, bench seating, dressing tables and compact lounge pieces instead of browsing isolated SKUs.</p>
-        <a href="/products?collection=bedroom-set">View bedroom sets</a>
+        <p class="eyebrow">{{ t("productList.edit.eyebrow") }}</p>
+        <h2>{{ t("productList.edit.title") }}</h2>
+        <p>{{ t("productList.edit.description") }}</p>
+        <a href="/products?collection=bedroom-set">{{ t("productList.edit.cta") }}</a>
       </aside>
     </section>
   </section>

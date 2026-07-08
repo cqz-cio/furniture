@@ -5753,6 +5753,201 @@ Object.entries(taskThreeLandingMessages).forEach(([lang, localeMessages]) => {
   mergeLocaleMessages(messages[lang], localeMessages);
 });
 
+const taskFourProductMessages = {
+  en: {
+    productList: {
+      filters: {
+        title: "Filter",
+        close: "Close",
+        clearAll: "Clear all",
+      },
+      allFurniture: "All furniture",
+      activeSearch: "Search: {query}",
+      browseStatus: "Images, sizes and stock stay visible while browsing",
+      matchedPieces: "{count} matched pieces",
+      productGroups: "{count} product groups",
+      stock: {
+        madeToOrder: "Made to order",
+        onlyLeft: "Only {count} left",
+        ready: "{count} ready",
+      },
+      quickAdd: "{name} added to bag",
+      card: {
+        member: "Member",
+        regular: "Regular",
+        size: "Size",
+      },
+      edit: {
+        eyebrow: "Oakved Edit",
+        title: "Wood furniture for the finished bedroom",
+        description:
+          "Build the room around bedside storage, bench seating, dressing tables and compact lounge pieces instead of browsing isolated SKUs.",
+        cta: "View bedroom sets",
+      },
+    },
+    productDetail: {
+      gallery: {
+        instructions: "Click, scroll or use arrow keys to switch views",
+        view: "{label} view",
+      },
+      registry: {
+        add: "Add to Gift Registry",
+        connectedOnly: "Only connected Yudao products can be added to a gift registry.",
+        signInRequired: "Sign in before adding this item to your gift registry.",
+        createFirst: "Create a gift registry before adding products.",
+        added: "Added to your gift registry.",
+        addFailed: "This item could not be added to your gift registry.",
+      },
+      inspiration: {
+        eyebrow: "Room Inspiration",
+        title: "Style the full Oakved room",
+        description: "Use material, scale and surrounding pieces to help customers picture the product before purchase.",
+      },
+      shopRoom: {
+        eyebrow: "Shop The Room",
+        title: "Build a coordinated wood furniture setting",
+        description:
+          "Each hotspot links the primary item with complementary tables, storage and seating so the page feels closer to a finished showroom.",
+      },
+      completeRoom: {
+        eyebrow: "Complete The Room",
+        title: "Pieces that sit well together",
+        description: "Keep the next step visual and product-led instead of sending customers back to a blank catalog search.",
+      },
+    },
+  },
+  "zh-CN": {
+    productList: {
+      filters: {
+        title: "\u7b5b\u9009",
+        close: "\u5173\u95ed",
+        clearAll: "\u5168\u90e8\u6e05\u9664",
+      },
+      allFurniture: "\u5168\u90e8\u5bb6\u5177",
+      activeSearch: "\u641c\u7d22\uff1a{query}",
+      browseStatus: "\u6d4f\u89c8\u65f6\u56fe\u7247\u3001\u5c3a\u5bf8\u548c\u5e93\u5b58\u4fdd\u6301\u53ef\u89c1",
+      matchedPieces: "{count} \u4ef6\u5339\u914d\u5355\u54c1",
+      productGroups: "{count} \u4e2a\u5546\u54c1\u7ec4",
+      stock: {
+        madeToOrder: "\u6309\u9700\u5b9a\u5236",
+        onlyLeft: "\u4ec5\u5269 {count} \u4ef6",
+        ready: "{count} \u4ef6\u53ef\u53d1\u8d27",
+      },
+      quickAdd: "{name} \u5df2\u52a0\u5165\u8d2d\u7269\u888b",
+      card: {
+        member: "\u4f1a\u5458\u4ef7",
+        regular: "\u6b63\u4ef7",
+        size: "\u5c3a\u5bf8",
+      },
+      edit: {
+        eyebrow: "Oakved \u7cbe\u9009",
+        title: "\u4e3a\u5b8c\u6574\u5367\u5ba4\u6253\u9020\u7684\u6728\u8d28\u5bb6\u5177",
+        description:
+          "\u56f4\u7ed5\u5e8a\u8fb9\u6536\u7eb3\u3001\u957f\u51f3\u5ea7\u6905\u3001\u68b3\u5986\u53f0\u548c\u5c0f\u578b\u4f11\u95f2\u5355\u54c1\u6765\u5e03\u7f6e\u623f\u95f4\uff0c\u800c\u4e0d\u662f\u6d4f\u89c8\u5b64\u7acb\u7684 SKU\u3002",
+        cta: "\u67e5\u770b\u5367\u5ba4\u5957\u7ec4",
+      },
+    },
+    productDetail: {
+      gallery: {
+        instructions: "\u70b9\u51fb\u3001\u6eda\u52a8\u6216\u4f7f\u7528\u65b9\u5411\u952e\u5207\u6362\u89c6\u56fe",
+        view: "{label} \u89c6\u56fe",
+      },
+      registry: {
+        add: "\u52a0\u5165\u793c\u54c1\u767b\u8bb0",
+        connectedOnly: "\u53ea\u6709\u5df2\u8fde\u63a5\u7684 Yudao \u5546\u54c1\u624d\u80fd\u52a0\u5165\u793c\u54c1\u767b\u8bb0\u3002",
+        signInRequired: "\u8bf7\u5148\u767b\u5f55\uff0c\u518d\u5c06\u6b64\u5546\u54c1\u52a0\u5165\u793c\u54c1\u767b\u8bb0\u3002",
+        createFirst: "\u8bf7\u5148\u521b\u5efa\u793c\u54c1\u767b\u8bb0\uff0c\u518d\u6dfb\u52a0\u5546\u54c1\u3002",
+        added: "\u5df2\u52a0\u5165\u60a8\u7684\u793c\u54c1\u767b\u8bb0\u3002",
+        addFailed: "\u6b64\u5546\u54c1\u65e0\u6cd5\u52a0\u5165\u60a8\u7684\u793c\u54c1\u767b\u8bb0\u3002",
+      },
+      inspiration: {
+        eyebrow: "\u623f\u95f4\u7075\u611f",
+        title: "\u642d\u914d\u5b8c\u6574\u7684 Oakved \u623f\u95f4",
+        description: "\u5229\u7528\u6750\u8d28\u3001\u5c3a\u5ea6\u548c\u5468\u8fb9\u5355\u54c1\uff0c\u5e2e\u52a9\u987e\u5ba2\u5728\u8d2d\u4e70\u524d\u60f3\u8c61\u4ea7\u54c1\u3002",
+      },
+      shopRoom: {
+        eyebrow: "\u9009\u8d2d\u6574\u95f4\u642d\u914d",
+        title: "\u6253\u9020\u534f\u8c03\u7684\u6728\u8d28\u5bb6\u5177\u7a7a\u95f4",
+        description:
+          "\u6bcf\u4e2a\u70ed\u70b9\u90fd\u5c06\u4e3b\u5546\u54c1\u4e0e\u642d\u914d\u684c\u51e0\u3001\u6536\u7eb3\u548c\u5ea7\u6905\u76f8\u8fde\uff0c\u8ba9\u9875\u9762\u66f4\u50cf\u5b8c\u6574\u5c55\u5385\u3002",
+      },
+      completeRoom: {
+        eyebrow: "\u5b8c\u5584\u623f\u95f4",
+        title: "\u9002\u5408\u4e00\u8d77\u642d\u914d\u7684\u5355\u54c1",
+        description:
+          "\u8ba9\u4e0b\u4e00\u6b65\u4fdd\u6301\u89c6\u89c9\u5316\u5e76\u4ee5\u4ea7\u54c1\u4e3a\u4e3b\uff0c\u800c\u4e0d\u662f\u628a\u987e\u5ba2\u5e26\u56de\u7a7a\u767d\u76ee\u5f55\u641c\u7d22\u3002",
+      },
+    },
+  },
+  fr: {
+    productList: {
+      filters: {
+        title: "Filtrer",
+        close: "Fermer",
+        clearAll: "Tout effacer",
+      },
+      allFurniture: "Tout le mobilier",
+      activeSearch: "Recherche : {query}",
+      browseStatus: "Les images, dimensions et stocks restent visibles pendant la navigation",
+      matchedPieces: "{count} pieces correspondantes",
+      productGroups: "{count} groupes de produits",
+      stock: {
+        madeToOrder: "Fabrique sur commande",
+        onlyLeft: "Plus que {count}",
+        ready: "{count} prets",
+      },
+      quickAdd: "{name} ajoute au panier",
+      card: {
+        member: "Prix membre",
+        regular: "Prix standard",
+        size: "Taille",
+      },
+      edit: {
+        eyebrow: "Selection Oakved",
+        title: "Mobilier en bois pour une chambre achevee",
+        description:
+          "Composez la piece autour du rangement de chevet, des bancs, des coiffeuses et des pieces lounge compactes plutot que de parcourir des SKU isoles.",
+        cta: "Voir les ensembles chambre",
+      },
+    },
+    productDetail: {
+      gallery: {
+        instructions: "Cliquez, faites defiler ou utilisez les fleches pour changer de vue",
+        view: "Vue {label}",
+      },
+      registry: {
+        add: "Ajouter a la liste cadeaux",
+        connectedOnly: "Seuls les produits Yudao connectes peuvent etre ajoutes a une liste cadeaux.",
+        signInRequired: "Connectez-vous avant d'ajouter cet article a votre liste cadeaux.",
+        createFirst: "Creez une liste cadeaux avant d'ajouter des produits.",
+        added: "Ajoute a votre liste cadeaux.",
+        addFailed: "Cet article n'a pas pu etre ajoute a votre liste cadeaux.",
+      },
+      inspiration: {
+        eyebrow: "Inspiration de piece",
+        title: "Composer toute la piece Oakved",
+        description: "Aidez les clients a imaginer le produit avant l'achat grace aux matieres, aux proportions et aux pieces autour.",
+      },
+      shopRoom: {
+        eyebrow: "Acheter la piece",
+        title: "Composer un ensemble coordonne de mobilier en bois",
+        description:
+          "Chaque point relie l'article principal a des tables, rangements et assises complementaires pour rapprocher la page d'un showroom acheve.",
+      },
+      completeRoom: {
+        eyebrow: "Completer la piece",
+        title: "Des pieces qui vont bien ensemble",
+        description:
+          "Gardez l'etape suivante visuelle et guidee par les produits au lieu de renvoyer les clients vers une recherche catalogue vide.",
+      },
+    },
+  },
+};
+
+Object.entries(taskFourProductMessages).forEach(([lang, localeMessages]) => {
+  mergeLocaleMessages(messages[lang], localeMessages);
+});
+
 const saleCategoryMessages = {
   en: {
     sale: {
