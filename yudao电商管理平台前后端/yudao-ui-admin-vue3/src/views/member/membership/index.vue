@@ -1,29 +1,29 @@
 <template>
   <ContentWrap>
     <el-form ref="queryFormRef" :inline="true" :model="queryParams" class="-mb-15px" label-width="100px">
-      <el-form-item label="User ID" prop="userId">
+      <el-form-item label="用户 ID" prop="userId">
         <el-input-number v-model="queryParams.userId" class="!w-180px" :min="1" controls-position="right" />
       </el-form-item>
-      <el-form-item label="Status" prop="status">
-        <el-select v-model="queryParams.status" clearable class="!w-180px" placeholder="All">
+      <el-form-item label="状态" prop="status">
+        <el-select v-model="queryParams.status" clearable class="!w-180px" placeholder="全部">
           <el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="item.value" />
         </el-select>
       </el-form-item>
-      <el-form-item label="Member ID" prop="memberId">
-        <el-input v-model="queryParams.memberId" class="!w-220px" clearable placeholder="OAKVED-MEMBER-88" @keyup.enter="handleQuery" />
+      <el-form-item label="会员编号" prop="memberId">
+        <el-input v-model="queryParams.memberId" class="!w-220px" clearable placeholder="请输入会员编号" @keyup.enter="handleQuery" />
       </el-form-item>
       <el-form-item>
         <el-button v-hasPermi="['member:membership:query']" @click="handleQuery">
           <Icon class="mr-5px" icon="ep:search" />
-          Search
+          搜索
         </el-button>
         <el-button @click="resetQuery">
           <Icon class="mr-5px" icon="ep:refresh" />
-          Reset
+          重置
         </el-button>
         <el-button v-hasPermi="['member:membership:update']" type="primary" @click="openCreate">
           <Icon class="mr-5px" icon="ep:plus" />
-          Open Annual
+          开通年费会员
         </el-button>
       </el-form-item>
     </el-form>
@@ -32,67 +32,67 @@
   <ContentWrap>
     <el-table v-loading="loading" :data="list" :show-overflow-tooltip="true" :stripe="true">
       <el-table-column align="center" label="ID" prop="id" width="90" />
-      <el-table-column align="center" label="User ID" prop="userId" width="110" />
-      <el-table-column label="Member ID" min-width="180" prop="memberId" />
-      <el-table-column label="Plan" min-width="180" prop="planName" />
-      <el-table-column align="center" label="Status" prop="status" width="150">
+      <el-table-column align="center" label="用户 ID" prop="userId" width="110" />
+      <el-table-column label="会员编号" min-width="180" prop="memberId" />
+      <el-table-column label="会员方案" min-width="180" prop="planName" />
+      <el-table-column align="center" label="状态" prop="status" width="150">
         <template #default="{ row }">
           <el-tag :type="statusTagType(row.status)">{{ statusLabel(row.status) }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column align="center" label="Auto Renew" prop="autoRenew" width="120">
+      <el-table-column align="center" label="自动续费" prop="autoRenew" width="120">
         <template #default="{ row }">
-          <el-tag :type="row.autoRenew ? 'success' : 'info'">{{ row.autoRenew ? 'On' : 'Off' }}</el-tag>
+          <el-tag :type="row.autoRenew ? 'success' : 'info'">{{ row.autoRenew ? '开启' : '关闭' }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column align="center" label="Started" prop="startedAt" width="180" />
-      <el-table-column align="center" label="Expires" prop="expiresAt" width="180" />
-      <el-table-column align="center" fixed="right" label="Actions" width="160">
+      <el-table-column align="center" label="开始时间" prop="startedAt" width="180" />
+      <el-table-column align="center" label="到期时间" prop="expiresAt" width="180" />
+      <el-table-column align="center" fixed="right" label="操作" width="160">
         <template #default="{ row }">
-          <el-button v-hasPermi="['member:membership:query']" link type="primary" @click="openDetail(row.id)">Detail</el-button>
-          <el-button v-hasPermi="['member:membership:update']" link type="success" @click="openEdit(row)">Edit</el-button>
+          <el-button v-hasPermi="['member:membership:query']" link type="primary" @click="openDetail(row.id)">详情</el-button>
+          <el-button v-hasPermi="['member:membership:update']" link type="success" @click="openEdit(row)">编辑</el-button>
         </template>
       </el-table-column>
     </el-table>
     <Pagination v-model:limit="queryParams.pageSize" v-model:page="queryParams.pageNo" :total="total" @pagination="getList" />
   </ContentWrap>
 
-  <el-drawer v-model="detailVisible" size="520px" title="Membership detail">
+  <el-drawer v-model="detailVisible" size="520px" title="会员权益详情">
     <el-descriptions v-if="detail" :column="1" border>
-      <el-descriptions-item label="User ID">{{ detail.userId }}</el-descriptions-item>
-      <el-descriptions-item label="Member ID">{{ detail.memberId || '-' }}</el-descriptions-item>
-      <el-descriptions-item label="Plan">{{ detail.planName || '-' }}</el-descriptions-item>
-      <el-descriptions-item label="Status">{{ statusLabel(detail.status) }}</el-descriptions-item>
-      <el-descriptions-item label="Started">{{ detail.startedAt || '-' }}</el-descriptions-item>
-      <el-descriptions-item label="Expires">{{ detail.expiresAt || '-' }}</el-descriptions-item>
-      <el-descriptions-item label="Auto Renew">{{ detail.autoRenew ? 'On' : 'Off' }}</el-descriptions-item>
-      <el-descriptions-item label="Source Order">{{ detail.sourceOrderId || '-' }}</el-descriptions-item>
-      <el-descriptions-item label="Source Pay Order">{{ detail.sourcePayOrderId || '-' }}</el-descriptions-item>
+      <el-descriptions-item label="用户 ID">{{ detail.userId }}</el-descriptions-item>
+      <el-descriptions-item label="会员编号">{{ detail.memberId || '-' }}</el-descriptions-item>
+      <el-descriptions-item label="会员方案">{{ detail.planName || '-' }}</el-descriptions-item>
+      <el-descriptions-item label="状态">{{ statusLabel(detail.status) }}</el-descriptions-item>
+      <el-descriptions-item label="开始时间">{{ detail.startedAt || '-' }}</el-descriptions-item>
+      <el-descriptions-item label="到期时间">{{ detail.expiresAt || '-' }}</el-descriptions-item>
+      <el-descriptions-item label="自动续费">{{ detail.autoRenew ? '开启' : '关闭' }}</el-descriptions-item>
+      <el-descriptions-item label="来源订单">{{ detail.sourceOrderId || '-' }}</el-descriptions-item>
+      <el-descriptions-item label="来源支付单">{{ detail.sourcePayOrderId || '-' }}</el-descriptions-item>
     </el-descriptions>
   </el-drawer>
 
-  <el-dialog v-model="formVisible" :title="formMode === 'create' ? 'Open Annual Membership' : 'Edit Membership'" width="460px">
+  <el-dialog v-model="formVisible" :title="formMode === 'create' ? '开通年费会员' : '编辑会员权益'" width="460px">
     <el-form ref="formRef" :model="formData" :rules="formRules" label-width="120px">
-      <el-form-item v-if="formMode === 'create'" label="User ID" prop="userId">
+      <el-form-item v-if="formMode === 'create'" label="用户 ID" prop="userId">
         <el-input-number v-model="formData.userId" class="!w-220px" :min="1" controls-position="right" />
       </el-form-item>
       <template v-else>
-        <el-form-item label="Status" prop="status">
+        <el-form-item label="状态" prop="status">
           <el-select v-model="formData.status" class="!w-220px">
             <el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
         </el-form-item>
-        <el-form-item label="Expires" prop="expiresAt">
+        <el-form-item label="到期时间" prop="expiresAt">
           <el-date-picker v-model="formData.expiresAt" type="datetime" value-format="YYYY-MM-DDTHH:mm:ss" />
         </el-form-item>
-        <el-form-item label="Auto Renew" prop="autoRenew">
+        <el-form-item label="自动续费" prop="autoRenew">
           <el-switch v-model="formData.autoRenew" />
         </el-form-item>
       </template>
     </el-form>
     <template #footer>
-      <el-button @click="formVisible = false">Cancel</el-button>
-      <el-button :loading="formLoading" type="primary" @click="submitForm">Confirm</el-button>
+      <el-button @click="formVisible = false">取消</el-button>
+      <el-button :loading="formLoading" type="primary" @click="submitForm">确认</el-button>
     </template>
   </el-dialog>
 </template>
@@ -106,10 +106,10 @@ defineOptions({ name: 'MemberMembership' })
 const message = useMessage()
 
 const statusOptions = [
-  { label: 'Active Annual', value: 'active_annual' },
-  { label: 'Expired', value: 'expired' },
-  { label: 'Pending Link', value: 'pending_link' },
-  { label: 'Not Member', value: 'not_member' }
+  { label: '年费有效', value: 'active_annual' },
+  { label: '已到期', value: 'expired' },
+  { label: '待绑定', value: 'pending_link' },
+  { label: '非会员', value: 'not_member' }
 ]
 
 const loading = ref(false)
@@ -138,11 +138,11 @@ const formData = reactive<MembershipApi.MemberMembershipOpenReqVO & MembershipAp
   autoRenew: true
 })
 const formRules = computed<FormRules>(() => ({
-  userId: formMode.value === 'create' ? [{ required: true, message: 'User ID is required', trigger: 'blur' }] : [],
-  status: formMode.value === 'edit' ? [{ required: true, message: 'Status is required', trigger: 'change' }] : []
+  userId: formMode.value === 'create' ? [{ required: true, message: '请输入用户 ID', trigger: 'blur' }] : [],
+  status: formMode.value === 'edit' ? [{ required: true, message: '请选择状态', trigger: 'change' }] : []
 }))
 
-const statusLabel = (status?: string) => statusOptions.find((item) => item.value === status)?.label || 'Unknown'
+const statusLabel = (status?: string) => statusOptions.find((item) => item.value === status)?.label || '未知'
 const statusTagType = (status?: string) => {
   if (status === 'active_annual') return 'success'
   if (status === 'expired') return 'danger'
@@ -209,7 +209,7 @@ const submitForm = async () => {
         autoRenew: formData.autoRenew
       })
     }
-    message.success('Membership saved')
+    message.success('会员权益已保存')
     formVisible.value = false
     await getList()
   } finally {

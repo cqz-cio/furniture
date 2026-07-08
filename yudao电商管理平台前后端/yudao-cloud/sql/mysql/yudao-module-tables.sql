@@ -131,6 +131,7 @@ CREATE TABLE IF NOT EXISTS `pay_app` (
     `remark`            varchar(255)           DEFAULT NULL,
     `order_notify_url`    varchar(1024) NOT NULL,
     `refund_notify_url` varchar(1024) NOT NULL,
+    `transfer_notify_url` varchar(1024) DEFAULT NULL,
     `creator`           varchar(64)            DEFAULT '',
     `create_time`       datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updater`           varchar(64)            DEFAULT '',
@@ -139,6 +140,14 @@ CREATE TABLE IF NOT EXISTS `pay_app` (
     `tenant_id` bigint NOT NULL DEFAULT 0,
     PRIMARY KEY (`id`)
 );
+
+SET @pay_app_transfer_notify_url_sql = IF((SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+                                           WHERE TABLE_SCHEMA = DATABASE()
+                                             AND TABLE_NAME = 'pay_app'
+                                             AND COLUMN_NAME = 'transfer_notify_url') = 0,
+                                          'ALTER TABLE `pay_app` ADD COLUMN `transfer_notify_url` varchar(1024) DEFAULT NULL AFTER `refund_notify_url`',
+                                          'SELECT ''pay_app.transfer_notify_url already exists'' AS message');
+PREPARE pay_app_stmt FROM @pay_app_transfer_notify_url_sql; EXECUTE pay_app_stmt; DEALLOCATE PREPARE pay_app_stmt;
 
 CREATE TABLE IF NOT EXISTS `pay_channel` (
     `id` bigint NOT NULL AUTO_INCREMENT,
@@ -309,6 +318,90 @@ CREATE TABLE IF NOT EXISTS `pay_transfer` (
     `deleted`              bit(1)        NOT NULL DEFAULT b'0',
     `tenant_id` bigint NOT NULL DEFAULT 0,
     PRIMARY KEY (`id`)
+);
+
+CREATE TABLE IF NOT EXISTS `pay_wallet` (
+    `id` bigint NOT NULL AUTO_INCREMENT,
+    `user_id` bigint NOT NULL,
+    `user_type` tinyint(4) NOT NULL,
+    `balance` int NOT NULL DEFAULT 0,
+    `freeze_price` int NOT NULL DEFAULT 0,
+    `total_expense` int NOT NULL DEFAULT 0,
+    `total_recharge` int NOT NULL DEFAULT 0,
+    `creator` varchar(64) DEFAULT '',
+    `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updater` varchar(64) DEFAULT '',
+    `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `deleted` bit(1) NOT NULL DEFAULT b'0',
+    `tenant_id` bigint NOT NULL DEFAULT 0,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_pay_wallet_user_type` (`user_id`, `user_type`)
+);
+
+CREATE TABLE IF NOT EXISTS `pay_wallet_recharge_package` (
+    `id` bigint NOT NULL AUTO_INCREMENT,
+    `name` varchar(64) NOT NULL,
+    `pay_price` int NOT NULL,
+    `bonus_price` int NOT NULL DEFAULT 0,
+    `status` tinyint(4) NOT NULL,
+    `creator` varchar(64) DEFAULT '',
+    `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updater` varchar(64) DEFAULT '',
+    `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `deleted` bit(1) NOT NULL DEFAULT b'0',
+    `tenant_id` bigint NOT NULL DEFAULT 0,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_pay_wallet_recharge_package_name` (`name`)
+);
+
+CREATE TABLE IF NOT EXISTS `pay_wallet_recharge` (
+    `id` bigint NOT NULL AUTO_INCREMENT,
+    `wallet_id` bigint NOT NULL,
+    `total_price` int NOT NULL,
+    `pay_price` int NOT NULL,
+    `bonus_price` int NOT NULL DEFAULT 0,
+    `package_id` bigint DEFAULT NULL,
+    `pay_status` bit(1) NOT NULL DEFAULT b'0',
+    `pay_order_id` bigint DEFAULT NULL,
+    `pay_channel_code` varchar(32) DEFAULT NULL,
+    `pay_time` datetime(0) DEFAULT NULL,
+    `pay_refund_id` bigint DEFAULT NULL,
+    `refund_total_price` int DEFAULT NULL,
+    `refund_pay_price` int DEFAULT NULL,
+    `refund_bonus_price` int DEFAULT NULL,
+    `refund_time` datetime(0) DEFAULT NULL,
+    `refund_status` tinyint(4) DEFAULT NULL,
+    `creator` varchar(64) DEFAULT '',
+    `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updater` varchar(64) DEFAULT '',
+    `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `deleted` bit(1) NOT NULL DEFAULT b'0',
+    `tenant_id` bigint NOT NULL DEFAULT 0,
+    PRIMARY KEY (`id`),
+    KEY `idx_pay_wallet_recharge_wallet_id_pay_status` (`wallet_id`, `pay_status`),
+    KEY `idx_pay_wallet_recharge_pay_order_id` (`pay_order_id`),
+    KEY `idx_pay_wallet_recharge_pay_refund_id` (`pay_refund_id`)
+);
+
+CREATE TABLE IF NOT EXISTS `pay_wallet_transaction` (
+    `id` bigint NOT NULL AUTO_INCREMENT,
+    `no` varchar(64) NOT NULL,
+    `wallet_id` bigint NOT NULL,
+    `biz_type` tinyint(4) NOT NULL,
+    `biz_id` varchar(64) NOT NULL,
+    `title` varchar(255) NOT NULL,
+    `price` int NOT NULL,
+    `balance` int NOT NULL,
+    `creator` varchar(64) DEFAULT '',
+    `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updater` varchar(64) DEFAULT '',
+    `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `deleted` bit(1) NOT NULL DEFAULT b'0',
+    `tenant_id` bigint NOT NULL DEFAULT 0,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_pay_wallet_transaction_no` (`no`),
+    UNIQUE KEY `uk_pay_wallet_transaction_biz` (`biz_id`, `biz_type`),
+    KEY `idx_pay_wallet_transaction_wallet_id_create_time` (`wallet_id`, `create_time`)
 );
 
 

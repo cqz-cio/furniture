@@ -9,8 +9,12 @@
       >
         <!-- 左上角的 logo + 系统标题 -->
         <div class="relative flex items-center text-white">
-          <img alt="" class="mr-10px h-48px w-48px" src="@/assets/imgs/logo.png" />
-          <span class="text-20px font-bold">{{ underlineToHump(appStore.getTitle) }}</span>
+          <img
+            :src="oakvedWordmark"
+            alt="Oakved"
+            class="mr-12px h-28px w-auto max-w-140px shrink-0 object-contain"
+          />
+          <span class="min-w-0 text-20px font-bold">{{ underlineToHump(appStore.getTitle) }}</span>
         </div>
         <!-- 左边的背景图 + 欢迎语 -->
         <div class="h-[calc(100%-60px)] flex items-center justify-center">
@@ -35,8 +39,14 @@
           class="flex items-center justify-between text-white at-2xl:justify-end at-xl:justify-end"
         >
           <div class="flex items-center at-2xl:hidden at-xl:hidden">
-            <img alt="" class="mr-10px h-48px w-48px" src="@/assets/imgs/logo.png" />
-            <span class="text-20px font-bold">{{ underlineToHump(appStore.getTitle) }}</span>
+            <img
+              :src="oakvedWordmark"
+              alt="Oakved"
+              class="mr-12px h-28px w-auto max-w-140px shrink-0 object-contain"
+            />
+            <span class="min-w-0 text-20px font-bold">{{
+              underlineToHump(appStore.getTitle)
+            }}</span>
           </div>
           <div class="flex items-center justify-end space-x-10px h-48px">
             <ThemeSwitch />
@@ -150,6 +160,7 @@
 </template>
 
 <script lang="ts" setup>
+import oakvedWordmark from '@/assets/svgs/oakved-wordmark.svg'
 import { underlineToHump } from '@/utils'
 
 import { ElLoading } from 'element-plus'
@@ -199,7 +210,7 @@ const loginData = reactive({
   captchaEnable: import.meta.env.VITE_APP_CAPTCHA_ENABLE !== 'false',
   tenantEnable: import.meta.env.VITE_APP_TENANT_ENABLE !== 'false',
   loginForm: {
-    tenantName: '芋道源码',
+    tenantName: import.meta.env.VITE_APP_DEFAULT_LOGIN_TENANT || 'Oakved Console',
     username: 'admin',
     password: 'admin123',
     captchaVerification: '',

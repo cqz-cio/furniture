@@ -23,7 +23,11 @@ const { getPrefixCls } = useDesign()
 const prefixCls = getPrefixCls('lock-page')
 
 const avatar = computed(() => userStore.user.avatar || avatarImg)
-const userName = computed(() => userStore.user.nickname ?? 'Admin')
+const userName = computed(() =>
+  userStore.user.nickname === '芋道源码'
+    ? 'Oakved Console'
+    : userStore.user.nickname || 'Admin'
+)
 
 const lockStore = useLockStore()
 

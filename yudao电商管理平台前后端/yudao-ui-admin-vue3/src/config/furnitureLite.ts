@@ -45,6 +45,12 @@ const allowedMenuPaths = new Set([
 
 const deniedFixedRoutePrefixes = ['/ai', '/bpm', '/crm', '/iot', '/mes', '/diy', '/codegen', '/job']
 
+const menuTitleOverrides: Record<string, string> = {
+  '/member/trade-application': '交易申请',
+  '/member/membership': '会员权益',
+  '/member/gift-registry': '礼品登记'
+}
+
 const isFalseEnvValue = (value: unknown): boolean =>
   typeof value === 'string' && value.toLowerCase() === 'false'
 
@@ -66,6 +72,17 @@ const isPathAllowed = (path: string): boolean => allowedMenuPaths.has(path)
 
 const isPathDenied = (path: string): boolean =>
   deniedFixedRoutePrefixes.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))
+
+const applyFurnitureLiteTitles = <T extends FurnitureLiteRoute>(route: T, fullPath: string): T => {
+  const nextRoute = { ...route }
+  const overrideTitle = menuTitleOverrides[fullPath]
+
+  if (overrideTitle && 'name' in nextRoute) {
+    ;(nextRoute as T & { name?: string }).name = overrideTitle
+  }
+
+  return nextRoute
+}
 
 export const isFurnitureLiteMode = (): boolean =>
   import.meta.env.VITE_ADMIN_MODE === 'furniture-lite'
@@ -91,7 +108,7 @@ export const filterFurnitureLiteMenus = <T extends FurnitureLiteRoute>(routes: T
         return filteredRoutes
       }
 
-      const nextRoute = { ...route }
+      const nextRoute = applyFurnitureLiteTitles(route, fullPath)
       if (route.children) {
         nextRoute.children = children
       }

@@ -22,7 +22,11 @@ const props = defineProps({
 
 const userStore = useUserStore()
 const avatar = computed(() => userStore.user.avatar || avatarImg)
-const userName = computed(() => userStore.user.nickname ?? 'Admin')
+const userName = computed(() =>
+  userStore.user.nickname === '芋道源码'
+    ? 'Oakved Console'
+    : userStore.user.nickname || 'Admin'
+)
 
 const emit = defineEmits(['update:modelValue'])
 

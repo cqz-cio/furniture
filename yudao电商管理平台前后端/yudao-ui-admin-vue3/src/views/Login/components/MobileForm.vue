@@ -133,7 +133,7 @@ const loginData = reactive({
   },
   loginForm: {
     uuid: '',
-    tenantName: '芋道源码',
+    tenantName: import.meta.env.VITE_APP_DEFAULT_LOGIN_TENANT || 'Oakved Console',
     mobileNumber: '',
     code: ''
   }

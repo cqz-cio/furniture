@@ -2,7 +2,7 @@
   <section class="furniture-admin-page">
     <div class="furniture-admin-page-head">
       <div>
-        <p class="furniture-admin-kicker">Furniture commerce</p>
+        <p class="furniture-admin-kicker">Oakved Console</p>
         <h1>家具运营控制台</h1>
         <p> 聚焦商品、订单、售后、库存与支付异常，把日常处理入口放在第一屏，减少通用后台噪音。 </p>
       </div>
@@ -132,28 +132,28 @@ const queues: Array<{
   path: string
 }> = [
   {
-    title: 'Order fulfillment queue',
+    title: '订单履约队列',
     description: '待配货、待出库、待同步物流单号',
     count: '34',
     type: 'warning',
     path: '/mall/trade/order'
   },
   {
-    title: 'Payment exceptions',
+    title: '支付异常',
     description: '支付成功未回调、退款待确认',
     count: '5',
     type: 'danger',
     path: '/pay/order'
   },
   {
-    title: 'Address verification',
+    title: '地址核验',
     description: '大件家具配送地址、楼层与预约时间核对',
     count: '11',
     type: 'primary',
     path: '/mall/trade/order'
   },
   {
-    title: 'After-sale review',
+    title: '售后审核',
     description: '退换货、补发配件、安装反馈',
     count: '7',
     type: 'info',
@@ -211,7 +211,7 @@ const priorityProducts: Array<{
   owner: string
 }> = [
   {
-    name: 'Aveline Modular Sofa',
+    name: '艾维琳模块沙发',
     category: '客厅 / 沙发',
     image: '/assets/generated-furniture/product-sofa-cover.webp',
     stock: '24 件',
@@ -221,7 +221,7 @@ const priorityProducts: Array<{
     owner: '商品运营'
   },
   {
-    name: 'Marble Dome Table Lamp',
+    name: '大理石穹顶台灯',
     category: '灯具 / 台灯',
     image: '/assets/generated-furniture/product-pendant-cover.webp',
     stock: '63 件',
@@ -231,7 +231,7 @@ const priorityProducts: Array<{
     owner: '软装组'
   },
   {
-    name: 'Walnut Storage Cabinet',
+    name: '胡桃木收纳柜',
     category: '餐厅 / 储物',
     image: '/assets/generated-furniture/product-table-cover.webp',
     stock: '8 件',

@@ -72,8 +72,8 @@ Replace the current raster logo asset referenced by the app with a new transpare
 
 Preferred implementation:
 
-- keep the current import path stable: `src/assets/imgs/logo.png`
-- swap the file content to the new Oakved transparent logo
+- use a shared SVG asset at `src/assets/svgs/oakved-wordmark.svg`
+- repoint existing frontend logo consumers to the new Oakved transparent wordmark
 
 This keeps existing login, QR code, social login, and layout references working without broader component churn.
 
@@ -119,7 +119,7 @@ Additional logo consumer to verify:
 
 ```text
 brand asset
-  -> src/assets/imgs/logo.png
+  -> src/assets/svgs/oakved-wordmark.svg
   -> Logo / Login / QR code views
 
 display title source
@@ -154,7 +154,7 @@ Build verification:
 
 Rollback is straightforward because phase 1 only changes display assets and visible text:
 
-- restore the previous `src/assets/imgs/logo.png`
+- restore the previous shared logo asset reference and branding copy
 - restore the previous app title value and HTML meta text
 
 ## Phase 2 Preview
