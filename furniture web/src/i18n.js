@@ -6258,7 +6258,7 @@ const taskFourModelUiMessages = {
       },
       "membershipPrompt": {
         "title": "\u53ef\u4eab\u4f1a\u5458\u4ef7",
-        "copy": "\u767b\u5f55\u6216\u52a0\u5165 Members \u8ba1\u5212\uff0c\u4ee5\u4fbf\u5728\u7ed3\u8d26\u524d\u67e5\u770b\u7b26\u5408\u6761\u4ef6\u7684\u4f18\u60e0\u3002",
+        "copy": "\u767b\u5f55\u6216\u52a0\u5165\u4f1a\u5458\u8ba1\u5212\uff0c\u4ee5\u4fbf\u5728\u7ed3\u8d26\u524d\u67e5\u770b\u7b26\u5408\u6761\u4ef6\u7684\u4f18\u60e0\u3002",
         "linkLabel": "\u4e86\u89e3\u66f4\u591a"
       },
       "fabricSelector": {
@@ -6498,7 +6498,7 @@ const taskFourModelUiMessages = {
       },
       "membershipPrompt": {
         "title": "Prix membre disponible",
-        "copy": "Connectez-vous ou rejoignez le programme Members pour voir les economies eligibles avant paiement.",
+        "copy": "Connectez-vous ou rejoignez le programme d'adhesion pour voir les economies eligibles avant paiement.",
         "linkLabel": "En savoir plus"
       },
       "fabricSelector": {

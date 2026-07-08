@@ -87,6 +87,10 @@ describe("storefront launch polish", () => {
       "productDetail.accordions.rows.installation",
     ];
     const englishGuardrails = [
+      [
+        "productDetail.membershipPrompt.copy",
+        "Sign in or join the Members Program to review eligible savings before checkout.",
+      ],
       ["productDetail.optionGroups.helpers.bedSize", "Choose the bed frame size."],
       ["productDetail.optionGroups.helpers.top", "Stone and wood top options for Oakved dining filters."],
       ["productDetail.relatedLinks.availableLeather", "ALSO AVAILABLE IN LEATHER"],
@@ -107,6 +111,11 @@ describe("storefront launch polish", () => {
       englishGuardrails.forEach(([path, englishValue]) => {
         expect(getMessage(path, lang), `${lang} still matches English for ${path}`).not.toBe(englishValue);
       });
+
+      expect(
+        getMessage("productDetail.membershipPrompt.copy", lang),
+        `${lang} still contains English residual for productDetail.membershipPrompt.copy`,
+      ).not.toContain("Members");
     });
   });
 
