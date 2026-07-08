@@ -4421,6 +4421,583 @@ Object.assign(messages["zh-CN"].wishlist, {
   retrySync: "重新同步",
 });
 
+const mergeLocaleMessages = (target, source) => {
+  Object.entries(source).forEach(([key, value]) => {
+    if (
+      value &&
+      typeof value === "object" &&
+      !Array.isArray(value) &&
+      target[key] &&
+      typeof target[key] === "object" &&
+      !Array.isArray(target[key])
+    ) {
+      mergeLocaleMessages(target[key], value);
+      return;
+    }
+
+    target[key] = value;
+  });
+};
+
+const coreVisibleMessages = {
+  en: {
+    home: {
+      commerce: {
+        eyebrow: "Oakved Commerce",
+        title: "Rooms built around proportion, material and calm.",
+      },
+      featured: {
+        title: "Featured collection",
+      },
+      trust: {
+        memberPricing: {
+          title: "Member Savings",
+        },
+      },
+    },
+    landing: {
+      common: {
+        collection: "Collection",
+        designServices: "Design Services",
+        joinMembers: "Join RH Members",
+        exploreServices: "Explore Services",
+      },
+    },
+    outdoor: {
+      hero: {
+        title: "Open-air rooms, fully composed.",
+      },
+      services: {
+        title: "Outdoor furniture planning",
+      },
+    },
+    teen: {
+      hero: {
+        title: "Personal rooms, fully considered.",
+      },
+      services: {
+        cta: "Shop Teen",
+      },
+    },
+    babyChild: {
+      hero: {
+        title: "Rooms for first chapters.",
+      },
+      category: {
+        placeholderTitle: "Product page placeholder",
+      },
+    },
+    sale: {
+      hero: {
+        title: "New savings across the collection.",
+      },
+    },
+    productList: {
+      filters: {
+        title: "Filter",
+        clearAll: "Clear all",
+      },
+      edit: {
+        title: "Oakved Edit",
+      },
+    },
+    productDetail: {
+      gallery: {
+        previous: "Previous image",
+        next: "Next image",
+        instructions: "Click, scroll or use arrow keys to switch views",
+      },
+      registry: {
+        add: "Add to Gift Registry",
+      },
+      inspiration: {
+        eyebrow: "Room Inspiration",
+        title: "Build the room around bedside storage",
+        description: "Images, sizes and stock stay visible while browsing.",
+      },
+      shopRoom: {
+        eyebrow: "Shop The Room",
+        title: "Style the full Oakved room",
+        description: "Build a coordinated wood furniture setting.",
+      },
+      completeRoom: {
+        eyebrow: "Complete The Room",
+        title: "Complete The Room",
+        description: "Material and finish guidance for a composed setting.",
+      },
+    },
+    cart: {
+      drawerTitle: "Cart",
+      summary: {
+        title: "Order Summary",
+      },
+      membership: {
+        description: "Start with RH Members",
+      },
+    },
+    checkout: {
+      header: {
+        title: "Checkout",
+        shipping: "Shipping",
+        payment: "Payment",
+        confirmation: "Confirmation",
+      },
+      payment: {
+        saveCard: "Save this credit card to my account",
+        billingSameAsShipping: "Billing address same as shipping",
+      },
+      summary: {
+        memberSavings: "Member Savings",
+      },
+      footer: {
+        privacy: "Privacy Notice",
+      },
+    },
+    giftRegistry: {
+      eyebrow: "Gift Registry",
+      nav: {
+        home: "Gift Registry",
+        create: "Create a Registry",
+        find: "Find a Registry",
+        manage: "Manage Registry",
+        account: "Account",
+      },
+      home: {
+        title: "Gift Registry",
+        description: "Create, find or manage an Oakved gift registry.",
+      },
+      find: {
+        title: "Find a Registry",
+        search: "Search",
+        create: "Create a Registry",
+        manage: "Manage Registry",
+        view: "View Registry",
+      },
+      create: {
+        title: "Create a Registry",
+        find: "Find a Registry",
+        manage: "Manage Registry",
+        flow: "Create Flow",
+        steps: {
+          event: "Event",
+          registrant: "Registrant",
+          delivery: "Delivery",
+          privacy: "Privacy",
+          share: "Share",
+        },
+        purchaseCallbackNote: "Purchase updates are recorded after checkout.",
+      },
+      manage: {
+        eyebrow: "Manage Registry",
+        title: "Manage Your Registry",
+        signInEyebrow: "Sign In Required",
+        signInTitle: "Sign In Required",
+        signIn: "Sign In",
+        viewPublic: "View Registry",
+        giftsEyebrow: "Registry Gifts",
+        addProductTitle: "Add Gift",
+        addGift: "Add Gift",
+        viewProduct: "View Product",
+      },
+      public: {
+        titleFallback: "Gift Registry",
+        eventFallback: "Celebration",
+        unavailable: "This registry is unavailable.",
+        requestedPurchased: "{purchased} of {requested} purchased",
+        itemFallbackNote: "Gift Message",
+        viewProduct: "View Product",
+        addGiftToBag: "Add Gift To Bag",
+        noGiftsEyebrow: "No Gifts Yet",
+        noGiftsTitle: "This registry does not have public gift items yet.",
+        noGiftsDescription: "Check back after the owner adds items.",
+      },
+    },
+    account: {
+      dashboard: {
+        title: "Account Dashboard",
+      },
+    },
+    placeholder: {
+      missing: {
+        eyebrow: "Product page placeholder",
+        title: "These pages remain in development preview.",
+      },
+    },
+  },
+  "zh-CN": {
+    home: {
+      commerce: {
+        eyebrow: "Oakved 商店",
+        title: "以比例、材质与安静氛围打造完整房间。",
+      },
+      featured: {
+        title: "精选系列",
+      },
+      trust: {
+        memberPricing: {
+          title: "会员优惠",
+        },
+      },
+    },
+    landing: {
+      common: {
+        collection: "系列",
+        designServices: "设计服务",
+        joinMembers: "加入 RH 会员",
+        exploreServices: "探索服务",
+      },
+    },
+    outdoor: {
+      hero: {
+        title: "完整呈现的户外空间。",
+      },
+      services: {
+        title: "户外家具规划",
+      },
+    },
+    teen: {
+      hero: {
+        title: "细致构思的个性房间。",
+      },
+      services: {
+        cta: "选购青少年系列",
+      },
+    },
+    babyChild: {
+      hero: {
+        title: "为成长开篇打造房间。",
+      },
+      category: {
+        placeholderTitle: "商品页面占位",
+      },
+    },
+    sale: {
+      hero: {
+        title: "全系列新品优惠。",
+      },
+    },
+    productList: {
+      filters: {
+        title: "筛选",
+        clearAll: "全部清除",
+      },
+      edit: {
+        title: "Oakved 精选",
+      },
+    },
+    productDetail: {
+      gallery: {
+        previous: "上一张图片",
+        next: "下一张图片",
+        instructions: "点击、滚动或使用方向键切换视图",
+      },
+      registry: {
+        add: "加入礼品登记",
+      },
+      inspiration: {
+        eyebrow: "房间灵感",
+        title: "围绕床边收纳打造房间",
+        description: "浏览时图片、尺寸和库存保持可见。",
+      },
+      shopRoom: {
+        eyebrow: "选购整间搭配",
+        title: "搭配完整 Oakved 房间",
+        description: "打造协调的木质家具空间。",
+      },
+      completeRoom: {
+        eyebrow: "完善房间",
+        title: "完善房间",
+        description: "提供材质和饰面建议，组成协调空间。",
+      },
+    },
+    cart: {
+      drawerTitle: "购物车",
+      summary: {
+        title: "订单摘要",
+      },
+      membership: {
+        description: "从 RH 会员开始",
+      },
+    },
+    checkout: {
+      header: {
+        title: "结账",
+        shipping: "配送",
+        payment: "付款",
+        confirmation: "确认",
+      },
+      payment: {
+        saveCard: "将此信用卡保存到账户",
+        billingSameAsShipping: "账单地址与配送地址相同",
+      },
+      summary: {
+        memberSavings: "会员优惠",
+      },
+      footer: {
+        privacy: "隐私声明",
+      },
+    },
+    giftRegistry: {
+      eyebrow: "礼品登记",
+      nav: {
+        home: "礼品登记",
+        create: "创建礼品登记",
+        find: "查找礼品登记",
+        manage: "管理礼品登记",
+        account: "账户",
+      },
+      home: {
+        title: "礼品登记",
+        description: "创建、查找或管理 Oakved 礼品登记。",
+      },
+      find: {
+        title: "查找礼品登记",
+        search: "搜索",
+        create: "创建礼品登记",
+        manage: "管理礼品登记",
+        view: "查看礼品登记",
+      },
+      create: {
+        title: "创建礼品登记",
+        find: "查找礼品登记",
+        manage: "管理礼品登记",
+        flow: "创建流程",
+        steps: {
+          event: "活动",
+          registrant: "登记人",
+          delivery: "配送",
+          privacy: "隐私",
+          share: "分享",
+        },
+        purchaseCallbackNote: "购买更新会在结账后记录。",
+      },
+      manage: {
+        eyebrow: "管理礼品登记",
+        title: "管理你的礼品登记",
+        signInEyebrow: "需要登录",
+        signInTitle: "需要登录",
+        signIn: "登录",
+        viewPublic: "查看礼品登记",
+        giftsEyebrow: "登记礼品",
+        addProductTitle: "添加礼品",
+        addGift: "添加礼品",
+        viewProduct: "查看商品",
+      },
+      public: {
+        titleFallback: "礼品登记",
+        eventFallback: "庆祝活动",
+        unavailable: "此礼品登记不可用。",
+        requestedPurchased: "已购买 {purchased} / 需要 {requested}",
+        itemFallbackNote: "礼品留言",
+        viewProduct: "查看商品",
+        addGiftToBag: "加入购物车",
+        noGiftsEyebrow: "暂无礼品",
+        noGiftsTitle: "这个礼品登记暂时没有公开礼品。",
+        noGiftsDescription: "登记人添加商品后请再查看。",
+      },
+    },
+    account: {
+      dashboard: {
+        title: "账户中心",
+      },
+    },
+    placeholder: {
+      missing: {
+        eyebrow: "商品页面占位",
+        title: "这些页面暂时保留为开发预览。",
+      },
+    },
+  },
+  fr: {
+    home: {
+      commerce: {
+        eyebrow: "Boutique Oakved",
+        title: "Des pièces pensées autour des proportions, des matières et du calme.",
+      },
+      featured: {
+        title: "Collection en vedette",
+      },
+      trust: {
+        memberPricing: {
+          title: "Économies membre",
+        },
+      },
+    },
+    landing: {
+      common: {
+        collection: "Collection",
+        designServices: "Services de design",
+        joinMembers: "Rejoindre RH Members",
+        exploreServices: "Découvrir les services",
+      },
+    },
+    outdoor: {
+      hero: {
+        title: "Des pièces extérieures entièrement composées.",
+      },
+      services: {
+        title: "Planification du mobilier extérieur",
+      },
+    },
+    teen: {
+      hero: {
+        title: "Des chambres personnelles, pleinement pensées.",
+      },
+      services: {
+        cta: "Acheter Teen",
+      },
+    },
+    babyChild: {
+      hero: {
+        title: "Des chambres pour les premiers chapitres.",
+      },
+      category: {
+        placeholderTitle: "Page produit temporaire",
+      },
+    },
+    sale: {
+      hero: {
+        title: "Nouvelles offres dans toute la collection.",
+      },
+    },
+    productList: {
+      filters: {
+        title: "Filtrer",
+        clearAll: "Tout effacer",
+      },
+      edit: {
+        title: "Sélection Oakved",
+      },
+    },
+    productDetail: {
+      gallery: {
+        previous: "Image précédente",
+        next: "Image suivante",
+        instructions: "Cliquez, faites défiler ou utilisez les flèches pour changer de vue",
+      },
+      registry: {
+        add: "Ajouter à la liste cadeaux",
+      },
+      inspiration: {
+        eyebrow: "Inspiration de pièce",
+        title: "Composer la pièce autour du rangement de chevet",
+        description: "Les images, dimensions et stocks restent visibles pendant la navigation.",
+      },
+      shopRoom: {
+        eyebrow: "Acheter la pièce",
+        title: "Composer toute la pièce Oakved",
+        description: "Créer un ensemble coordonné de mobilier en bois.",
+      },
+      completeRoom: {
+        eyebrow: "Compléter la pièce",
+        title: "Compléter la pièce",
+        description: "Conseils sur les matières et les finitions pour un ensemble cohérent.",
+      },
+    },
+    cart: {
+      drawerTitle: "Panier",
+      summary: {
+        title: "Récapitulatif de commande",
+      },
+      membership: {
+        description: "Commencer avec RH Members",
+      },
+    },
+    checkout: {
+      header: {
+        title: "Paiement",
+        shipping: "Livraison",
+        payment: "Paiement",
+        confirmation: "Confirmation",
+      },
+      payment: {
+        saveCard: "Enregistrer cette carte dans mon compte",
+        billingSameAsShipping: "Adresse de facturation identique à la livraison",
+      },
+      summary: {
+        memberSavings: "Économies membre",
+      },
+      footer: {
+        privacy: "Avis de confidentialité",
+      },
+    },
+    giftRegistry: {
+      eyebrow: "Liste cadeaux",
+      nav: {
+        home: "Liste cadeaux",
+        create: "Créer une liste",
+        find: "Trouver une liste",
+        manage: "Gérer la liste",
+        account: "Compte",
+      },
+      home: {
+        title: "Liste cadeaux",
+        description: "Créez, trouvez ou gérez une liste cadeaux Oakved.",
+      },
+      find: {
+        title: "Trouver une liste",
+        search: "Rechercher",
+        create: "Créer une liste",
+        manage: "Gérer la liste",
+        view: "Voir la liste",
+      },
+      create: {
+        title: "Créer une liste",
+        find: "Trouver une liste",
+        manage: "Gérer la liste",
+        flow: "Parcours de création",
+        steps: {
+          event: "Événement",
+          registrant: "Titulaire",
+          delivery: "Livraison",
+          privacy: "Confidentialité",
+          share: "Partager",
+        },
+        purchaseCallbackNote: "Les achats sont enregistrés après le paiement.",
+      },
+      manage: {
+        eyebrow: "Gérer la liste",
+        title: "Gérer votre liste",
+        signInEyebrow: "Connexion requise",
+        signInTitle: "Connexion requise",
+        signIn: "Se connecter",
+        viewPublic: "Voir la liste",
+        giftsEyebrow: "Cadeaux de la liste",
+        addProductTitle: "Ajouter un cadeau",
+        addGift: "Ajouter un cadeau",
+        viewProduct: "Voir le produit",
+      },
+      public: {
+        titleFallback: "Liste cadeaux",
+        eventFallback: "Célébration",
+        unavailable: "Cette liste est indisponible.",
+        requestedPurchased: "{purchased} sur {requested} achetés",
+        itemFallbackNote: "Message cadeau",
+        viewProduct: "Voir le produit",
+        addGiftToBag: "Ajouter le cadeau au panier",
+        noGiftsEyebrow: "Aucun cadeau pour le moment",
+        noGiftsTitle: "Cette liste ne contient pas encore de cadeaux publics.",
+        noGiftsDescription: "Revenez après l'ajout d'articles par le titulaire.",
+      },
+    },
+    account: {
+      dashboard: {
+        title: "Tableau de bord du compte",
+      },
+    },
+    placeholder: {
+      missing: {
+        eyebrow: "Page produit temporaire",
+        title: "Ces pages restent en aperçu de développement.",
+      },
+    },
+  },
+};
+
+Object.entries(coreVisibleMessages).forEach(([lang, localeMessages]) => {
+  mergeLocaleMessages(messages[lang], localeMessages);
+});
+
 const locale = ref(getInitialLocale());
 updateDocumentLanguage(locale.value);
 
