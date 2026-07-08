@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { getMessage } from "../src/i18n.js";
 
 const readSource = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
 
@@ -61,6 +62,52 @@ describe("storefront launch polish", () => {
     expect(source).toContain('class="product-active-filters"');
     expect(source).toContain('t("productList.resultSummary"');
     expect(source).toContain('t("productList.filters.clearAll")');
+  });
+
+  it("keeps Task 4 product UI translations complete for zh-CN and fr", () => {
+    const noPlaceholderPaths = [
+      "productList.typeOptions.nightstand",
+      "productList.typeOptions.bedroomRoom",
+      "productList.facetGroups.material",
+      "productList.facetOptions.material.all",
+      "productList.facetOptions.availability.lowStock",
+      "productDetail.price.prefix",
+      "productDetail.price.context",
+      "productDetail.membershipPrompt.title",
+      "productDetail.membershipPrompt.copy",
+      "productDetail.fabricSelector.stockedFabrics",
+      "productDetail.availability.title",
+      "productDetail.optionGroups.labels.fill",
+      "productDetail.purchaseAssurance.delivery.copy",
+      "productDetail.relatedLinks.availableLeather",
+      "productDetail.relatedLinks.viewBedroomSets",
+      "productDetail.accordions.titles.details",
+      "productDetail.accordions.rows.design",
+      "productDetail.accordions.rows.delivery",
+      "productDetail.accordions.rows.installation",
+    ];
+    const englishGuardrails = [
+      ["productDetail.optionGroups.helpers.bedSize", "Choose the bed frame size."],
+      ["productDetail.optionGroups.helpers.top", "Stone and wood top options for Oakved dining filters."],
+      ["productDetail.relatedLinks.availableLeather", "ALSO AVAILABLE IN LEATHER"],
+      ["productDetail.relatedLinks.viewBedroomSets", "VIEW BEDROOM SETS"],
+      ["productDetail.accordions.rows.design", "Design"],
+      ["productDetail.accordions.rows.delivery", "Delivery"],
+      ["productDetail.accordions.rows.installation", "Installation"],
+    ];
+
+    ["zh-CN", "fr"].forEach((lang) => {
+      noPlaceholderPaths.forEach((path) => {
+        const value = getMessage(path, lang);
+
+        expect(value, `${lang} missing ${path}`).toBeTruthy();
+        expect(value, `${lang} placeholder left in ${path}`).not.toMatch(/\?{2,}/);
+      });
+
+      englishGuardrails.forEach(([path, englishValue]) => {
+        expect(getMessage(path, lang), `${lang} still matches English for ${path}`).not.toBe(englishValue);
+      });
+    });
   });
 
   it("respects reduced-motion settings for launch animations", () => {
