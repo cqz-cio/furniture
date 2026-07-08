@@ -3,6 +3,9 @@ import BrandEyebrow from "../components/BrandEyebrow.vue";
 import SaleCategoryTile from "../components/SaleCategoryTile.vue";
 import { generatedFurnitureAssets } from "../data/generatedFurnitureAssets.js";
 import { saleCategories, saleCategoryLinkHref, saleQuickLinks } from "../data/rhLayout.js";
+import { useI18n } from "../i18n.js";
+
+const { t } = useI18n();
 </script>
 
 <template>
@@ -16,8 +19,8 @@ import { saleCategories, saleCategoryLinkHref, saleQuickLinks } from "../data/rh
       />
     </picture>
     <div class="sale-hero-copy">
-      <BrandEyebrow suffix="Sale" />
-      <h1>Sale</h1>
+      <BrandEyebrow :suffix="t('sale.hero.eyebrow')" />
+      <h1>{{ t("sale.hero.title") }}</h1>
     </div>
   </section>
 

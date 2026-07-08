@@ -1,46 +1,42 @@
 <script setup>
 import BrandEyebrow from "../components/BrandEyebrow.vue";
 import { generatedFurnitureAssets } from "../data/generatedFurnitureAssets.js";
+import { useI18n } from "../i18n.js";
+
+const { t } = useI18n();
 
 const heroImage = generatedFurnitureAssets.babyChild.hero;
 
 const collections = [
   {
     id: "nursery",
-    title: "Nursery",
-    description: "Soft upholstered beds, quiet storage, and layered lighting for the earliest routines.",
+    altLabel: "Nursery",
     image: generatedFurnitureAssets.babyChild.collections.nursery,
     href: "/sofas-plp",
   },
   {
     id: "playroom",
-    title: "Playroom",
-    description: "Durable silhouettes and warm wood tones arranged for reading, play, and reset.",
+    altLabel: "Playroom",
     image: generatedFurnitureAssets.babyChild.collections.playroom,
     href: "/sofas-plp",
   },
   {
     id: "study",
-    title: "Study",
-    description: "Scaled desks, shelves, and seating that make homework corners feel considered.",
+    altLabel: "Study",
     image: generatedFurnitureAssets.babyChild.collections.study,
     href: "/sofas-plp",
   },
   {
     id: "lighting",
-    title: "Lighting",
-    description: "A softer glow for bedtime stories, morning routines, and every little pause between.",
+    altLabel: "Lighting",
     image: generatedFurnitureAssets.babyChild.collections.lighting,
     href: "/sofas-plp",
   },
 ];
 
-const services = [
-  "Complimentary design consultation",
-  "Registry guidance",
-  "Member savings",
-  "Delivery coordination",
-];
+const services = ["consultation", "registryGuidance", "memberSavings", "deliveryCoordination"];
+
+const collectionCopy = (collection, field) => t(`babyChild.collections.${collection.id}.${field}`);
 </script>
 
 <template>
@@ -51,36 +47,34 @@ const services = [
         <img :src="heroImage.desktop" alt="Layered child bedroom with upholstered bed and warm neutral furnishings" />
       </picture>
       <div class="landing-hero-copy child-landing-copy">
-        <BrandEyebrow suffix="Baby &amp; Child" />
-        <h1 id="child-landing-title">Rooms for first chapters.</h1>
-        <p>
-          Timeless nursery, bedroom, and playroom pieces designed to grow with the routines of family life.
-        </p>
+        <BrandEyebrow :suffix="t('babyChild.hero.eyebrow')" />
+        <h1 id="child-landing-title">{{ t("babyChild.hero.title") }}</h1>
+        <p>{{ t("babyChild.hero.description") }}</p>
         <div class="landing-actions">
-          <a href="/sofas-plp">Shop Baby &amp; Child</a>
-          <a href="/membership">Join RH Members</a>
+          <a href="/sofas-plp">{{ t("babyChild.hero.shopCta") }}</a>
+          <a href="/membership">{{ t("landing.common.joinMembers") }}</a>
         </div>
       </div>
     </section>
 
     <section class="landing-feature-grid child-feature-grid" aria-label="Baby and child collections">
       <a v-for="collection in collections" :key="collection.id" :href="collection.href" class="landing-feature-card">
-        <img :src="collection.image" :alt="`${collection.title} furniture collection`" />
-        <span class="eyebrow">Collection</span>
-        <h2>{{ collection.title }}</h2>
-        <p>{{ collection.description }}</p>
+        <img :src="collection.image" :alt="`${collection.altLabel} furniture collection`" />
+        <span class="eyebrow">{{ t("landing.common.collection") }}</span>
+        <h2>{{ collectionCopy(collection, "title") }}</h2>
+        <p>{{ collectionCopy(collection, "description") }}</p>
       </a>
     </section>
 
     <section class="landing-service-band child-service-band" aria-label="Baby and child services">
       <div>
-        <BrandEyebrow suffix="Design Services" tone="dark" />
-        <h2>From nursery plans to growing bedrooms.</h2>
+        <BrandEyebrow :suffix="t('landing.common.designServices')" tone="dark" />
+        <h2>{{ t("babyChild.services.title") }}</h2>
       </div>
       <ul>
-        <li v-for="service in services" :key="service">{{ service }}</li>
+        <li v-for="service in services" :key="service">{{ t(`babyChild.services.${service}`) }}</li>
       </ul>
-      <a href="/membership">Explore services</a>
+      <a href="/membership">{{ t("babyChild.services.cta") }}</a>
     </section>
   </section>
 </template>

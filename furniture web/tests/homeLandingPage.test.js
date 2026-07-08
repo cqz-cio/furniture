@@ -11,10 +11,12 @@ describe("home landing page", () => {
     expect(homePage).toContain("home-hero-picture");
     expect(homePage).toContain("home-entry-picture");
     expect(homePage).toContain("home-entry-copy");
-    expect(homePage).toContain('homeModuleCopy(index, "title")');
-    expect(homePage).toContain("homeModuleEyebrowSuffix(index)");
+    expect(homePage).toContain('homeModuleCopy(item, "title")');
+    expect(homePage).toContain("homeModuleEyebrowSuffix(item)");
     expect(homePage).toContain("BrandEyebrow");
-    expect(homePage).toContain('homeModuleCopy(index, "cta")');
+    expect(homePage).toContain('homeModuleCopy(item, "cta")');
+    expect(homePage).toContain('t("home.commerce.eyebrow")');
+    expect(homePage).toContain('t("home.featured.title")');
     expect(homePage).toContain("generatedHomeModuleAsset(index)");
     expect(homePage).not.toContain("const homeModuleTitles = [");
     expect(homePage).not.toContain("<div>\n        <h2>{{ homeModuleTitle(index) }}</h2>\n      </div>");
@@ -59,8 +61,8 @@ describe("home landing page", () => {
     const homePage = readSource("../src/pages/HomePage.vue");
     const styles = readSource("../src/styles.css");
 
-    expect(homePage).toContain(':suffix="homeModuleEyebrowSuffix(index)"');
-    expect(homePage).not.toContain('<p class="eyebrow">{{ homeModuleCopy(index, "eyebrow") }}</p>');
+    expect(homePage).toContain(':suffix="homeModuleEyebrowSuffix(item)"');
+    expect(homePage).not.toContain('<p class="eyebrow">{{ homeModuleCopy(item, "eyebrow") }}</p>');
     expect(styles).toContain(".brand-eyebrow-logo");
   });
 });

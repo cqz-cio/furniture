@@ -30,40 +30,28 @@ const heroSlides = [
 
 const editorialModules = [
   {
-    eyebrow: "Bedroom furniture",
-    title: "Build the bedroom around warm wood and quiet proportion.",
-    copy: "Start with a nightstand, dresser and bench, then layer upholstery and lighting around the same material language.",
-    cta: "Shop bedroom furniture",
+    id: "bedroomFurniture",
     href: "/products?room=bedroom",
     desktop: generatedFurnitureAssets.home.modules["002"].desktop,
     mobile: generatedFurnitureAssets.home.modules["002"].mobile,
     alt: "Oakved wood bedroom with bed bench, nightstand and soft neutral textiles",
   },
   {
-    eyebrow: "Storage cabinets",
-    title: "Storage that reads as furniture, not utility.",
-    copy: "Carved dressers, bedside drawers and cabinets keep the room composed while giving daily pieces a clear place.",
-    cta: "Explore storage",
+    id: "storageCabinets",
     href: "/products?category=storage",
     desktop: generatedFurnitureAssets.home.modules["003"].desktop,
     mobile: generatedFurnitureAssets.home.modules["003"].mobile,
     alt: "Oakved storage and cabinet edit in a calm wood interior",
   },
   {
-    eyebrow: "Desks & tables",
-    title: "Small work zones with the same finished-room feeling.",
-    copy: "Pair writing desks, vanity tables and round tables with chairs that feel residential rather than office-like.",
-    cta: "Shop desks and tables",
+    id: "desksTables",
     href: "/products?category=desk-table",
     desktop: generatedFurnitureAssets.home.modules["004"].desktop,
     mobile: generatedFurnitureAssets.home.modules["004"].mobile,
     alt: "Oakved desk and table arrangement with warm lighting",
   },
   {
-    eyebrow: "Seating & benches",
-    title: "Complete the room with lounge seating and end-of-bed pieces.",
-    copy: "Single sofas, bedroom side chairs and bed benches add the final layer of comfort without crowding the room.",
-    cta: "Shop seating",
+    id: "seatingBenches",
     href: "/products?category=seating",
     desktop: generatedFurnitureAssets.home.modules["005"].desktop,
     mobile: generatedFurnitureAssets.home.modules["005"].mobile,
@@ -71,49 +59,44 @@ const editorialModules = [
   },
 ];
 
-const homeModuleCopy = (index, field) => {
-  const item = editorialModules[index] || editorialModules[0];
-  const map = {
-    eyebrow: item.eyebrow,
-    title: item.title,
-    subtitle: item.copy,
-    cta: item.cta,
-  };
-  return map[field] || "";
-};
+const homeModuleCopy = (item, field) => t(`home.editorial.${item.id}.${field}`);
 
-const homeModuleEyebrowSuffix = (index) => homeModuleCopy(index, "eyebrow");
+const homeModuleEyebrowSuffix = (item) => homeModuleCopy(item, "eyebrow");
 const generatedHomeModuleAsset = (index) => editorialModules[index] || editorialModules[0];
 
 const categoryEdits = [
   {
-    title: "Bedroom",
-    copy: "Nightstands, dressers and benches for a complete wood bedroom.",
+    id: "bedroom",
+    altLabel: "Bedroom",
     href: "/products",
     image: generatedFurnitureAssets.home.modules["002"].desktop,
     ambientImage: generatedFurnitureAssets.home.modules["003"].desktop,
   },
   {
-    title: "Storage",
-    copy: "Carved dressers, cabinets and bedside storage in warm finishes.",
+    id: "storage",
+    altLabel: "Storage",
     href: "/products?category=storage",
     image: generatedFurnitureAssets.home.modules["003"].desktop,
     ambientImage: generatedFurnitureAssets.home.modules["005"].desktop,
   },
   {
-    title: "Study",
-    copy: "Desks, vanity tables and chairs for quiet bedroom work zones.",
+    id: "study",
+    altLabel: "Study",
     href: "/products?category=desk-table",
     image: generatedFurnitureAssets.home.modules["004"].desktop,
     ambientImage: generatedFurnitureAssets.home.hero.desktop,
   },
 ];
 
+const categoryEditCopy = (item, field) => t(`home.categoryEdits.${item.id}.${field}`);
+
 const trustSignals = [
-  { title: "Member pricing", copy: "Clear member and regular pricing before checkout." },
-  { title: "Delivery clarity", copy: "Ready-to-ship and special-order windows shown early." },
-  { title: "Material-led choices", copy: "Fabric, stone, wood and metal options stay visual." },
+  { id: "memberPricing" },
+  { id: "deliveryClarity" },
+  { id: "materialLedChoices" },
 ];
+
+const trustSignalCopy = (item, field) => t(`home.trust.${item.id}.${field}`);
 </script>
 
 <template>
@@ -136,36 +119,36 @@ const trustSignals = [
   </section>
 
   <section class="home-grid" :aria-label="t('home.gridAria')">
-    <a v-for="(item, index) in editorialModules" :key="item.title" :href="item.href" class="home-entry">
+    <a v-for="(item, index) in editorialModules" :key="item.id" :href="item.href" class="home-entry">
       <picture class="home-entry-picture">
          <source media="(max-width: 760px)" :srcset="generatedHomeModuleAsset(index).mobile" />
          <img class="home-entry-image" :src="generatedHomeModuleAsset(index).desktop" :alt="item.alt" />
          <span class="home-entry-shade" aria-hidden="true"></span>
        </picture>
        <div class="home-entry-copy">
-         <BrandEyebrow :suffix="homeModuleEyebrowSuffix(index)" />
-         <h2>{{ homeModuleCopy(index, "title") }}</h2>
-         <p>{{ homeModuleCopy(index, "subtitle") }}</p>
-         <span>{{ homeModuleCopy(index, "cta") }}</span>
+         <BrandEyebrow :suffix="homeModuleEyebrowSuffix(item)" />
+         <h2>{{ homeModuleCopy(item, "title") }}</h2>
+         <p>{{ homeModuleCopy(item, "subtitle") }}</p>
+         <span>{{ homeModuleCopy(item, "cta") }}</span>
        </div>
      </a>
   </section>
 
   <section class="home-commerce-section" aria-label="Shop by room">
     <header class="home-commerce-head">
-      <p class="eyebrow">Shop the edit</p>
-      <h2>Rooms built around proportion, material and calm.</h2>
-      <p>Start with the room, then refine by fabric, finish, delivery window and member pricing.</p>
+      <p class="eyebrow">{{ t("home.commerce.eyebrow") }}</p>
+      <h2>{{ t("home.commerce.title") }}</h2>
+      <p>{{ t("home.commerce.description") }}</p>
     </header>
     <div class="home-category-edit">
-      <a v-for="item in categoryEdits" :key="item.title" :href="item.href">
+      <a v-for="item in categoryEdits" :key="item.id" :href="item.href">
         <figure class="home-category-image-stack">
-          <img :src="item.image" :alt="`${item.title} furniture edit`" loading="lazy" />
-          <img :src="item.ambientImage" :alt="`${item.title} room inspiration`" loading="lazy" />
+          <img :src="item.image" :alt="`${item.altLabel} furniture edit`" loading="lazy" />
+          <img :src="item.ambientImage" :alt="`${item.altLabel} room inspiration`" loading="lazy" />
         </figure>
         <span>
-          <strong>{{ item.title }}</strong>
-          <small>{{ item.copy }}</small>
+          <strong>{{ categoryEditCopy(item, "title") }}</strong>
+          <small>{{ categoryEditCopy(item, "copy") }}</small>
         </span>
       </a>
     </div>
@@ -178,19 +161,17 @@ const trustSignals = [
       loading="lazy"
     />
     <div>
-      <p class="eyebrow">Featured collection</p>
-      <h2>A bedroom collection built from warm wood, storage and quiet proportion.</h2>
-      <p>
-        Explore nightstands, dressers, benches, desks and lounge chairs before moving into checkout.
-      </p>
-      <a href="/products?room=bedroom">Shop bedroom furniture</a>
+      <p class="eyebrow">{{ t("home.featured.eyebrow") }}</p>
+      <h2>{{ t("home.featured.title") }}</h2>
+      <p>{{ t("home.featured.description") }}</p>
+      <a href="/products?room=bedroom">{{ t("home.featured.cta") }}</a>
     </div>
   </section>
 
   <section class="home-trust-strip" aria-label="Shopping confidence">
-    <article v-for="item in trustSignals" :key="item.title">
-      <h2>{{ item.title }}</h2>
-      <p>{{ item.copy }}</p>
+    <article v-for="item in trustSignals" :key="item.id">
+      <h2>{{ trustSignalCopy(item, "title") }}</h2>
+      <p>{{ trustSignalCopy(item, "copy") }}</p>
     </article>
   </section>
 </template>

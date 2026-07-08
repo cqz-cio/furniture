@@ -4443,15 +4443,72 @@ const coreVisibleMessages = {
   en: {
     home: {
       commerce: {
-        eyebrow: "Oakved Commerce",
+        eyebrow: "Shop the edit",
         title: "Rooms built around proportion, material and calm.",
+        description: "Start with the room, then refine by fabric, finish, delivery window and member pricing.",
       },
       featured: {
-        title: "Featured collection",
+        eyebrow: "Featured collection",
+        title: "A bedroom collection built from warm wood, storage and quiet proportion.",
+        description: "Explore nightstands, dressers, benches, desks and lounge chairs before moving into checkout.",
+        cta: "Shop bedroom furniture",
       },
       trust: {
         memberPricing: {
-          title: "Member Savings",
+          title: "Member pricing",
+          copy: "Clear member and regular pricing before checkout.",
+        },
+        deliveryClarity: {
+          title: "Delivery clarity",
+          copy: "Ready-to-ship and special-order windows shown early.",
+        },
+        materialLedChoices: {
+          title: "Material-led choices",
+          copy: "Fabric, stone, wood and metal options stay visual.",
+        },
+      },
+      editorial: {
+        bedroomFurniture: {
+          eyebrow: "Bedroom furniture",
+          title: "Build the bedroom around warm wood and quiet proportion.",
+          subtitle:
+            "Start with a nightstand, dresser and bench, then layer upholstery and lighting around the same material language.",
+          cta: "Shop bedroom furniture",
+        },
+        storageCabinets: {
+          eyebrow: "Storage cabinets",
+          title: "Storage that reads as furniture, not utility.",
+          subtitle:
+            "Carved dressers, bedside drawers and cabinets keep the room composed while giving daily pieces a clear place.",
+          cta: "Explore storage",
+        },
+        desksTables: {
+          eyebrow: "Desks & tables",
+          title: "Small work zones with the same finished-room feeling.",
+          subtitle:
+            "Pair writing desks, vanity tables and round tables with chairs that feel residential rather than office-like.",
+          cta: "Shop desks and tables",
+        },
+        seatingBenches: {
+          eyebrow: "Seating & benches",
+          title: "Complete the room with lounge seating and end-of-bed pieces.",
+          subtitle:
+            "Single sofas, bedroom side chairs and bed benches add the final layer of comfort without crowding the room.",
+          cta: "Shop seating",
+        },
+      },
+      categoryEdits: {
+        bedroom: {
+          title: "Bedroom",
+          copy: "Nightstands, dressers and benches for a complete wood bedroom.",
+        },
+        storage: {
+          title: "Storage",
+          copy: "Carved dressers, cabinets and bedside storage in warm finishes.",
+        },
+        study: {
+          title: "Study",
+          copy: "Desks, vanity tables and chairs for quiet bedroom work zones.",
         },
       },
     },
@@ -4465,30 +4522,182 @@ const coreVisibleMessages = {
     },
     outdoor: {
       hero: {
+        eyebrow: "Outdoor",
         title: "Open-air rooms, fully composed.",
+        description: "Furniture, lighting, and materials for terraces, gardens, pool decks, and dining under the sky.",
+        shopCta: "Shop Outdoor",
+      },
+      edits: {
+        lounge: "Lounge",
+        dining: "Dining",
+        poolside: "Poolside",
+        lighting: "Lighting",
+      },
+      collections: {
+        lounge: {
+          title: "Outdoor Lounge",
+          description: "Deep seating, low tables, and weather-ready silhouettes for open-air rooms.",
+        },
+        dining: {
+          title: "Dining",
+          description: "Tables and chairs scaled for long meals, easy hosting, and everyday use outside.",
+        },
+        shade: {
+          title: "Shade & Texture",
+          description: "Layered materials, woven accents, and soft neutrals that bring depth to the patio.",
+        },
+        lighting: {
+          title: "Lighting",
+          description: "Pendants and ambient pieces that keep outdoor spaces warm after sunset.",
+        },
       },
       services: {
         title: "Outdoor furniture planning",
+        heading: "Plan an exterior room with the same care as the interior.",
+        materialGuidance: "Material and finish guidance",
+        memberSavings: "Member savings",
       },
     },
     teen: {
       hero: {
+        eyebrow: "Teen",
         title: "Personal rooms, fully considered.",
+        description:
+          "Furniture, lighting, and storage for bedrooms, lounges, and study spaces with an elevated point of view.",
+        shopCta: "Shop Teen",
+      },
+      edits: {
+        sleep: "Sleep",
+        study: "Study",
+        lounge: "Lounge",
+        storage: "Storage",
+      },
+      collections: {
+        bedroom: {
+          title: "Bedroom",
+          description: "Tailored beds, layered textiles, and storage that keeps a personal room composed.",
+        },
+        lounge: {
+          title: "Lounge",
+          description: "Deep seating and relaxed tables for movie nights, gaming, and time with friends.",
+        },
+        study: {
+          title: "Study",
+          description: "Desks, chairs, and lighting that make focus feel natural from afternoon to late night.",
+        },
+        lighting: {
+          title: "Lighting",
+          description: "Sculptural pendants and task lamps that give every zone a finished point of view.",
+        },
       },
       services: {
+        title: "Build a room around sleep, study, and everything after.",
         cta: "Shop Teen",
       },
     },
     babyChild: {
       hero: {
+        eyebrow: "Baby & Child",
         title: "Rooms for first chapters.",
+        description: "Timeless nursery, bedroom, and playroom pieces designed to grow with the routines of family life.",
+        shopCta: "Shop Baby & Child",
+      },
+      collections: {
+        nursery: {
+          title: "Nursery",
+          description: "Soft upholstered beds, quiet storage, and layered lighting for the earliest routines.",
+        },
+        playroom: {
+          title: "Playroom",
+          description: "Durable silhouettes and warm wood tones arranged for reading, play, and reset.",
+        },
+        study: {
+          title: "Study",
+          description: "Scaled desks, shelves, and seating that make homework corners feel considered.",
+        },
+        lighting: {
+          title: "Lighting",
+          description: "A softer glow for bedtime stories, morning routines, and every little pause between.",
+        },
+      },
+      services: {
+        title: "From nursery plans to growing bedrooms.",
+        consultation: "Complimentary design consultation",
+        registryGuidance: "Registry guidance",
+        memberSavings: "Member savings",
+        deliveryCoordination: "Delivery coordination",
+        cta: "Explore services",
       },
       category: {
         placeholderTitle: "Product page placeholder",
+        placeholderEyebrow: "Product page placeholder",
+        placeholderDescription:
+          "Placeholder module. Later work will connect real products, filters, and image assets for this category.",
+        categories: {
+          furniture: {
+            title: "Furniture",
+            summary: "Cribs, beds, dressers, changing tables and storage for growing rooms.",
+          },
+          bedding: {
+            title: "Bedding",
+            summary: "Sheets, quilts, blankets and layered nursery textiles.",
+          },
+          nursery: {
+            title: "Nursery",
+            summary: "Foundational pieces for first rooms, quiet routines and early storage.",
+          },
+          decor: {
+            title: "Decor",
+            summary: "Wall art, mirrors, accents and finishing pieces for child spaces.",
+          },
+          lighting: {
+            title: "Lighting",
+            summary: "Table lamps, floor lamps, sconces and soft overhead lighting.",
+          },
+          rugs: {
+            title: "Rugs",
+            summary: "Soft, durable foundations for nursery, bedroom and playroom layouts.",
+          },
+          windows: {
+            title: "Windows",
+            summary: "Drapery, shades and window layers for calmer child rooms.",
+          },
+          storage: {
+            title: "Storage",
+            summary: "Dressers, bookcases, bins and cabinets for everyday organization.",
+          },
+          playroom: {
+            title: "Playroom",
+            summary: "Tables, seating and storage scaled for reading, play and reset.",
+          },
+          gifts: {
+            title: "Gifts",
+            summary: "Considered keepsakes, nursery essentials and family-ready pieces.",
+          },
+          teen: {
+            title: "Teen",
+            summary: "A bridge to RH Teen with more mature room and study pieces.",
+          },
+          sale: {
+            title: "Sale",
+            summary: "Promotional Baby & Child categories and seasonal savings.",
+          },
+          registry: {
+            title: "Registry",
+            summary: "Registry services, gift guidance and nursery planning entry points.",
+          },
+        },
+        modules: {
+          hero: "Hero / category campaign image",
+          filters: "Category filters and sort controls",
+          grid: "Product grid cards",
+          banner: "Featured collection banner",
+        },
       },
     },
     sale: {
       hero: {
+        eyebrow: "Sale",
         title: "New savings across the collection.",
       },
     },
@@ -4621,6 +4830,8 @@ const coreVisibleMessages = {
       missing: {
         eyebrow: "Product page placeholder",
         title: "These pages remain in development preview.",
+        description:
+          "Current product images, homepage assets, and navigation behavior are still being finalized, so this area stays as a structural placeholder until real content is confirmed.",
       },
     },
   },
@@ -4995,6 +5206,550 @@ const coreVisibleMessages = {
 };
 
 Object.entries(coreVisibleMessages).forEach(([lang, localeMessages]) => {
+  mergeLocaleMessages(messages[lang], localeMessages);
+});
+
+const taskThreeLandingMessages = {
+  "zh-CN": {
+    home: {
+      commerce: {
+        eyebrow: "选购空间搭配",
+        title: "以比例、材质与宁静感构成的房间。",
+        description: "从房间出发，再按面料、饰面、配送时间和会员价格细化选择。",
+      },
+      featured: {
+        eyebrow: "精选系列",
+        title: "以温润木材、收纳与安静比例构成的卧室系列。",
+        description: "在进入结账前，先浏览床头柜、斗柜、长凳、书桌与休闲椅。",
+        cta: "选购卧室家具",
+      },
+      trust: {
+        memberPricing: {
+          title: "会员价格",
+          copy: "结账前即可清楚查看会员价与原价。",
+        },
+        deliveryClarity: {
+          title: "配送清晰",
+          copy: "提前显示现货与特殊订单的预计配送窗口。",
+        },
+        materialLedChoices: {
+          title: "材质导向选择",
+          copy: "面料、石材、木材与金属选项保持可视化。",
+        },
+      },
+      editorial: {
+        bedroomFurniture: {
+          eyebrow: "卧室家具",
+          title: "围绕温润木材与安静比例打造卧室。",
+          subtitle: "从床头柜、斗柜与床尾凳开始，再以同一材质语言叠加软包与灯光。",
+          cta: "选购卧室家具",
+        },
+        storageCabinets: {
+          eyebrow: "收纳柜",
+          title: "像家具一样呈现的收纳，而非单纯工具。",
+          subtitle: "雕刻斗柜、床边抽屉与柜体让房间保持秩序，也让日常物品各有其位。",
+          cta: "探索收纳",
+        },
+        desksTables: {
+          eyebrow: "书桌与桌几",
+          title: "小型工作区也拥有完整房间的完成感。",
+          subtitle: "将写字桌、梳妆台与圆桌搭配更具居家感而非办公感的椅子。",
+          cta: "选购书桌与桌几",
+        },
+        seatingBenches: {
+          eyebrow: "座椅与长凳",
+          title: "以休闲座椅与床尾件完善整个房间。",
+          subtitle: "单人沙发、卧室边椅与床尾凳带来最后一层舒适，而不会让空间拥挤。",
+          cta: "选购座椅",
+        },
+      },
+      categoryEdits: {
+        bedroom: {
+          title: "卧室",
+          copy: "床头柜、斗柜与长凳，构成完整木质卧室。",
+        },
+        storage: {
+          title: "收纳",
+          copy: "温润饰面的雕刻斗柜、柜体与床边收纳。",
+        },
+        study: {
+          title: "书房角",
+          copy: "书桌、梳妆台与椅子，打造安静的卧室工作区。",
+        },
+      },
+    },
+    landing: {
+      common: {
+        collection: "系列",
+        designServices: "设计服务",
+        joinMembers: "加入 RH Members",
+        exploreServices: "探索服务",
+      },
+    },
+    outdoor: {
+      hero: {
+        eyebrow: "户外",
+        title: "完整呈现的露天房间。",
+        description: "适用于露台、花园、泳池平台与户外餐区的家具、灯光与材质。",
+        shopCta: "选购户外系列",
+      },
+      edits: {
+        lounge: "休闲",
+        dining: "餐饮",
+        poolside: "泳池旁",
+        lighting: "灯具",
+      },
+      collections: {
+        lounge: {
+          title: "户外休闲",
+          description: "深座沙发、低矮桌几与耐候轮廓，适合开放式户外房间。",
+        },
+        dining: {
+          title: "户外餐饮",
+          description: "餐桌与餐椅比例适合长时间用餐、轻松待客与日常户外使用。",
+        },
+        shade: {
+          title: "遮荫与纹理",
+          description: "层叠材质、编织细节与柔和中性色，为露台带来深度。",
+        },
+        lighting: {
+          title: "灯具",
+          description: "吊灯与氛围灯具，让户外空间在日落后依然温暖。",
+        },
+      },
+      services: {
+        title: "户外家具规划",
+        heading: "像规划室内一样细致地规划户外房间。",
+        materialGuidance: "材质与饰面指导",
+        memberSavings: "会员优惠",
+      },
+    },
+    teen: {
+      hero: {
+        eyebrow: "Teen",
+        title: "被充分考量的个性房间。",
+        description: "适用于卧室、休闲区与学习空间的家具、灯具与收纳，呈现更高级的视角。",
+        shopCta: "选购 Teen",
+      },
+      edits: {
+        sleep: "睡眠",
+        study: "学习",
+        lounge: "休闲",
+        storage: "收纳",
+      },
+      collections: {
+        bedroom: {
+          title: "卧室",
+          description: "剪裁利落的床、层叠纺织品与收纳，让个性房间保持秩序。",
+        },
+        lounge: {
+          title: "休闲",
+          description: "深座椅与轻松桌几，适合电影夜、游戏和与朋友相处的时间。",
+        },
+        study: {
+          title: "学习",
+          description: "书桌、椅子与灯具，让从下午到深夜的专注都更自然。",
+        },
+        lighting: {
+          title: "灯具",
+          description: "雕塑感吊灯与工作灯，为每个区域带来完整视角。",
+        },
+      },
+      services: {
+        title: "围绕睡眠、学习与之后的一切打造房间。",
+        cta: "选购 Teen",
+      },
+    },
+    babyChild: {
+      hero: {
+        eyebrow: "Baby & Child",
+        title: "为最初篇章打造的房间。",
+        description: "经得起时间考验的婴儿房、卧室与游戏室单品，伴随家庭日常成长。",
+        shopCta: "选购 Baby & Child",
+      },
+      collections: {
+        nursery: {
+          title: "婴儿房",
+          description: "柔和软包床、安静收纳与层次灯光，适合最初的日常。",
+        },
+        playroom: {
+          title: "游戏室",
+          description: "耐用轮廓与温润木色，为阅读、玩耍与整理而布置。",
+        },
+        study: {
+          title: "学习",
+          description: "合适尺度的书桌、书架与座椅，让作业角也被认真对待。",
+        },
+        lighting: {
+          title: "灯具",
+          description: "更柔和的光线，陪伴睡前故事、清晨日常与每个小小停顿。",
+        },
+      },
+      services: {
+        title: "从婴儿房规划到成长中的卧室。",
+        consultation: "免费设计咨询",
+        registryGuidance: "礼品登记指导",
+        memberSavings: "会员优惠",
+        deliveryCoordination: "配送协调",
+        cta: "探索服务",
+      },
+      category: {
+        placeholderTitle: "商品页占位",
+        placeholderEyebrow: "商品页占位",
+        placeholderDescription: "占位模块。后续将接入该分类的真实商品、筛选和图片素材。",
+        categories: {
+          furniture: {
+            title: "家具",
+            summary: "适合成长房间的婴儿床、床、斗柜、换尿布台与收纳。",
+          },
+          bedding: {
+            title: "床品",
+            summary: "床单、被子、毯子与层叠婴儿房纺织品。",
+          },
+          nursery: {
+            title: "婴儿房",
+            summary: "适合最初房间、安静日常与早期收纳的基础单品。",
+          },
+          decor: {
+            title: "装饰",
+            summary: "墙面艺术、镜子、摆件与儿童空间的收尾单品。",
+          },
+          lighting: {
+            title: "灯具",
+            summary: "台灯、落地灯、壁灯与柔和顶灯。",
+          },
+          rugs: {
+            title: "地毯",
+            summary: "适合婴儿房、卧室与游戏室布局的柔软耐用基础。",
+          },
+          windows: {
+            title: "窗饰",
+            summary: "窗帘、帘幕与窗边层次，让儿童房更安静。",
+          },
+          storage: {
+            title: "收纳",
+            summary: "斗柜、书柜、收纳箱与日常整理柜体。",
+          },
+          playroom: {
+            title: "游戏室",
+            summary: "适合阅读、玩耍与整理的儿童尺度桌子、座椅与收纳。",
+          },
+          gifts: {
+            title: "礼品",
+            summary: "周到的纪念品、婴儿房必需品与适合家庭的单品。",
+          },
+          teen: {
+            title: "Teen",
+            summary: "连接 RH Teen，提供更成熟的房间与学习空间单品。",
+          },
+          sale: {
+            title: "促销",
+            summary: "Baby & Child 促销分类与季节优惠。",
+          },
+          registry: {
+            title: "礼品登记",
+            summary: "礼品登记服务、送礼指导与婴儿房规划入口。",
+          },
+        },
+        modules: {
+          hero: "主视觉 / 分类活动图片",
+          filters: "分类筛选与排序控件",
+          grid: "商品网格卡片",
+          banner: "精选系列横幅",
+        },
+      },
+    },
+    sale: {
+      hero: {
+        eyebrow: "促销",
+        title: "全系列新优惠。",
+      },
+    },
+    placeholder: {
+      missing: {
+        eyebrow: "素材与页面方案待定",
+        title: "这些页面暂时保留为开发预览。",
+        description: "当前产品图片、首页素材与导航功能仍在最终确认中，因此这里先作为结构占位，等待真实内容接入。",
+      },
+    },
+  },
+  fr: {
+    home: {
+      commerce: {
+        eyebrow: "Acheter la sélection",
+        title: "Des pièces composées autour des proportions, des matières et du calme.",
+        description:
+          "Commencez par la pièce, puis affinez par tissu, finition, fenêtre de livraison et prix membre.",
+      },
+      featured: {
+        eyebrow: "Collection en vedette",
+        title: "Une collection chambre en bois chaleureux, rangement et proportions calmes.",
+        description:
+          "Explorez tables de chevet, commodes, bancs, bureaux et fauteuils avant de passer au paiement.",
+        cta: "Acheter le mobilier de chambre",
+      },
+      trust: {
+        memberPricing: {
+          title: "Prix membre",
+          copy: "Prix membre et prix régulier clairs avant le paiement.",
+        },
+        deliveryClarity: {
+          title: "Livraison lisible",
+          copy: "Délais en stock et commandes spéciales visibles dès le départ.",
+        },
+        materialLedChoices: {
+          title: "Choix guidés par la matière",
+          copy: "Les options tissu, pierre, bois et métal restent visuelles.",
+        },
+      },
+      editorial: {
+        bedroomFurniture: {
+          eyebrow: "Mobilier de chambre",
+          title: "Composer la chambre autour du bois chaleureux et de proportions calmes.",
+          subtitle:
+            "Commencez par une table de chevet, une commode et un banc, puis ajoutez assises et éclairage dans le même langage de matières.",
+          cta: "Acheter le mobilier de chambre",
+        },
+        storageCabinets: {
+          eyebrow: "Rangements et cabinets",
+          title: "Un rangement qui se lit comme du mobilier, pas comme de l'utilitaire.",
+          subtitle:
+            "Commodes sculptées, tiroirs de chevet et cabinets gardent la pièce composée tout en donnant une place claire aux objets du quotidien.",
+          cta: "Explorer le rangement",
+        },
+        desksTables: {
+          eyebrow: "Bureaux et tables",
+          title: "De petits espaces de travail avec la même sensation de pièce aboutie.",
+          subtitle:
+            "Associez bureaux, coiffeuses et tables rondes à des chaises au caractère résidentiel plutôt que bureautique.",
+          cta: "Acheter bureaux et tables",
+        },
+        seatingBenches: {
+          eyebrow: "Assises et bancs",
+          title: "Achever la pièce avec des assises lounge et des pièces de bout de lit.",
+          subtitle:
+            "Canapés individuels, fauteuils de chambre et bancs de lit ajoutent la dernière couche de confort sans encombrer la pièce.",
+          cta: "Acheter les assises",
+        },
+      },
+      categoryEdits: {
+        bedroom: {
+          title: "Chambre",
+          copy: "Tables de chevet, commodes et bancs pour une chambre en bois complète.",
+        },
+        storage: {
+          title: "Rangement",
+          copy: "Commodes sculptées, cabinets et rangements de chevet aux finitions chaleureuses.",
+        },
+        study: {
+          title: "Bureau",
+          copy: "Bureaux, coiffeuses et chaises pour des zones de travail calmes dans la chambre.",
+        },
+      },
+    },
+    landing: {
+      common: {
+        collection: "Collection",
+        designServices: "Services de design",
+        joinMembers: "Rejoindre RH Members",
+        exploreServices: "Découvrir les services",
+      },
+    },
+    outdoor: {
+      hero: {
+        eyebrow: "Outdoor",
+        title: "Des pièces à ciel ouvert, entièrement composées.",
+        description:
+          "Mobilier, éclairage et matières pour terrasses, jardins, plages de piscine et repas sous le ciel.",
+        shopCta: "Acheter Outdoor",
+      },
+      edits: {
+        lounge: "Lounge",
+        dining: "Repas",
+        poolside: "Piscine",
+        lighting: "Éclairage",
+      },
+      collections: {
+        lounge: {
+          title: "Lounge outdoor",
+          description: "Assises profondes, tables basses et silhouettes résistantes pour pièces à ciel ouvert.",
+        },
+        dining: {
+          title: "Repas",
+          description: "Tables et chaises dimensionnées pour longs repas, réception facile et usage quotidien dehors.",
+        },
+        shade: {
+          title: "Ombre et texture",
+          description: "Matières superposées, accents tressés et neutres doux qui donnent de la profondeur au patio.",
+        },
+        lighting: {
+          title: "Éclairage",
+          description: "Suspensions et pièces d'ambiance qui gardent les espaces extérieurs chaleureux après le coucher du soleil.",
+        },
+      },
+      services: {
+        title: "Planification du mobilier extérieur",
+        heading: "Planifier une pièce extérieure avec le même soin que l'intérieur.",
+        materialGuidance: "Conseil matières et finitions",
+        memberSavings: "Économies membre",
+      },
+    },
+    teen: {
+      hero: {
+        eyebrow: "Teen",
+        title: "Des chambres personnelles, pleinement considérées.",
+        description:
+          "Mobilier, éclairage et rangement pour chambres, lounges et espaces d'étude avec un point de vue élevé.",
+        shopCta: "Acheter Teen",
+      },
+      edits: {
+        sleep: "Dormir",
+        study: "Étudier",
+        lounge: "Lounge",
+        storage: "Rangement",
+      },
+      collections: {
+        bedroom: {
+          title: "Chambre",
+          description: "Lits ajustés, textiles superposés et rangement pour garder une pièce personnelle composée.",
+        },
+        lounge: {
+          title: "Lounge",
+          description: "Assises profondes et tables décontractées pour soirées film, jeux et moments entre amis.",
+        },
+        study: {
+          title: "Étude",
+          description: "Bureaux, chaises et éclairage qui rendent la concentration naturelle de l'après-midi à tard le soir.",
+        },
+        lighting: {
+          title: "Éclairage",
+          description: "Suspensions sculpturales et lampes de travail qui donnent à chaque zone un point de vue abouti.",
+        },
+      },
+      services: {
+        title: "Construire une chambre autour du sommeil, de l'étude et de tout ce qui suit.",
+        cta: "Acheter Teen",
+      },
+    },
+    babyChild: {
+      hero: {
+        eyebrow: "Baby & Child",
+        title: "Des chambres pour les premiers chapitres.",
+        description:
+          "Pièces intemporelles pour nursery, chambre et salle de jeu, pensées pour grandir avec les routines familiales.",
+        shopCta: "Acheter Baby & Child",
+      },
+      collections: {
+        nursery: {
+          title: "Nursery",
+          description: "Lits capitonnés doux, rangements calmes et éclairage superposé pour les premiers rituels.",
+        },
+        playroom: {
+          title: "Salle de jeu",
+          description: "Silhouettes durables et tons de bois chaleureux pour lire, jouer et remettre en ordre.",
+        },
+        study: {
+          title: "Étude",
+          description: "Bureaux, étagères et assises à l'échelle juste pour rendre les coins devoirs considérés.",
+        },
+        lighting: {
+          title: "Éclairage",
+          description: "Une lueur plus douce pour les histoires du soir, les routines du matin et chaque petite pause.",
+        },
+      },
+      services: {
+        title: "Des plans de nursery aux chambres qui grandissent.",
+        consultation: "Consultation design offerte",
+        registryGuidance: "Conseil liste cadeaux",
+        memberSavings: "Économies membre",
+        deliveryCoordination: "Coordination de livraison",
+        cta: "Découvrir les services",
+      },
+      category: {
+        placeholderTitle: "Page produit temporaire",
+        placeholderEyebrow: "Page produit temporaire",
+        placeholderDescription:
+          "Module temporaire. Les produits réels, filtres et images de cette catégorie seront connectés ensuite.",
+        categories: {
+          furniture: {
+            title: "Mobilier",
+            summary: "Lits bébé, lits, commodes, tables à langer et rangements pour chambres en croissance.",
+          },
+          bedding: {
+            title: "Linge de lit",
+            summary: "Draps, courtepointes, couvertures et textiles superposés pour nursery.",
+          },
+          nursery: {
+            title: "Nursery",
+            summary: "Pièces fondatrices pour premières chambres, routines calmes et premiers rangements.",
+          },
+          decor: {
+            title: "Décor",
+            summary: "Art mural, miroirs, accents et pièces de finition pour espaces enfant.",
+          },
+          lighting: {
+            title: "Éclairage",
+            summary: "Lampes de table, lampadaires, appliques et éclairage doux au plafond.",
+          },
+          rugs: {
+            title: "Tapis",
+            summary: "Bases douces et durables pour nursery, chambre et salle de jeu.",
+          },
+          windows: {
+            title: "Fenêtres",
+            summary: "Draperies, stores et couches de fenêtre pour des chambres enfant plus calmes.",
+          },
+          storage: {
+            title: "Rangement",
+            summary: "Commodes, bibliothèques, bacs et cabinets pour l'organisation quotidienne.",
+          },
+          playroom: {
+            title: "Salle de jeu",
+            summary: "Tables, assises et rangements à l'échelle des enfants pour lire, jouer et ranger.",
+          },
+          gifts: {
+            title: "Cadeaux",
+            summary: "Souvenirs choisis, essentiels de nursery et pièces prêtes pour la famille.",
+          },
+          teen: {
+            title: "Teen",
+            summary: "Un pont vers RH Teen avec des pièces plus matures pour chambres et espaces d'étude.",
+          },
+          sale: {
+            title: "Sale",
+            summary: "Catégories promotionnelles Baby & Child et économies saisonnières.",
+          },
+          registry: {
+            title: "Liste cadeaux",
+            summary: "Services de liste cadeaux, conseil cadeau et points d'entrée pour planifier la nursery.",
+          },
+        },
+        modules: {
+          hero: "Image campagne / catégorie",
+          filters: "Filtres et contrôles de tri",
+          grid: "Cartes de grille produit",
+          banner: "Bannière collection en vedette",
+        },
+      },
+    },
+    sale: {
+      hero: {
+        eyebrow: "Sale",
+        title: "Nouvelles économies dans toute la collection.",
+      },
+    },
+    placeholder: {
+      missing: {
+        eyebrow: "Matériaux et pages à confirmer",
+        title: "Ces pages restent temporairement en aperçu de développement.",
+        description:
+          "Les images produit, les visuels d'accueil et le comportement de navigation sont encore en cours de finalisation; cette zone reste donc un placeholder structurel jusqu'à confirmation du contenu réel.",
+      },
+    },
+  },
+};
+
+Object.entries(taskThreeLandingMessages).forEach(([lang, localeMessages]) => {
   mergeLocaleMessages(messages[lang], localeMessages);
 });
 

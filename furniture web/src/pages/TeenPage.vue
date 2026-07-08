@@ -1,41 +1,42 @@
 <script setup>
 import BrandEyebrow from "../components/BrandEyebrow.vue";
 import { generatedFurnitureAssets } from "../data/generatedFurnitureAssets.js";
+import { useI18n } from "../i18n.js";
+
+const { t } = useI18n();
 
 const heroImage = generatedFurnitureAssets.teen.hero;
 
 const collections = [
   {
     id: "bedroom",
-    title: "Bedroom",
-    description: "Tailored beds, layered textiles, and storage that keeps a personal room composed.",
+    altLabel: "Bedroom",
     image: generatedFurnitureAssets.teen.collections.bedroom,
     href: "/sofas-plp",
   },
   {
     id: "lounge",
-    title: "Lounge",
-    description: "Deep seating and relaxed tables for movie nights, gaming, and time with friends.",
+    altLabel: "Lounge",
     image: generatedFurnitureAssets.teen.collections.lounge,
     href: "/sofas-plp",
   },
   {
     id: "study",
-    title: "Study",
-    description: "Desks, chairs, and lighting that make focus feel natural from afternoon to late night.",
+    altLabel: "Study",
     image: generatedFurnitureAssets.teen.collections.study,
     href: "/sofas-plp",
   },
   {
     id: "lighting",
-    title: "Lighting",
-    description: "Sculptural pendants and task lamps that give every zone a finished point of view.",
+    altLabel: "Lighting",
     image: generatedFurnitureAssets.teen.collections.lighting,
     href: "/sofas-plp",
   },
 ];
 
-const edits = ["Sleep", "Study", "Lounge", "Storage"];
+const edits = ["sleep", "study", "lounge", "storage"];
+
+const collectionCopy = (collection, field) => t(`teen.collections.${collection.id}.${field}`);
 </script>
 
 <template>
@@ -46,37 +47,35 @@ const edits = ["Sleep", "Study", "Lounge", "Storage"];
         <img :src="heroImage.desktop" alt="Modern teen lounge with deep seating and layered neutral furniture" />
       </picture>
       <div class="landing-hero-copy teen-landing-copy">
-        <BrandEyebrow suffix="Teen" />
-        <h1 id="teen-landing-title">Personal rooms, fully considered.</h1>
-        <p>
-          Furniture, lighting, and storage for bedrooms, lounges, and study spaces with an elevated point of view.
-        </p>
+        <BrandEyebrow :suffix="t('teen.hero.eyebrow')" />
+        <h1 id="teen-landing-title">{{ t("teen.hero.title") }}</h1>
+        <p>{{ t("teen.hero.description") }}</p>
         <div class="landing-actions">
-          <a href="/sofas-plp">Shop Teen</a>
-          <a href="/membership">Join RH Members</a>
+          <a href="/sofas-plp">{{ t("teen.hero.shopCta") }}</a>
+          <a href="/membership">{{ t("landing.common.joinMembers") }}</a>
         </div>
       </div>
     </section>
 
     <section class="landing-edit-row" aria-label="Teen room edits">
-      <a v-for="edit in edits" :key="edit" href="/sofas-plp">{{ edit }}</a>
+      <a v-for="edit in edits" :key="edit" href="/sofas-plp">{{ t(`teen.edits.${edit}`) }}</a>
     </section>
 
     <section class="landing-feature-grid teen-feature-grid" aria-label="Teen collections">
       <a v-for="collection in collections" :key="collection.id" :href="collection.href" class="landing-feature-card">
-        <img :src="collection.image" :alt="`${collection.title} furniture collection`" />
-        <span class="eyebrow">Collection</span>
-        <h2>{{ collection.title }}</h2>
-        <p>{{ collection.description }}</p>
+        <img :src="collection.image" :alt="`${collection.altLabel} furniture collection`" />
+        <span class="eyebrow">{{ t("landing.common.collection") }}</span>
+        <h2>{{ collectionCopy(collection, "title") }}</h2>
+        <p>{{ collectionCopy(collection, "description") }}</p>
       </a>
     </section>
 
     <section class="landing-service-band teen-service-band" aria-label="Teen room design services">
       <div>
-        <p class="eyebrow">Design Services</p>
-        <h2>Build a room around sleep, study, and everything after.</h2>
+        <p class="eyebrow">{{ t("landing.common.designServices") }}</p>
+        <h2>{{ t("teen.services.title") }}</h2>
       </div>
-      <a href="/membership">Start with RH Members</a>
+      <a href="/membership">{{ t("teen.services.cta") }}</a>
     </section>
   </section>
 </template>
