@@ -32,15 +32,20 @@ describe("gift registry pages and routes", () => {
     const manage = readFileSync(pagePath("GiftRegistryManagePage.vue"), "utf8");
     const find = readFileSync(pagePath("GiftRegistryFindPage.vue"), "utf8");
     const publicPage = readFileSync(pagePath("GiftRegistryPage.vue"), "utf8");
+    const create = readFileSync(pagePath("GiftRegistryCreatePage.vue"), "utf8");
 
     expect(manage).toContain("getMyYudaoGiftRegistry");
     expect(manage).toContain("addYudaoGiftRegistryItem");
     expect(manage).toContain("registryLoadState");
     expect(manage).not.toContain('id: "registry-stone-2026"');
+    expect(manage).toContain('t("giftRegistry.manage.title")');
     expect(find).toContain("searchPublicYudaoGiftRegistries");
     expect(find).not.toContain("sampleRegistries");
+    expect(find).toContain('t("giftRegistry.find.title")');
+    expect(create).toContain('t("giftRegistry.create.title")');
     expect(publicPage).toContain("getPublicYudaoGiftRegistry");
     expect(publicPage).toContain("publicCode");
+    expect(publicPage).toContain('t("giftRegistry.eyebrow")');
   });
 
   it("lets PDP add the current real product to the signed-in user's gift registry", () => {

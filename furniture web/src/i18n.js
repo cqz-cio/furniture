@@ -5209,6 +5209,466 @@ Object.entries(coreVisibleMessages).forEach(([lang, localeMessages]) => {
   mergeLocaleMessages(messages[lang], localeMessages);
 });
 
+const taskFiveGiftRegistryMessages = {
+  en: {
+    giftRegistry: {
+      common: {
+        complete: "Complete",
+        open: "Open",
+      },
+      home: {
+        title: "Find, create and manage furniture gift registries.",
+        description:
+          "Registry planning includes event details, registrant information, delivery addresses and privacy controls.",
+      },
+      find: {
+        description:
+          "Guests can search public registries by registrant name, event date or email, then enter the registry shopping path.",
+        empty: "No public registries matched that search.",
+        preview: "Local preview is shown because the backend is unavailable.",
+        unavailable: "Public registry search is unavailable.",
+        locationPrivate: "Location private",
+        previewCard: {
+          eventType: "Preview",
+          location: "Local preview",
+          primaryName: "Local Preview",
+          coRegistrantName: "Registry",
+        },
+        fields: {
+          keywordLabel: "Registrant Name or Email",
+          keywordPlaceholder: "Search by name or email",
+          eventMonthLabel: "Event Month",
+          eventMonthPlaceholder: "YYYY-MM",
+        },
+      },
+      create: {
+        title: "Create a registry with event, delivery and privacy planning.",
+        description:
+          "The create flow captures the event, registrants, delivery addresses, subscription preferences and sharing state before the registry becomes visible.",
+        sections: {
+          event: "1. Event Details",
+          registrant: "2. Registrant Information",
+          delivery: "3. Gift Delivery Addresses",
+          privacy: "4. Privacy & Subscription",
+          share: "5. Share Registry",
+        },
+        fields: {
+          eventTypeLabel: "Event Type",
+          eventTypePlaceholder: "Wedding",
+          eventDateLabel: "Event Date",
+          eventLocationLabel: "Event Location",
+          eventLocationPlaceholder: "City, venue or destination",
+          primaryNameLabel: "Primary Name",
+          primaryNamePlaceholder: "Primary registrant name",
+          coRegistrantLabel: "Co-Registrant",
+          emailLabel: "Email",
+          emailPlaceholder: "name@example.com",
+          phoneLabel: "Phone",
+          phonePlaceholder: "Phone number",
+          addressLabel: "Address",
+          cityLabel: "City",
+          regionLabel: "Region",
+          postalCodeLabel: "Postal Code",
+          giftCardPreference: "Accept gift card preference",
+          emailSubscription: "Registry email messages",
+        },
+        addresses: {
+          beforeEvent: "Before Event",
+          afterEvent: "After Event",
+        },
+        visibility: {
+          public: "Public",
+          searchableByEmail: "Searchable by Email",
+          inviteOnly: "Invite Only",
+        },
+        share: {
+          ready: "Ready to share",
+          completeRequired: "Complete required sections",
+          publicPage: "Public page",
+          unavailable: "Unavailable until saved",
+        },
+        actions: {
+          saving: "Saving",
+          create: "Create Registry",
+        },
+        messages: {
+          signInRequired: "Sign in before creating a persistent gift registry.",
+          saved: "Registry saved to your Oakved account.",
+          error: "Gift registry could not be saved.",
+        },
+        purchaseCallbackNote: "Purchased item updates are reserved for the later order callback phase.",
+      },
+      manage: {
+        description:
+          "Signed-in registry owners manage visibility, delivery addresses, preferences, sharing and gift item status from this account destination.",
+        signInTitle: "Registry management is connected to your Oakved account.",
+        viewPublic: "View Public Registry",
+        addProductTitle: "Add a Yudao product by SPU and SKU",
+        itemIds: "SPU {spuId} / SKU {skuId}",
+        summary: {
+          noOwner: "No registry owner yet",
+          noEventDate: "No event date",
+          noPublicUrl: "No public URL yet",
+        },
+        fields: {
+          spuIdLabel: "SPU ID",
+          spuIdPlaceholder: "Enter SPU ID",
+          skuIdLabel: "SKU ID",
+          skuIdPlaceholder: "Enter SKU ID",
+          productNameLabel: "Product Name",
+          productNamePlaceholder: "Gift item name",
+          quantityLabel: "Quantity",
+          quantityPlaceholder: "1",
+        },
+        messages: {
+          signInRequired: "Sign in to manage a persistent gift registry.",
+          empty: "No registry has been created for this account yet.",
+          preview: "Local registry preview is shown because the backend is unavailable.",
+          loadError: "Gift registry could not be loaded.",
+          createBeforeAdd: "Create a registry before adding gifts.",
+          itemSaved: "Gift item saved to the registry.",
+          itemError: "Gift item could not be saved.",
+        },
+        actions: {
+          visibility: {
+            title: "Registry Visibility",
+            description: "Current access is {value}.",
+            cta: "Edit Visibility",
+            notSet: "not set",
+          },
+          preferences: {
+            title: "Gift Card & Email Preferences",
+            description: "Control gift card acceptance and registry communication preferences.",
+            cta: "Edit Preferences",
+          },
+          addresses: {
+            title: "Delivery Addresses",
+            description: "Maintain before-event and after-event delivery destinations.",
+            cta: "Edit Addresses",
+          },
+          items: {
+            title: "Registry Gifts",
+            description: "Gift items are persisted with real SPU and SKU identifiers.",
+            cta: "View Gifts",
+          },
+        },
+      },
+      public: {
+        titleFallback: "Public Registry",
+        eventFallback: "Registry",
+        unavailable: "This public gift registry is unavailable.",
+        requestedPurchased: "Requested {requested} - Purchased {purchased}",
+        itemFallbackNote: "Gift item linked to Oakved product inventory.",
+      },
+    },
+  },
+  "zh-CN": {
+    giftRegistry: {
+      common: {
+        complete: "已完成",
+        open: "待完成",
+      },
+      home: {
+        title: "查找、创建并管理家具礼品登记。",
+        description: "礼品登记规划包括活动信息、登记人资料、配送地址和隐私设置。",
+      },
+      find: {
+        description: "宾客可按登记人姓名、活动日期或邮箱搜索公开礼品登记，然后进入礼品选购流程。",
+        empty: "没有找到符合条件的公开礼品登记。",
+        preview: "由于后端暂不可用，当前显示本地预览数据。",
+        unavailable: "公开礼品登记搜索暂不可用。",
+        locationPrivate: "地点未公开",
+        previewCard: {
+          eventType: "预览",
+          location: "本地预览",
+          primaryName: "本地预览",
+          coRegistrantName: "礼品登记",
+        },
+        fields: {
+          keywordLabel: "登记人姓名或邮箱",
+          keywordPlaceholder: "按姓名或邮箱搜索",
+          eventMonthLabel: "活动月份",
+          eventMonthPlaceholder: "YYYY-MM",
+        },
+      },
+      create: {
+        title: "创建包含活动、配送与隐私规划的礼品登记。",
+        description: "创建流程会在礼品登记公开前收集活动信息、登记人资料、配送地址、订阅偏好和分享状态。",
+        sections: {
+          event: "1. 活动信息",
+          registrant: "2. 登记人信息",
+          delivery: "3. 礼品配送地址",
+          privacy: "4. 隐私与订阅",
+          share: "5. 分享礼品登记",
+        },
+        fields: {
+          eventTypeLabel: "活动类型",
+          eventTypePlaceholder: "婚礼",
+          eventDateLabel: "活动日期",
+          eventLocationLabel: "活动地点",
+          eventLocationPlaceholder: "城市、场地或目的地",
+          primaryNameLabel: "主登记人姓名",
+          primaryNamePlaceholder: "请输入主登记人姓名",
+          coRegistrantLabel: "共同登记人",
+          emailLabel: "邮箱",
+          emailPlaceholder: "name@example.com",
+          phoneLabel: "电话",
+          phonePlaceholder: "电话号码",
+          addressLabel: "地址",
+          cityLabel: "城市",
+          regionLabel: "省/州/地区",
+          postalCodeLabel: "邮政编码",
+          giftCardPreference: "接受礼品卡偏好",
+          emailSubscription: "接收礼品登记邮件",
+        },
+        addresses: {
+          beforeEvent: "活动前",
+          afterEvent: "活动后",
+        },
+        visibility: {
+          public: "公开",
+          searchableByEmail: "可通过邮箱搜索",
+          inviteOnly: "仅限邀请",
+        },
+        share: {
+          ready: "可以分享了",
+          completeRequired: "请先完成必填部分",
+          publicPage: "公开页面",
+          unavailable: "保存后可用",
+        },
+        actions: {
+          saving: "保存中",
+          create: "创建礼品登记",
+        },
+        messages: {
+          signInRequired: "请先登录，再创建可长期保存的礼品登记。",
+          saved: "礼品登记已保存到你的 Oakved 账户。",
+          error: "礼品登记暂时无法保存。",
+        },
+        purchaseCallbackNote: "已购礼品的更新会在后续订单回调阶段记录。",
+      },
+      manage: {
+        description: "已登录的登记人可在此管理可见性、配送地址、偏好设置、分享状态和礼品条目状态。",
+        signInTitle: "礼品登记管理与你的 Oakved 账户绑定。",
+        viewPublic: "查看公开礼品登记",
+        addProductTitle: "通过 SPU 和 SKU 添加 Yudao 商品",
+        itemIds: "SPU {spuId} / SKU {skuId}",
+        summary: {
+          noOwner: "暂无登记人",
+          noEventDate: "暂无活动日期",
+          noPublicUrl: "暂无公开链接",
+        },
+        fields: {
+          spuIdLabel: "SPU ID",
+          spuIdPlaceholder: "输入 SPU ID",
+          skuIdLabel: "SKU ID",
+          skuIdPlaceholder: "输入 SKU ID",
+          productNameLabel: "商品名称",
+          productNamePlaceholder: "礼品名称",
+          quantityLabel: "数量",
+          quantityPlaceholder: "1",
+        },
+        messages: {
+          signInRequired: "请登录后管理可长期保存的礼品登记。",
+          empty: "当前账户还没有创建礼品登记。",
+          preview: "由于后端暂不可用，当前显示本地礼品登记预览。",
+          loadError: "礼品登记暂时无法加载。",
+          createBeforeAdd: "请先创建礼品登记，再添加礼品。",
+          itemSaved: "礼品条目已保存到礼品登记中。",
+          itemError: "礼品条目暂时无法保存。",
+        },
+        actions: {
+          visibility: {
+            title: "礼品登记可见性",
+            description: "当前访问权限为 {value}。",
+            cta: "编辑可见性",
+            notSet: "未设置",
+          },
+          preferences: {
+            title: "礼品卡与邮件偏好",
+            description: "管理是否接受礼品卡以及礼品登记沟通偏好。",
+            cta: "编辑偏好",
+          },
+          addresses: {
+            title: "配送地址",
+            description: "维护活动前后两个阶段的礼品配送地址。",
+            cta: "编辑地址",
+          },
+          items: {
+            title: "礼品条目",
+            description: "礼品条目会使用真实的 SPU 与 SKU 标识保存。",
+            cta: "查看礼品",
+          },
+        },
+      },
+      public: {
+        titleFallback: "公开礼品登记",
+        eventFallback: "礼品登记",
+        unavailable: "此公开礼品登记暂不可用。",
+        requestedPurchased: "需要 {requested} 件 - 已购买 {purchased} 件",
+        itemFallbackNote: "礼品条目已关联到 Oakved 商品库存。",
+        addGiftToBag: "加入购物袋",
+      },
+    },
+  },
+  fr: {
+    giftRegistry: {
+      common: {
+        complete: "Terminée",
+        open: "À compléter",
+      },
+      home: {
+        title: "Trouvez, créez et gérez des listes cadeaux pour le mobilier.",
+        description:
+          "La planification de la liste inclut l'événement, les titulaires, les adresses de livraison et les réglages de confidentialité.",
+      },
+      find: {
+        description:
+          "Les invités peuvent rechercher des listes publiques par nom, date d'événement ou e-mail, puis commencer les achats.",
+        empty: "Aucune liste publique ne correspond à cette recherche.",
+        preview: "Un aperçu local est affiché parce que le backend est indisponible.",
+        unavailable: "La recherche de listes publiques est indisponible.",
+        locationPrivate: "Lieu privé",
+        previewCard: {
+          eventType: "Aperçu",
+          location: "Aperçu local",
+          primaryName: "Aperçu local",
+          coRegistrantName: "Liste",
+        },
+        fields: {
+          keywordLabel: "Nom du titulaire ou e-mail",
+          keywordPlaceholder: "Rechercher par nom ou e-mail",
+          eventMonthLabel: "Mois de l'événement",
+          eventMonthPlaceholder: "YYYY-MM",
+        },
+      },
+      create: {
+        title: "Créez une liste avec planification de l'événement, de la livraison et de la confidentialité.",
+        description:
+          "Le parcours de création recueille l'événement, les titulaires, les adresses de livraison, les préférences d'abonnement et l'état de partage avant la mise en ligne.",
+        sections: {
+          event: "1. Détails de l'événement",
+          registrant: "2. Informations des titulaires",
+          delivery: "3. Adresses de livraison des cadeaux",
+          privacy: "4. Confidentialité et abonnement",
+          share: "5. Partager la liste",
+        },
+        fields: {
+          eventTypeLabel: "Type d'événement",
+          eventTypePlaceholder: "Mariage",
+          eventDateLabel: "Date de l'événement",
+          eventLocationLabel: "Lieu de l'événement",
+          eventLocationPlaceholder: "Ville, lieu ou destination",
+          primaryNameLabel: "Nom principal",
+          primaryNamePlaceholder: "Nom du titulaire principal",
+          coRegistrantLabel: "Co-titulaire",
+          emailLabel: "E-mail",
+          emailPlaceholder: "name@example.com",
+          phoneLabel: "Téléphone",
+          phonePlaceholder: "Numéro de téléphone",
+          addressLabel: "Adresse",
+          cityLabel: "Ville",
+          regionLabel: "Région",
+          postalCodeLabel: "Code postal",
+          giftCardPreference: "Accepter la préférence carte cadeau",
+          emailSubscription: "Messages e-mail de la liste",
+        },
+        addresses: {
+          beforeEvent: "Avant l'événement",
+          afterEvent: "Après l'événement",
+        },
+        visibility: {
+          public: "Publique",
+          searchableByEmail: "Recherchable par e-mail",
+          inviteOnly: "Sur invitation uniquement",
+        },
+        share: {
+          ready: "Prête à être partagée",
+          completeRequired: "Complétez les sections requises",
+          publicPage: "Page publique",
+          unavailable: "Indisponible avant l'enregistrement",
+        },
+        actions: {
+          saving: "Enregistrement",
+          create: "Créer la liste",
+        },
+        messages: {
+          signInRequired: "Connectez-vous avant de créer une liste cadeaux persistante.",
+          saved: "La liste a été enregistrée dans votre compte Oakved.",
+          error: "La liste cadeaux n'a pas pu être enregistrée.",
+        },
+        purchaseCallbackNote: "Les mises à jour des articles achetés sont réservées à l'étape ultérieure de retour de commande.",
+      },
+      manage: {
+        description:
+          "Les titulaires connectés gèrent ici la visibilité, les adresses de livraison, les préférences, le partage et l'état des cadeaux.",
+        signInTitle: "La gestion de la liste est liée à votre compte Oakved.",
+        viewPublic: "Voir la liste publique",
+        addProductTitle: "Ajouter un produit Yudao par SPU et SKU",
+        itemIds: "SPU {spuId} / SKU {skuId}",
+        summary: {
+          noOwner: "Aucun titulaire pour le moment",
+          noEventDate: "Aucune date d'événement",
+          noPublicUrl: "Aucune URL publique pour le moment",
+        },
+        fields: {
+          spuIdLabel: "ID SPU",
+          spuIdPlaceholder: "Saisir l'ID SPU",
+          skuIdLabel: "ID SKU",
+          skuIdPlaceholder: "Saisir l'ID SKU",
+          productNameLabel: "Nom du produit",
+          productNamePlaceholder: "Nom du cadeau",
+          quantityLabel: "Quantité",
+          quantityPlaceholder: "1",
+        },
+        messages: {
+          signInRequired: "Connectez-vous pour gérer une liste cadeaux persistante.",
+          empty: "Aucune liste n'a encore été créée pour ce compte.",
+          preview: "Un aperçu local de la liste est affiché parce que le backend est indisponible.",
+          loadError: "La liste cadeaux n'a pas pu être chargée.",
+          createBeforeAdd: "Créez d'abord une liste avant d'ajouter des cadeaux.",
+          itemSaved: "L'article cadeau a été enregistré dans la liste.",
+          itemError: "L'article cadeau n'a pas pu être enregistré.",
+        },
+        actions: {
+          visibility: {
+            title: "Visibilité de la liste",
+            description: "L'accès actuel est {value}.",
+            cta: "Modifier la visibilité",
+            notSet: "non défini",
+          },
+          preferences: {
+            title: "Préférences carte cadeau et e-mail",
+            description: "Gérez l'acceptation des cartes cadeaux et les préférences de communication.",
+            cta: "Modifier les préférences",
+          },
+          addresses: {
+            title: "Adresses de livraison",
+            description: "Mettez à jour les destinations avant et après l'événement.",
+            cta: "Modifier les adresses",
+          },
+          items: {
+            title: "Cadeaux de la liste",
+            description: "Les articles cadeaux sont enregistrés avec de vrais identifiants SPU et SKU.",
+            cta: "Voir les cadeaux",
+          },
+        },
+      },
+      public: {
+        titleFallback: "Liste publique",
+        eventFallback: "Liste cadeaux",
+        unavailable: "Cette liste cadeaux publique est indisponible.",
+        requestedPurchased: "Demandé {requested} - Acheté {purchased}",
+        itemFallbackNote: "Cet article cadeau est lié à l'inventaire produit Oakved.",
+      },
+    },
+  },
+};
+
+Object.entries(taskFiveGiftRegistryMessages).forEach(([lang, localeMessages]) => {
+  mergeLocaleMessages(messages[lang], localeMessages);
+});
+
 const taskThreeLandingMessages = {
   "zh-CN": {
     home: {

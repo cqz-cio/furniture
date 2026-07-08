@@ -1,15 +1,17 @@
 <script setup>
 import { computed, onMounted, ref } from "vue";
+import { useI18n } from "../i18n.js";
 import { registryItemToCartProduct } from "../services/giftRegistry.js";
 import { membershipRoutes } from "../services/membershipNavigation.js";
 import { getPublicYudaoGiftRegistry } from "../services/yudaoGiftRegistryApi.js";
 
 const emit = defineEmits(["add-to-cart"]);
+const { t } = useI18n();
 
 const registryEntries = [
-  { title: "Find a Registry", href: membershipRoutes.giftRegistryFind },
-  { title: "Create a Registry", href: membershipRoutes.giftRegistryCreate },
-  { title: "Manage Your Registry", href: membershipRoutes.giftRegistryManage },
+  { labelKey: "giftRegistry.nav.find", href: membershipRoutes.giftRegistryFind },
+  { labelKey: "giftRegistry.nav.create", href: membershipRoutes.giftRegistryCreate },
+  { labelKey: "giftRegistry.nav.manage", href: membershipRoutes.giftRegistryManage },
 ];
 
 const publicCode = computed(() => {
@@ -30,7 +32,7 @@ const loadPublicRegistry = async () => {
   } catch (error) {
     registry.value = null;
     loadState.value = "error";
-    loadMessage.value = error?.message || "This public gift registry is unavailable.";
+    loadMessage.value = error?.message || t("giftRegistry.public.unavailable");
   }
 };
 
@@ -45,17 +47,17 @@ onMounted(loadPublicRegistry);
 <template>
   <section class="membership-page service-page-shell">
     <header class="membership-hero registry-hero">
-      <p class="eyebrow">Gift Registry</p>
+      <p class="eyebrow">{{ t("giftRegistry.eyebrow") }}</p>
       <template v-if="publicCode">
-        <h1>{{ registry?.registrants?.primaryName || "Public Registry" }}</h1>
+        <h1>{{ registry?.registrants?.primaryName || t("giftRegistry.public.titleFallback") }}</h1>
         <p>
-          {{ registry?.event?.type || "Registry" }} {{ registry?.event?.date || "" }}
+          {{ registry?.event?.type || t("giftRegistry.public.eventFallback") }} {{ registry?.event?.date || "" }}
           {{ registry?.event?.location ? `- ${registry.event.location}` : "" }}
         </p>
       </template>
       <template v-else>
-        <h1>Find, create and manage furniture gift registries.</h1>
-        <p>Registry planning includes event details, registrant information, delivery addresses and privacy controls.</p>
+        <h1>{{ t("giftRegistry.home.title") }}</h1>
+        <p>{{ t("giftRegistry.home.description") }}</p>
       </template>
     </header>
 
@@ -64,24 +66,33 @@ onMounted(loadPublicRegistry);
     <section v-if="publicCode && registry" class="registry-result-list" aria-label="Public registry gifts">
       <article v-for="item in registry.items" :key="item.id || item.skuId">
         <div>
-          <p class="eyebrow">Requested {{ item.quantityRequested }} - Purchased {{ item.quantityPurchased }}</p>
+          <p class="eyebrow">
+            {{
+              t("giftRegistry.public.requestedPurchased", {
+                requested: item.quantityRequested,
+                purchased: item.quantityPurchased,
+              })
+            }}
+          </p>
           <h2>{{ item.productName }}</h2>
-          <p>{{ item.note || "Gift item linked to Oakved product inventory." }}</p>
+          <p>{{ item.note || t("giftRegistry.public.itemFallbackNote") }}</p>
         </div>
-        <a :href="`/product?id=${item.spuId}&registryItemId=${item.id}`">View Product</a>
-        <button class="registry-cart-button" type="button" @click="handleAddRegistryGiftToCart(item)">Add Gift To Bag</button>
+        <a :href="`/product?id=${item.spuId}&registryItemId=${item.id}`">{{ t("giftRegistry.public.viewProduct") }}</a>
+        <button class="registry-cart-button" type="button" @click="handleAddRegistryGiftToCart(item)">
+          {{ t("giftRegistry.public.addGiftToBag") }}
+        </button>
       </article>
       <article v-if="!registry.items.length">
         <div>
-          <p class="eyebrow">No Gifts Yet</p>
-          <h2>This registry does not have public gift items yet.</h2>
-          <p>Check back after the owner adds items.</p>
+          <p class="eyebrow">{{ t("giftRegistry.public.noGiftsEyebrow") }}</p>
+          <h2>{{ t("giftRegistry.public.noGiftsTitle") }}</h2>
+          <p>{{ t("giftRegistry.public.noGiftsDescription") }}</p>
         </div>
       </article>
     </section>
 
     <section v-else-if="!publicCode" class="registry-entry-list" aria-label="Gift registry actions">
-      <a v-for="entry in registryEntries" :key="entry.title" :href="entry.href">{{ entry.title }}</a>
+      <a v-for="entry in registryEntries" :key="entry.labelKey" :href="entry.href">{{ t(entry.labelKey) }}</a>
     </section>
   </section>
 </template>
