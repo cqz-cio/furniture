@@ -120,6 +120,37 @@ describe("visible copy localization coverage", () => {
     }
   });
 
+  it("wires cart drawer and checkout visible copy through i18n keys", () => {
+    const cartDrawer = readSource("../src/components/CartDrawer.vue");
+    const checkoutPage = readSource("../src/pages/CheckoutPage.vue");
+
+    expect(cartDrawer).toContain('t("cart.drawerTitle")');
+    expect(cartDrawer).toContain('t("cart.shop")');
+    expect(cartDrawer).toContain('t("cart.fabric")');
+    expect(cartDrawer).toContain('t("cart.color")');
+    expect(cartDrawer).toContain('t("cart.width")');
+    expect(cartDrawer).toContain('t("cart.depth")');
+    expect(cartDrawer).toContain('t("cart.itemNumber")');
+    expect(cartDrawer).toContain('t("cart.apply")');
+    expect(cartDrawer).toContain('t("cart.summary.title")');
+    expect(cartDrawer).toContain('t("cart.summary.shippingTo")');
+    expect(cartDrawer).toContain('t("cart.summary.memberSavings")');
+    expect(cartDrawer).toContain('t("cart.summary.orderSubtotal")');
+    expect(cartDrawer).toContain('t("cart.summary.membersProgram")');
+    expect(cartDrawer).toContain('t("cart.summary.unlimitedDelivery")');
+    expect(cartDrawer).toContain('t("cart.summary.totalExcludingTax")');
+
+    expect(checkoutPage).toContain('t("checkout.header.shipToUnitedStates")');
+    expect(checkoutPage).toContain('t("checkout.header.title")');
+    expect(checkoutPage).toContain('t("checkout.payment.saveCard")');
+    expect(checkoutPage).toContain('t("checkout.payment.billingAddress")');
+    expect(checkoutPage).toContain('t("checkout.payment.giftMessage")');
+    expect(checkoutPage).toContain('t("checkout.payment.orderDescription")');
+    expect(checkoutPage).toContain('t("checkout.summary.memberSavings")');
+    expect(checkoutPage).toContain('t("checkout.agreements.membersTerms")');
+    expect(checkoutPage).toContain('t("checkout.footer.privacy")');
+  });
+
   it("keeps covered runtime localization text free of common mojibake markers", () => {
     const source = readSource("../src/i18n.js");
 

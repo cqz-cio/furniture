@@ -4,7 +4,12 @@ import ProductImage from "./ProductImage.vue";
 import RhFooter from "./RhFooter.vue";
 import { canUseYudaoCheckout, getCheckoutPresentation } from "../services/checkoutSession.js";
 import { getCartTotals, normalizeCartQuantity } from "../services/localCart.js";
-import { getMembershipCartNotice, getMembershipPricing, isMembershipItem } from "../services/membershipCart.js";
+import {
+  getMembershipCartNotice,
+  getMembershipPricing,
+  hasMembershipService,
+  isMembershipItem,
+} from "../services/membershipCart.js";
 import { useI18n } from "../i18n.js";
 
 const props = defineProps({
@@ -34,11 +39,12 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(["checkout", "close", "resync", "update-quantity", "remove", "wishlist"]);
+const emit = defineEmits(["checkout", "close", "resync", "update-quantity", "remove", "wishlist", "add-membership"]);
 const { t } = useI18n();
 const totals = computed(() => getCartTotals(props.items));
 const membershipPricing = computed(() => getMembershipPricing(props.items));
 const membershipNotice = computed(() => getMembershipCartNotice(props.items));
+const hasMembershipServiceItem = computed(() => hasMembershipService(props.items));
 const hasRemoteItems = computed(() => props.items.some((item) => item.source === "yudao"));
 const checkoutPresentation = computed(() =>
   getCheckoutPresentation(props.items.length && canUseYudaoCheckout(props.items) ? "yudao" : "local-preview"),
@@ -70,6 +76,10 @@ const money = (value) => `$${value.toLocaleString("en-US", { minimumFractionDigi
 const displaySavings = computed(() => membershipPricing.value.memberDiscount);
 const displayDelivery = computed(() => (props.items.length ? 299 : 0));
 const displaySummaryTotal = computed(() => membershipPricing.value.estimatedTotal + displayDelivery.value);
+const regularItemPrice = (item) => {
+  const discountRate = membershipPricing.value.discountRate;
+  return discountRate ? Math.round((Number(item.price) || 0) / (1 - discountRate)) : Number(item.price) || 0;
+};
 const handleQuantityChange = (item, value) => {
   emit("update-quantity", item, normalizeCartQuantity(value));
 };
@@ -97,8 +107,8 @@ onBeforeUnmount(() => setBodyCartState(false));
       <aside class="cart-drawer" role="dialog" aria-modal="true" :aria-label="t('cart.title')" aria-live="polite">
         <header class="cart-full-header">
           <p class="cart-promo-line">
-            The summer sale. RH members save up to 70% on hundreds of new items.
-            <span>Shop</span>
+            {{ t("cart.promoLine") }}
+            <span>{{ t("cart.shop") }}</span>
           </p>
 
           <div class="cart-topline">
@@ -113,13 +123,7 @@ onBeforeUnmount(() => setBodyCartState(false));
 
             <img class="cart-brand-logo" src="/assets/brand/oakved-logo-black.png" alt="Oakved" />
 
-            <div class="cart-header-actions" :aria-label="`${t('header.account')} / ${t('header.bag')}`">
-              <span>USA</span>
-              <span class="account-icon" aria-hidden="true"></span>
-              <span class="bag-icon" aria-hidden="true">
-                <span v-if="totals.quantity" class="bag-count">{{ totals.quantity }}</span>
-              </span>
-            </div>
+            <div class="cart-topline-spacer" aria-hidden="true"></div>
           </div>
 
           <nav class="cart-primary-nav" aria-label="Primary navigation">
@@ -138,7 +142,7 @@ onBeforeUnmount(() => setBodyCartState(false));
           <header class="cart-drawer-head">
             <div>
               <p class="eyebrow">{{ t("cart.itemCount", { count: totals.quantity }) }}</p>
-              <h2>Cart</h2>
+              <h2>{{ t("cart.drawerTitle") }}</h2>
               <small>{{ hasRemoteItems ? t("cart.remoteBag") : t("cart.localBag") }}</small>
             </div>
           </header>
@@ -176,7 +180,13 @@ onBeforeUnmount(() => setBodyCartState(false));
               <ProductImage v-else :src="item.cover" :label="item.name" />
               <div class="cart-item-main">
                 <span class="cart-item-source">
-                  {{ isMembershipItem(item) ? "Membership" : item.source === "yudao" ? "Yudao" : "Preview" }}
+                  {{
+                    isMembershipItem(item)
+                      ? t("cart.itemSource.membership")
+                      : item.source === "yudao"
+                        ? t("cart.itemSource.yudao")
+                        : t("cart.itemSource.preview")
+                  }}
                 </span>
                 <h3>
                   <a v-if="cartItemDetailHref(item)" class="cart-item-title-link" :href="cartItemDetailHref(item)">
@@ -186,23 +196,23 @@ onBeforeUnmount(() => setBodyCartState(false));
                 </h3>
                 <dl class="cart-item-specs">
                   <div>
-                    <dt>Fabric</dt>
-                    <dd>{{ item.subtitle || "Perennials Performance Textured Linen Weave" }}</dd>
+                    <dt>{{ t("cart.fabric") }}</dt>
+                    <dd>{{ item.subtitle || t("cart.defaultFabric") }}</dd>
                   </div>
                   <div>
-                    <dt>Color</dt>
-                    <dd>Wheat</dd>
+                    <dt>{{ t("cart.color") }}</dt>
+                    <dd>{{ t("cart.defaultColor") }}</dd>
                   </div>
                   <div>
-                    <dt>Width</dt>
+                    <dt>{{ t("cart.width") }}</dt>
                     <dd>7'</dd>
                   </div>
                   <div>
-                    <dt>Depth</dt>
+                    <dt>{{ t("cart.depth") }}</dt>
                     <dd>Luxe 45"</dd>
                   </div>
                   <div>
-                    <dt>Item#</dt>
+                    <dt>{{ t("cart.itemNumber") }}</dt>
                     <dd>{{ item.skuId }} BXCM</dd>
                   </div>
                 </dl>
@@ -216,7 +226,7 @@ onBeforeUnmount(() => setBodyCartState(false));
                     {{ t("cart.remove") }}
                   </button>
                   <button class="cart-risk-action cart-risk-action-neutral" type="button" @click="emit('wishlist', item)">
-                    + Add To Wishlist
+                    + {{ t("cart.addToWishlist") }}
                   </button>
                 </div>
               </div>
@@ -246,8 +256,8 @@ onBeforeUnmount(() => setBodyCartState(false));
               </div>
               <div class="cart-item-price">
                 <strong>{{ money(item.price) }}</strong>
-                <span v-if="membershipPricing.memberDiscount">Member</span>
-                <small>{{ money(Math.round(item.price / 0.7)) }} Regular</small>
+                <span v-if="membershipPricing.memberDiscount">{{ t("cart.member") }}</span>
+                <small v-if="membershipPricing.discountRate">{{ money(regularItemPrice(item)) }} {{ t("cart.regular") }}</small>
               </div>
             </article>
           </div>
@@ -255,53 +265,60 @@ onBeforeUnmount(() => setBodyCartState(false));
           <section class="cart-commerce-panel" aria-label="Cart order summary">
             <div class="cart-commerce-left">
               <form class="cart-promo-form">
-                <input aria-label="Promo code" placeholder="Promo code" type="text" />
-                <button class="cart-risk-action cart-risk-action-warning" type="button">Apply</button>
+                <input :aria-label="t('cart.promoCode')" :placeholder="t('cart.promoCode')" type="text" />
+                <button class="cart-risk-action cart-risk-action-warning" type="button">{{ t("cart.apply") }}</button>
               </form>
               <aside class="cart-rh-members">
                 <strong>RH</strong>
-                <span>Members<br />Program</span>
+                <span>{{ t("cart.membership.programLine1") }}<br />{{ t("cart.membership.programLine2") }}</span>
                 <p>
-                  <b>Save 30% on everything RH*</b>
-                  For $200 annually, member benefits include 30% savings on all full-priced items and complimentary
-                  services with RH Interior Design.
+                  <b>{{ t("cart.membership.description") }}</b>
+                  {{ t("cart.membership.checkoutNotice") }}
                 </p>
+                <button
+                  class="cart-risk-action cart-risk-action-warning cart-membership-action"
+                  type="button"
+                  :disabled="hasMembershipServiceItem"
+                  @click="emit('add-membership')"
+                >
+                  {{ hasMembershipServiceItem ? t("cart.membership.added") : t("cart.membership.add") }}
+                </button>
               </aside>
               <small class="cart-members-fineprint">
-                *Compared to regular price. Limited exclusions apply. See RH Members Program Terms & Conditions for details.
+                {{ t("cart.membership.fineprint") }}
               </small>
             </div>
 
             <footer class="cart-drawer-foot">
               <header>
-                <h3>Order Summary</h3>
-                <span>Shipping to <u>94925</u></span>
+                <h3>{{ t("cart.summary.title") }}</h3>
+                <span>{{ t("cart.summary.shippingTo") }} <u>94925</u></span>
               </header>
               <div class="cart-foot-row is-muted">
-                <span>Member Savings</span>
+                <span>{{ t("cart.summary.memberSavings") }}</span>
                 <strong>-{{ money(displaySavings) }}</strong>
               </div>
               <div class="cart-foot-row">
-                <span>Order Subtotal</span>
+                <span>{{ t("cart.summary.orderSubtotal") }}</span>
                 <strong>{{ money(membershipPricing.estimatedTotal) }}</strong>
               </div>
               <div class="cart-foot-row">
-                <span>RH Members Program</span>
+                <span>{{ t("cart.summary.membersProgram") }}</span>
                 <strong>{{ money(membershipPricing.membershipSubtotal) }}</strong>
               </div>
               <div class="cart-foot-row">
-                <span><u>Unlimited Furniture Delivery</u></span>
+                <span><u>{{ t("cart.summary.unlimitedDelivery") }}</u></span>
                 <strong>{{ money(displayDelivery) }}</strong>
               </div>
               <div class="cart-foot-total">
-                <span>Total (excluding sales tax)</span>
+                <span>{{ t("cart.summary.totalExcludingTax") }}</span>
                 <strong>{{ money(displaySummaryTotal) }}</strong>
               </div>
               <small v-if="cartCheckoutPreviewMessage" class="cart-checkout-preview-note">
                 {{ cartCheckoutPreviewMessage }}
               </small>
               <button type="button" :disabled="items.length === 0" @click="emit('checkout')">
-                {{ cartCheckoutPreviewMessage ? checkoutPresentation.cta : "Checkout" }}
+                {{ cartCheckoutPreviewMessage ? checkoutPresentation.cta : t("common.checkout") }}
               </button>
             </footer>
           </section>

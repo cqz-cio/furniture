@@ -32,7 +32,7 @@ describe("cart recovery notices", () => {
     expect(source).toContain("cart-drawer-notice");
     expect(source).toContain("cart-debug-info");
     expect(source).toContain("t(noticeKey)");
-    expect(source).toContain('const emit = defineEmits(["checkout", "close", "resync", "update-quantity", "remove", "wishlist"])');
+    expect(source).toContain('const emit = defineEmits(["checkout", "close", "resync", "update-quantity", "remove", "wishlist", "add-membership"])');
     expect(source).toContain("canResyncCart");
     expect(source).toContain('t("cart.retrySync")');
     expect(source).toContain('@click="emit(\'resync\')"');

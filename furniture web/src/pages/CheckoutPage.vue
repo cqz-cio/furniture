@@ -127,6 +127,7 @@ const displaySubtotal = computed(() => settlement.value?.payPrice ?? membershipP
 const displayDelivery = computed(() => settlement.value?.deliveryPrice ?? 0);
 const displayItemTotal = computed(() => settlement.value?.totalPrice ?? membershipPricing.value.merchandiseSubtotal);
 const displayEstimatedTotal = computed(() => displaySubtotal.value);
+const customItemDeposit = computed(() => membershipPricing.value.customItemDeposit);
 const paymentRequired = computed(() => Number(settlement.value?.payPrice ?? displayEstimatedTotal.value) > 0);
 const displayZip = computed(() => shippingForm.value.postalCode || checkoutAddress.value?.postalCode || "94925");
 const displaySalesTax = computed(() => (checkoutStage.value === "payment" ? Math.round(displayEstimatedTotal.value * 0.07336 * 100) / 100 : 0));
@@ -657,7 +658,7 @@ watch(paymentForm, () => {
   <section class="checkout-page rh-checkout-page">
     <header class="rh-checkout-top">
       <img src="/assets/brand/oakved-logo-black.png" alt="Oakved" />
-      <button type="button">Ship to United States <span aria-hidden="true">v</span></button>
+      <button type="button">{{ t("checkout.header.shipToUnitedStates") }} <span aria-hidden="true">v</span></button>
     </header>
 
     <div v-if="error" class="checkout-error rh-checkout-error">
@@ -675,13 +676,13 @@ watch(paymentForm, () => {
     <section class="rh-checkout-layout">
       <main class="rh-checkout-form">
         <header class="rh-checkout-heading">
-          <h1>Checkout</h1>
+          <h1>{{ t("checkout.header.title") }}</h1>
           <nav aria-label="Checkout steps" :class="{ 'is-payment': checkoutStage === 'payment' }">
-            <span :class="{ muted: checkoutStage === 'payment' }">Shipping</span>
+            <span :class="{ muted: checkoutStage === 'payment' }">{{ t("checkout.header.shipping") }}</span>
             <b aria-hidden="true">&gt;</b>
-            <span :class="{ muted: checkoutStage !== 'payment' }">Payment</span>
+            <span :class="{ muted: checkoutStage !== 'payment' }">{{ t("checkout.header.payment") }}</span>
             <b aria-hidden="true">&gt;</b>
-            <span class="muted">Confirmation</span>
+            <span class="muted">{{ t("checkout.header.confirmation") }}</span>
           </nav>
         </header>
 
@@ -782,8 +783,8 @@ watch(paymentForm, () => {
             <strong v-if="addressConfirmationSummary.sourceWarningKey">{{ t(addressConfirmationSummary.sourceWarningKey) }}</strong>
             <strong v-if="addressConfirmationSummary.providerWarningKey">{{ t(addressConfirmationSummary.providerWarningKey) }}</strong>
           </section>
-          <h2>Payment</h2>
-          <p>Select a payment method to use.</p>
+          <h2>{{ t("checkout.payment.title") }}</h2>
+          <p>{{ t("checkout.payment.intro") }}</p>
           <div class="rh-payment-methods" role="radiogroup" aria-label="Payment method">
             <button
               v-for="option in paymentMethodOptions"
@@ -799,52 +800,57 @@ watch(paymentForm, () => {
           <p v-if="paymentRequired && !paymentChannelConfigured" class="rh-payment-warning">{{ t("checkout.payment.channelUnavailable") }}</p>
           <form class="rh-card-form">
             <label class="wide">
-              Card number
-              <input v-model="paymentForm.cardNumber" inputmode="numeric" placeholder="1234 5678 9012 3456" type="text" />
+              {{ t("checkout.payment.cardNumber") }}
+              <input
+                v-model="paymentForm.cardNumber"
+                inputmode="numeric"
+                :placeholder="t('checkout.payment.cardNumberPlaceholder')"
+                type="text"
+              />
             </label>
             <label>
-              Expiry date
-              <input v-model="paymentForm.expiry" placeholder="MM/YY" type="text" />
+              {{ t("checkout.payment.expiryDate") }}
+              <input v-model="paymentForm.expiry" :placeholder="t('checkout.payment.expiryPlaceholder')" type="text" />
             </label>
             <label>
-              CVC / CVV
-              <input v-model="paymentForm.cvv" inputmode="numeric" placeholder="3 digits" type="text" />
+              {{ t("checkout.payment.cvv") }}
+              <input v-model="paymentForm.cvv" inputmode="numeric" :placeholder="t('checkout.payment.cvvPlaceholder')" type="text" />
             </label>
           </form>
           <button class="rh-split-payment" type="button">
             <span aria-hidden="true">+</span>
-            Split Payment with Additional Method
+            {{ t("checkout.payment.splitPayment") }}
           </button>
           <label class="rh-checkbox-row">
             <input v-model="saveCard" type="checkbox" />
-            <span>Save this credit card to my account</span>
+            <span>{{ t("checkout.payment.saveCard") }}</span>
           </label>
           <label class="rh-checkbox-row">
             <input v-model="billingSameAsShipping" type="checkbox" />
-            <span>Billing address same as shipping</span>
+            <span>{{ t("checkout.payment.billingSameAsShipping") }}</span>
           </label>
           <section class="rh-billing-address">
-            <h2>Billing Address</h2>
+            <h2>{{ t("checkout.payment.billingAddress") }}</h2>
             <address>
               {{ formattedAddressLines.name }}<br />
               {{ formattedAddressLines.street }}<br />
               {{ formattedAddressLines.locality }}, US<br />
               <span v-if="formattedAddressLines.phone">{{ formattedAddressLines.phone }}</span>
             </address>
-            <button type="button" @click="editConfirmedAddress">Edit</button>
+            <button type="button" @click="editConfirmedAddress">{{ t("checkout.payment.edit") }}</button>
           </section>
         </section>
 
         <section v-if="checkoutStage === 'shipping'" class="rh-checkout-accordion">
-          <button type="button">Gift Message <span aria-hidden="true">+</span></button>
-          <button type="button">Order Description <span aria-hidden="true">+</span></button>
+          <button type="button">{{ t("checkout.payment.giftMessage") }} <span aria-hidden="true">+</span></button>
+          <button type="button">{{ t("checkout.payment.orderDescription") }} <span aria-hidden="true">+</span></button>
         </section>
       </main>
 
       <aside class="rh-order-card">
         <header class="rh-order-card-head">
-          <h2>My Order ({{ summary.quantity }})</h2>
-          <button type="button" @click="emit('open-cart')">View Cart <span aria-hidden="true">&gt;</span></button>
+          <h2>{{ t("checkout.summary.orderTitle", { count: summary.quantity }) }}</h2>
+          <button type="button" @click="emit('open-cart')">{{ t("checkout.payment.viewCart") }} <span aria-hidden="true">&gt;</span></button>
         </header>
 
         <div class="rh-order-items">
@@ -853,34 +859,36 @@ watch(paymentForm, () => {
 
         <section class="rh-order-summary">
           <header>
-            <h3>Order Summary</h3>
-            <span>Shipping to {{ displayZip }}</span>
+            <h3>{{ t("checkout.summaryTitle") }}</h3>
+            <span>{{ t("checkout.summary.shippingTo", { postalCode: displayZip }) }}</span>
           </header>
           <div class="summary-row muted">
-            <span>Member Savings</span>
+            <span>{{ t("checkout.summary.memberSavings") }}</span>
             <strong>{{ money(membershipPricing.memberDiscount) }}</strong>
           </div>
           <div class="summary-row">
-            <span>Subtotal with member savings</span>
+            <span>{{ t("checkout.summary.subtotalWithMemberSavings") }}</span>
             <strong>{{ money(displayItemTotal || membershipPricing.estimatedTotal) }}</strong>
           </div>
           <div class="summary-row">
-            <span>RH Members Program</span>
+            <span>{{ t("checkout.summary.membersProgram") }}</span>
             <strong>{{ money(membershipPricing.membershipSubtotal) }}</strong>
           </div>
           <div class="summary-row">
-            <span><u>Unlimited Furniture Delivery</u></span>
+            <span><u>{{ t("checkout.summary.unlimitedDelivery") }}</u></span>
             <strong>{{ money(displayDelivery || 299) }}</strong>
           </div>
           <div v-if="checkoutStage === 'payment'" class="summary-row">
-            <span>Estimated Sales Tax for {{ displayZip }}</span>
+            <span>{{ t("checkout.summary.estimatedSalesTax", { postalCode: displayZip }) }}</span>
             <strong>{{ money(displaySalesTax) }}</strong>
           </div>
           <div class="summary-total">
-            <span>{{ checkoutStage === "payment" ? "Total" : "Total (excluding sales tax)" }}</span>
+            <span>{{ checkoutStage === "payment" ? t("checkout.summary.total") : t("checkout.summary.totalExcludingTax") }}</span>
             <strong>{{ money(displayOrderTotal) }}</strong>
           </div>
-          <p>Custom Item Non-Refundable Amount <strong>{{ money((displayItemTotal || 0) / 2) }}</strong></p>
+          <p v-if="customItemDeposit">
+            {{ t("checkout.summary.customItemDeposit") }} <strong>{{ money(customItemDeposit) }}</strong>
+          </p>
         </section>
 
         <button
@@ -889,22 +897,17 @@ watch(paymentForm, () => {
           :disabled="primaryActionDisabled"
           @click="handlePrimaryAction"
         >
-          {{ busy ? t("common.working") : checkoutStage === "payment" ? "Submit Order" : "Continue To Payment" }}
+          {{ busy ? t("common.working") : checkoutStage === "payment" ? t("checkout.payment.submitOrder") : t("checkout.payment.continueToPayment") }}
         </button>
 
         <section v-if="checkoutStage === 'payment'" class="rh-payment-agreements">
           <label>
             <input v-model="termsAccepted" type="checkbox" />
-            <span>
-              I agree to the <u>RH Members Program Terms and Conditions</u>, which includes the <u>RH Privacy Notice</u>.
-            </span>
+            <span>{{ t("checkout.agreements.membersTerms") }}</span>
           </label>
           <label>
             <input v-model="renewalAccepted" type="checkbox" />
-            <span>
-              I agree to enroll in the RH Membership Program. I authorize RH to automatically renew my membership on an
-              annual basis and charge my credit card for my membership fee of $200 plus applicable taxes.
-            </span>
+            <span>{{ t("checkout.agreements.membershipRenewal") }}</span>
           </label>
         </section>
       </aside>
@@ -944,14 +947,14 @@ watch(paymentForm, () => {
               <span>{{ addressVerificationResult?.status === "verified" ? t("checkout.addressReview.verifiedLabel") : t("checkout.addressReview.enteredLabel") }}</span>
               <b v-if="addressVerificationResult?.status === 'verified'" aria-hidden="true">&check;</b>
             </header>
-            <p>
-              {{ addressVerificationResult?.originalAddress?.street || formattedAddressLines.street }}<br />
-              {{ addressVerificationResult?.originalAddress?.city || shippingForm.city || "Lucedale" }},
-              {{ addressVerificationResult?.originalAddress?.state || shippingForm.state || "MS" }}
-              {{ addressVerificationResult?.originalAddress?.postalCode || displayZip }}<br />
-              United States
-            </p>
-          </section>
+             <p>
+               {{ addressVerificationResult?.originalAddress?.street || formattedAddressLines.street }}<br />
+               {{ addressVerificationResult?.originalAddress?.city || shippingForm.city || "Lucedale" }},
+               {{ addressVerificationResult?.originalAddress?.state || shippingForm.state || "MS" }}
+               {{ addressVerificationResult?.originalAddress?.postalCode || displayZip }}<br />
+               {{ t("checkout.address.countryUnitedStates") }}
+             </p>
+           </section>
           <section
             v-if="addressVerificationResult?.status === 'suggested' && addressVerificationResult?.suggestedAddress"
             class="rh-original-address rh-suggested-address"
@@ -960,14 +963,14 @@ watch(paymentForm, () => {
               <span>{{ t("checkout.addressReview.suggestedLabel") }}</span>
               <b aria-hidden="true">&check;</b>
             </header>
-            <p>
-              {{ addressVerificationResult.suggestedAddress.street }}<br />
-              {{ addressVerificationResult.suggestedAddress.city }},
-              {{ addressVerificationResult.suggestedAddress.state }}
-              {{ addressVerificationResult.suggestedAddress.postalCode }}<br />
-              United States
-            </p>
-          </section>
+             <p>
+               {{ addressVerificationResult.suggestedAddress.street }}<br />
+               {{ addressVerificationResult.suggestedAddress.city }},
+               {{ addressVerificationResult.suggestedAddress.state }}
+               {{ addressVerificationResult.suggestedAddress.postalCode }}<br />
+               {{ t("checkout.address.countryUnitedStates") }}
+             </p>
+           </section>
           <p class="rh-address-review-notice">{{ t("checkout.addressReview.confirmationNotice") }}</p>
           <button
             v-if="addressVerificationResult?.status === 'suggested' && addressVerificationResult?.suggestedAddress"
@@ -993,12 +996,12 @@ watch(paymentForm, () => {
     </Transition>
 
     <footer class="rh-checkout-footer" aria-label="Checkout footer">
-      <a href="/privacy">Privacy</a>
-      <a href="/shipping-delivery">Shipping &amp; Delivery</a>
-      <a href="/returns-exchanges">Returns &amp; Exchanges</a>
-      <a href="/accessibility">Accessibility Statement</a>
-      <a href="/contact">Contact Us</a>
-      <span>© 2026 RH</span>
+      <a href="/privacy">{{ t("checkout.footer.privacy") }}</a>
+      <a href="/shipping-delivery">{{ t("checkout.footer.shippingDelivery") }}</a>
+      <a href="/returns-exchanges">{{ t("checkout.footer.returnsExchanges") }}</a>
+      <a href="/accessibility">{{ t("checkout.footer.accessibility") }}</a>
+      <a href="/contact">{{ t("checkout.footer.contact") }}</a>
+      <span>{{ t("checkout.footer.copyright") }}</span>
     </footer>
   </section>
 </template>

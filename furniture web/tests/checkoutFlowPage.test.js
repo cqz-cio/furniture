@@ -357,6 +357,49 @@ describe("checkout flow page planning", () => {
     expect(source).not.toContain('aria-label="Postal Code"');
   });
 
+  it("localizes checkout header, payment, summary, agreements, and footer copy", () => {
+    const source = readSource("../src/pages/CheckoutPage.vue");
+
+    expect(source).toContain('t("checkout.header.shipToUnitedStates")');
+    expect(source).toContain('t("checkout.header.title")');
+    expect(source).toContain('t("checkout.header.shipping")');
+    expect(source).toContain('t("checkout.header.payment")');
+    expect(source).toContain('t("checkout.header.confirmation")');
+    expect(source).toContain('t("checkout.payment.title")');
+    expect(source).toContain('t("checkout.payment.intro")');
+    expect(source).toContain('t("checkout.payment.saveCard")');
+    expect(source).toContain('t("checkout.payment.billingSameAsShipping")');
+    expect(source).toContain('t("checkout.payment.billingAddress")');
+    expect(source).toContain('t("checkout.payment.edit")');
+    expect(source).toContain('t("checkout.payment.giftMessage")');
+    expect(source).toContain('t("checkout.payment.orderDescription")');
+    expect(source).toContain('t("checkout.payment.viewCart")');
+    expect(source).toContain('t("checkout.summary.memberSavings")');
+    expect(source).toContain('t("checkout.summary.subtotalWithMemberSavings")');
+    expect(source).toContain('t("checkout.summary.membersProgram")');
+    expect(source).toContain('t("checkout.summary.unlimitedDelivery")');
+    expect(source).toContain('t("checkout.agreements.membersTerms")');
+    expect(source).toContain('t("checkout.footer.privacy")');
+    expect(source).toContain('t("checkout.footer.shippingDelivery")');
+    expect(source).toContain('t("checkout.footer.returnsExchanges")');
+    expect(source).toContain('t("checkout.footer.accessibility")');
+    expect(source).toContain('t("checkout.footer.contact")');
+    expect(source).toContain('t("checkout.footer.copyright")');
+    expect(source).not.toContain("<h1>Checkout</h1>");
+    expect(source).not.toContain(">Ship to United States <");
+    expect(source).not.toContain(">Payment</h2>");
+    expect(source).not.toContain("Select a payment method to use.");
+    expect(source).not.toContain("Save this credit card to my account");
+    expect(source).not.toContain("Billing address same as shipping");
+    expect(source).not.toContain(">Billing Address</h2>");
+    expect(source).not.toContain(">Gift Message <");
+    expect(source).not.toContain(">Order Description <");
+    expect(source).not.toContain(">View Cart <");
+    expect(source).not.toContain(">Member Savings<");
+    expect(source).not.toContain("I agree to the <u>RH Members Program Terms and Conditions</u>");
+    expect(source).not.toContain('href="/privacy">Privacy<');
+  });
+
   it("opens the created order when the order API returns either an id or an object", () => {
     const source = readSource("../src/pages/CheckoutPage.vue");
 
