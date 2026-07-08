@@ -1,5 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { saleCategories, saleQuickLinks } from "../src/data/rhLayout.js";
+import { availableLocales, getMessage } from "../src/i18n.js";
 
 const readSource = (path) => readFileSync(new URL(path, import.meta.url), "utf8").replace(/\r\n/g, "\n");
 
@@ -93,8 +95,7 @@ describe("visible copy localization coverage", () => {
   it("renders sale category labels from localized display titles without changing source titles", () => {
     const salePage = readSource("../src/pages/SalePage.vue");
     const saleTile = readSource("../src/components/SaleCategoryTile.vue");
-    const i18n = readSource("../src/i18n.js");
-    const labels = ["Living", "Sofas", "Dining", "Bedroom", "Bath", "Outdoor", "Rugs", "Lighting", "Bedding", "Bath Towels"];
+    const labels = Array.from(new Set([...saleCategories, ...saleQuickLinks].map(({ title }) => title)));
 
     expect(salePage).toContain("saleCategoryLabel(category)");
     expect(salePage).toContain("displayTitle: saleCategoryLabel(category)");
@@ -102,8 +103,10 @@ describe("visible copy localization coverage", () => {
     expect(saleTile).toContain("category.displayTitle || category.title");
     expect(saleTile).toContain("{{ category.displayTitle || category.title }}");
 
-    for (const label of labels) {
-      expect(i18n).toContain(`"${label}":`);
+    for (const locale of availableLocales) {
+      for (const label of labels) {
+        expect(getMessage(`sale.categories.${label}`, locale.lang), `${label} missing for ${locale.lang}`).toBeTruthy();
+      }
     }
   });
 
