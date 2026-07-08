@@ -5944,7 +5944,734 @@ const taskFourProductMessages = {
   },
 };
 
+const taskFourModelUiMessages = {
+  "en": {
+    "productList": {
+      "typeOptions": {
+        "nightstand": "Nightstands",
+        "bedBench": "Benches",
+        "dresser": "Dressers",
+        "vanity": "Vanities",
+        "desk": "Desks",
+        "roundTable": "Round Tables",
+        "singleSofa": "Single Sofas",
+        "chair": "Chairs",
+        "storage": "Storage Cabinets",
+        "deskTable": "Desks & Tables",
+        "seating": "Seating & Benches",
+        "bedroomSet": "Bedroom Sets",
+        "storageSet": "Bedroom Storage",
+        "studySet": "Study Sets",
+        "bedroomRoom": "Bedroom Furniture",
+        "masterBedroom": "Master Bedroom",
+        "guestBedroom": "Guest Bedroom",
+        "room": "Complete Rooms",
+        "study": "Study Rooms",
+        "living": "Living Corners"
+      },
+      "facetGroups": {
+        "material": "Material",
+        "color": "Color",
+        "availability": "Availability",
+        "price": "Price"
+      },
+      "facetOptions": {
+        "material": {
+          "all": "All materials",
+          "fabric": "Fabric",
+          "wood": "Wood",
+          "stone": "Stone",
+          "metal": "Metal"
+        },
+        "color": {
+          "all": "All colors",
+          "natural": "Natural",
+          "brown": "Brown",
+          "light": "Light"
+        },
+        "availability": {
+          "all": "All availability",
+          "inStock": "In stock",
+          "lowStock": "Low stock"
+        },
+        "price": {
+          "all": "All prices",
+          "under1500": "Under $1,500",
+          "between1500And3500": "$1,500-$3,500",
+          "over3500": "Over $3,500"
+        }
+      }
+    },
+    "productDetail": {
+      "price": {
+        "prefix": "Starting at",
+        "member": "Member",
+        "sale": "Sale",
+        "regular": "Regular",
+        "savings": "ANNUAL 5% FIRST ORDER / WHOLE-ROOM 15%",
+        "context": "Starting at price reflects the displayed size and stocked finish."
+      },
+      "stock": {
+        "label": "Inventory",
+        "inStock": "In stock",
+        "madeToOrder": "Made to order"
+      },
+      "membershipPrompt": {
+        "title": "Member pricing available",
+        "copy": "Sign in or join the Members Program to review eligible savings before checkout.",
+        "linkLabel": "Learn More"
+      },
+      "fabricSelector": {
+        "stockedFabrics": "SELECT FROM {stocked} STOCKED AND {special} SPECIAL ORDER FABRICS",
+        "stoneWood": "SELECT FROM {stocked} STONE TOPS AND {special} WOOD FINISHES",
+        "outdoorFabrics": "SELECT FROM {stocked} STOCKED AND {special} SPECIAL ORDER OUTDOOR FABRICS",
+        "metalShade": "SELECT FROM {stocked} METAL FINISHES AND {special} SHADE OPTIONS",
+        "generic": "SELECT FROM {stocked} STOCKED AND {special} SPECIAL ORDER OPTIONS",
+        "count": "{stocked} stocked / {special} special order"
+      },
+      "availability": {
+        "title": "VIEW IN STOCK ITEMS",
+        "readyToShip": "Ready to ship in 3-7 days",
+        "specialOrder": "Special order options ship by confirmed production window"
+      },
+      "optionGroups": {
+        "labels": {
+          "size": "Size",
+          "fabric": "Fabric",
+          "finish": "Finish",
+          "configuration": "Configuration",
+          "depth": "Depth",
+          "fill": "Cushion fill",
+          "shape": "Shape",
+          "top": "Top material",
+          "base": "Base finish",
+          "frame": "Frame",
+          "cushion": "Cushion",
+          "orientation": "Orientation",
+          "shade": "Shade",
+          "bulb": "Bulb"
+        },
+        "helpers": {
+          "bedSize": "Choose the bed frame size.",
+          "upholstery": "Stocked and special order upholstery options.",
+          "visibleFinish": "Visible frame or leg finish.",
+          "bedConfiguration": "Controls base and headboard setup.",
+          "seatingConfiguration": "Choose the seating profile before fabric and depth.",
+          "depth": "Controls seat depth and room footprint.",
+          "fill": "Defines the sit and maintenance level.",
+          "shape": "Select the dining room footprint.",
+          "diningSize": "Controls seating capacity and room clearance.",
+          "top": "Stone and wood top options for Oakved dining filters.",
+          "base": "Base finish can map to SKU attributes later.",
+          "frame": "Choose weathered wood or metal frame finish.",
+          "outdoorFabric": "Outdoor stocked and special order cushion fabrics.",
+          "cushion": "Controls cushion profile and comfort.",
+          "orientation": "Useful for lounge chair or modular outdoor layouts.",
+          "fixtureSize": "Choose fixture diameter or drop length.",
+          "metalFinish": "Metal finish for fixture body and canopy.",
+          "shade": "Shade options for light diffusion.",
+          "bulb": "Defines light source and compatibility."
+        }
+      },
+      "purchaseAssurance": {
+        "delivery": {
+          "title": "Delivery",
+          "copy": "Delivery windows are shown before checkout and confirmed after order review."
+        },
+        "installation": {
+          "title": "Installation",
+          "copy": "Large furniture can be scheduled with room-of-choice placement."
+        },
+        "returns": {
+          "title": "Returns",
+          "copy": "Review eligible returns, exchanges and custom-order terms before purchase."
+        }
+      },
+      "relatedLinks": {
+        "availableLeather": "ALSO AVAILABLE IN LEATHER",
+        "customConfiguration": "ALSO AVAILABLE FOR CUSTOM CONFIGURATION",
+        "luxeBed": "EXPLORE THE LUXE BED COLLECTION",
+        "customFabric": "ALSO AVAILABLE WITH CUSTOM FABRIC",
+        "bedroomLounge": "EXPLORE THE BEDROOM LOUNGE COLLECTION",
+        "woodTop": "ALSO AVAILABLE WITH WOOD TOP",
+        "customLength": "ALSO AVAILABLE FOR CUSTOM LENGTH",
+        "marbleDining": "EXPLORE THE MARBLE DINING COLLECTION",
+        "diningChair": "ALSO AVAILABLE AS A DINING CHAIR",
+        "customCushions": "ALSO AVAILABLE WITH CUSTOM CUSHIONS",
+        "outdoorLounge": "EXPLORE THE OUTDOOR LOUNGE COLLECTION",
+        "sconce": "ALSO AVAILABLE AS A SCONCE",
+        "customFinishes": "ALSO AVAILABLE IN CUSTOM FINISHES",
+        "architecturalLighting": "EXPLORE THE ARCHITECTURAL LIGHTING COLLECTION",
+        "pairDressers": "PAIR WITH DRESSERS",
+        "viewBedroomSets": "VIEW BEDROOM SETS",
+        "woodFinishes": "EXPLORE WOOD FINISHES",
+        "pairNightstands": "PAIR WITH NIGHTSTANDS",
+        "viewStorageCabinets": "VIEW STORAGE CABINETS",
+        "carvedWood": "EXPLORE CARVED WOOD DETAILS",
+        "pairVanityChairs": "PAIR WITH VANITY CHAIRS",
+        "pairDeskChairs": "PAIR WITH DESK CHAIRS",
+        "viewStudySets": "VIEW STUDY SETS",
+        "exploreBenches": "EXPLORE BENCHES",
+        "pairSideChairs": "PAIR WITH SIDE CHAIRS",
+        "viewDesksTables": "VIEW DESKS & TABLES",
+        "pairRoundTables": "PAIR WITH ROUND TABLES",
+        "viewChairsBenches": "VIEW CHAIRS & BENCHES",
+        "bedroomLoungePieces": "EXPLORE BEDROOM LOUNGE PIECES"
+      },
+      "accordions": {
+        "titles": {
+          "details": "DETAILS",
+          "dimensions": "DIMENSIONS",
+          "materials": "MATERIALS",
+          "care": "CARE",
+          "delivery": "DELIVERY"
+        },
+        "rows": {
+          "design": "Design",
+          "structure": "Structure",
+          "comfort": "Comfort",
+          "compatibility": "Compatibility",
+          "queen": "Queen 1.5m",
+          "king": "King 1.8m",
+          "californiaKing": "California King 2.0m",
+          "floorToPlatform": "Floor to platform",
+          "headboardDepth": "Headboard depth",
+          "frame": "Frame",
+          "upholstery": "Upholstery",
+          "fill": "Fill",
+          "feet": "Feet",
+          "fabricCare": "Fabric care",
+          "spills": "Spills",
+          "sunlight": "Sunlight",
+          "delivery": "Delivery",
+          "assembly": "Assembly",
+          "leadTime": "Lead time",
+          "configuration": "Configuration",
+          "overallWidth": "Overall width",
+          "overallDepth": "Overall depth",
+          "overallHeight": "Overall height",
+          "seatHeight": "Seat height",
+          "armHeight": "Arm height",
+          "cushions": "Cushions",
+          "stockedFabric": "Stocked fabric",
+          "customOrder": "Custom order",
+          "top": "Top",
+          "base": "Base",
+          "use": "Use",
+          "topThickness": "Top thickness",
+          "seatingCapacity": "Seating capacity",
+          "stone": "Stone",
+          "wood": "Wood",
+          "stoneCare": "Stone care",
+          "woodCare": "Wood care",
+          "heat": "Heat",
+          "cushion": "Cushion",
+          "outdoorCare": "Outdoor care",
+          "frameCare": "Frame care",
+          "stockedFabrics": "Stocked fabrics",
+          "customCushions": "Custom cushions",
+          "mounting": "Mounting",
+          "dimming": "Dimming",
+          "canopy": "Canopy",
+          "cordLength": "Cord length",
+          "weight": "Weight",
+          "body": "Body",
+          "shade": "Shade",
+          "cleaning": "Cleaning",
+          "shadeCare": "Shade care",
+          "electrical": "Electrical",
+          "installation": "Installation"
+        }
+      }
+    }
+  },
+  "zh-CN": {
+    "productList": {
+      "typeOptions": {
+        "nightstand": "???",
+        "bedBench": "??",
+        "dresser": "??",
+        "vanity": "???",
+        "desk": "??",
+        "roundTable": "??",
+        "singleSofa": "????",
+        "chair": "??",
+        "storage": "???",
+        "deskTable": "?????",
+        "seating": "?????",
+        "bedroomSet": "????",
+        "storageSet": "????",
+        "studySet": "????",
+        "bedroomRoom": "????",
+        "masterBedroom": "??",
+        "guestBedroom": "??",
+        "room": "????",
+        "study": "????",
+        "living": "????"
+      },
+      "facetGroups": {
+        "material": "??",
+        "color": "??",
+        "availability": "????",
+        "price": "??"
+      },
+      "facetOptions": {
+        "material": {
+          "all": "????",
+          "fabric": "??",
+          "wood": "??",
+          "stone": "??",
+          "metal": "??"
+        },
+        "color": {
+          "all": "????",
+          "natural": "???",
+          "brown": "??",
+          "light": "??"
+        },
+        "availability": {
+          "all": "??????",
+          "inStock": "???",
+          "lowStock": "???"
+        },
+        "price": {
+          "all": "????",
+          "under1500": "?? $1,500",
+          "between1500And3500": "$1,500-$3,500",
+          "over3500": "?? $3,500"
+        }
+      }
+    },
+    "productDetail": {
+      "price": {
+        "prefix": "??",
+        "member": "???",
+        "sale": "???",
+        "regular": "??",
+        "savings": "???? 5% / ?? 15%",
+        "context": "????????????????"
+      },
+      "stock": {
+        "label": "??",
+        "inStock": "???",
+        "madeToOrder": "????"
+      },
+      "membershipPrompt": {
+        "title": "??????",
+        "copy": "????????????????????????",
+        "linkLabel": "????"
+      },
+      "fabricSelector": {
+        "stockedFabrics": "?? {stocked} ?????? {special} ???????",
+        "stoneWood": "?? {stocked} ?????? {special} ?????",
+        "outdoorFabrics": "?? {stocked} ???????? {special} ?????????",
+        "metalShade": "?? {stocked} ?????? {special} ?????",
+        "generic": "?? {stocked} ?????? {special} ???????",
+        "count": "{stocked} ??? / {special} ?????"
+      },
+      "availability": {
+        "title": "??????",
+        "readyToShip": "3-7 ?????",
+        "specialOrder": "????????????????"
+      },
+      "optionGroups": {
+        "labels": {
+          "size": "??",
+          "fabric": "??",
+          "finish": "??",
+          "configuration": "??",
+          "depth": "??",
+          "fill": "????",
+          "shape": "??",
+          "top": "????",
+          "base": "????",
+          "frame": "??",
+          "cushion": "??",
+          "orientation": "??",
+          "shade": "??",
+          "bulb": "??"
+        },
+        "helpers": {
+          "bedSize": "Choose the bed frame size.",
+          "upholstery": "Stocked and special order upholstery options.",
+          "visibleFinish": "Visible frame or leg finish.",
+          "bedConfiguration": "Controls base and headboard setup.",
+          "seatingConfiguration": "Choose the seating profile before fabric and depth.",
+          "depth": "Controls seat depth and room footprint.",
+          "fill": "Defines the sit and maintenance level.",
+          "shape": "Select the dining room footprint.",
+          "diningSize": "Controls seating capacity and room clearance.",
+          "top": "Stone and wood top options for Oakved dining filters.",
+          "base": "Base finish can map to SKU attributes later.",
+          "frame": "Choose weathered wood or metal frame finish.",
+          "outdoorFabric": "Outdoor stocked and special order cushion fabrics.",
+          "cushion": "Controls cushion profile and comfort.",
+          "orientation": "Useful for lounge chair or modular outdoor layouts.",
+          "fixtureSize": "Choose fixture diameter or drop length.",
+          "metalFinish": "Metal finish for fixture body and canopy.",
+          "shade": "Shade options for light diffusion.",
+          "bulb": "Defines light source and compatibility."
+        }
+      },
+      "purchaseAssurance": {
+        "delivery": {
+          "title": "??",
+          "copy": "??????????????????????"
+        },
+        "installation": {
+          "title": "??",
+          "copy": "????????????????"
+        },
+        "returns": {
+          "title": "??",
+          "copy": "??????????????????????"
+        }
+      },
+      "relatedLinks": {
+        "availableLeather": "ALSO AVAILABLE IN LEATHER",
+        "customConfiguration": "ALSO AVAILABLE FOR CUSTOM CONFIGURATION",
+        "luxeBed": "EXPLORE THE LUXE BED COLLECTION",
+        "customFabric": "ALSO AVAILABLE WITH CUSTOM FABRIC",
+        "bedroomLounge": "EXPLORE THE BEDROOM LOUNGE COLLECTION",
+        "woodTop": "ALSO AVAILABLE WITH WOOD TOP",
+        "customLength": "ALSO AVAILABLE FOR CUSTOM LENGTH",
+        "marbleDining": "EXPLORE THE MARBLE DINING COLLECTION",
+        "diningChair": "ALSO AVAILABLE AS A DINING CHAIR",
+        "customCushions": "ALSO AVAILABLE WITH CUSTOM CUSHIONS",
+        "outdoorLounge": "EXPLORE THE OUTDOOR LOUNGE COLLECTION",
+        "sconce": "ALSO AVAILABLE AS A SCONCE",
+        "customFinishes": "ALSO AVAILABLE IN CUSTOM FINISHES",
+        "architecturalLighting": "EXPLORE THE ARCHITECTURAL LIGHTING COLLECTION",
+        "pairDressers": "PAIR WITH DRESSERS",
+        "viewBedroomSets": "VIEW BEDROOM SETS",
+        "woodFinishes": "EXPLORE WOOD FINISHES",
+        "pairNightstands": "PAIR WITH NIGHTSTANDS",
+        "viewStorageCabinets": "VIEW STORAGE CABINETS",
+        "carvedWood": "EXPLORE CARVED WOOD DETAILS",
+        "pairVanityChairs": "PAIR WITH VANITY CHAIRS",
+        "pairDeskChairs": "PAIR WITH DESK CHAIRS",
+        "viewStudySets": "VIEW STUDY SETS",
+        "exploreBenches": "EXPLORE BENCHES",
+        "pairSideChairs": "PAIR WITH SIDE CHAIRS",
+        "viewDesksTables": "VIEW DESKS & TABLES",
+        "pairRoundTables": "PAIR WITH ROUND TABLES",
+        "viewChairsBenches": "VIEW CHAIRS & BENCHES",
+        "bedroomLoungePieces": "EXPLORE BEDROOM LOUNGE PIECES"
+      },
+      "accordions": {
+        "titles": {
+          "details": "??",
+          "dimensions": "??",
+          "materials": "??",
+          "care": "??",
+          "delivery": "??"
+        },
+        "rows": {
+          "design": "Design",
+          "structure": "Structure",
+          "comfort": "Comfort",
+          "compatibility": "Compatibility",
+          "queen": "Queen 1.5m",
+          "king": "King 1.8m",
+          "californiaKing": "California King 2.0m",
+          "floorToPlatform": "Floor to platform",
+          "headboardDepth": "Headboard depth",
+          "frame": "Frame",
+          "upholstery": "Upholstery",
+          "fill": "Fill",
+          "feet": "Feet",
+          "fabricCare": "Fabric care",
+          "spills": "Spills",
+          "sunlight": "Sunlight",
+          "delivery": "Delivery",
+          "assembly": "Assembly",
+          "leadTime": "Lead time",
+          "configuration": "Configuration",
+          "overallWidth": "Overall width",
+          "overallDepth": "Overall depth",
+          "overallHeight": "Overall height",
+          "seatHeight": "Seat height",
+          "armHeight": "Arm height",
+          "cushions": "Cushions",
+          "stockedFabric": "Stocked fabric",
+          "customOrder": "Custom order",
+          "top": "Top",
+          "base": "Base",
+          "use": "Use",
+          "topThickness": "Top thickness",
+          "seatingCapacity": "Seating capacity",
+          "stone": "Stone",
+          "wood": "Wood",
+          "stoneCare": "Stone care",
+          "woodCare": "Wood care",
+          "heat": "Heat",
+          "cushion": "Cushion",
+          "outdoorCare": "Outdoor care",
+          "frameCare": "Frame care",
+          "stockedFabrics": "Stocked fabrics",
+          "customCushions": "Custom cushions",
+          "mounting": "Mounting",
+          "dimming": "Dimming",
+          "canopy": "Canopy",
+          "cordLength": "Cord length",
+          "weight": "Weight",
+          "body": "Body",
+          "shade": "Shade",
+          "cleaning": "Cleaning",
+          "shadeCare": "Shade care",
+          "electrical": "Electrical",
+          "installation": "Installation"
+        }
+      }
+    }
+  },
+  "fr": {
+    "productList": {
+      "typeOptions": {
+        "nightstand": "Tables de chevet",
+        "bedBench": "Bancs",
+        "dresser": "Commodes",
+        "vanity": "Coiffeuses",
+        "desk": "Bureaux",
+        "roundTable": "Tables rondes",
+        "singleSofa": "Canapes individuels",
+        "chair": "Chaises",
+        "storage": "Meubles de rangement",
+        "deskTable": "Bureaux et tables",
+        "seating": "Assises et bancs",
+        "bedroomSet": "Ensembles chambre",
+        "storageSet": "Rangement chambre",
+        "studySet": "Ensembles bureau",
+        "bedroomRoom": "Mobilier de chambre",
+        "masterBedroom": "Chambre principale",
+        "guestBedroom": "Chambre d'amis",
+        "room": "Pieces completes",
+        "study": "Espaces bureau",
+        "living": "Coins salon"
+      },
+      "facetGroups": {
+        "material": "Matiere",
+        "color": "Couleur",
+        "availability": "Disponibilite",
+        "price": "Prix"
+      },
+      "facetOptions": {
+        "material": {
+          "all": "Toutes les matieres",
+          "fabric": "Tissu",
+          "wood": "Bois",
+          "stone": "Pierre",
+          "metal": "Metal"
+        },
+        "color": {
+          "all": "Toutes les couleurs",
+          "natural": "Naturel",
+          "brown": "Brun",
+          "light": "Clair"
+        },
+        "availability": {
+          "all": "Toutes les disponibilites",
+          "inStock": "En stock",
+          "lowStock": "Stock bas"
+        },
+        "price": {
+          "all": "Tous les prix",
+          "under1500": "Moins de $1,500",
+          "between1500And3500": "$1,500-$3,500",
+          "over3500": "Plus de $3,500"
+        }
+      }
+    },
+    "productDetail": {
+      "price": {
+        "prefix": "A partir de",
+        "member": "Membre",
+        "sale": "Solde",
+        "regular": "Standard",
+        "savings": "5% premier achat annuel / 15% piece complete",
+        "context": "Le prix de depart reflete la taille affichee et la finition en stock."
+      },
+      "stock": {
+        "label": "Stock",
+        "inStock": "En stock",
+        "madeToOrder": "Fabrique sur commande"
+      },
+      "membershipPrompt": {
+        "title": "Prix membre disponible",
+        "copy": "Connectez-vous ou rejoignez le programme Members pour voir les economies eligibles avant paiement.",
+        "linkLabel": "En savoir plus"
+      },
+      "fabricSelector": {
+        "stockedFabrics": "CHOISIR PARMI {stocked} TISSUS EN STOCK ET {special} TISSUS SUR COMMANDE",
+        "stoneWood": "CHOISIR PARMI {stocked} PLATEAUX PIERRE ET {special} FINITIONS BOIS",
+        "outdoorFabrics": "CHOISIR PARMI {stocked} TISSUS OUTDOOR EN STOCK ET {special} SUR COMMANDE",
+        "metalShade": "CHOISIR PARMI {stocked} FINITIONS METAL ET {special} OPTIONS D'ABAT-JOUR",
+        "generic": "CHOISIR PARMI {stocked} OPTIONS EN STOCK ET {special} SUR COMMANDE",
+        "count": "{stocked} en stock / {special} sur commande"
+      },
+      "availability": {
+        "title": "VOIR LES ARTICLES EN STOCK",
+        "readyToShip": "Pret a expedier sous 3 a 7 jours",
+        "specialOrder": "Les options sur commande suivent la fenetre de production confirmee"
+      },
+      "optionGroups": {
+        "labels": {
+          "size": "Taille",
+          "fabric": "Tissu",
+          "finish": "Finition",
+          "configuration": "Configuration",
+          "depth": "Profondeur",
+          "fill": "Garnissage coussin",
+          "shape": "Forme",
+          "top": "Matiere du plateau",
+          "base": "Finition de base",
+          "frame": "Structure",
+          "cushion": "Coussin",
+          "orientation": "Orientation",
+          "shade": "Abat-jour",
+          "bulb": "Ampoule"
+        },
+        "helpers": {
+          "bedSize": "Choose the bed frame size.",
+          "upholstery": "Stocked and special order upholstery options.",
+          "visibleFinish": "Visible frame or leg finish.",
+          "bedConfiguration": "Controls base and headboard setup.",
+          "seatingConfiguration": "Choose the seating profile before fabric and depth.",
+          "depth": "Controls seat depth and room footprint.",
+          "fill": "Defines the sit and maintenance level.",
+          "shape": "Select the dining room footprint.",
+          "diningSize": "Controls seating capacity and room clearance.",
+          "top": "Stone and wood top options for Oakved dining filters.",
+          "base": "Base finish can map to SKU attributes later.",
+          "frame": "Choose weathered wood or metal frame finish.",
+          "outdoorFabric": "Outdoor stocked and special order cushion fabrics.",
+          "cushion": "Controls cushion profile and comfort.",
+          "orientation": "Useful for lounge chair or modular outdoor layouts.",
+          "fixtureSize": "Choose fixture diameter or drop length.",
+          "metalFinish": "Metal finish for fixture body and canopy.",
+          "shade": "Shade options for light diffusion.",
+          "bulb": "Defines light source and compatibility."
+        }
+      },
+      "purchaseAssurance": {
+        "delivery": {
+          "title": "Livraison",
+          "copy": "Les fenetres de livraison sont affichees avant paiement puis confirmees apres verification."
+        },
+        "installation": {
+          "title": "Installation",
+          "copy": "Les grands meubles peuvent etre programmes avec placement dans la piece."
+        },
+        "returns": {
+          "title": "Retours",
+          "copy": "Consultez les retours, echanges et conditions de commande speciale avant achat."
+        }
+      },
+      "relatedLinks": {
+        "availableLeather": "ALSO AVAILABLE IN LEATHER",
+        "customConfiguration": "ALSO AVAILABLE FOR CUSTOM CONFIGURATION",
+        "luxeBed": "EXPLORE THE LUXE BED COLLECTION",
+        "customFabric": "ALSO AVAILABLE WITH CUSTOM FABRIC",
+        "bedroomLounge": "EXPLORE THE BEDROOM LOUNGE COLLECTION",
+        "woodTop": "ALSO AVAILABLE WITH WOOD TOP",
+        "customLength": "ALSO AVAILABLE FOR CUSTOM LENGTH",
+        "marbleDining": "EXPLORE THE MARBLE DINING COLLECTION",
+        "diningChair": "ALSO AVAILABLE AS A DINING CHAIR",
+        "customCushions": "ALSO AVAILABLE WITH CUSTOM CUSHIONS",
+        "outdoorLounge": "EXPLORE THE OUTDOOR LOUNGE COLLECTION",
+        "sconce": "ALSO AVAILABLE AS A SCONCE",
+        "customFinishes": "ALSO AVAILABLE IN CUSTOM FINISHES",
+        "architecturalLighting": "EXPLORE THE ARCHITECTURAL LIGHTING COLLECTION",
+        "pairDressers": "PAIR WITH DRESSERS",
+        "viewBedroomSets": "VIEW BEDROOM SETS",
+        "woodFinishes": "EXPLORE WOOD FINISHES",
+        "pairNightstands": "PAIR WITH NIGHTSTANDS",
+        "viewStorageCabinets": "VIEW STORAGE CABINETS",
+        "carvedWood": "EXPLORE CARVED WOOD DETAILS",
+        "pairVanityChairs": "PAIR WITH VANITY CHAIRS",
+        "pairDeskChairs": "PAIR WITH DESK CHAIRS",
+        "viewStudySets": "VIEW STUDY SETS",
+        "exploreBenches": "EXPLORE BENCHES",
+        "pairSideChairs": "PAIR WITH SIDE CHAIRS",
+        "viewDesksTables": "VIEW DESKS & TABLES",
+        "pairRoundTables": "PAIR WITH ROUND TABLES",
+        "viewChairsBenches": "VIEW CHAIRS & BENCHES",
+        "bedroomLoungePieces": "EXPLORE BEDROOM LOUNGE PIECES"
+      },
+      "accordions": {
+        "titles": {
+          "details": "DETAILS",
+          "dimensions": "DIMENSIONS",
+          "materials": "MATIERES",
+          "care": "ENTRETIEN",
+          "delivery": "LIVRAISON"
+        },
+        "rows": {
+          "design": "Design",
+          "structure": "Structure",
+          "comfort": "Comfort",
+          "compatibility": "Compatibility",
+          "queen": "Queen 1.5m",
+          "king": "King 1.8m",
+          "californiaKing": "California King 2.0m",
+          "floorToPlatform": "Floor to platform",
+          "headboardDepth": "Headboard depth",
+          "frame": "Frame",
+          "upholstery": "Upholstery",
+          "fill": "Fill",
+          "feet": "Feet",
+          "fabricCare": "Fabric care",
+          "spills": "Spills",
+          "sunlight": "Sunlight",
+          "delivery": "Delivery",
+          "assembly": "Assembly",
+          "leadTime": "Lead time",
+          "configuration": "Configuration",
+          "overallWidth": "Overall width",
+          "overallDepth": "Overall depth",
+          "overallHeight": "Overall height",
+          "seatHeight": "Seat height",
+          "armHeight": "Arm height",
+          "cushions": "Cushions",
+          "stockedFabric": "Stocked fabric",
+          "customOrder": "Custom order",
+          "top": "Top",
+          "base": "Base",
+          "use": "Use",
+          "topThickness": "Top thickness",
+          "seatingCapacity": "Seating capacity",
+          "stone": "Stone",
+          "wood": "Wood",
+          "stoneCare": "Stone care",
+          "woodCare": "Wood care",
+          "heat": "Heat",
+          "cushion": "Cushion",
+          "outdoorCare": "Outdoor care",
+          "frameCare": "Frame care",
+          "stockedFabrics": "Stocked fabrics",
+          "customCushions": "Custom cushions",
+          "mounting": "Mounting",
+          "dimming": "Dimming",
+          "canopy": "Canopy",
+          "cordLength": "Cord length",
+          "weight": "Weight",
+          "body": "Body",
+          "shade": "Shade",
+          "cleaning": "Cleaning",
+          "shadeCare": "Shade care",
+          "electrical": "Electrical",
+          "installation": "Installation"
+        }
+      }
+    }
+  }
+};
+
 Object.entries(taskFourProductMessages).forEach(([lang, localeMessages]) => {
+  mergeLocaleMessages(messages[lang], localeMessages);
+});
+
+Object.entries(taskFourModelUiMessages).forEach(([lang, localeMessages]) => {
   mergeLocaleMessages(messages[lang], localeMessages);
 });
 

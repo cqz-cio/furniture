@@ -33,6 +33,27 @@ describe("storefront launch polish", () => {
     expect(source).toContain("product-companion-grid");
   });
 
+  it("localizes product model UI helper labels at the page layer", () => {
+    const plpSource = readSource("../src/pages/SofasPlpPage.vue");
+    const pdpSource = readSource("../src/pages/SofaPdpPage.vue");
+
+    expect(plpSource).toContain("productTypeLabel(option.value)");
+    expect(plpSource).toContain("facetGroupLabel(group.key)");
+    expect(plpSource).toContain("facetOptionLabel(group.key, option.value)");
+    expect(plpSource).not.toContain("{{ option.label }}");
+    expect(plpSource).not.toContain("{{ group.label }}");
+
+    expect(pdpSource).toContain("priceLabel(");
+    expect(pdpSource).toContain("membershipPromptText(");
+    expect(pdpSource).toContain("fabricSelectorLabel(detail.fabricSelector)");
+    expect(pdpSource).toContain("optionGroupLabel(group.key)");
+    expect(pdpSource).toContain("accordionTitle(item.title)");
+    expect(pdpSource).not.toContain("{{ detail.price.memberLabel }}");
+    expect(pdpSource).not.toContain("{{ detail.fabricSelector.label }}");
+    expect(pdpSource).not.toContain("{{ group.label }}");
+    expect(pdpSource).not.toContain("<summary>{{ item.title }}</summary>");
+  });
+
   it("surfaces active PLP filters before the grid", () => {
     const source = readSource("../src/pages/SofasPlpPage.vue");
 

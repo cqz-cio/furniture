@@ -9,7 +9,6 @@ import {
   buildProductListingModel,
   productFacetGroups,
   productListingFilters,
-  productListingQueryFilterLabels,
   resolveProductListingQuery,
   supplementMissingCompanyTypes,
 } from "../services/productListingModel.js";
@@ -44,6 +43,60 @@ const quickAddMessage = ref("");
 const wishlistIdentityKeys = ref(new Set());
 const wishlistIdentityStatusKey = ref("");
 const skeletonCards = [0, 1, 2, 3];
+const productTypeLabelKeys = {
+  nightstand: "productList.typeOptions.nightstand",
+  "bed-bench": "productList.typeOptions.bedBench",
+  dresser: "productList.typeOptions.dresser",
+  vanity: "productList.typeOptions.vanity",
+  desk: "productList.typeOptions.desk",
+  "round-table": "productList.typeOptions.roundTable",
+  "single-sofa": "productList.typeOptions.singleSofa",
+  chair: "productList.typeOptions.chair",
+  storage: "productList.typeOptions.storage",
+  "desk-table": "productList.typeOptions.deskTable",
+  seating: "productList.typeOptions.seating",
+  "bedroom-set": "productList.typeOptions.bedroomSet",
+  "storage-set": "productList.typeOptions.storageSet",
+  "study-set": "productList.typeOptions.studySet",
+  "bedroom-room": "productList.typeOptions.bedroomRoom",
+  "master-bedroom": "productList.typeOptions.masterBedroom",
+  "guest-bedroom": "productList.typeOptions.guestBedroom",
+  room: "productList.typeOptions.room",
+  study: "productList.typeOptions.study",
+  living: "productList.typeOptions.living",
+};
+const facetGroupLabelKeys = {
+  material: "productList.facetGroups.material",
+  color: "productList.facetGroups.color",
+  availability: "productList.facetGroups.availability",
+  price: "productList.facetGroups.price",
+};
+const facetOptionLabelKeys = {
+  material: {
+    all: "productList.facetOptions.material.all",
+    fabric: "productList.facetOptions.material.fabric",
+    wood: "productList.facetOptions.material.wood",
+    stone: "productList.facetOptions.material.stone",
+    metal: "productList.facetOptions.material.metal",
+  },
+  color: {
+    all: "productList.facetOptions.color.all",
+    natural: "productList.facetOptions.color.natural",
+    brown: "productList.facetOptions.color.brown",
+    light: "productList.facetOptions.color.light",
+  },
+  availability: {
+    all: "productList.facetOptions.availability.all",
+    "in-stock": "productList.facetOptions.availability.inStock",
+    "low-stock": "productList.facetOptions.availability.lowStock",
+  },
+  price: {
+    all: "productList.facetOptions.price.all",
+    "under-1500": "productList.facetOptions.price.under1500",
+    "1500-3500": "productList.facetOptions.price.between1500And3500",
+    "over-3500": "productList.facetOptions.price.over3500",
+  },
+};
 
 const sourceLabel = computed(() => {
   if (source.value === "yudao") return t("connectedCatalog");
@@ -57,21 +110,32 @@ const sortForListingModel = computed(() => {
   return "featured";
 });
 const productTypeOptions = computed(() => {
-  const baseOptions = productListingFilters.filter((option) => option.value !== "all");
+  const baseOptions = productListingFilters
+    .filter((option) => option.value !== "all")
+    .map((option) => ({ value: option.value }));
   const hasSelectedOption = baseOptions.some((option) => option.value === selectedProductType.value);
   if (hasSelectedOption || selectedProductType.value === "all") return baseOptions;
 
   return [
-    {
-      value: selectedProductType.value,
-      label: productListingQueryFilterLabels[selectedProductType.value] || selectedProductType.value,
-    },
+    { value: selectedProductType.value },
     ...baseOptions,
   ];
 });
+const productTypeLabel = (value) => {
+  const key = productTypeLabelKeys[value];
+  return key ? t(key) : value;
+};
+const facetGroupLabel = (key) => {
+  const labelKey = facetGroupLabelKeys[key];
+  return labelKey ? t(labelKey) : key;
+};
+const facetOptionLabel = (groupKey, optionValue) => {
+  const labelKey = facetOptionLabelKeys[groupKey]?.[optionValue];
+  return labelKey ? t(labelKey) : optionValue;
+};
 const selectedFilterLabel = computed(() => {
   if (selectedProductType.value === "all") return t("productList.allFurniture");
-  return productTypeOptions.value.find((option) => option.value === selectedProductType.value)?.label || productListingQueryFilterLabels[selectedProductType.value] || selectedProductType.value;
+  return productTypeLabel(selectedProductType.value);
 });
 const listingModel = computed(() =>
   buildProductListingModel(products.value, {
@@ -99,9 +163,7 @@ const activeFilterLabels = computed(() => {
   }
   Object.entries(selectedFacets.value).forEach(([key, value]) => {
     if (!value || value === "all") return;
-    const group = productFacetGroups.find((item) => item.key === key);
-    const option = group?.options.find((item) => item.value === value);
-    labels.push(option?.label || value);
+    labels.push(facetOptionLabel(key, value));
   });
   return labels;
 });
@@ -199,7 +261,7 @@ onBeforeUnmount(() => {
         <select v-model="selectedProductType">
           <option value="all">{{ t("productList.allTypes") }}</option>
           <option v-for="option in productTypeOptions" :key="option.value" :value="option.value">
-            {{ option.label }}
+            {{ productTypeLabel(option.value) }}
           </option>
         </select>
       </label>
@@ -233,7 +295,7 @@ onBeforeUnmount(() => {
         :class="{ active: selectedProductType === option.value }"
         @click="selectedProductType = option.value"
       >
-        {{ option.label }}
+        {{ productTypeLabel(option.value) }}
       </button>
     </div>
 
@@ -248,10 +310,10 @@ onBeforeUnmount(() => {
           <button type="button" @click="mobileFiltersOpen = false">{{ t("productList.filters.close") }}</button>
         </div>
         <label v-for="group in productFacetGroups" :key="group.key" class="product-facet-control">
-          <span>{{ group.label }}</span>
+          <span>{{ facetGroupLabel(group.key) }}</span>
           <select v-model="selectedFacets[group.key]">
             <option v-for="option in group.options" :key="option.value" :value="option.value">
-              {{ option.label }}
+              {{ facetOptionLabel(group.key, option.value) }}
             </option>
           </select>
         </label>
