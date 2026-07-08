@@ -24,6 +24,7 @@ import cn.iocoder.yudao.module.pay.api.refund.dto.PayRefundRespDTO;
 import cn.iocoder.yudao.module.pay.enums.order.PayOrderStatusEnum;
 import cn.iocoder.yudao.module.pay.enums.refund.PayRefundStatusEnum;
 import cn.iocoder.yudao.module.product.api.comment.ProductCommentApi;
+import cn.iocoder.yudao.module.product.api.comment.dto.ProductCommentBatchCreateReqDTO;
 import cn.iocoder.yudao.module.product.api.comment.dto.ProductCommentCreateReqDTO;
 import cn.iocoder.yudao.module.promotion.api.combination.CombinationRecordApi;
 import cn.iocoder.yudao.module.promotion.api.combination.dto.CombinationRecordRespDTO;
@@ -34,6 +35,8 @@ import cn.iocoder.yudao.module.trade.controller.admin.order.vo.TradeOrderDeliver
 import cn.iocoder.yudao.module.trade.controller.admin.order.vo.TradeOrderRemarkReqVO;
 import cn.iocoder.yudao.module.trade.controller.admin.order.vo.TradeOrderUpdateAddressReqVO;
 import cn.iocoder.yudao.module.trade.controller.admin.order.vo.TradeOrderUpdatePriceReqVO;
+import cn.iocoder.yudao.module.trade.controller.app.order.vo.AppTradeOrderCommentCreateReqVO;
+import cn.iocoder.yudao.module.trade.controller.app.order.vo.AppTradeOrderCommentCreateRespVO;
 import cn.iocoder.yudao.module.trade.controller.app.order.vo.AppTradeOrderCreateReqVO;
 import cn.iocoder.yudao.module.trade.controller.app.order.vo.AppTradeOrderSettlementReqVO;
 import cn.iocoder.yudao.module.trade.controller.app.order.vo.AppTradeOrderSettlementRespVO;
@@ -71,6 +74,7 @@ import javax.annotation.Resource;
 import javax.validation.constraints.NotNull;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -94,6 +98,7 @@ import static cn.iocoder.yudao.module.trade.enums.MessageTemplateConstants.WXA_O
 @Slf4j
 public class TradeOrderUpdateServiceImpl implements TradeOrderUpdateService {
 
+    private static final String SYSTEM_DEFAULT_COMMENT_CONTENT = "系统默认好评";
     private static final Set<String> SUPPORTED_ADDRESS_VERIFICATION_SOURCES = CollUtil.newHashSet(
             "google-address-validation", "remote-address-verification", "local-postal-region",
             "backend-address-verification");
@@ -1017,6 +1022,46 @@ public class TradeOrderUpdateServiceImpl implements TradeOrderUpdateService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     @TradeOrderLog(operateType = TradeOrderOperateTypeEnum.MEMBER_COMMENT)
+    public AppTradeOrderCommentCreateRespVO createOrderCommentsByMember(Long userId,
+                                                                        AppTradeOrderCommentCreateReqVO createReqVO) {
+        TradeOrderDO order = tradeOrderMapper.selectOrderByIdAndUserId(createReqVO.getOrderId(), userId);
+        if (order == null) {
+            throw exception(ORDER_NOT_FOUND);
+        }
+        if (ObjectUtil.notEqual(order.getStatus(), TradeOrderStatusEnum.COMPLETED.getStatus())) {
+            throw exception(ORDER_COMMENT_FAIL_STATUS_NOT_COMPLETED);
+        }
+        if (ObjectUtil.notEqual(order.getCommentStatus(), Boolean.FALSE)) {
+            throw exception(ORDER_COMMENT_STATUS_NOT_FALSE);
+        }
+
+        List<TradeOrderItemDO> orderItems = tradeOrderItemMapper.selectListByOrderId(order.getId());
+        validateBatchCommentItems(orderItems, createReqVO.getItems());
+
+        List<ProductCommentCreateReqDTO> productCommentCreateReqDTOs = new ArrayList<>(createReqVO.getItems().size());
+        for (AppTradeOrderCommentCreateReqVO.Item item : createReqVO.getItems()) {
+            TradeOrderItemDO orderItem = findOrderItem(orderItems, item.getOrderItemId());
+            productCommentCreateReqDTOs.add(TradeOrderConvert.INSTANCE.convert05(item, createReqVO.getAnonymous(), orderItem));
+        }
+        List<Long> commentIds = productCommentApi.createComments(new ProductCommentBatchCreateReqDTO()
+                .setComments(productCommentCreateReqDTOs)).getCheckedData();
+        if (CollUtil.size(commentIds) != createReqVO.getItems().size()) {
+            throw exception(ORDER_COMMENT_ITEM_LIST_MISMATCH);
+        }
+        for (TradeOrderItemDO orderItem : orderItems) {
+            tradeOrderItemMapper.updateById(new TradeOrderItemDO().setId(orderItem.getId()).setCommentStatus(Boolean.TRUE));
+        }
+
+        tradeOrderMapper.updateById(new TradeOrderDO().setId(order.getId()).setCommentStatus(Boolean.TRUE)
+                .setFinishTime(LocalDateTime.now()));
+        TradeOrderLogUtils.setOrderInfo(order.getId(), order.getStatus(), order.getStatus());
+        return new AppTradeOrderCommentCreateRespVO().setOrderId(order.getId())
+                .setCommentedItemCount(commentIds.size()).setCommentIds(commentIds);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    @TradeOrderLog(operateType = TradeOrderOperateTypeEnum.MEMBER_COMMENT)
     public Long createOrderItemCommentByMember(Long userId, AppTradeOrderItemCommentCreateReqVO createReqVO) {
         // 1.1 先通过订单项 ID，查询订单项是否存在
         TradeOrderItemDO orderItem = tradeOrderItemMapper.selectByIdAndUserId(createReqVO.getOrderItemId(), userId);
@@ -1158,7 +1203,7 @@ public class TradeOrderUpdateServiceImpl implements TradeOrderUpdateService {
         for (TradeOrderItemDO orderItem : orderItems) {
             // 2.1 创建评价
             AppTradeOrderItemCommentCreateReqVO commentCreateReqVO = new AppTradeOrderItemCommentCreateReqVO()
-                    .setOrderItemId(orderItem.getId()).setAnonymous(false).setContent("")
+                    .setOrderItemId(orderItem.getId()).setAnonymous(false).setContent(SYSTEM_DEFAULT_COMMENT_CONTENT)
                     .setBenefitScores(5).setDescriptionScores(5);
             createOrderItemComment0(orderItem, commentCreateReqVO);
 
@@ -1197,6 +1242,38 @@ public class TradeOrderUpdateServiceImpl implements TradeOrderUpdateService {
      *
      * @return 自己
      */
+    private void validateBatchCommentItems(List<TradeOrderItemDO> orderItems,
+                                           List<AppTradeOrderCommentCreateReqVO.Item> items) {
+        if (CollUtil.isEmpty(orderItems) || CollUtil.isEmpty(items) || orderItems.size() != items.size()) {
+            throw exception(ORDER_COMMENT_ITEM_LIST_MISMATCH);
+        }
+        if (anyMatch(orderItems, orderItem -> Boolean.TRUE.equals(orderItem.getCommentStatus()))) {
+            throw exception(ORDER_COMMENT_MIXED_MODE_NOT_ALLOWED);
+        }
+
+        HashSet<Long> orderItemIds = new HashSet<>(orderItems.size());
+        for (TradeOrderItemDO orderItem : orderItems) {
+            orderItemIds.add(orderItem.getId());
+        }
+        HashSet<Long> requestItemIds = new HashSet<>(items.size());
+        for (AppTradeOrderCommentCreateReqVO.Item item : items) {
+            requestItemIds.add(item.getOrderItemId());
+        }
+        if (orderItemIds.size() != orderItems.size() || requestItemIds.size() != items.size()
+                || !Objects.equals(orderItemIds, requestItemIds)) {
+            throw exception(ORDER_COMMENT_ITEM_LIST_MISMATCH);
+        }
+    }
+
+    private TradeOrderItemDO findOrderItem(List<TradeOrderItemDO> orderItems, Long orderItemId) {
+        for (TradeOrderItemDO orderItem : orderItems) {
+            if (Objects.equals(orderItem.getId(), orderItemId)) {
+                return orderItem;
+            }
+        }
+        throw exception(ORDER_COMMENT_ITEM_LIST_MISMATCH);
+    }
+
     private TradeOrderUpdateServiceImpl getSelf() {
         return SpringUtil.getBean(getClass());
     }

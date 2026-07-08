@@ -202,8 +202,17 @@ public class AppTradeOrderController {
 
     @PostMapping("/item/create-comment")
     @Operation(summary = "创建交易订单项的评价")
-    public CommonResult<Long> createOrderItemComment(@RequestBody AppTradeOrderItemCommentCreateReqVO createReqVO) {
+    public CommonResult<Long> createOrderItemComment(@Valid @RequestBody AppTradeOrderItemCommentCreateReqVO createReqVO) {
         return success(tradeOrderUpdateService.createOrderItemCommentByMember(getLoginUserId(), createReqVO));
+    }
+
+    @PostMapping("/create-comments")
+    @Operation(summary = "创建整单商品评价")
+    public CommonResult<AppTradeOrderCommentCreateRespVO> createOrderComments(
+            @Valid @RequestBody AppTradeOrderCommentCreateReqVO createReqVO) {
+        // 整单集中评价和单订单项评价并行保留，供不同前端链路使用；
+        // 新整单评价页应只调用当前接口，不与 /item/create-comment 混用。
+        return success(tradeOrderUpdateService.createOrderCommentsByMember(getLoginUserId(), createReqVO));
     }
 
 }

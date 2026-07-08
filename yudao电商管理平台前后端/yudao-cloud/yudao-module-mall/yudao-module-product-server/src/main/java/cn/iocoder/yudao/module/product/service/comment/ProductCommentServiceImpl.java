@@ -1,5 +1,6 @@
 package cn.iocoder.yudao.module.product.service.comment;
 
+import cn.hutool.core.collection.CollUtil;
 import cn.iocoder.yudao.framework.common.pojo.PageResult;
 import cn.iocoder.yudao.module.member.api.user.MemberUserApi;
 import cn.iocoder.yudao.module.member.api.user.dto.MemberUserRespDTO;
@@ -18,18 +19,31 @@ import cn.iocoder.yudao.module.product.service.sku.ProductSkuService;
 import cn.iocoder.yudao.module.product.service.spu.ProductSpuService;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 
 import javax.annotation.Resource;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static cn.iocoder.yudao.framework.common.exception.util.ServiceExceptionUtil.exception;
-import static cn.iocoder.yudao.module.product.enums.ErrorCodeConstants.*;
+import static cn.iocoder.yudao.module.product.enums.ErrorCodeConstants.COMMENT_BATCH_CREATE_IDEMPOTENT_CONFLICT;
+import static cn.iocoder.yudao.module.product.enums.ErrorCodeConstants.COMMENT_BATCH_CREATE_INVALID;
+import static cn.iocoder.yudao.module.product.enums.ErrorCodeConstants.COMMENT_BATCH_CREATE_PARTIAL_EXISTS;
+import static cn.iocoder.yudao.module.product.enums.ErrorCodeConstants.COMMENT_NOT_EXISTS;
+import static cn.iocoder.yudao.module.product.enums.ErrorCodeConstants.COMMENT_ORDER_EXISTS;
+import static cn.iocoder.yudao.module.product.enums.ErrorCodeConstants.SKU_NOT_EXISTS;
+import static cn.iocoder.yudao.module.product.enums.ErrorCodeConstants.SPU_NOT_EXISTS;
 
 /**
  * 商品评论 Service 实现类
- *
- * @author wangzhs
  */
 @Service
 @Validated
@@ -50,37 +64,135 @@ public class ProductCommentServiceImpl implements ProductCommentService {
 
     @Override
     public void createComment(ProductCommentCreateReqVO createReqVO) {
-        // 校验 SKU
         ProductSkuDO sku = validateSku(createReqVO.getSkuId());
-        // 校验 SPU
         ProductSpuDO spu = validateSpu(sku.getSpuId());
-
-        // 创建评论
         ProductCommentDO comment = ProductCommentConvert.INSTANCE.convert(createReqVO, spu, sku);
         productCommentMapper.insert(comment);
     }
 
     @Override
     public Long createComment(ProductCommentCreateReqDTO createReqDTO) {
-        // 校验 SKU
         ProductSkuDO sku = validateSku(createReqDTO.getSkuId());
-        // 校验 SPU
         ProductSpuDO spu = validateSpu(sku.getSpuId());
-        // 校验评论
         validateCommentExists(createReqDTO.getUserId(), createReqDTO.getOrderItemId());
-        // 获取用户详细信息
         MemberUserRespDTO user = memberUserApi.getUser(createReqDTO.getUserId()).getCheckedData();
-
-        // 创建评论
         ProductCommentDO comment = ProductCommentConvert.INSTANCE.convert(createReqDTO, spu, sku, user);
         productCommentMapper.insert(comment);
         return comment.getId();
     }
 
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public List<Long> createComments(List<ProductCommentCreateReqDTO> createReqDTOs) {
+        if (CollUtil.isEmpty(createReqDTOs)) {
+            throw exception(COMMENT_BATCH_CREATE_INVALID);
+        }
+
+        validateBatchCreateReqDTOs(createReqDTOs);
+        Long userId = createReqDTOs.get(0).getUserId();
+        List<Long> orderItemIds = createReqDTOs.stream().map(ProductCommentCreateReqDTO::getOrderItemId)
+                .collect(Collectors.toList());
+        List<ProductCommentDO> existingComments = productCommentMapper.selectListByUserIdAndOrderItemIds(userId, orderItemIds);
+        if (CollUtil.isNotEmpty(existingComments)) {
+            return resolveExistingBatchComments(createReqDTOs, existingComments);
+        }
+
+        MemberUserRespDTO user = memberUserApi.getUser(userId).getCheckedData();
+        List<Long> commentIds = new ArrayList<>(createReqDTOs.size());
+        for (ProductCommentCreateReqDTO createReqDTO : createReqDTOs) {
+            ProductSkuDO sku = validateSku(createReqDTO.getSkuId());
+            ProductSpuDO spu = validateSpu(sku.getSpuId());
+            ProductCommentDO comment = ProductCommentConvert.INSTANCE.convert(createReqDTO, spu, sku, user);
+            productCommentMapper.insert(comment);
+            commentIds.add(comment.getId());
+        }
+        return commentIds;
+    }
+
+    @Override
+    public void updateCommentVisible(ProductCommentUpdateVisibleReqVO updateReqVO) {
+        validateCommentExists(updateReqVO.getId());
+        productCommentMapper.updateById(new ProductCommentDO().setId(updateReqVO.getId())
+                .setVisible(updateReqVO.getVisible()));
+    }
+
+    @Override
+    public void replyComment(ProductCommentReplyReqVO replyVO, Long userId) {
+        validateCommentExists(replyVO.getId());
+        productCommentMapper.updateById(new ProductCommentDO().setId(replyVO.getId())
+                .setReplyTime(LocalDateTime.now()).setReplyUserId(userId)
+                .setReplyStatus(Boolean.TRUE).setReplyContent(replyVO.getReplyContent()));
+    }
+
+    @Override
+    public PageResult<ProductCommentDO> getCommentPage(AppCommentPageReqVO pageVO, Boolean visible) {
+        return productCommentMapper.selectPage(pageVO, visible);
+    }
+
+    @Override
+    public PageResult<ProductCommentDO> getCommentPage(ProductCommentPageReqVO pageReqVO) {
+        return productCommentMapper.selectPage(pageReqVO);
+    }
+
+    private List<Long> resolveExistingBatchComments(List<ProductCommentCreateReqDTO> createReqDTOs,
+                                                    List<ProductCommentDO> existingComments) {
+        if (existingComments.size() != createReqDTOs.size()) {
+            throw exception(COMMENT_BATCH_CREATE_PARTIAL_EXISTS);
+        }
+
+        Map<Long, ProductCommentDO> existingCommentMap = new LinkedHashMap<>(existingComments.size());
+        for (ProductCommentDO existingComment : existingComments) {
+            existingCommentMap.put(existingComment.getOrderItemId(), existingComment);
+        }
+        if (existingCommentMap.size() != createReqDTOs.size()) {
+            throw exception(COMMENT_BATCH_CREATE_INVALID);
+        }
+
+        List<Long> commentIds = new ArrayList<>(createReqDTOs.size());
+        for (ProductCommentCreateReqDTO createReqDTO : createReqDTOs) {
+            ProductCommentDO existingComment = existingCommentMap.get(createReqDTO.getOrderItemId());
+            if (existingComment == null) {
+                throw exception(COMMENT_BATCH_CREATE_PARTIAL_EXISTS);
+            }
+            if (!isSameExistingBatchPayload(createReqDTO, existingComment)) {
+                throw exception(COMMENT_BATCH_CREATE_IDEMPOTENT_CONFLICT);
+            }
+            commentIds.add(existingComment.getId());
+        }
+        return commentIds;
+    }
+
+    private boolean isSameExistingBatchPayload(ProductCommentCreateReqDTO createReqDTO,
+                                               ProductCommentDO existingComment) {
+        return Objects.equals(createReqDTO.getUserId(), existingComment.getUserId())
+                && Objects.equals(createReqDTO.getOrderId(), existingComment.getOrderId())
+                && Objects.equals(createReqDTO.getOrderItemId(), existingComment.getOrderItemId())
+                && Objects.equals(createReqDTO.getSkuId(), existingComment.getSkuId())
+                && Objects.equals(createReqDTO.getDescriptionScores(), existingComment.getDescriptionScores())
+                && Objects.equals(createReqDTO.getBenefitScores(), existingComment.getBenefitScores())
+                && Objects.equals(createReqDTO.getContent(), existingComment.getContent())
+                && Objects.equals(createReqDTO.getAnonymous(), existingComment.getAnonymous())
+                && Objects.equals(createReqDTO.getPicUrls(), existingComment.getPicUrls());
+    }
+
+    private void validateBatchCreateReqDTOs(List<ProductCommentCreateReqDTO> createReqDTOs) {
+        Long firstUserId = createReqDTOs.get(0).getUserId();
+        Long firstOrderId = createReqDTOs.get(0).getOrderId();
+        Set<Long> orderItemIds = new HashSet<>(createReqDTOs.size());
+        for (ProductCommentCreateReqDTO createReqDTO : createReqDTOs) {
+            if (!firstUserId.equals(createReqDTO.getUserId())
+                    || (firstOrderId != null && !firstOrderId.equals(createReqDTO.getOrderId()))
+                    || (firstOrderId == null && createReqDTO.getOrderId() != null)
+                    || !orderItemIds.add(createReqDTO.getOrderItemId())) {
+                throw exception(COMMENT_BATCH_CREATE_INVALID);
+            }
+        }
+    }
+
     /**
      * 判断当前订单的当前商品用户是否评价过
      *
-     * @param userId      用户编号
+     * @param userId 用户编号
      * @param orderItemId 订单项编号
      */
     private void validateCommentExists(Long userId, Long orderItemId) {
@@ -100,30 +212,10 @@ public class ProductCommentServiceImpl implements ProductCommentService {
 
     private ProductSpuDO validateSpu(Long spuId) {
         ProductSpuDO spu = productSpuService.getSpu(spuId, true);
-        if (null == spu) {
+        if (spu == null) {
             throw exception(SPU_NOT_EXISTS);
         }
         return spu;
-    }
-
-    @Override
-    public void updateCommentVisible(ProductCommentUpdateVisibleReqVO updateReqVO) {
-        // 校验评论是否存在
-        validateCommentExists(updateReqVO.getId());
-
-        // 更新可见状态
-        productCommentMapper.updateById(new ProductCommentDO().setId(updateReqVO.getId())
-                .setVisible(updateReqVO.getVisible()));
-    }
-
-    @Override
-    public void replyComment(ProductCommentReplyReqVO replyVO, Long userId) {
-        // 校验评论是否存在
-        validateCommentExists(replyVO.getId());
-        // 回复评论
-        productCommentMapper.updateById(new ProductCommentDO().setId(replyVO.getId())
-                .setReplyTime(LocalDateTime.now()).setReplyUserId(userId)
-                .setReplyStatus(Boolean.TRUE).setReplyContent(replyVO.getReplyContent()));
     }
 
     private ProductCommentDO validateCommentExists(Long id) {
@@ -132,16 +224,6 @@ public class ProductCommentServiceImpl implements ProductCommentService {
             throw exception(COMMENT_NOT_EXISTS);
         }
         return productComment;
-    }
-
-    @Override
-    public PageResult<ProductCommentDO> getCommentPage(AppCommentPageReqVO pageVO, Boolean visible) {
-        return productCommentMapper.selectPage(pageVO, visible);
-    }
-
-    @Override
-    public PageResult<ProductCommentDO> getCommentPage(ProductCommentPageReqVO pageReqVO) {
-        return productCommentMapper.selectPage(pageReqVO);
     }
 
 }

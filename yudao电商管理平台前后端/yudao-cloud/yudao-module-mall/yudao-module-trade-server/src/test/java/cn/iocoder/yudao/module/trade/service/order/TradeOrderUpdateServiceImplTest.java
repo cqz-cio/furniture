@@ -8,11 +8,16 @@ import cn.iocoder.yudao.module.member.api.address.dto.MemberAddressRespDTO;
 import cn.iocoder.yudao.module.pay.api.order.PayOrderApi;
 import cn.iocoder.yudao.module.pay.api.order.dto.PayOrderRespDTO;
 import cn.iocoder.yudao.module.pay.enums.order.PayOrderStatusEnum;
+import cn.iocoder.yudao.module.product.api.comment.ProductCommentApi;
+import cn.iocoder.yudao.module.product.api.comment.dto.ProductCommentBatchCreateReqDTO;
 import cn.iocoder.yudao.module.trade.controller.admin.order.vo.TradeOrderDeliveryReqVO;
 import cn.iocoder.yudao.module.trade.controller.admin.order.vo.TradeOrderUpdateAddressReqVO;
+import cn.iocoder.yudao.module.trade.controller.app.order.vo.AppTradeOrderCommentCreateReqVO;
+import cn.iocoder.yudao.module.trade.controller.app.order.vo.AppTradeOrderCommentCreateRespVO;
 import cn.iocoder.yudao.module.trade.controller.app.order.vo.AppTradeOrderCreateReqVO;
 import cn.iocoder.yudao.module.trade.controller.app.order.vo.AppTradeOrderSettlementReqVO;
 import cn.iocoder.yudao.module.trade.dal.dataobject.order.TradeOrderDO;
+import cn.iocoder.yudao.module.trade.dal.dataobject.order.TradeOrderItemDO;
 import cn.iocoder.yudao.module.trade.dal.mysql.order.TradeOrderItemMapper;
 import cn.iocoder.yudao.module.trade.dal.mysql.order.TradeOrderMapper;
 import cn.iocoder.yudao.module.trade.dal.redis.no.TradeNoRedisDAO;
@@ -30,22 +35,31 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 
 import java.lang.reflect.Field;
+import java.util.Arrays;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static cn.iocoder.yudao.module.trade.enums.ErrorCodeConstants.ORDER_CREATE_FAIL_ADDRESS_VERIFICATION_MISMATCH;
 import static cn.iocoder.yudao.module.trade.enums.ErrorCodeConstants.ORDER_DELIVERY_FAIL_ADDRESS_VERIFICATION_NEEDS_REVIEW;
+import static cn.iocoder.yudao.module.trade.enums.ErrorCodeConstants.ORDER_COMMENT_ITEM_LIST_MISMATCH;
+import static cn.iocoder.yudao.module.trade.enums.ErrorCodeConstants.ORDER_COMMENT_MIXED_MODE_NOT_ALLOWED;
+import static cn.iocoder.yudao.module.trade.enums.ErrorCodeConstants.ORDER_COMMENT_STATUS_NOT_FALSE;
+import static cn.iocoder.yudao.module.trade.enums.ErrorCodeConstants.ORDER_COMMENT_FAIL_STATUS_NOT_COMPLETED;
+import static cn.iocoder.yudao.module.trade.enums.ErrorCodeConstants.ORDER_NOT_FOUND;
 
 public class TradeOrderUpdateServiceImplTest extends BaseMockitoUnitTest {
 
@@ -67,7 +81,182 @@ public class TradeOrderUpdateServiceImplTest extends BaseMockitoUnitTest {
     @Mock
     private PayOrderApi payOrderApi;
     @Mock
+    private ProductCommentApi productCommentApi;
+    @Mock
     private List<TradeOrderHandler> tradeOrderHandlers;
+
+    @Test
+    public void testCreateOrderCommentsByMember_success() {
+        Long userId = 10L;
+        Long orderId = 100L;
+        List<TradeOrderItemDO> orderItems = Arrays.asList(
+                buildCommentOrderItem(201L, orderId, userId, 301L),
+                buildCommentOrderItem(202L, orderId, userId, 302L));
+        TradeOrderDO order = new TradeOrderDO()
+                .setId(orderId)
+                .setUserId(userId)
+                .setStatus(TradeOrderStatusEnum.COMPLETED.getStatus())
+                .setCommentStatus(Boolean.FALSE);
+        when(tradeOrderMapper.selectOrderByIdAndUserId(orderId, userId)).thenReturn(order);
+        when(tradeOrderItemMapper.selectListByOrderId(orderId)).thenReturn(orderItems);
+        when(productCommentApi.createComments(any()))
+                .thenReturn(CommonResult.success(Arrays.asList(9001L, 9002L)));
+
+        AppTradeOrderCommentCreateRespVO respVO = tradeOrderUpdateService.createOrderCommentsByMember(
+                userId, buildBatchCommentReqVO(orderId, 201L, 202L));
+
+        assertEquals(orderId, respVO.getOrderId());
+        assertEquals(2, respVO.getCommentedItemCount());
+        assertEquals(Arrays.asList(9001L, 9002L), respVO.getCommentIds());
+        verify(tradeOrderItemMapper, times(2)).updateById(org.mockito.ArgumentMatchers.<TradeOrderItemDO>argThat(update ->
+                Boolean.TRUE.equals(update.getCommentStatus())));
+        verify(tradeOrderMapper).updateById(org.mockito.ArgumentMatchers.<TradeOrderDO>argThat(update ->
+                orderId.equals(update.getId())
+                        && Boolean.TRUE.equals(update.getCommentStatus())
+                        && update.getFinishTime() != null));
+        verify(productCommentApi).createComments(argThat((ProductCommentBatchCreateReqDTO reqDTO) ->
+                reqDTO.getComments().size() == 2
+                        && reqDTO.getComments().stream().map(comment -> comment.getOrderItemId()).collect(Collectors.toList())
+                        .equals(Arrays.asList(201L, 202L))));
+    }
+
+    @Test
+    public void testCreateOrderCommentsByMember_rejectsMismatchedItems() {
+        Long userId = 10L;
+        Long orderId = 100L;
+        List<TradeOrderItemDO> orderItems = Arrays.asList(
+                buildCommentOrderItem(201L, orderId, userId, 301L),
+                buildCommentOrderItem(202L, orderId, userId, 302L));
+        TradeOrderDO order = new TradeOrderDO()
+                .setId(orderId)
+                .setUserId(userId)
+                .setStatus(TradeOrderStatusEnum.COMPLETED.getStatus())
+                .setCommentStatus(Boolean.FALSE);
+        when(tradeOrderMapper.selectOrderByIdAndUserId(orderId, userId)).thenReturn(order);
+        when(tradeOrderItemMapper.selectListByOrderId(orderId)).thenReturn(orderItems);
+
+        ServiceException serviceException = assertThrows(ServiceException.class, () ->
+                tradeOrderUpdateService.createOrderCommentsByMember(userId, buildBatchCommentReqVO(orderId, 201L)));
+
+        assertEquals(ORDER_COMMENT_ITEM_LIST_MISMATCH.getCode(), serviceException.getCode());
+        verify(productCommentApi, never()).createComments(any());
+        verify(tradeOrderMapper, never()).updateById(org.mockito.ArgumentMatchers.<TradeOrderDO>argThat(update ->
+                Boolean.TRUE.equals(update.getCommentStatus())));
+    }
+
+    @Test
+    public void testCreateOrderCommentsByMember_rejectsMixedCommentMode() {
+        Long userId = 10L;
+        Long orderId = 100L;
+        List<TradeOrderItemDO> orderItems = Arrays.asList(
+                buildCommentOrderItem(201L, orderId, userId, 301L).setCommentStatus(Boolean.TRUE),
+                buildCommentOrderItem(202L, orderId, userId, 302L).setCommentStatus(Boolean.FALSE));
+        TradeOrderDO order = new TradeOrderDO()
+                .setId(orderId)
+                .setUserId(userId)
+                .setStatus(TradeOrderStatusEnum.COMPLETED.getStatus())
+                .setCommentStatus(Boolean.FALSE);
+        when(tradeOrderMapper.selectOrderByIdAndUserId(orderId, userId)).thenReturn(order);
+        when(tradeOrderItemMapper.selectListByOrderId(orderId)).thenReturn(orderItems);
+
+        ServiceException serviceException = assertThrows(ServiceException.class, () ->
+                tradeOrderUpdateService.createOrderCommentsByMember(userId, buildBatchCommentReqVO(orderId, 201L, 202L)));
+
+        assertEquals(ORDER_COMMENT_MIXED_MODE_NOT_ALLOWED.getCode(), serviceException.getCode());
+        verify(productCommentApi, never()).createComments(any());
+    }
+
+    @Test
+    public void testCreateOrderCommentsByMember_rejectsOrderNotCompleted() {
+        Long userId = 10L;
+        Long orderId = 100L;
+        TradeOrderDO order = new TradeOrderDO()
+                .setId(orderId)
+                .setUserId(userId)
+                .setStatus(TradeOrderStatusEnum.DELIVERED.getStatus())
+                .setCommentStatus(Boolean.FALSE);
+        when(tradeOrderMapper.selectOrderByIdAndUserId(orderId, userId)).thenReturn(order);
+
+        ServiceException serviceException = assertThrows(ServiceException.class, () ->
+                tradeOrderUpdateService.createOrderCommentsByMember(userId, buildBatchCommentReqVO(orderId, 201L)));
+
+        assertEquals(ORDER_COMMENT_FAIL_STATUS_NOT_COMPLETED.getCode(), serviceException.getCode());
+        verify(productCommentApi, never()).createComments(any());
+    }
+
+    @Test
+    public void testCreateOrderCommentsByMember_rejectsOrderAlreadyCommented() {
+        Long userId = 10L;
+        Long orderId = 100L;
+        TradeOrderDO order = new TradeOrderDO()
+                .setId(orderId)
+                .setUserId(userId)
+                .setStatus(TradeOrderStatusEnum.COMPLETED.getStatus())
+                .setCommentStatus(Boolean.TRUE);
+        when(tradeOrderMapper.selectOrderByIdAndUserId(orderId, userId)).thenReturn(order);
+
+        ServiceException serviceException = assertThrows(ServiceException.class, () ->
+                tradeOrderUpdateService.createOrderCommentsByMember(userId, buildBatchCommentReqVO(orderId, 201L)));
+
+        assertEquals(ORDER_COMMENT_STATUS_NOT_FALSE.getCode(), serviceException.getCode());
+        verify(productCommentApi, never()).createComments(any());
+    }
+
+    @Test
+    public void testCreateOrderCommentsByMember_rejectsOrderNotFound() {
+        Long userId = 10L;
+        Long orderId = 100L;
+        when(tradeOrderMapper.selectOrderByIdAndUserId(orderId, userId)).thenReturn(null);
+
+        ServiceException serviceException = assertThrows(ServiceException.class, () ->
+                tradeOrderUpdateService.createOrderCommentsByMember(userId, buildBatchCommentReqVO(orderId, 201L)));
+
+        assertEquals(ORDER_NOT_FOUND.getCode(), serviceException.getCode());
+        verify(productCommentApi, never()).createComments(any());
+    }
+
+    @Test
+    public void testCreateOrderCommentsByMember_rollsBackWhenBatchCommentFails() {
+        Long userId = 10L;
+        Long orderId = 100L;
+        List<TradeOrderItemDO> orderItems = Arrays.asList(
+                buildCommentOrderItem(201L, orderId, userId, 301L),
+                buildCommentOrderItem(202L, orderId, userId, 302L));
+        TradeOrderDO order = new TradeOrderDO()
+                .setId(orderId)
+                .setUserId(userId)
+                .setStatus(TradeOrderStatusEnum.COMPLETED.getStatus())
+                .setCommentStatus(Boolean.FALSE);
+        when(tradeOrderMapper.selectOrderByIdAndUserId(orderId, userId)).thenReturn(order);
+        when(tradeOrderItemMapper.selectListByOrderId(orderId)).thenReturn(orderItems);
+        when(productCommentApi.createComments(any()))
+                .thenThrow(new ServiceException(500, "comment create failed"));
+
+        assertThrows(ServiceException.class, () ->
+                tradeOrderUpdateService.createOrderCommentsByMember(userId, buildBatchCommentReqVO(orderId, 201L, 202L)));
+
+        verify(tradeOrderItemMapper, never()).updateById(org.mockito.ArgumentMatchers.<TradeOrderItemDO>argThat(update ->
+                Boolean.TRUE.equals(update.getCommentStatus())));
+        verify(tradeOrderMapper, never()).updateById(org.mockito.ArgumentMatchers.<TradeOrderDO>argThat(update ->
+                orderId.equals(update.getId())
+                        && Boolean.TRUE.equals(update.getCommentStatus())));
+    }
+
+    @Test
+    public void testCreateOrderItemCommentBySystem_usesDefaultNonBlankContent() {
+        Long orderId = 100L;
+        TradeOrderDO order = new TradeOrderDO()
+                .setId(orderId)
+                .setStatus(TradeOrderStatusEnum.COMPLETED.getStatus())
+                .setCommentStatus(Boolean.FALSE);
+        when(tradeOrderItemMapper.selectListByOrderIdAndCommentStatus(orderId, Boolean.FALSE)).thenReturn(
+                Collections.singletonList(buildCommentOrderItem(201L, orderId, 10L, 301L)));
+        when(productCommentApi.createComment(any())).thenReturn(CommonResult.success(9001L));
+
+        tradeOrderUpdateService.createOrderItemCommentBySystemBySystem(order);
+
+        verify(productCommentApi).createComment(argThat(reqDTO -> "系统默认好评".equals(reqDTO.getContent())));
+    }
 
     @Test
     public void testCreateOrder_rejectsAddressVerificationForDifferentSelectedAddress() {
@@ -341,6 +530,30 @@ public class TradeOrderUpdateServiceImplTest extends BaseMockitoUnitTest {
         Map<String, Object> addressVerification = buildAddressVerification();
         addressVerification.put("providerStatus", "fallback");
         return addressVerification;
+    }
+
+    private static AppTradeOrderCommentCreateReqVO buildBatchCommentReqVO(Long orderId, Long... itemIds) {
+        AppTradeOrderCommentCreateReqVO reqVO = new AppTradeOrderCommentCreateReqVO();
+        reqVO.setOrderId(orderId);
+        reqVO.setAnonymous(Boolean.FALSE);
+        reqVO.setItems(Arrays.stream(itemIds)
+                .map(id -> new AppTradeOrderCommentCreateReqVO.Item()
+                        .setOrderItemId(id)
+                        .setDescriptionScores(5)
+                        .setBenefitScores(5)
+                        .setContent("整体满意")
+                        .setPicUrls(Collections.emptyList()))
+                .collect(Collectors.toList()));
+        return reqVO;
+    }
+
+    private static TradeOrderItemDO buildCommentOrderItem(Long itemId, Long orderId, Long userId, Long skuId) {
+        return new TradeOrderItemDO()
+                .setId(itemId)
+                .setOrderId(orderId)
+                .setUserId(userId)
+                .setSkuId(skuId)
+                .setCommentStatus(Boolean.FALSE);
     }
 
 }

@@ -207,6 +207,20 @@ public interface TradeOrderConvert {
     })
     ProductCommentCreateReqDTO convert04(AppTradeOrderItemCommentCreateReqVO createReqVO, TradeOrderItemDO tradeOrderItemDO);
 
+    @Mappings({
+            @Mapping(target = "skuId", source = "tradeOrderItemDO.skuId"),
+            @Mapping(target = "orderId", source = "tradeOrderItemDO.orderId"),
+            @Mapping(target = "orderItemId", source = "tradeOrderItemDO.id"),
+            @Mapping(target = "descriptionScores", source = "item.descriptionScores"),
+            @Mapping(target = "benefitScores", source = "item.benefitScores"),
+            @Mapping(target = "content", source = "item.content"),
+            @Mapping(target = "picUrls", source = "item.picUrls"),
+            @Mapping(target = "anonymous", source = "anonymous"),
+            @Mapping(target = "userId", source = "tradeOrderItemDO.userId")
+    })
+    ProductCommentCreateReqDTO convert05(AppTradeOrderCommentCreateReqVO.Item item, Boolean anonymous,
+                                         TradeOrderItemDO tradeOrderItemDO);
+
     TradePriceCalculateReqBO convert(AppTradeOrderSettlementReqVO settlementReqVO);
 
     default TradePriceCalculateReqBO convert(Long userId, AppTradeOrderSettlementReqVO settlementReqVO,
