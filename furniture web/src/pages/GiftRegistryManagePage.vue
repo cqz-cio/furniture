@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref } from "vue";
 import { useI18n } from "../i18n.js";
 import {
   canUseGiftRegistryDemoFallback,
+  REGISTRY_VISIBILITY,
   createGiftRegistryDraft,
   getGiftRegistrySteps,
   getRegistryShareState,
@@ -12,7 +13,7 @@ import { addYudaoGiftRegistryItem, getMyYudaoGiftRegistry } from "../services/yu
 import { readYudaoToken } from "../services/yudaoRequest.js";
 
 const { t } = useI18n();
-const registry = ref(createGiftRegistryDraft({ event: { type: t("giftRegistry.create.fields.eventTypePlaceholder") } }));
+const registry = ref(createGiftRegistryDraft());
 const registryLoadState = ref("idle");
 const registryMessage = ref("");
 const itemForm = reactive({
@@ -79,12 +80,12 @@ const loadRegistry = async () => {
   registryMessage.value = "";
   try {
     const data = await getMyYudaoGiftRegistry();
-    registry.value = data || createGiftRegistryDraft({ event: { type: t("giftRegistry.create.fields.eventTypePlaceholder") } });
+    registry.value = data || createGiftRegistryDraft();
     registryLoadState.value = data ? "loaded" : "empty";
     registryMessage.value = data ? "" : t("giftRegistry.manage.messages.empty");
   } catch (error) {
     if (!import.meta.env.PROD && canUseGiftRegistryDemoFallback(import.meta.env)) {
-      registry.value = createGiftRegistryDraft({ event: { type: t("giftRegistry.create.fields.eventTypePlaceholder") } });
+      registry.value = createGiftRegistryDraft();
       registryLoadState.value = "preview";
       registryMessage.value = t("giftRegistry.manage.messages.preview");
       return;

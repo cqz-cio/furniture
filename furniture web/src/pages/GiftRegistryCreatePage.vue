@@ -14,7 +14,6 @@ import { readYudaoToken } from "../services/yudaoRequest.js";
 const { t } = useI18n();
 const draft = ref(
   createGiftRegistryDraft({
-    event: { type: t("giftRegistry.create.fields.eventTypePlaceholder") },
     privacy: { visibility: REGISTRY_VISIBILITY.public },
   }),
 );

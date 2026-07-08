@@ -28,6 +28,16 @@ describe("gift registry pages and routes", () => {
     expect(source).toContain("readYudaoToken");
   });
 
+  it("keeps localized event type placeholder out of registry draft defaults", () => {
+    const create = readFileSync(pagePath("GiftRegistryCreatePage.vue"), "utf8");
+    const manage = readFileSync(pagePath("GiftRegistryManagePage.vue"), "utf8");
+
+    expect(create).not.toContain('createGiftRegistryDraft({\n    event: { type: t("giftRegistry.create.fields.eventTypePlaceholder") }');
+    expect(manage).not.toContain('createGiftRegistryDraft({ event: { type: t("giftRegistry.create.fields.eventTypePlaceholder") } })');
+    expect(manage).not.toContain('createGiftRegistryDraft({ event: { type: t("giftRegistry.create.fields.eventTypePlaceholder") } });');
+    expect(create).toContain(':placeholder="t(\'giftRegistry.create.fields.eventTypePlaceholder\')"');
+  });
+
   it("loads registry pages from persistent Yudao APIs instead of fixed demo data", () => {
     const manage = readFileSync(pagePath("GiftRegistryManagePage.vue"), "utf8");
     const find = readFileSync(pagePath("GiftRegistryFindPage.vue"), "utf8");
@@ -46,6 +56,13 @@ describe("gift registry pages and routes", () => {
     expect(publicPage).toContain("getPublicYudaoGiftRegistry");
     expect(publicPage).toContain("publicCode");
     expect(publicPage).toContain('t("giftRegistry.eyebrow")');
+  });
+
+  it("imports registry visibility in the manage page before using it", () => {
+    const manage = readFileSync(pagePath("GiftRegistryManagePage.vue"), "utf8");
+
+    expect(manage).toContain("REGISTRY_VISIBILITY");
+    expect(manage).toMatch(/import\s*\{[\s\S]*REGISTRY_VISIBILITY[\s\S]*\}\s*from\s*\"..\/services\/giftRegistry\.js\";/);
   });
 
   it("lets PDP add the current real product to the signed-in user's gift registry", () => {
