@@ -5753,6 +5753,61 @@ Object.entries(taskThreeLandingMessages).forEach(([lang, localeMessages]) => {
   mergeLocaleMessages(messages[lang], localeMessages);
 });
 
+const saleCategoryMessages = {
+  en: {
+    sale: {
+      categories: {
+        "Living": "Living",
+        "Sofas": "Sofas",
+        "Dining": "Dining",
+        "Bedroom": "Bedroom",
+        "Bath": "Bath",
+        "Outdoor": "Outdoor",
+        "Rugs": "Rugs",
+        "Lighting": "Lighting",
+        "Bedding": "Bedding",
+        "Bath Towels": "Bath Towels",
+      },
+    },
+  },
+  "zh-CN": {
+    sale: {
+      categories: {
+        "Living": "\u5ba2\u5385",
+        "Sofas": "\u6c99\u53d1",
+        "Dining": "\u9910\u5385",
+        "Bedroom": "\u5367\u5ba4",
+        "Bath": "\u6d74\u5ba4",
+        "Outdoor": "\u6237\u5916",
+        "Rugs": "\u5730\u6bef",
+        "Lighting": "\u706f\u5177",
+        "Bedding": "\u5e8a\u54c1",
+        "Bath Towels": "\u6d74\u5dfe",
+      },
+    },
+  },
+  fr: {
+    sale: {
+      categories: {
+        "Living": "Salon",
+        "Sofas": "Canap\u00e9s",
+        "Dining": "Salle \u00e0 manger",
+        "Bedroom": "Chambre",
+        "Bath": "Bain",
+        "Outdoor": "Outdoor",
+        "Rugs": "Tapis",
+        "Lighting": "\u00c9clairage",
+        "Bedding": "Linge de lit",
+        "Bath Towels": "Serviettes de bain",
+      },
+    },
+  },
+};
+
+Object.entries(saleCategoryMessages).forEach(([lang, localeMessages]) => {
+  mergeLocaleMessages(messages[lang], localeMessages);
+});
+
 const locale = ref(getInitialLocale());
 updateDocumentLanguage(locale.value);
 

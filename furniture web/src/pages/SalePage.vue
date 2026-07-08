@@ -1,4 +1,5 @@
 <script setup>
+import { computed } from "vue";
 import BrandEyebrow from "../components/BrandEyebrow.vue";
 import SaleCategoryTile from "../components/SaleCategoryTile.vue";
 import { generatedFurnitureAssets } from "../data/generatedFurnitureAssets.js";
@@ -6,6 +7,19 @@ import { saleCategories, saleCategoryLinkHref, saleQuickLinks } from "../data/rh
 import { useI18n } from "../i18n.js";
 
 const { t } = useI18n();
+const saleCategoryLabel = (category) => t(`sale.categories.${category.title}`);
+const localizedSaleCategories = computed(() =>
+  saleCategories.map((category) => ({
+    ...category,
+    displayTitle: saleCategoryLabel(category),
+  }))
+);
+const localizedSaleQuickLinks = computed(() =>
+  saleQuickLinks.map((category) => ({
+    ...category,
+    displayTitle: saleCategoryLabel(category),
+  }))
+);
 </script>
 
 <template>
@@ -25,13 +39,13 @@ const { t } = useI18n();
   </section>
 
   <section class="sale-links" aria-label="Sale quick links">
-    <a v-for="category in saleQuickLinks" :key="category.title" :href="saleCategoryLinkHref(category)">
-      {{ category.title }}
+    <a v-for="category in localizedSaleQuickLinks" :key="category.title" :href="saleCategoryLinkHref(category)">
+      {{ category.displayTitle }}
     </a>
   </section>
 
   <section class="sale-grid" aria-label="Sale category modules">
-    <SaleCategoryTile v-for="category in saleCategories" :key="category.title" :category="category" />
+    <SaleCategoryTile v-for="category in localizedSaleCategories" :key="category.title" :category="category" />
   </section>
 
   <section class="sale-membership-slot" aria-label="RH Members Program sale benefits">

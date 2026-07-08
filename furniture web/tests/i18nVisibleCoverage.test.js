@@ -90,6 +90,23 @@ const forbiddenVisibleSnippets = [
 const mojibakePattern = /[閿熼柍闁兼稉婵崶缁句絻鐦絔]/;
 
 describe("visible copy localization coverage", () => {
+  it("renders sale category labels from localized display titles without changing source titles", () => {
+    const salePage = readSource("../src/pages/SalePage.vue");
+    const saleTile = readSource("../src/components/SaleCategoryTile.vue");
+    const i18n = readSource("../src/i18n.js");
+    const labels = ["Living", "Sofas", "Dining", "Bedroom", "Bath", "Outdoor", "Rugs", "Lighting", "Bedding", "Bath Towels"];
+
+    expect(salePage).toContain("saleCategoryLabel(category)");
+    expect(salePage).toContain("displayTitle: saleCategoryLabel(category)");
+    expect(salePage).not.toContain("{{ category.title }}");
+    expect(saleTile).toContain("category.displayTitle || category.title");
+    expect(saleTile).toContain("{{ category.displayTitle || category.title }}");
+
+    for (const label of labels) {
+      expect(i18n).toContain(`"${label}":`);
+    }
+  });
+
   it("keeps targeted runtime source files free of known hard-coded visible copy", () => {
     for (const path of visibleSourceFiles) {
       const source = readSource(path);

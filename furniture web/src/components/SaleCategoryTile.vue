@@ -22,6 +22,6 @@ const categoryAsset = (category, device) => generatedFurnitureAssets.sale.catego
         :alt="`${category.title} sale furniture collection`"
       />
     </picture>
-    <span class="sale-tile-title">{{ category.title }}</span>
+    <span class="sale-tile-title">{{ category.displayTitle || category.title }}</span>
   </a>
 </template>
