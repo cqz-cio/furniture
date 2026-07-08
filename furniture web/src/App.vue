@@ -14,6 +14,7 @@ import {
 import { clearYudaoSession, readYudaoSession, redactSecret } from "./services/authSession.js";
 import { playAddToCartFlyAnimation } from "./services/cartFlyAnimation.js";
 import { addLocalWishlistItem } from "./services/localWishlist.js";
+import { ANNUAL_MEMBERSHIP_PRODUCT, hasMembershipService } from "./services/membershipCart.js";
 import { getCheckoutEntryRoute } from "./services/membershipNavigation.js";
 import { addCartItem, deleteCartItems, getRemoteCartItems, updateCartItemCount } from "./services/yudaoCartApi.js";
 import { createFavorite } from "./services/yudaoFavoriteApi.js";
@@ -345,6 +346,11 @@ const addToCart = async (product, quantity = 1, options = {}) => {
   playCartFlyAnimation(options);
 };
 
+const addMembershipToCart = () => {
+  if (hasMembershipService(cartItems.value)) return;
+  cartItems.value = addLocalCartItem(cartItems.value, ANNUAL_MEMBERSHIP_PRODUCT, 1);
+};
+
 const updateCartQuantity = async (item, quantity) => {
   const nextQuantity = normalizeCartQuantity(quantity);
   cartItems.value = updateLocalCartItemQuantity(cartItems.value, item.skuId, nextQuantity);
@@ -498,6 +504,7 @@ onBeforeUnmount(() => {
     :wishlist-notice-key="cartWishlistNoticeKey"
     @checkout="startCheckout"
     @close="cartOpen = false"
+    @add-membership="addMembershipToCart"
     @remove="removeFromCart"
     @resync="loadRemoteCart"
     @update-quantity="updateCartQuantity"

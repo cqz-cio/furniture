@@ -33,7 +33,7 @@ describe("product detail model", () => {
     expect(model.heroNote).toContain("Shown in");
     expect(model.price).toMatchObject({
       sale: 932,
-      savingsLabel: "SAVE 30% ON SELECT ITEMS",
+      savingsLabel: "ANNUAL 5% FIRST ORDER / WHOLE-ROOM 15%",
       context: "Starting at price reflects the displayed size and stocked finish.",
     });
     expect(model.fabricSelector).toMatchObject({

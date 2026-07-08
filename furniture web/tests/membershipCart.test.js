@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   ANNUAL_MEMBERSHIP_PRODUCT,
+  ANNUAL_FIRST_ORDER_DISCOUNT_RATE,
+  CUSTOM_ITEM_DEPOSIT_RATE,
   MEMBERSHIP_SERVICE_SKU,
+  WHOLE_ROOM_LIFETIME_DISCOUNT_RATE,
   getMembershipCartNotice,
   getMembershipPricing,
   hasMembershipService,
@@ -26,9 +29,22 @@ const lampItem = {
   source: "local",
 };
 
+const customTableItem = {
+  skuId: "custom-table-1",
+  id: "custom-table-1",
+  name: "Custom Dining Table",
+  price: 1200,
+  quantity: 1,
+  source: "local",
+  customOrder: true,
+};
+
 describe("membership cart pricing", () => {
   it("defines an annual membership product compatible with the local cart", () => {
     expect(MEMBERSHIP_SERVICE_SKU).toBe("membership-annual");
+    expect(ANNUAL_FIRST_ORDER_DISCOUNT_RATE).toBe(0.05);
+    expect(WHOLE_ROOM_LIFETIME_DISCOUNT_RATE).toBe(0.15);
+    expect(CUSTOM_ITEM_DEPOSIT_RATE).toBe(0.5);
     expect(ANNUAL_MEMBERSHIP_PRODUCT).toMatchObject({
       id: "membership-annual",
       skuId: "membership-annual",
@@ -54,26 +70,90 @@ describe("membership cart pricing", () => {
       memberDiscount: 0,
       estimatedTotal: 2300,
       memberPricingActive: false,
+      discountRate: 0,
+      appliedRule: "not-active-member",
+      customItemDeposit: 0,
     });
   });
 
-  it("discounts merchandise when the account is already an active member", () => {
-    expect(getMembershipPricing([sofaItem, lampItem], { activeMember: true })).toEqual({
+  it("applies the annual membership first-order 95% price rule", () => {
+    expect(
+      getMembershipPricing([sofaItem, lampItem], {
+        membership: { status: "active", planCode: "annual", firstOrderUsed: false },
+      }),
+    ).toEqual({
       merchandiseSubtotal: 2300,
       membershipSubtotal: 0,
-      memberDiscount: 575,
-      estimatedTotal: 1725,
+      memberDiscount: 115,
+      estimatedTotal: 2185,
       memberPricingActive: true,
+      discountRate: 0.05,
+      appliedRule: "annual-first-order",
+      customItemDeposit: 0,
     });
   });
 
-  it("keeps membership fee separate without activating benefits before real membership status", () => {
+  it("does not reapply the annual first-order discount after it has been used", () => {
+    expect(
+      getMembershipPricing([sofaItem, lampItem], {
+        membership: { status: "active", planCode: "annual", firstOrderUsed: true },
+      }),
+    ).toEqual({
+      merchandiseSubtotal: 2300,
+      membershipSubtotal: 0,
+      memberDiscount: 0,
+      estimatedTotal: 2300,
+      memberPricingActive: true,
+      discountRate: 0,
+      appliedRule: "annual-first-order-used",
+      customItemDeposit: 0,
+    });
+  });
+
+  it("applies the whole-room lifetime 85% price rule", () => {
+    expect(
+      getMembershipPricing([sofaItem, lampItem], {
+        membership: { status: "active", planCode: "whole_room" },
+      }),
+    ).toEqual({
+      merchandiseSubtotal: 2300,
+      membershipSubtotal: 0,
+      memberDiscount: 345,
+      estimatedTotal: 1955,
+      memberPricingActive: true,
+      discountRate: 0.15,
+      appliedRule: "whole-room-lifetime",
+      customItemDeposit: 0,
+    });
+  });
+
+  it("applies the annual first-order discount when buying the annual membership in the same cart", () => {
     expect(getMembershipPricing([sofaItem, ANNUAL_MEMBERSHIP_PRODUCT])).toEqual({
       merchandiseSubtotal: 2000,
       membershipSubtotal: 200,
-      memberDiscount: 0,
-      estimatedTotal: 2200,
-      memberPricingActive: false,
+      memberDiscount: 100,
+      estimatedTotal: 2100,
+      memberPricingActive: true,
+      discountRate: 0.05,
+      appliedRule: "annual-membership-in-cart",
+      customItemDeposit: 0,
+    });
+  });
+
+  it("reports custom item non-refundable deposit without changing the discount base", () => {
+    expect(
+      getMembershipPricing([customTableItem], {
+        membership: { status: "active", planCode: "whole_room" },
+      }),
+    ).toEqual({
+      merchandiseSubtotal: 1200,
+      membershipSubtotal: 0,
+      memberDiscount: 180,
+      estimatedTotal: 1020,
+      memberPricingActive: true,
+      discountRate: 0.15,
+      appliedRule: "whole-room-lifetime",
+      customItemDeposit: 600,
     });
   });
 
@@ -105,13 +185,20 @@ describe("membership cart pricing", () => {
       membershipSubtotal: 200.01,
       memberDiscount: 0,
       estimatedTotal: 200.04,
-      memberPricingActive: false,
+      memberPricingActive: true,
+      discountRate: 0.05,
+      appliedRule: "annual-membership-in-cart",
+      customItemDeposit: 0,
     });
   });
 
   it("returns the correct cart notice for each membership state", () => {
     expect(getMembershipCartNotice([sofaItem]).title).toBe("Join the Members Program");
-    expect(getMembershipCartNotice([sofaItem], { activeMember: true }).title).toBe("Member savings applied");
+    expect(
+      getMembershipCartNotice([sofaItem], {
+        membership: { status: "active", planCode: "annual", firstOrderUsed: false },
+      }).title,
+    ).toBe("Member savings applied");
     expect(getMembershipCartNotice([sofaItem, ANNUAL_MEMBERSHIP_PRODUCT])).toEqual({
       title: "Membership checkout required",
       message: "Member benefits apply after account sign-in and successful membership checkout.",

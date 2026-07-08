@@ -456,7 +456,7 @@ export const buildProductDetailModel = (product = {}) => {
       memberLabel: "Member",
       saleLabel: "Sale",
       regularLabel: "Regular",
-      savingsLabel: "SAVE 30% ON SELECT ITEMS",
+      savingsLabel: "ANNUAL 5% FIRST ORDER / WHOLE-ROOM 15%",
       context: "Starting at price reflects the displayed size and stocked finish.",
     },
     stock: {

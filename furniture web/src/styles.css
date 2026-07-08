@@ -5003,31 +5003,16 @@ a.home-entry {
   min-height: 76px;
 }
 
-.cart-header-tools,
-.cart-header-actions {
+.cart-header-tools {
   display: flex;
   align-items: center;
   gap: 24px;
 }
 
-.cart-header-actions {
-  justify-content: space-between;
+.cart-topline-spacer {
   justify-self: end;
-  min-width: 240px;
-  font-size: 12px;
-}
-
-.cart-header-actions .account-icon,
-.cart-header-actions .bag-icon {
-  flex: 0 0 40px;
-}
-
-.cart-header-actions .bag-count {
-  right: 0;
-  top: 4px;
-  background: transparent;
-  color: #0c3275;
-  font-weight: 700;
+  width: 240px;
+  min-height: 1px;
 }
 
 .cart-brand-logo {
@@ -5448,6 +5433,11 @@ a.home-entry {
   transform: translateY(-1px);
 }
 
+.cart-risk-action:disabled {
+  cursor: default;
+  opacity: 0.58;
+}
+
 .cart-risk-action:focus-visible {
   outline: 0;
   box-shadow: 0 0 0 3px rgba(33, 31, 27, 0.12);
@@ -5532,7 +5522,7 @@ a.home-entry {
 
 .cart-rh-members {
   display: grid;
-  grid-template-columns: 110px 100px minmax(0, 1fr);
+  grid-template-columns: 110px 100px minmax(0, 1fr) auto;
   gap: 22px;
   align-items: center;
   width: min(700px, 100%);
@@ -5692,13 +5682,8 @@ a.home-entry {
     grid-template-columns: 104px minmax(0, 1fr) 104px;
   }
 
-  .cart-header-actions {
-    min-width: 104px;
-    gap: 12px;
-  }
-
-  .cart-header-actions > span:first-child {
-    display: none;
+  .cart-topline-spacer {
+    width: 104px;
   }
 
   .cart-full-main {
@@ -6357,6 +6342,12 @@ a.home-entry {
   font-family: Georgia, "Times New Roman", serif;
   font-size: 24px;
   font-weight: 400;
+}
+
+.cart-membership-action {
+  min-width: 140px;
+  min-height: 44px;
+  white-space: nowrap;
 }
 
 .home-category-edit small {
@@ -7985,19 +7976,12 @@ a.home-entry {
     min-height: 54px;
   }
 
-  .cart-header-tools,
-  .cart-header-actions {
+  .cart-header-tools {
     gap: 10px;
   }
 
-  .cart-header-actions {
-    min-width: 0;
-    font-size: 0;
-  }
-
-  .cart-header-actions > span:first-child,
-  .cart-header-actions .account-icon {
-    display: none;
+  .cart-topline-spacer {
+    width: 74px;
   }
 
   .cart-brand-logo {
