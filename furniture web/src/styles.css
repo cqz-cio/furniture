@@ -4074,7 +4074,7 @@ a.home-entry {
 }
 
 .product-gallery-main {
-  height: clamp(520px, 48vw, 680px);
+  height: clamp(420px, 36vw, 520px);
   min-height: 0;
   aspect-ratio: 4 / 3;
   margin: 0;
