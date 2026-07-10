@@ -1,37 +1,37 @@
-# Product Detail Gallery Sizing Design
+# 商品详情页展示图尺寸调整方案
 
-## Goal
+## 调整目标
 
-Reduce the oversized product gallery on desktop product-detail pages, align it with the adjacent product information, and apply the same layout to every product detail page that uses the shared component.
+缩小商品详情页中尺寸过大的商品展示图，使图片区域与右侧商品信息的位置协调，并让所有共用详情页组件的商品保持完全一致的版式。
 
-## Scope
+## 调整范围
 
-- Update the shared product-detail gallery layout only.
-- Preserve the current gallery controls, image switching, thumbnails, copy, pricing, and purchase behavior.
-- Apply the result to every product rendered by `SofaPdpPage.vue`.
+- 只调整商品详情页共用的图片展示区域。
+- 保留现有的图片切换、左右箭头、缩略图、商品文案、价格和购买功能。
+- 所有通过 `SofaPdpPage.vue` 展示的商品详情页统一生效。
 
-## Layout Design
+## 页面布局
 
-- Keep the gallery and information panel in the existing two-column desktop grid.
-- Align the top edge of the gallery with the top edge of the product information panel.
-- Replace the current desktop height range of 520-680 px with a responsive 420-520 px range.
-- Keep the gallery width constrained by its existing grid column.
-- Continue using `object-fit: contain` so complete product images remain visible without cropping.
-- Keep the current 360 px mobile gallery height at widths up to 900 px.
+- 桌面端继续使用左侧商品图、右侧商品信息的双栏布局。
+- 商品展示图顶部与右侧商品信息区域顶部对齐。
+- 将桌面端目前 `520-680px` 的图片区域高度改为响应式的 `420-520px`。
+- 图片区域宽度继续由现有的详情页网格控制，不单独拉宽。
+- 商品图片继续使用 `object-fit: contain`，保证图片完整显示，不裁切展品主体。
+- 屏幕宽度不超过 `900px` 时，继续使用现有的 `360px` 移动端图片高度。
 
-## Responsive Behavior
+## 响应式规则
 
-- Desktop and large tablet widths above 900 px use the 420-520 px responsive gallery height.
-- Widths up to 900 px retain the single-column layout and 360 px gallery height.
-- Existing thumbnails, status text, and supporting content remain directly below the resized gallery.
+- 屏幕宽度大于 `900px` 时，商品展示图高度根据屏幕尺寸在 `420-520px` 之间自适应。
+- 屏幕宽度不超过 `900px` 时，继续使用单栏布局和 `360px` 图片高度。
+- 缩略图、图片状态文字和商品补充说明继续排列在主图下方。
 
-## Implementation Boundary
+## 实现方式
 
-The change should be made in the shared `.product-gallery-main` rule in `src/styles.css`. No product-specific dimensions or duplicated detail-page variants will be introduced.
+统一修改 `src/styles.css` 中共用的 `.product-gallery-main` 样式。不会为单个商品设置特殊尺寸，也不会复制出多套详情页样式。
 
-## Verification
+## 验证标准
 
-- Run the relevant automated tests and production build.
-- Open at least two different product detail pages at a desktop viewport and confirm the same gallery size and top alignment.
-- Check a mobile viewport to confirm the existing single-column gallery remains usable.
-- Compare the desktop result with the supplied screenshot and confirm the gallery no longer dominates the information panel.
+- 运行相关自动化测试和生产构建。
+- 在桌面尺寸下打开至少两个不同商品的详情页，确认图片尺寸和顶部位置一致。
+- 检查移动端页面，确认单栏图片展示和切换功能正常。
+- 与用户提供的截图对照，确认商品展示图不再过度占据页面，并与右侧商品信息保持协调。
