@@ -2,7 +2,7 @@
 
 ## 对照目标
 
-- 原始参考图：`D:\Documents\xwechat_files\wxid_lq64xxzmtnwo32_b334\temp\RWTemp\2026-07\a7cf2a7d3f5327bc0aa9468f619a4493\ae70ab27283b18efde22ac0f0794bca9.png`
+- 原始参考图：`captures/product-detail-gallery/oak-nightstand-desktop-source.png`
 - 桌面端实现截图：`captures/product-detail-gallery/oak-nightstand-desktop-after.png`
 - 第二个商品桌面截图：`captures/product-detail-gallery/walnut-single-sofa-desktop-after.png`
 - 移动端实现截图：`captures/product-detail-gallery/oak-nightstand-mobile-after.png`
@@ -10,8 +10,8 @@
 
 ## 验证环境
 
-- 桌面端视口：1920 × 950
-- 移动端视口：390 × 844
+- 桌面端 CSS 视口：1920 × 950；浏览器截图输出为 1905 × 943（截图接口不包含滚动条占位和平台边缘）
+- 移动端 CSS 视口：390 × 844；浏览器截图输出为 375 × 812（截图接口不包含滚动条占位和平台边缘）
 - 桌面端商品：Oak Nightstand（ID 1002）、Walnut Single Sofa（ID 1001）
 - 移动端商品：Oak Nightstand（ID 1002）
 - 页面状态：详情页首屏、画廊首张图；另外验证了下一张图片切换
