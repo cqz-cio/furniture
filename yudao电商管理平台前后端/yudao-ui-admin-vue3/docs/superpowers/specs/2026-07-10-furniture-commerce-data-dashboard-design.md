@@ -174,7 +174,7 @@
 ### 7.4 上报策略
 
 - 前端新增独立 `analytics` 服务，不在页面组件内散落拼接请求。
-- 优先使用 `navigator.sendBeacon`；不支持时使用 `fetch(..., { keepalive: true })`。
+- 统一复用家具前台 `requestYudao` 并设置 `keepalive: true`，以保留 `tenant-id` 和可选会员令牌；不使用无法设置这些请求头的 `navigator.sendBeacon`。
 - 埋点失败不阻止页面展示、加购或结算，不向普通用户弹出错误提示。
 - 事件上报超时设为 2 秒，最多重试 1 次，重试复用原 `eventId`。
 
@@ -215,7 +215,7 @@
 | `home_pv`, `home_uv` | 首页 PV / UV |
 | `product_detail_pv`, `product_detail_uv` | 全站商品详情 PV / UV |
 | `add_cart_count`, `add_cart_user_count` | 加购次数 / 加购访客数 |
-| `checkout_start_count` | 开始结算次数 |
+| `checkout_start_count` | 开始结算会话数，按 `session_hash` 去重 |
 | `paid_order_count`, `paid_buyer_count` | 支付订单数 / 支付买家数 |
 | `paid_item_count` | 支付件数 |
 | `paid_revenue` | 支付销售额，单位：分 |
@@ -449,7 +449,7 @@
    - 7 天 / 30 天 / 90 天快捷切换，默认 30 天。
    - 自定义日期范围，最大 366 天。
    - 商品分类筛选。
-   - 商品筛选，支持名称和商品编码搜索。
+   - 商品筛选，支持商品名称或 SPU 编号搜索。
    - “对比上一周期”默认开启。
 
 3. **四张主指标卡**
