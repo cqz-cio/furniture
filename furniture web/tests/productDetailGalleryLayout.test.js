@@ -21,11 +21,20 @@ const readCssBlock = (selector, source = css) => {
 };
 
 describe("product detail gallery layout", () => {
-  it("caps the shared desktop gallery between 420px and 520px", () => {
+  it("fills the shared desktop media column without forcing a narrower aspect ratio", () => {
     const gallery = readCssBlock(".product-gallery-main");
 
     expect(gallery).toContain("height: clamp(420px, 36vw, 520px);");
-    expect(gallery).toContain("aspect-ratio: 4 / 3;");
+    expect(gallery).toContain("width: 100%;");
+    expect(gallery).toContain("aspect-ratio: auto;");
+  });
+
+  it("constrains the shared gallery image to the container and crops only source whitespace", () => {
+    const galleryImage = readCssBlock(".product-gallery-main img");
+
+    expect(galleryImage).toContain("position: absolute;");
+    expect(galleryImage).toContain("inset: 0;");
+    expect(galleryImage).toContain("object-fit: cover;");
   });
 
   it("keeps the existing mobile gallery height", () => {

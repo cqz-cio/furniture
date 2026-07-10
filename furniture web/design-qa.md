@@ -64,3 +64,18 @@
 无阻塞性交付项。
 
 final result: passed
+
+## 主图适配修复复核（2026-07-10）
+
+- 桌面端修复截图：`captures/product-detail-gallery/walnut-single-sofa-desktop-fit-fixed.png`
+- 移动端修复截图：`captures/product-detail-gallery/walnut-single-sofa-mobile-fit-fixed.png`
+- 桌面端实测：主图 `766.25 × 520px`，缩略图栏 `766.25px` 宽，左右边缘完全对齐。
+- 主图图片实测：`766.25 × 520px`，与容器相同，不再出现 866px 高图片被容器裁掉的情况。
+- 移动端实测：主图 `339 × 360px`，缩略图栏同宽且可横向滚动，页面没有横向溢出。
+- 图片使用 `object-fit: cover`；素材上下留白被裁切，家具主体完整显示。
+
+**Findings**
+
+没有遗留的 P0、P1 或 P2 问题。
+
+final result: passed
