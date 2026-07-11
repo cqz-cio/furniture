@@ -12,5 +12,23 @@ public class FurnitureAssistantAiRequest {
     String fallbackAnswer;
     List<FurnitureAssistantChatRespVO.Product> products;
     List<FurnitureAssistantKnowledgeMatch> knowledgeMatches;
+    String conversationContext;
+
+    public FurnitureAssistantAiRequest(String message, String fallbackAnswer,
+                                       List<FurnitureAssistantChatRespVO.Product> products,
+                                       List<FurnitureAssistantKnowledgeMatch> knowledgeMatches) {
+        this(message, fallbackAnswer, products, knowledgeMatches, "No earlier conversation is available.");
+    }
+
+    public FurnitureAssistantAiRequest(String message, String fallbackAnswer,
+                                       List<FurnitureAssistantChatRespVO.Product> products,
+                                       List<FurnitureAssistantKnowledgeMatch> knowledgeMatches,
+                                       String conversationContext) {
+        this.message = message;
+        this.fallbackAnswer = fallbackAnswer;
+        this.products = products;
+        this.knowledgeMatches = knowledgeMatches;
+        this.conversationContext = conversationContext;
+    }
 
 }

@@ -57,13 +57,14 @@ public class FurnitureAssistantServiceImpl implements FurnitureAssistantService 
 
         FurnitureAssistantChatRespVO respVO = new FurnitureAssistantChatRespVO();
         List<FurnitureAssistantChatRespVO.Product> products = searchResult.getProducts();
-        String fallbackAnswer = buildAnswer(message, products.size(), knowledgeMatches);
-        AiAnswer aiAnswer = buildAiBackedAnswer(message, fallbackAnswer, products, knowledgeMatches);
+        String fallbackAnswer = buildAnswer(message, products.size(), knowledgeMatches, shouldSearchProducts);
+        AiAnswer aiAnswer = buildAiBackedAnswer(message, fallbackAnswer, products, knowledgeMatches, conversation);
         respVO.setAnswer(aiAnswer.getAnswer());
         products = products.stream().filter(product -> !conversation.getExcludedProductIds().contains(product.getId()))
                 .collect(Collectors.toList());
         respVO.setProducts(products);
-        respVO.setSources(buildSources(shouldSearchProducts, knowledgeMatches, aiAnswer.isModelBacked()));
+        respVO.setSources(buildSources(shouldSearchProducts, knowledgeMatches, aiAnswer.isModelBacked(),
+                aiAnswer.isModelFailure()));
         respVO.setConversationId(conversationId);
         respVO.setRequirements(conversation.getRequirements());
         respVO.setMissingFields(Collections.emptyList());
@@ -113,20 +114,21 @@ public class FurnitureAssistantServiceImpl implements FurnitureAssistantService 
 
     private AiAnswer buildAiBackedAnswer(String message, String fallbackAnswer,
                                          List<FurnitureAssistantChatRespVO.Product> products,
-                                         List<FurnitureAssistantKnowledgeMatch> knowledgeMatches) {
+                                         List<FurnitureAssistantKnowledgeMatch> knowledgeMatches,
+                                         FurnitureAssistantConversation conversation) {
         if (!aiClient.isEnabled()) {
-            return AiAnswer.fallback(fallbackAnswer);
+            return AiAnswer.modelFailure(fallbackAnswer);
         }
         try {
             String aiAnswer = aiClient.generateAnswer(new FurnitureAssistantAiRequest(
-                    message, fallbackAnswer, products, knowledgeMatches));
+                    message, fallbackAnswer, products, knowledgeMatches, buildConversationContext(conversation)));
             if (StrUtil.isBlank(aiAnswer)) {
-                return AiAnswer.fallback(fallbackAnswer);
+                return AiAnswer.modelFailure(fallbackAnswer);
             }
             return AiAnswer.model(prepareDisplayAnswer(aiAnswer, message));
         } catch (Exception ex) {
             log.warn("[buildAiBackedAnswer][AI answer generation failed, fallback to deterministic answer]", ex);
-            return AiAnswer.fallback(fallbackAnswer);
+            return AiAnswer.modelFailure(fallbackAnswer);
         }
     }
 
@@ -156,12 +158,24 @@ public class FurnitureAssistantServiceImpl implements FurnitureAssistantService 
         return answer.substring(0, maxLength - 1).trim() + "…";
     }
 
-    private String buildAnswer(String message, int count, List<FurnitureAssistantKnowledgeMatch> knowledgeMatches) {
+    private String buildAnswer(String message, int count, List<FurnitureAssistantKnowledgeMatch> knowledgeMatches,
+                               boolean productIntent) {
         String knowledgeSummary = buildKnowledgeSummary(knowledgeMatches);
         boolean chinese = containsChinese(message);
         if (count == 0) {
             if (!knowledgeSummary.isEmpty()) {
                 return knowledgeSummary;
+            }
+            if (!productIntent) {
+                if (containsAny(message, "说中文", "中文回答", "speak chinese")) {
+                    return "好的，接下来我会使用中文。你想为哪个房间挑选家具？";
+                }
+                if (containsAny(message, "你好", "您好", "hello", "hi")) {
+                    return containsChinese(message) ? "你好，我可以帮你挑选家具、比较商品或解答配送售后问题。"
+                            : "Hello, I can help you choose furniture, compare products, or answer delivery questions.";
+                }
+                return containsChinese(message) ? "请告诉我你想选购的家具、房间、预算或风格。"
+                        : "Tell me what furniture, room, budget, or style you have in mind.";
             }
             if (chinese) {
                 return "暂时没有找到和“" + message + "”匹配的上架商品。可以放宽房间、风格或品类再试试。";
@@ -172,6 +186,23 @@ public class FurnitureAssistantServiceImpl implements FurnitureAssistantService 
                 ? "我从当前商品库里找到了 " + count + " 个和“" + message + "”相关的上架家具。"
                 : "I found " + count + " live furniture products for \"" + message + "\" from the current catalog.";
         return knowledgeSummary.isEmpty() ? productAnswer : productAnswer + " " + knowledgeSummary;
+    }
+
+    private String buildConversationContext(FurnitureAssistantConversation conversation) {
+        if (conversation == null || conversation.getMessages().isEmpty()) {
+            return "No earlier conversation is available.";
+        }
+        return conversation.getMessages().stream()
+                .map(item -> item.getRole() + ": " + item.getContent())
+                .collect(Collectors.joining("\n"));
+    }
+
+    private boolean containsAny(String text, String... values) {
+        String normalized = StrUtil.blankToDefault(text, "").toLowerCase();
+        for (String value : values) {
+            if (normalized.contains(value)) return true;
+        }
+        return false;
     }
 
     private boolean containsChinese(String text) {
@@ -194,13 +225,17 @@ public class FurnitureAssistantServiceImpl implements FurnitureAssistantService 
 
     private List<FurnitureAssistantChatRespVO.Source> buildSources(boolean includeProductSource,
                                                                    List<FurnitureAssistantKnowledgeMatch> knowledgeMatches,
-                                                                   boolean includeModelSource) {
+                                                                   boolean includeModelSource,
+                                                                   boolean includeFallbackSource) {
         List<FurnitureAssistantChatRespVO.Source> sources = new ArrayList<>();
         if (includeProductSource) {
             sources.add(source("product-api", "Yudao Product SPU"));
         }
         if (includeModelSource) {
             sources.add(source("model", aiClient.getSourceName()));
+        }
+        if (includeFallbackSource) {
+            sources.add(source("fallback", "Model unavailable or API key not loaded; deterministic response"));
         }
         knowledgeMatches.stream()
                 .map(match -> source(match.getType(), match.getName()))
@@ -212,13 +247,18 @@ public class FurnitureAssistantServiceImpl implements FurnitureAssistantService 
     private static class AiAnswer {
         String answer;
         boolean modelBacked;
+        boolean modelFailure;
 
         static AiAnswer fallback(String answer) {
-            return new AiAnswer(answer, false);
+            return new AiAnswer(answer, false, false);
         }
 
         static AiAnswer model(String answer) {
-            return new AiAnswer(answer, true);
+            return new AiAnswer(answer, true, false);
+        }
+
+        static AiAnswer modelFailure(String answer) {
+            return new AiAnswer(answer, false, true);
         }
     }
 

@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.mock.env.MockEnvironment;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class DeepSeekFurnitureAssistantAiClientTest {
 
@@ -15,6 +16,11 @@ class DeepSeekFurnitureAssistantAiClientTest {
         DeepSeekFurnitureAssistantAiClient client = new DeepSeekFurnitureAssistantAiClient(properties, environment);
 
         assertTrue(client.isEnabled());
+    }
+
+    @Test
+    void defaultModel_shouldUseSupportedDeepSeekChatModel() {
+        assertEquals("deepseek-chat", FurnitureAssistantProperties.DEFAULT_DEEPSEEK_MODEL);
     }
 
 }

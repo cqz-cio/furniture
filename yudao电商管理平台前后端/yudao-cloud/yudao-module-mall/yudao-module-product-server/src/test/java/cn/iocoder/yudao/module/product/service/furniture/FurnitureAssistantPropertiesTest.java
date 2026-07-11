@@ -17,7 +17,7 @@ class FurnitureAssistantPropertiesTest {
         assertEquals("deepseek", properties.getProvider());
         assertTrue(properties.isDeepSeekProvider());
         assertEquals("https://api.deepseek.com", properties.getBaseUrl());
-        assertEquals("deepseek-v4-flash", properties.getModel());
+        assertEquals("deepseek-chat", properties.getModel());
         assertEquals("DEEPSEEK_API_KEY", properties.getApiKeyEnvName());
         assertFalse(properties.hasApiKeyValue());
     }

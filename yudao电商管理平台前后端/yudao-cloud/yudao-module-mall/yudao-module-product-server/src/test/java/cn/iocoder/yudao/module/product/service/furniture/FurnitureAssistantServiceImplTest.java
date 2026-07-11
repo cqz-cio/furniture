@@ -18,6 +18,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doThrow;
 
 class FurnitureAssistantServiceImplTest extends BaseMockitoUnitTest {
 
@@ -77,9 +78,26 @@ class FurnitureAssistantServiceImplTest extends BaseMockitoUnitTest {
         verify(productSearchTool, never()).searchForAssistant(anyString());
         assertTrue(response.getAnswer().contains("Membership prices can be used"));
         assertEquals(0, response.getProducts().size());
-        assertEquals(1, response.getSources().size());
-        assertEquals("knowledge", response.getSources().get(0).getType());
-        assertEquals("Membership Rules", response.getSources().get(0).getName());
+        assertEquals(2, response.getSources().size());
+        assertEquals("fallback", response.getSources().get(0).getType());
+        assertEquals("knowledge", response.getSources().get(1).getType());
+        assertEquals("Membership Rules", response.getSources().get(1).getName());
+    }
+
+    @Test
+    void chat_shouldTreatLanguagePreferenceAsConversationInsteadOfProductSearch() {
+        when(knowledgeService.search(anyString())).thenReturn(Collections.emptyList());
+        when(productSearchTool.shouldSearchProducts("说中文", Collections.emptyList())).thenReturn(false);
+
+        FurnitureAssistantChatReqVO reqVO = new FurnitureAssistantChatReqVO();
+        reqVO.setMessage("说中文");
+
+        FurnitureAssistantChatRespVO response = service.chat(reqVO);
+
+        verify(productSearchTool, never()).searchForAssistant(anyString());
+        assertTrue(response.getAnswer().contains("接下来我会使用中文"));
+        assertTrue(response.getProducts().isEmpty());
+        assertEquals("fallback", response.getSources().get(0).getType());
     }
 
     @Test
@@ -159,6 +177,23 @@ class FurnitureAssistantServiceImplTest extends BaseMockitoUnitTest {
         assertTrue(response.getAnswer().length() <= 160);
         assertEquals(2, response.getProducts().size());
         assertEquals("model", response.getSources().get(1).getType());
+    }
+
+    @Test
+    void chat_shouldExposeFallbackSourceWhenEnabledModelCallFails() {
+        when(knowledgeService.search(anyString())).thenReturn(Collections.emptyList());
+        when(productSearchTool.shouldSearchProducts("sofa", Collections.emptyList())).thenReturn(true);
+        when(productSearchTool.searchForAssistant("sofa")).thenReturn(FurnitureProductSearchResult.empty());
+        when(aiClient.isEnabled()).thenReturn(true);
+        doThrow(new IllegalStateException("model unavailable")).when(aiClient)
+                .generateAnswer(any(FurnitureAssistantAiRequest.class));
+
+        FurnitureAssistantChatReqVO reqVO = new FurnitureAssistantChatReqVO();
+        reqVO.setMessage("sofa");
+
+        FurnitureAssistantChatRespVO response = service.chat(reqVO);
+
+        assertTrue(response.getSources().stream().anyMatch(source -> "fallback".equals(source.getType())));
     }
 
     private static java.util.List<FurnitureAssistantChatRespVO.Product> products(FurnitureAssistantChatRespVO.Product... products) {

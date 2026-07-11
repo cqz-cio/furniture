@@ -114,7 +114,7 @@ yudao:
     knowledge-provider: keyword
     provider: deepseek
     base-url: https://api.deepseek.com
-    model: deepseek-v4-flash
+    model: deepseek-chat
     api-key-env-name: DEEPSEEK_API_KEY
   web:
     admin-ui:

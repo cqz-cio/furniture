@@ -69,8 +69,7 @@ public class FurnitureProductSearchTool {
 
     public boolean shouldSearchProducts(String message, List<FurnitureAssistantKnowledgeMatch> knowledgeMatches) {
         String keyword = extractKeyword(message);
-        return PRODUCT_KEYWORDS.contains(keyword) || knowledgeMatches == null || knowledgeMatches.isEmpty()
-                || extractMaxPrice(message).isPresent();
+        return PRODUCT_KEYWORDS.contains(keyword) || extractMaxPrice(message).isPresent();
     }
 
     public FurnitureProductSearchResult searchProducts(FurnitureProductSearchRequest request) {

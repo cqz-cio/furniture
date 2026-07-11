@@ -91,9 +91,22 @@ class FurnitureAssistantPromptBuilderTest {
 
         String prompt = FurnitureAssistantPromptBuilder.buildUserPrompt(request);
 
-        assertTrue(prompt.contains("When no products are returned"));
+        assertTrue(prompt.contains("When product intent exists but no products are returned"));
         assertTrue(prompt.contains("do not name a product"));
-        assertTrue(prompt.contains("suggest how to broaden the request"));
+        assertTrue(prompt.contains("suggest one useful clarification"));
+    }
+
+    @Test
+    void buildUserPrompt_shouldIncludeRecentConversationForFollowUps() {
+        FurnitureAssistantAiRequest request = new FurnitureAssistantAiRequest(
+                "说中文", "好的，我会使用中文。", Collections.emptyList(), Collections.emptyList(),
+                "user: 推荐一款沙发\nassistant: 你喜欢什么风格？");
+
+        String prompt = FurnitureAssistantPromptBuilder.buildUserPrompt(request);
+
+        assertTrue(prompt.contains("Recent conversation"));
+        assertTrue(prompt.contains("推荐一款沙发"));
+        assertTrue(prompt.contains("说中文"));
     }
 
 }

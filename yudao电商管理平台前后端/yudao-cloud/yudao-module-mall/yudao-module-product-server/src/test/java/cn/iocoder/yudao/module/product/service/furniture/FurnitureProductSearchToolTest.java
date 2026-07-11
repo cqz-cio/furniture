@@ -13,8 +13,10 @@ import org.mockito.Mock;
 
 import java.math.BigDecimal;
 import java.util.Arrays;
+import java.util.Collections;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -26,6 +28,12 @@ class FurnitureProductSearchToolTest extends BaseMockitoUnitTest {
 
     @Mock
     private ProductSpuService productSpuService;
+
+    @Test
+    void shouldSearchProducts_shouldNotTreatLanguagePreferenceAsProductIntent() {
+        assertFalse(tool.shouldSearchProducts("说中文", Collections.emptyList()));
+        assertFalse(tool.shouldSearchProducts("你好", Collections.emptyList()));
+    }
 
     @Test
     void searchForAssistant_shouldExtractKeywordFilterBudgetAndReturnProductCards() {

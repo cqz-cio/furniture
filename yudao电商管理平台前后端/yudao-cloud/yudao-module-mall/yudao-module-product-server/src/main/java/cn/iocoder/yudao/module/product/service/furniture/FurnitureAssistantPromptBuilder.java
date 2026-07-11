@@ -12,11 +12,13 @@ public final class FurnitureAssistantPromptBuilder {
 
     public static String buildUserPrompt(FurnitureAssistantAiRequest request) {
         return "Customer request:\n" + request.getMessage() + "\n\n"
+                + "Recent conversation:\n" + request.getConversationContext() + "\n\n"
                 + "Fallback answer if model context is insufficient:\n" + request.getFallbackAnswer() + "\n\n"
                 + "Returned product list from commerce system:\n" + buildProductContext(request.getProducts()) + "\n\n"
                 + "Knowledge snippets:\n" + buildKnowledgeContext(request.getKnowledgeMatches()) + "\n\n"
                 + "Response rules:\n"
                 + "- Commerce product search has already run before this prompt when product intent was detected.\n"
+                + "- If the customer is greeting you, choosing a language, or clarifying how to converse, respond naturally and do not pretend it is a product search.\n"
                 + "- Write one concise storefront answer in the same language as the customer request.\n"
                 + "- Do not use Markdown, bold markers, numbered lists or bullet lists.\n"
                 + "- Keep the chat answer within two short sentences; the product cards carry detailed product data.\n"
@@ -25,7 +27,7 @@ public final class FurnitureAssistantPromptBuilder {
                 + "- Explain why the recommended product fits; mention price and stock only from the product list.\n"
                 + "- If the returned products are only closest matches, say what matches and what may still need confirmation.\n"
                 + "- Ask at most one follow-up question when size, room, color, material or budget is unclear.\n"
-                + "- When no products are returned, do not name a product; answer only from knowledge snippets or the fallback answer and suggest how to broaden the request.\n"
+                + "- When product intent exists but no products are returned, do not name a product; use knowledge or the fallback and suggest one useful clarification.\n"
                 + "- Do not recommend products outside the supplied product list.\n"
                 + "- Do not invent product names, prices, stock or IDs.\n"
                 + "- Do not mention internal source labels, tools, raw JSON, IDs or SKU IDs unless the customer asks.";

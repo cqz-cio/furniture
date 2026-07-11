@@ -13,7 +13,7 @@ public class FurnitureAssistantProperties {
     public static final String KNOWLEDGE_PROVIDER_AI = "ai";
     public static final String PROVIDER_DEEPSEEK = "deepseek";
     public static final String DEFAULT_DEEPSEEK_BASE_URL = "https://api.deepseek.com";
-    public static final String DEFAULT_DEEPSEEK_MODEL = "deepseek-v4-flash";
+    public static final String DEFAULT_DEEPSEEK_MODEL = "deepseek-chat";
     public static final String DEFAULT_DEEPSEEK_API_KEY_ENV_NAME = "DEEPSEEK_API_KEY";
 
     /**
