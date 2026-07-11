@@ -61,7 +61,7 @@ describe("product detail model", () => {
     expect(model.name).toBe("Sample Furniture");
     expect(model.description).toContain("fixed product information fields");
     expect(model.gallery.every((item) => item.kind)).toBe(true);
-    expect(model.relatedLinks).toContainEqual({ label: "ALSO AVAILABLE IN LEATHER", href: "#" });
+    expect(model.relatedLinks).toContainEqual({ label: "EXPLORE COORDINATING FURNITURE", href: "#" });
   });
 
   it("uses category-specific detail templates for other furniture types", () => {
@@ -149,5 +149,16 @@ describe("product detail model", () => {
     expect(model.optionGroups.map((group) => group.key)).toEqual(["admin-size"]);
     expect(model.accordions[0].rows).toEqual([["Admin width", "260 cm"]]);
     expect(model.relatedLinks).toEqual([{ label: "ADMIN RELATED LINK", href: "#" }]);
+  });
+
+  it("does not classify storage furniture as a dining table from the word tableware", () => {
+    const model = buildProductDetailModel({
+      name: "Walnut Four-Door Sideboard",
+      subtitle: "Walnut sideboard for tableware storage and living-room display.",
+    });
+
+    expect(model.productType).toBe("furniture");
+    expect(model.collection).toBe("FURNITURE COLLECTION");
+    expect(model.highlights.join(" ")).not.toMatch(/dining table|stone top/i);
   });
 });
