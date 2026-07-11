@@ -27,6 +27,9 @@ public class FurnitureAssistantProperties {
     private String apiKey;
     private String brandName = "Trendz";
     private String tone = "luxury";
+    private boolean memoryEnabled = true;
+    private int memoryTtlHours = 24;
+    private int memoryMaxMessages = 12;
 
     public static FurnitureAssistantProperties keywordMode() {
         FurnitureAssistantProperties properties = new FurnitureAssistantProperties();
