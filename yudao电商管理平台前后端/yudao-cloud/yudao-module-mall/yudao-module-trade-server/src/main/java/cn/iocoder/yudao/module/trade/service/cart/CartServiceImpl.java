@@ -1,6 +1,8 @@
 package cn.iocoder.yudao.module.trade.service.cart;
 
 import cn.hutool.core.collection.CollUtil;
+import cn.iocoder.yudao.module.erp.api.integration.MallErpProductApi;
+import cn.iocoder.yudao.module.erp.api.integration.dto.MallErpStockDTO;
 import cn.iocoder.yudao.module.product.api.sku.ProductSkuApi;
 import cn.iocoder.yudao.module.product.api.sku.dto.ProductSkuRespDTO;
 import cn.iocoder.yudao.module.product.api.spu.ProductSpuApi;
@@ -41,6 +43,8 @@ public class CartServiceImpl implements CartService {
     private ProductSpuApi productSpuApi;
     @Resource
     private ProductSkuApi productSkuApi;
+    @Resource
+    private MallErpProductApi mallErpProductApi;
 
     @Override
     public Long addCart(Long userId, AppCartAddReqVO addReqVO) {
@@ -187,8 +191,10 @@ public class CartServiceImpl implements CartService {
         if (sku == null) {
             throw exception(SKU_NOT_EXISTS);
         }
-        if (count > sku.getStock()) {
-            throw exception(SKU_STOCK_NOT_ENOUGH);
+        MallErpStockDTO stock = mallErpProductApi.getSellableStock(skuId).getCheckedData();
+        if (stock.getSellableStock().compareTo(java.math.BigDecimal.valueOf(count)) < 0) {
+            throw exception(SKU_STOCK_NOT_ENOUGH).setMessage(
+                    "商品 SKU " + skuId + " 库存不足，可售库存为 " + stock.getSellableStock());
         }
         return sku;
     }

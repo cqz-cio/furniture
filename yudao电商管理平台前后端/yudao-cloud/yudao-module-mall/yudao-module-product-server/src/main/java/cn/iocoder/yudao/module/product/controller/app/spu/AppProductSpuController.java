@@ -4,6 +4,7 @@ import cn.hutool.core.collection.CollUtil;
 import cn.iocoder.yudao.framework.common.pojo.CommonResult;
 import cn.iocoder.yudao.framework.common.pojo.PageResult;
 import cn.iocoder.yudao.framework.common.util.object.BeanUtils;
+import cn.iocoder.yudao.module.erp.api.integration.MallErpProductApi;
 import cn.iocoder.yudao.module.product.controller.app.spu.vo.AppProductSpuDetailRespVO;
 import cn.iocoder.yudao.module.product.controller.app.spu.vo.AppProductSpuPageReqVO;
 import cn.iocoder.yudao.module.product.controller.app.spu.vo.AppProductSpuRespVO;
@@ -28,6 +29,7 @@ import javax.validation.Valid;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static cn.iocoder.yudao.framework.common.exception.util.ServiceExceptionUtil.exception;
 import static cn.iocoder.yudao.framework.common.pojo.CommonResult.success;
@@ -47,6 +49,8 @@ public class AppProductSpuController {
     private ProductSkuService productSkuService;
     @Resource
     private ProductBrowseHistoryService productBrowseHistoryService;
+    @Resource
+    private MallErpProductApi mallErpProductApi;
 
     @GetMapping("/list-by-ids")
     @Operation(summary = "获得商品 SPU 列表")
@@ -57,6 +61,7 @@ public class AppProductSpuController {
         if (CollUtil.isEmpty(list)) {
             return success(Collections.emptyList());
         }
+        overlayErpStock(list);
 
         // 拼接返回
         list.forEach(spu -> spu.setSalesCount(spu.getSalesCount() + spu.getVirtualSalesCount()));
@@ -72,6 +77,7 @@ public class AppProductSpuController {
         if (CollUtil.isEmpty(pageResult.getList())) {
             return success(PageResult.empty(pageResult.getTotal()));
         }
+        overlayErpStock(pageResult.getList());
 
         // 拼接返回
         pageResult.getList().forEach(spu -> spu.setSalesCount(spu.getSalesCount() + spu.getVirtualSalesCount()));
@@ -94,6 +100,7 @@ public class AppProductSpuController {
         }
         // 获得商品 SKU
         List<ProductSkuDO> skus = productSkuService.getSkuListBySpuId(spu.getId());
+        overlayErpStock(spu, skus);
 
         // 增加浏览量
         productSpuService.updateBrowseCount(id, 1);
@@ -105,6 +112,19 @@ public class AppProductSpuController {
         AppProductSpuDetailRespVO spuVO = BeanUtils.toBean(spu, AppProductSpuDetailRespVO.class)
                 .setSkus(BeanUtils.toBean(skus, AppProductSpuDetailRespVO.Sku.class));
         return success(spuVO);
+    }
+
+    private void overlayErpStock(List<ProductSpuDO> spus) {
+        List<ProductSkuDO> skus = productSkuService.getSkuListBySpuId(
+                spus.stream().map(ProductSpuDO::getId).collect(Collectors.toSet()));
+        spus.forEach(spu -> overlayErpStock(spu, skus.stream()
+                .filter(sku -> spu.getId().equals(sku.getSpuId())).collect(Collectors.toList())));
+    }
+
+    private void overlayErpStock(ProductSpuDO spu, List<ProductSkuDO> skus) {
+        skus.forEach(sku -> sku.setStock(mallErpProductApi.getSellableStock(sku.getId())
+                .getCheckedData().getSellableStock().intValue()));
+        spu.setStock(skus.stream().mapToInt(ProductSkuDO::getStock).sum());
     }
 
 }
