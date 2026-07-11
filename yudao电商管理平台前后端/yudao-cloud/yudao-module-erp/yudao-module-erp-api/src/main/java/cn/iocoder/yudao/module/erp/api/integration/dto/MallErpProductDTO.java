@@ -4,6 +4,7 @@ import lombok.Data;
 import lombok.experimental.Accessors;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @Data
 @Accessors(chain = true)
@@ -18,5 +19,6 @@ public class MallErpProductDTO {
     private Boolean enabled;
     private BigDecimal sellableStock;
     private String syncStatus;
+    private LocalDateTime lastSyncedAt;
 
 }

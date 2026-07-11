@@ -138,7 +138,8 @@ public class MallErpProductSyncServiceImpl implements MallErpProductSyncService 
                 .setErpProductId(mapping.getErpProductId()).setErpProductCode(mapping.getErpProductCode())
                 .setBaseName(product.getName()).setCostPrice(product.getPurchasePrice())
                 .setEnabled(CommonStatusEnum.ENABLE.getStatus().equals(product.getStatus()))
-                .setSellableStock(stock).setSyncStatus(mapping.getSyncStatus());
+                .setSellableStock(stock).setSyncStatus(mapping.getSyncStatus())
+                .setLastSyncedAt(mapping.getLastSyncedAt());
     }
 
     private void insertSuccessLog(Long mallSkuId, String productCode) {
