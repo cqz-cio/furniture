@@ -57,6 +57,7 @@ function Invoke-MySqlMigration {
 $mysqlSqlDir = Resolve-Path (Join-Path $PSScriptRoot "..\..\sql\mysql")
 Invoke-MySqlMigration (Join-Path $mysqlSqlDir "yudao-module-tables.sql")
 Invoke-MySqlMigration (Join-Path $mysqlSqlDir "member-email-auth.sql")
+Invoke-MySqlMigration (Join-Path $mysqlSqlDir "mall-erp-integration.sql")
 
 Write-Host ""
 Write-Host "Yudao local infrastructure:"
