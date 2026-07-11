@@ -1,12 +1,17 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useI18n } from "../i18n.js";
-import { createMockAssistantResponse, sendFurnitureAssistantMessage } from "../services/furnitureAssistant.js";
+import {
+  createMockAssistantResponse,
+  getFurnitureAssistantConversation,
+  sendFurnitureAssistantMessage,
+} from "../services/furnitureAssistant.js";
 
 const emit = defineEmits(["add-to-cart"]);
 
 const { t } = useI18n();
 const LAUNCHER_STORAGE_KEY = "furniture-assistant-position";
+const CONVERSATION_STORAGE_KEY = "furniture-assistant-conversation-id:v1";
 const LAUNCHER_SIZE = 60;
 const LAUNCHER_MARGIN = 20;
 const PANEL_DEFAULT_WIDTH = 520;
@@ -33,6 +38,7 @@ const chatMessages = ref([
 const assistantResponse = ref(createMockAssistantResponse(""));
 const isSubmitting = ref(false);
 const assistantError = ref("");
+const conversationId = ref("");
 const activeProductIndex = ref(0);
 const previousProductIndex = ref(null);
 const productTransitionDirection = ref("forward");
@@ -99,6 +105,36 @@ const safeJsonWrite = (key, value) => {
     globalThis.localStorage?.setItem(key, JSON.stringify(value));
   } catch {
     // Floating UI should continue to work when storage is unavailable.
+  }
+};
+
+const clearStoredConversationId = () => {
+  conversationId.value = "";
+  try {
+    globalThis.localStorage?.removeItem(CONVERSATION_STORAGE_KEY);
+  } catch {
+    // Conversation can continue in memory when storage is unavailable.
+  }
+};
+
+const restoreConversation = async () => {
+  const savedId = safeJsonRead(CONVERSATION_STORAGE_KEY);
+  if (typeof savedId !== "string" || !savedId) return;
+  conversationId.value = savedId;
+  try {
+    const restored = await getFurnitureAssistantConversation(savedId);
+    if (!restored) {
+      clearStoredConversationId();
+      return;
+    }
+    chatMessages.value = (restored.messages || []).map((message, index) => ({
+      id: `restored-${index}-${message.createdAt || index}`,
+      sender: message.role === "user" ? "user" : "assistant",
+      content: message.content,
+    }));
+    if (!chatMessages.value.length) clearStoredConversationId();
+  } catch {
+    clearStoredConversationId();
   }
 };
 
@@ -390,7 +426,13 @@ const submitDraft = async () => {
   isSubmitting.value = true;
 
   try {
-    const response = await sendFurnitureAssistantMessage(message);
+    const response = await sendFurnitureAssistantMessage(message, {
+      conversationId: conversationId.value || undefined,
+    });
+    if (response.conversationId) {
+      conversationId.value = response.conversationId;
+      safeJsonWrite(CONVERSATION_STORAGE_KEY, response.conversationId);
+    }
     assistantResponse.value = response;
     clearProductAnimationTimer();
     activeProductIndex.value = 0;
@@ -422,6 +464,7 @@ onMounted(() => {
   loadLauncherPosition();
   setPanelState(defaultPanelState());
   window.addEventListener("resize", handleViewportResize);
+  restoreConversation();
 });
 
 onBeforeUnmount(() => {

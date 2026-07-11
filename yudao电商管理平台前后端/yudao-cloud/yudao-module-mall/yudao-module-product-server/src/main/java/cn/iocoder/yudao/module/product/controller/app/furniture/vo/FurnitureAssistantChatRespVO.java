@@ -2,6 +2,7 @@ package cn.iocoder.yudao.module.product.controller.app.furniture.vo;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
+import cn.iocoder.yudao.module.product.service.furniture.conversation.FurnitureAssistantRequirements;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -9,6 +10,15 @@ import java.util.List;
 @Schema(description = "User App - Furniture assistant chat response")
 @Data
 public class FurnitureAssistantChatRespVO {
+
+    @Schema(description = "Conversation id")
+    private String conversationId;
+
+    @Schema(description = "Remembered shopping requirements")
+    private FurnitureAssistantRequirements requirements;
+
+    @Schema(description = "Important fields still missing")
+    private List<String> missingFields;
 
     @Schema(description = "Assistant answer", requiredMode = Schema.RequiredMode.REQUIRED)
     private String answer;

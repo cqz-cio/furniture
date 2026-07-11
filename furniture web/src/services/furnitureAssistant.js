@@ -64,9 +64,12 @@ export const normalizeAssistantResponse = (payload = {}) => {
   const data = payload?.data && typeof payload.data === "object" ? payload.data : payload;
 
   return {
+    ...(data?.conversationId ? { conversationId: String(data.conversationId) } : {}),
     answer: String(data?.answer || data?.content || ""),
     products: Array.isArray(data?.products) ? data.products.map(normalizeAssistantProduct) : [],
     sources: normalizeSources(data?.sources),
+    ...(Array.isArray(data?.messages) ? { messages: data.messages } : {}),
+    ...(data?.requirements && typeof data.requirements === "object" ? { requirements: data.requirements } : {}),
   };
 };
 
@@ -125,8 +128,29 @@ export const sendFurnitureAssistantMessage = async (message, options = {}) => {
   const endpoint = options.endpoint || FURNITURE_ASSISTANT_ENDPOINT;
   const response = await request(endpoint, {
     method: "POST",
-    body: JSON.stringify({ message: content }),
+    body: JSON.stringify({
+      ...(options.conversationId ? { conversationId: options.conversationId } : {}),
+      message: content,
+    }),
   });
 
   return normalizeAssistantResponse(response);
+};
+
+export const getFurnitureAssistantConversation = async (conversationId, options = {}) => {
+  const id = String(conversationId || "").trim();
+  if (!id) return null;
+  const request = options.request || requestYudao;
+  const response = await request(`${FURNITURE_ASSISTANT_ENDPOINT.replace(/\/chat$/, "")}/conversations/${encodeURIComponent(id)}`);
+  const normalized = normalizeAssistantResponse(response);
+  return normalized.conversationId ? normalized : null;
+};
+
+export const deleteFurnitureAssistantConversation = async (conversationId, options = {}) => {
+  const id = String(conversationId || "").trim();
+  if (!id) return;
+  const request = options.request || requestYudao;
+  await request(`${FURNITURE_ASSISTANT_ENDPOINT.replace(/\/chat$/, "")}/conversations/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
 };

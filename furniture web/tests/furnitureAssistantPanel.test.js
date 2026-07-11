@@ -47,7 +47,8 @@ describe("furniture assistant panel", () => {
     expect(source).toContain("const assistantResponse = ref(createMockAssistantResponse(\"\"))");
     expect(source).toContain("const isSubmitting = ref(false)");
     expect(source).toContain("const assistantError = ref(\"\")");
-    expect(source).toContain("await sendFurnitureAssistantMessage(message)");
+    expect(source).toContain("await sendFurnitureAssistantMessage(message, {");
+    expect(source).toContain("conversationId: conversationId.value || undefined");
     expect(source).toContain("chatMessages.value.push({");
     expect(source).toContain('sender: "user"');
     expect(source).toContain('sender: "assistant"');
@@ -62,6 +63,14 @@ describe("furniture assistant panel", () => {
     expect(source).toContain('v-for="source in assistantSources"');
     expect(source).toContain(':href="product.detailUrl"');
     expect(source).toContain(':disabled="isSubmitting || !draftMessage.trim()"');
+  });
+
+  it("persists and restores the server-side conversation without deleting it on close", () => {
+    const source = readSource("../src/components/FurnitureAssistantPanel.vue");
+    expect(source).toContain('const CONVERSATION_STORAGE_KEY = "furniture-assistant-conversation-id:v1"');
+    expect(source).toContain("getFurnitureAssistantConversation(savedId)");
+    expect(source).toContain("safeJsonWrite(CONVERSATION_STORAGE_KEY, response.conversationId)");
+    expect(source).toContain('@click="open = false"');
   });
 
   it("sanitizes model markdown before rendering assistant answers", () => {

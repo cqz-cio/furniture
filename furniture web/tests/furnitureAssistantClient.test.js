@@ -3,6 +3,8 @@ import {
   createMockAssistantResponse,
   normalizeAssistantResponse,
   sendFurnitureAssistantMessage,
+  getFurnitureAssistantConversation,
+  deleteFurnitureAssistantConversation,
 } from "../src/services/furnitureAssistant.js";
 
 describe("furniture assistant client", () => {
@@ -108,5 +110,23 @@ describe("furniture assistant client", () => {
       products: [],
       sources: [{ type: "model", name: "DeepSeek deepseek-v4-flash" }],
     });
+  });
+
+  it("sends and restores a conversation id", async () => {
+    const request = vi.fn()
+      .mockResolvedValueOnce({ conversationId: "c-123", answer: "continued", products: [], sources: [] })
+      .mockResolvedValueOnce({ data: { conversationId: "c-123", messages: [{ role: "user", content: "hello" }] } });
+
+    await sendFurnitureAssistantMessage("cheaper", { request, useMock: false, conversationId: "c-123" });
+    const restored = await getFurnitureAssistantConversation("c-123", { request });
+
+    expect(request.mock.calls[0][1].body).toBe(JSON.stringify({ conversationId: "c-123", message: "cheaper" }));
+    expect(restored.messages).toHaveLength(1);
+  });
+
+  it("deletes only the selected conversation", async () => {
+    const request = vi.fn().mockResolvedValue({ data: true });
+    await deleteFurnitureAssistantConversation("c-123", { request });
+    expect(request).toHaveBeenCalledWith("/ai/furniture-assistant/conversations/c-123", { method: "DELETE" });
   });
 });

@@ -3,12 +3,20 @@ package cn.iocoder.yudao.module.product.service.furniture;
 import cn.hutool.core.util.StrUtil;
 import cn.iocoder.yudao.module.product.controller.app.furniture.vo.FurnitureAssistantChatReqVO;
 import cn.iocoder.yudao.module.product.controller.app.furniture.vo.FurnitureAssistantChatRespVO;
+import cn.iocoder.yudao.module.product.controller.app.furniture.vo.FurnitureAssistantConversationRespVO;
+import cn.iocoder.yudao.module.product.service.furniture.conversation.FurnitureAssistantConversation;
+import cn.iocoder.yudao.module.product.service.furniture.conversation.FurnitureAssistantConversationStore;
+import cn.iocoder.yudao.module.product.service.furniture.conversation.FurnitureAssistantRequirementMerger;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.Collections;
+import java.util.Optional;
+import java.util.UUID;
+import javax.annotation.Resource;
 
 @Service
 @Slf4j
@@ -17,6 +25,12 @@ public class FurnitureAssistantServiceImpl implements FurnitureAssistantService 
     private final FurnitureProductSearchTool productSearchTool;
     private final FurnitureAssistantKnowledgeService knowledgeService;
     private final FurnitureAssistantAiClient aiClient;
+
+    @Resource
+    private FurnitureAssistantConversationStore conversationStore;
+
+    @Resource
+    private FurnitureAssistantRequirementMerger requirementMerger;
 
     public FurnitureAssistantServiceImpl(FurnitureProductSearchTool productSearchTool,
                                          FurnitureAssistantKnowledgeService knowledgeService,
@@ -29,19 +43,70 @@ public class FurnitureAssistantServiceImpl implements FurnitureAssistantService 
     @Override
     public FurnitureAssistantChatRespVO chat(FurnitureAssistantChatReqVO reqVO) {
         String message = reqVO.getMessage().trim();
+        String conversationId = StrUtil.blankToDefault(reqVO.getConversationId(), UUID.randomUUID().toString());
+        FurnitureAssistantConversation conversation = loadConversation(conversationId);
+        conversation.appendMessage("user", message);
+        if (requirementMerger != null) {
+            requirementMerger.merge(conversation, message);
+        }
         List<FurnitureAssistantKnowledgeMatch> knowledgeMatches = knowledgeService.search(message);
         boolean shouldSearchProducts = productSearchTool.shouldSearchProducts(message, knowledgeMatches);
+        String searchMessage = buildSearchMessage(message, conversation);
         FurnitureProductSearchResult searchResult = shouldSearchProducts
-                ? productSearchTool.searchForAssistant(message) : FurnitureProductSearchResult.empty();
+                ? productSearchTool.searchForAssistant(searchMessage) : FurnitureProductSearchResult.empty();
 
         FurnitureAssistantChatRespVO respVO = new FurnitureAssistantChatRespVO();
         List<FurnitureAssistantChatRespVO.Product> products = searchResult.getProducts();
         String fallbackAnswer = buildAnswer(message, products.size(), knowledgeMatches);
         AiAnswer aiAnswer = buildAiBackedAnswer(message, fallbackAnswer, products, knowledgeMatches);
         respVO.setAnswer(aiAnswer.getAnswer());
+        products = products.stream().filter(product -> !conversation.getExcludedProductIds().contains(product.getId()))
+                .collect(Collectors.toList());
         respVO.setProducts(products);
         respVO.setSources(buildSources(shouldSearchProducts, knowledgeMatches, aiAnswer.isModelBacked()));
+        respVO.setConversationId(conversationId);
+        respVO.setRequirements(conversation.getRequirements());
+        respVO.setMissingFields(Collections.emptyList());
+        conversation.appendMessage("assistant", respVO.getAnswer());
+        conversation.setLastRecommendations(products.stream()
+                .map(product -> new FurnitureAssistantConversation.RecommendationRef(
+                        product.getId(), product.getSkuId(), product.getPrice()))
+                .collect(Collectors.toList()));
+        if (conversationStore != null) {
+            conversationStore.save(conversation);
+        }
         return respVO;
+    }
+
+    @Override
+    public FurnitureAssistantConversationRespVO getConversation(String conversationId) {
+        FurnitureAssistantConversation value = conversationStore == null ? null
+                : conversationStore.find(conversationId).orElse(null);
+        if (value == null) return null;
+        FurnitureAssistantConversationRespVO response = new FurnitureAssistantConversationRespVO();
+        response.setConversationId(value.getConversationId());
+        response.setMessages(value.getMessages());
+        response.setRequirements(value.getRequirements());
+        response.setLastRecommendations(value.getLastRecommendations());
+        return response;
+    }
+
+    @Override
+    public void deleteConversation(String conversationId) {
+        if (conversationStore != null) conversationStore.delete(conversationId);
+    }
+
+    private FurnitureAssistantConversation loadConversation(String conversationId) {
+        Optional<FurnitureAssistantConversation> stored = conversationStore == null
+                ? Optional.empty() : conversationStore.find(conversationId);
+        return stored.orElseGet(() -> FurnitureAssistantConversation.newConversation(conversationId));
+    }
+
+    private String buildSearchMessage(String message, FurnitureAssistantConversation conversation) {
+        StringBuilder value = new StringBuilder(message);
+        if (conversation.getRequirements().getCategory() != null) value.append(' ').append(conversation.getRequirements().getCategory());
+        if (conversation.getRequirements().getBudgetMax() != null) value.append(" under ").append(conversation.getRequirements().getBudgetMax());
+        return value.toString();
     }
 
     private AiAnswer buildAiBackedAnswer(String message, String fallbackAnswer,
