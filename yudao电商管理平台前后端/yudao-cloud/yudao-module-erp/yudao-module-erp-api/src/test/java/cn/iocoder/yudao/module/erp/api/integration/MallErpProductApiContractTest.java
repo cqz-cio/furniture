@@ -3,6 +3,7 @@ package cn.iocoder.yudao.module.erp.api.integration;
 import cn.iocoder.yudao.module.erp.api.integration.dto.MallErpProductDTO;
 import cn.iocoder.yudao.module.erp.api.integration.dto.MallErpStockDTO;
 import cn.iocoder.yudao.module.erp.api.integration.dto.MallErpStockRequestDTO;
+import cn.iocoder.yudao.framework.common.pojo.CommonResult;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Method;
@@ -21,11 +22,11 @@ class MallErpProductApiContractTest {
         Method getStock = MallErpProductApi.class.getMethod("getSellableStock", Long.class);
         Method validate = MallErpProductApi.class.getMethod("validateSellableStock", List.class);
 
-        assertEquals(MallErpProductDTO.class, syncOne.getReturnType());
-        assertEquals(List.class, syncAll.getReturnType());
-        assertEquals(MallErpProductDTO.class, getOne.getReturnType());
-        assertEquals(MallErpStockDTO.class, getStock.getReturnType());
-        assertEquals(List.class, validate.getReturnType());
+        assertEquals(CommonResult.class, syncOne.getReturnType());
+        assertEquals(CommonResult.class, syncAll.getReturnType());
+        assertEquals(CommonResult.class, getOne.getReturnType());
+        assertEquals(CommonResult.class, getStock.getReturnType());
+        assertEquals(CommonResult.class, validate.getReturnType());
 
         MallErpProductDTO product = new MallErpProductDTO()
                 .setErpProductId(9L).setErpProductCode("RH-121-26")

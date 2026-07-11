@@ -1,21 +1,37 @@
 package cn.iocoder.yudao.module.erp.api.integration;
 
+import cn.iocoder.yudao.framework.common.pojo.CommonResult;
 import cn.iocoder.yudao.module.erp.api.integration.dto.MallErpProductDTO;
 import cn.iocoder.yudao.module.erp.api.integration.dto.MallErpStockDTO;
 import cn.iocoder.yudao.module.erp.api.integration.dto.MallErpStockRequestDTO;
+import cn.iocoder.yudao.module.erp.enums.ApiConstants;
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
 
+@FeignClient(name = ApiConstants.NAME)
 public interface MallErpProductApi {
 
-    MallErpProductDTO syncMallSku(Long mallSpuId, Long mallSkuId);
+    String PREFIX = ApiConstants.PREFIX + "/mall-integration";
 
-    List<MallErpProductDTO> syncAllMallSkus();
+    @PostMapping(PREFIX + "/sync-sku")
+    CommonResult<MallErpProductDTO> syncMallSku(@RequestParam("mallSpuId") Long mallSpuId,
+                                                @RequestParam("mallSkuId") Long mallSkuId);
 
-    MallErpProductDTO getByMallSkuId(Long mallSkuId);
+    @PostMapping(PREFIX + "/sync-all")
+    CommonResult<List<MallErpProductDTO>> syncAllMallSkus();
 
-    MallErpStockDTO getSellableStock(Long mallSkuId);
+    @GetMapping(PREFIX + "/get-by-mall-sku")
+    CommonResult<MallErpProductDTO> getByMallSkuId(@RequestParam("mallSkuId") Long mallSkuId);
 
-    List<MallErpStockDTO> validateSellableStock(List<MallErpStockRequestDTO> items);
+    @GetMapping(PREFIX + "/sellable-stock")
+    CommonResult<MallErpStockDTO> getSellableStock(@RequestParam("mallSkuId") Long mallSkuId);
+
+    @PostMapping(PREFIX + "/validate-stock")
+    CommonResult<List<MallErpStockDTO>> validateSellableStock(@RequestBody List<MallErpStockRequestDTO> items);
 
 }
