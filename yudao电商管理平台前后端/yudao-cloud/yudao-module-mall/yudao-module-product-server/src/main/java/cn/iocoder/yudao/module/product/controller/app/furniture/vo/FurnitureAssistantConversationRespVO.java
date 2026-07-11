@@ -12,4 +12,5 @@ public class FurnitureAssistantConversationRespVO {
     private List<FurnitureAssistantConversation.Message> messages;
     private FurnitureAssistantRequirements requirements;
     private List<FurnitureAssistantConversation.RecommendationRef> lastRecommendations;
+    private List<FurnitureAssistantChatRespVO.Product> products;
 }

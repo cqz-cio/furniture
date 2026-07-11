@@ -70,7 +70,10 @@ describe("furniture assistant panel", () => {
     expect(source).toContain('const CONVERSATION_STORAGE_KEY = "furniture-assistant-conversation-id:v1"');
     expect(source).toContain("getFurnitureAssistantConversation(savedId)");
     expect(source).toContain("safeJsonWrite(CONVERSATION_STORAGE_KEY, response.conversationId)");
+    expect(source).toContain("products: restored.products || []");
     expect(source).toContain('@click="open = false"');
+    expect(source).toContain("deleteFurnitureAssistantConversation(currentId)");
+    expect(source).toContain('@click="startNewConversation"');
   });
 
   it("sanitizes model markdown before rendering assistant answers", () => {

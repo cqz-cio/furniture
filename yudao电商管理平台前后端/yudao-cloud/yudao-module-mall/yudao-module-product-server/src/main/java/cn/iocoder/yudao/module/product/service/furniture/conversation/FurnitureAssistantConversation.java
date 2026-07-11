@@ -1,6 +1,7 @@
 package cn.iocoder.yudao.module.product.service.furniture.conversation;
 
 import cn.hutool.core.util.StrUtil;
+import cn.iocoder.yudao.module.product.controller.app.furniture.vo.FurnitureAssistantChatRespVO;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -17,6 +18,7 @@ public class FurnitureAssistantConversation {
     private List<Message> messages = new ArrayList<>();
     private FurnitureAssistantRequirements requirements = new FurnitureAssistantRequirements();
     private List<RecommendationRef> lastRecommendations = new ArrayList<>();
+    private List<FurnitureAssistantChatRespVO.Product> lastProducts = new ArrayList<>();
     private List<Long> likedProductIds = new ArrayList<>();
     private List<Long> excludedProductIds = new ArrayList<>();
     private long updatedAt;

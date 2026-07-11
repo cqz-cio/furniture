@@ -72,6 +72,7 @@ public class FurnitureAssistantServiceImpl implements FurnitureAssistantService 
                 .map(product -> new FurnitureAssistantConversation.RecommendationRef(
                         product.getId(), product.getSkuId(), product.getPrice()))
                 .collect(Collectors.toList()));
+        conversation.setLastProducts(new ArrayList<>(products));
         if (conversationStore != null) {
             conversationStore.save(conversation);
         }
@@ -88,6 +89,7 @@ public class FurnitureAssistantServiceImpl implements FurnitureAssistantService 
         response.setMessages(value.getMessages());
         response.setRequirements(value.getRequirements());
         response.setLastRecommendations(value.getLastRecommendations());
+        response.setProducts(value.getLastProducts());
         return response;
     }
 

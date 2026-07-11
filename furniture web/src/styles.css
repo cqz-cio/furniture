@@ -5506,6 +5506,22 @@ a.home-entry {
   font-size: 18px;
 }
 
+.assistant-panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.assistant-new-conversation {
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  background: transparent;
+  color: inherit;
+  padding: 6px 10px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
 .furniture-assistant-resize-handle {
   position: absolute;
   border: 0;

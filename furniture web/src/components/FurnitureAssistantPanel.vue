@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useI18n } from "../i18n.js";
 import {
   createMockAssistantResponse,
+  deleteFurnitureAssistantConversation,
   getFurnitureAssistantConversation,
   sendFurnitureAssistantMessage,
 } from "../services/furnitureAssistant.js";
@@ -132,10 +133,30 @@ const restoreConversation = async () => {
       sender: message.role === "user" ? "user" : "assistant",
       content: message.content,
     }));
+    assistantResponse.value = {
+      answer: "",
+      products: restored.products || [],
+      sources: [],
+    };
     if (!chatMessages.value.length) clearStoredConversationId();
   } catch {
     clearStoredConversationId();
   }
+};
+
+const startNewConversation = async () => {
+  const currentId = conversationId.value;
+  if (currentId) {
+    try {
+      await deleteFurnitureAssistantConversation(currentId);
+    } catch {
+      // Clear the local pointer even when the already-expired server session is unavailable.
+    }
+  }
+  clearStoredConversationId();
+  chatMessages.value = [{ id: "assistant-welcome", sender: "assistant", content: t("assistant.welcome") }];
+  assistantResponse.value = createMockAssistantResponse("");
+  assistantError.value = "";
 };
 
 const setLauncherPosition = (left, top) => {
@@ -557,7 +578,10 @@ onBeforeUnmount(() => {
             </span>
           </div>
         </div>
-        <button class="assistant-panel-close" type="button" :aria-label="t('common.close')" @click="open = false">×</button>
+        <div class="assistant-panel-actions">
+          <button class="assistant-new-conversation" type="button" @click="startNewConversation">{{ t("assistant.newConversation") }}</button>
+          <button class="assistant-panel-close" type="button" :aria-label="t('common.close')" @click="open = false">×</button>
+        </div>
       </header>
 
       <div class="furniture-assistant-thread">
