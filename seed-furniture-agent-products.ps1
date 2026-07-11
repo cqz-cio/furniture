@@ -1,8 +1,12 @@
 $ErrorActionPreference = "Stop"
 
 $workspace = Split-Path -Parent $MyInvocation.MyCommand.Path
-$javaHome = "D:\code\tools\jdk8\jdk1.8.0_492"
-$driver = "C:\Users\admin\.m2\repository\com\mysql\mysql-connector-j\8.0.33\mysql-connector-j-8.0.33.jar"
+$javac = (Get-Command javac.exe -ErrorAction Stop).Source
+$java = (Get-Command java.exe -ErrorAction Stop).Source
+$driver = Join-Path $env:USERPROFILE ".m2\repository\com\mysql\mysql-connector-j\8.0.33\mysql-connector-j-8.0.33.jar"
+if (-not (Test-Path -LiteralPath $driver)) {
+    throw "MySQL JDBC driver not found at $driver"
+}
 $tmpDir = Join-Path $workspace ".tmp"
 $javaFile = Join-Path $tmpDir "SeedFurnitureAgentProducts.java"
 
@@ -22,6 +26,7 @@ public class SeedFurnitureAgentProducts {
     private static final long TENANT_ID = 121L;
     private static final String IMAGE = "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=1200&q=80";
     private static final String CREAM_FABRIC_SOFA_IMAGE = "https://images.unsplash.com/photo-1768144092684-c1a5dd6c7aad?auto=format&fit=crop&w=1200&q=80";
+    private static final String IVORY_PERFORMANCE_SOFA_IMAGE = "https://images.unsplash.com/photo-1493663284031-b7e3aefcae8e?auto=format&fit=crop&w=1200&q=80";
     private static final String CLOUD_MODULAR_SOFA_IMAGE = "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&w=1200&q=80";
     private static final String LEATHER_LOUNGE_SOFA_IMAGE = "https://images.unsplash.com/photo-1678225179685-b8ad3b6d7249?auto=format&fit=crop&w=1200&q=80";
     private static final String COMPACT_SOFA_IMAGE = "https://images.unsplash.com/photo-1631679706909-1844bbd07221?auto=format&fit=crop&w=1200&q=80";
@@ -53,6 +58,7 @@ public class SeedFurnitureAgentProducts {
         try (Connection connection = DriverManager.getConnection(url, "root", "123456")) {
             connection.setAutoCommit(false);
             try {
+                extendTenantExpiry(connection);
                 long brandId = ensureBrand(connection);
                 long rootCategoryId = ensureCategory(connection, 0L, "Furniture Agent Demo", 10);
                 long sofaCategoryId = ensureCategory(connection, rootCategoryId, "Sofas", 20);
@@ -68,142 +74,49 @@ public class SeedFurnitureAgentProducts {
                 long lightingCategoryId = ensureCategory(connection, rootCategoryId, "Lighting", 50);
                 long storageCategoryId = ensureCategory(connection, rootCategoryId, "Media Storage", 60);
 
-                ensureProduct(connection, brandId, sofaCategoryId,
-                        "Cream Fabric Sofa",
-                        "sofa cream fabric living room under 8000",
-                        "Cream performance fabric sofa with deep cushions for living rooms and budgets under 8000.",
-                        CREAM_FABRIC_SOFA_IMAGE, 699900, 899900, 420000, 18);
-                ensureProduct(connection, brandId, sofaCategoryId,
-                        "Cloud Modular Sofa",
-                        "sofa modular cloud fabric living room",
-                        "Low, deep modular sofa with down-blend cushions for flexible living room layouts.",
-                        CLOUD_MODULAR_SOFA_IMAGE, 329900, 459900, 220000, 18);
-                ensureProduct(connection, brandId, sofaCategoryId,
-                        "Leather Lounge Sofa",
-                        "sofa leather lounge living room",
-                        "Warm brown leather sofa for premium living rooms, studies, and lounge seating.",
-                        LEATHER_LOUNGE_SOFA_IMAGE, 1299900, 1599900, 780000, 8);
-                ensureProduct(connection, brandId, sofaCategoryId,
-                        "\u7c73\u767d\u5e03\u827a\u6c99\u53d1 Sofa",
-                        "sofa \u7c73\u767d\u5e03\u827a\u6c99\u53d1 cream fabric living room under 8000",
-                        "\u7c73\u767d\u8272\u4eb2\u80a4\u5e03\u827a\uff0c\u9002\u5408\u5ba2\u5385\u548c\u5c0f\u6237\u578b\uff0c\u9884\u7b97 8000 \u5143\u5185\u53ef\u63a8\u8350\u3002",
-                        CREAM_FABRIC_SOFA_IMAGE, 699900, 899900, 420000, 18);
-                ensureProduct(connection, brandId, sofaCategoryId,
-                        "\u5c0f\u6237\u578b\u6c99\u53d1 Sofa",
-                        "sofa \u5c0f\u6237\u578b\u6c99\u53d1 compact apartment small living room under 5000",
-                        "\u7d27\u51d1\u5c3a\u5bf8\uff0c\u9002\u5408\u516c\u5bd3\u3001\u5c0f\u5ba2\u5385\u548c\u9884\u7b97\u7b5b\u9009\u573a\u666f\u3002",
-                        COMPACT_SOFA_IMAGE, 329900, 459900, 220000, 18);
-                ensureProduct(connection, brandId, sofaCategoryId,
-                        "\u76ae\u6c99\u53d1 Sofa",
-                        "sofa \u76ae\u6c99\u53d1 leather lounge living room premium",
-                        "\u6696\u68d5\u76ae\u8d28\u6c99\u53d1\uff0c\u9002\u5408\u5ba2\u5385\u3001\u4e66\u623f\u548c\u9ad8\u8d28\u611f\u63a8\u8350\u3002",
-                        BROWN_LEATHER_SOFA_IMAGE, 1299900, 1599900, 780000, 8);
-                ensureProduct(connection, brandId, diningCategoryId,
-                        "\u9910\u684c Dining Table",
-                        "table \u9910\u684c dining table family dinner under 6000",
-                        "\u516d\u4eba\u4f4d\u9910\u684c\uff0c\u9002\u5408\u9910\u5385\u3001\u5bb6\u5ead\u805a\u9910\u548c\u4e2d\u7b49\u9884\u7b97\u63a8\u8350\u3002",
-                        DINING_TABLE_IMAGE, 459900, 599900, 260000, 12);
-                ensureProduct(connection, brandId, bedroomCategoryId,
-                        "\u5e8a Bed",
-                        "bed \u5e8a bedroom upholstered queen under 7000",
-                        "\u8f6f\u5305\u53cc\u4eba\u5e8a\uff0c\u9002\u5408\u5367\u5ba4\u642d\u914d\u548c\u9884\u7b97\u7b5b\u9009\u3002",
-                        UPHOLSTERED_BED_IMAGE, 529900, 699900, 310000, 10);
-                ensureProduct(connection, brandId, lightingCategoryId,
-                        "\u540a\u706f Lighting",
-                        "lighting lamp \u540a\u706f pendant light dining room under 3000",
-                        "\u91d1\u5c5e\u540a\u706f\uff0c\u9002\u5408\u9910\u5385\u3001\u5ba2\u5385\u548c\u6c1b\u56f4\u7167\u660e\u63a8\u8350\u3002",
-                        PENDANT_LIGHT_IMAGE, 189900, 259900, 90000, 25);
-                ensureProduct(connection, brandId, storageCategoryId,
-                        "\u7535\u89c6\u67dc Cabinet",
-                        "cabinet \u7535\u89c6\u67dc media console living room under 5000",
-                        "\u4f4e\u77ee\u7535\u89c6\u67dc\uff0c\u9002\u5408\u5ba2\u5385\u6536\u7eb3\u548c\u7535\u89c6\u5899\u642d\u914d\u3002",
-                        MEDIA_CABINET_IMAGE, 359900, 499900, 190000, 14);
-                ensureProduct(connection, brandId, diningCategoryId,
-                        "\u9ed1\u8272\u5706\u5f62\u9910\u684c Dining Table",
-                        "dining table \u9ed1\u8272\u5706\u5f62\u9910\u684c black round dining room under 6000",
-                        "\u9ed1\u8272\u5706\u5f62\u9910\u684c\uff0c\u9002\u5408\u73b0\u4ee3\u9910\u5385\u548c\u56db\u4eba\u4f4d\u5c0f\u5bb6\u5ead\u7528\u9910\u573a\u666f\u3002",
-                        BLACK_DINING_SET_IMAGE, 569900, 699900, 320000, 9);
-                ensureProduct(connection, brandId, diningCategoryId,
-                        "\u539f\u6728\u957f\u9910\u684c Dining Table",
-                        "dining table \u539f\u6728\u957f\u9910\u684c wood family dining room under 7000",
-                        "\u539f\u6728\u8272\u957f\u9910\u684c\uff0c\u9002\u5408\u516d\u5230\u516b\u4eba\u4f4d\u5bb6\u5ead\u9910\u5385\u548c\u6e29\u6696\u6728\u8d28\u98ce\u683c\u3002",
-                        WOOD_DINING_SET_IMAGE, 599900, 759900, 350000, 7);
-                ensureProduct(connection, brandId, diningChairCategoryId,
-                        "\u7070\u8272\u8f6f\u5305\u9910\u6905 Chair",
-                        "chair \u7070\u8272\u8f6f\u5305\u9910\u6905 dining chair fabric wood legs under 1500",
-                        "\u7070\u8272\u5e03\u827a\u8f6f\u5305\u9910\u6905\uff0c\u642d\u914d\u6728\u8d28\u684c\u811a\uff0c\u9002\u5408\u9910\u5385\u8865\u6905\u548c\u5c0f\u9884\u7b97\u573a\u666f\u3002",
-                        DINING_CHAIR_IMAGE, 89900, 129900, 42000, 32);
-                ensureProduct(connection, brandId, diningChairCategoryId,
-                        "\u9ed1\u8272\u73b0\u4ee3\u9910\u6905 Chair",
-                        "chair \u9ed1\u8272\u9910\u6905 dining chair modern black under 2000",
-                        "\u9ed1\u8272\u73b0\u4ee3\u9910\u6905\uff0c\u9002\u5408\u9ed1\u8272\u9910\u684c\u3001\u6781\u7b80\u9910\u5385\u548c\u5957\u88c5\u642d\u914d\u3002",
-                        BLACK_DINING_CHAIR_IMAGE, 129900, 179900, 58000, 24);
-                ensureProduct(connection, brandId, coffeeTableCategoryId,
-                        "\u9ed1\u8272\u73bb\u7483\u8336\u51e0 Coffee Table",
-                        "coffee table \u9ed1\u8272\u73bb\u7483\u8336\u51e0 living room rug under 3000",
-                        "\u9ed1\u8272\u73bb\u7483\u8336\u51e0\uff0c\u9002\u5408\u73b0\u4ee3\u5ba2\u5385\u3001\u6d45\u8272\u6c99\u53d1\u548c\u7c73\u8272\u5730\u6bef\u642d\u914d\u3002",
-                        COFFEE_TABLE_IMAGE, 249900, 329900, 125000, 15);
-                ensureProduct(connection, brandId, coffeeTableCategoryId,
-                        "\u539f\u6728\u8336\u51e0 Coffee Table",
-                        "coffee table \u539f\u6728\u8336\u51e0 wood living room under 2500",
-                        "\u539f\u6728\u8272\u8336\u51e0\uff0c\u6728\u7eb9\u6e05\u6670\uff0c\u9002\u5408\u65e5\u5f0f\u3001\u5317\u6b27\u548c\u81ea\u7136\u98ce\u5ba2\u5385\u3002",
-                        WOOD_COFFEE_TABLE_IMAGE, 219900, 299900, 110000, 18);
-                ensureProduct(connection, brandId, sideTableCategoryId,
-                        "\u68d5\u8272\u6728\u8d28\u8fb9\u51e0 Side Table",
-                        "side table \u68d5\u8272\u6728\u8d28\u8fb9\u51e0 living room sofa side under 1500",
-                        "\u68d5\u8272\u6728\u8d28\u8fb9\u51e0\uff0c\u9002\u5408\u6c99\u53d1\u65c1\u3001\u5e8a\u8fb9\u548c\u5c0f\u89d2\u843d\u6536\u7eb3\u573a\u666f\u3002",
-                        SIDE_TABLE_IMAGE, 129900, 169900, 62000, 20);
-                ensureProduct(connection, brandId, officeCategoryId,
-                        "\u80e1\u6843\u6728\u4e66\u684c Desk",
-                        "desk \u80e1\u6843\u6728\u4e66\u684c home office walnut under 5000",
-                        "\u80e1\u6843\u6728\u4e66\u684c\uff0c\u9002\u5408\u5c45\u5bb6\u529e\u516c\u3001\u4e66\u623f\u548c\u663e\u793a\u5668\u529e\u516c\u684c\u642d\u914d\u3002",
-                        WALNUT_DESK_IMAGE, 399900, 529900, 210000, 11);
-                ensureProduct(connection, brandId, rugCategoryId,
-                        "\u7c73\u8272\u7f8a\u6bdb\u5730\u6bef Rug",
-                        "rug \u7c73\u8272\u7f8a\u6bdb\u5730\u6bef living room beige under 2500",
-                        "\u7c73\u8272\u7f8a\u6bdb\u5730\u6bef\uff0c\u9002\u5408\u6d45\u8272\u6c99\u53d1\u3001\u8336\u51e0\u548c\u73b0\u4ee3\u5ba2\u5385\u8f6f\u88c5\u3002",
-                        BEIGE_RUG_TEXTURE_IMAGE, 189900, 259900, 90000, 16);
-                ensureProduct(connection, brandId, rugCategoryId,
-                        "\u7070\u8272\u7eb9\u7406\u5730\u6bef Rug",
-                        "rug \u7070\u8272\u7eb9\u7406\u5730\u6bef living room gray under 2000",
-                        "\u7070\u8272\u7eb9\u7406\u5730\u6bef\uff0c\u9002\u5408\u9ed1\u8272\u9910\u684c\u3001\u5ba2\u5385\u4f11\u95f2\u533a\u548c\u4f4e\u9971\u548c\u914d\u8272\u3002",
-                        GRAY_RUG_TEXTURE_IMAGE, 159900, 219900, 78000, 19);
-                ensureProduct(connection, brandId, bedroomStorageCategoryId,
-                        "\u6728\u8d28\u5e8a\u5934\u67dc Nightstand",
-                        "nightstand \u6728\u8d28\u5e8a\u5934\u67dc bedroom lamp under 2000",
-                        "\u6728\u8d28\u5e8a\u5934\u67dc\uff0c\u642d\u914d\u7403\u5f62\u53f0\u706f\u548c\u8f6f\u5305\u5e8a\uff0c\u9002\u5408\u5367\u5ba4\u6536\u7eb3\u3002",
-                        TABLE_LAMP_NIGHTSTAND_IMAGE, 149900, 199900, 72000, 18);
-                ensureProduct(connection, brandId, bedroomStorageCategoryId,
-                        "\u80e1\u6843\u6728\u6597\u67dc Dresser",
-                        "dresser \u80e1\u6843\u6728\u6597\u67dc bedroom storage under 4000",
-                        "\u80e1\u6843\u6728\u6597\u67dc\uff0c\u9002\u5408\u5367\u5ba4\u8863\u7269\u6536\u7eb3\u3001\u8d70\u5eca\u548c\u590d\u53e4\u6728\u8d28\u98ce\u683c\u3002",
-                        WALNUT_DRESSER_IMAGE, 299900, 399900, 150000, 10);
-                ensureProduct(connection, brandId, wardrobeCategoryId,
-                        "\u539f\u6728\u8863\u67dc Wardrobe",
-                        "wardrobe \u539f\u6728\u8863\u67dc closet bedroom storage under 8000",
-                        "\u539f\u6728\u8272\u8863\u67dc\uff0c\u5e26\u6302\u8863\u533a\u548c\u62bd\u5c49\u6536\u7eb3\uff0c\u9002\u5408\u5367\u5ba4\u6216\u8863\u5e3d\u95f4\u3002",
-                        WARDROBE_IMAGE, 699900, 899900, 380000, 6);
-                ensureProduct(connection, brandId, lightingCategoryId,
-                        "\u767d\u8272\u7403\u5f62\u53f0\u706f Table Lamp",
-                        "table lamp \u767d\u8272\u7403\u5f62\u53f0\u706f bedside nightstand under 1000",
-                        "\u767d\u8272\u7403\u5f62\u53f0\u706f\uff0c\u9002\u5408\u5e8a\u5934\u67dc\u3001\u5367\u5ba4\u6c1b\u56f4\u548c\u67d4\u548c\u591c\u95f4\u7167\u660e\u3002",
-                        WHITE_TABLE_LAMP_IMAGE, 89900, 129900, 36000, 26);
-                ensureProduct(connection, brandId, lightingCategoryId,
-                        "\u9ed1\u8272\u843d\u5730\u706f Floor Lamp",
-                        "floor lamp \u9ed1\u8272\u843d\u5730\u706f living room sofa under 2000",
-                        "\u9ed1\u8272\u843d\u5730\u706f\uff0c\u9002\u5408\u6c99\u53d1\u65c1\u8fb9\u3001\u9605\u8bfb\u89d2\u548c\u5ba2\u5385\u8f85\u52a9\u7167\u660e\u3002",
-                        BLACK_FLOOR_LAMP_IMAGE, 169900, 229900, 82000, 21);
-                ensureProduct(connection, brandId, storageCategoryId,
-                        "\u80e1\u6843\u6728\u9910\u8fb9\u67dc Cabinet",
-                        "cabinet \u80e1\u6843\u6728\u9910\u8fb9\u67dc sideboard dining storage under 4000",
-                        "\u80e1\u6843\u6728\u9910\u8fb9\u67dc\uff0c\u9002\u5408\u9910\u5385\u9910\u5177\u6536\u7eb3\u3001\u5ba2\u5385\u9648\u5217\u548c\u6728\u8d28\u98ce\u683c\u3002",
-                        SIDEBOARD_IMAGE, 329900, 449900, 170000, 12);
+                ensureProduct(connection, 0, brandId, sofaCategoryId, "Cream Fabric Sofa", "sofa cream performance fabric living room", "Deep cream performance-fabric sofa with relaxed cushions for everyday living rooms.", CREAM_FABRIC_SOFA_IMAGE, 699900, 899900, 420000, 18);
+                ensureProduct(connection, 1, brandId, sofaCategoryId, "Cloud Modular Sofa", "sofa cloud modular linen living room", "Low, deep modular sofa with down-blend cushions for flexible living-room layouts.", CLOUD_MODULAR_SOFA_IMAGE, 329900, 459900, 220000, 18);
+                ensureProduct(connection, 2, brandId, sofaCategoryId, "Leather Lounge Sofa", "sofa leather lounge brown premium", "Full-grain brown leather lounge sofa with a supportive frame and generous seat depth.", LEATHER_LOUNGE_SOFA_IMAGE, 1299900, 1599900, 780000, 8);
+                ensureProduct(connection, 3, brandId, sofaCategoryId, "Ivory Performance Sofa", "sofa ivory performance fabric apartment", "Tailored ivory sofa in easy-care performance fabric for bright apartments and family rooms.", IVORY_PERFORMANCE_SOFA_IMAGE, 749900, 929900, 450000, 13);
+                ensureProduct(connection, 4, brandId, sofaCategoryId, "Compact Linen Sofa", "sofa compact linen small apartment", "Compact linen-blend sofa sized for apartments, studios, and smaller sitting rooms.", COMPACT_SOFA_IMAGE, 329900, 459900, 220000, 18);
+                ensureProduct(connection, 5, brandId, sofaCategoryId, "Brown Leather Club Sofa", "sofa brown leather club study", "Warm brown leather club sofa suited to studies, libraries, and refined lounge spaces.", BROWN_LEATHER_SOFA_IMAGE, 1299900, 1599900, 780000, 8);
+                ensureProduct(connection, 6, brandId, diningCategoryId, "Natural Oak Dining Table", "dining table natural oak six seat", "Six-seat natural oak dining table with a clean profile and visible wood grain.", DINING_TABLE_IMAGE, 459900, 599900, 260000, 12);
+                ensureProduct(connection, 7, brandId, bedroomCategoryId, "Upholstered Shelter Bed", "bed upholstered shelter queen bedroom", "Queen shelter bed with a softly upholstered headboard and calm neutral finish.", UPHOLSTERED_BED_IMAGE, 529900, 699900, 310000, 10);
+                ensureProduct(connection, 8, brandId, lightingCategoryId, "Brass Drum Pendant", "lighting brass drum pendant dining", "Warm brass pendant with a linen drum shade for dining rooms and kitchen islands.", PENDANT_LIGHT_IMAGE, 189900, 259900, 90000, 25);
+                ensureProduct(connection, 9, brandId, storageCategoryId, "Fluted Oak Media Console", "media console fluted oak living room", "Low fluted-oak media console with concealed storage and cable management.", MEDIA_CABINET_IMAGE, 359900, 499900, 190000, 14);
+                ensureProduct(connection, 10, brandId, diningCategoryId, "Black Round Dining Table", "dining table black round four seat", "Sculptural black round dining table sized for four-seat dining areas.", BLACK_DINING_SET_IMAGE, 569900, 699900, 320000, 9);
+                ensureProduct(connection, 11, brandId, diningCategoryId, "Reclaimed Wood Dining Table", "dining table reclaimed wood eight seat", "Long reclaimed-wood dining table for six to eight guests with a warm natural character.", WOOD_DINING_SET_IMAGE, 599900, 759900, 350000, 7);
+                ensureProduct(connection, 12, brandId, diningChairCategoryId, "Grey Upholstered Dining Chair", "dining chair grey upholstered wood legs", "Grey upholstered dining chair with supportive padding and solid wood legs.", DINING_CHAIR_IMAGE, 89900, 129900, 42000, 32);
+                ensureProduct(connection, 13, brandId, diningChairCategoryId, "Black Spindle Dining Chair", "dining chair black spindle modern", "Black spindle-back dining chair for modern tables and compact breakfast spaces.", BLACK_DINING_CHAIR_IMAGE, 129900, 179900, 58000, 24);
+                ensureProduct(connection, 14, brandId, coffeeTableCategoryId, "Smoked Glass Coffee Table", "coffee table smoked glass modern", "Smoked-glass coffee table with a dark architectural base for contemporary living rooms.", COFFEE_TABLE_IMAGE, 249900, 329900, 125000, 15);
+                ensureProduct(connection, 15, brandId, coffeeTableCategoryId, "Natural Oak Coffee Table", "coffee table natural oak living room", "Natural oak coffee table with a clean silhouette and expressive wood grain.", WOOD_COFFEE_TABLE_IMAGE, 219900, 299900, 110000, 18);
+                ensureProduct(connection, 16, brandId, sideTableCategoryId, "Walnut Drum Side Table", "side table walnut drum sofa bedside", "Compact walnut drum table for sofa sides, bedsides, and reading corners.", SIDE_TABLE_IMAGE, 129900, 169900, 62000, 20);
+                ensureProduct(connection, 17, brandId, officeCategoryId, "Walnut Writing Desk", "desk walnut writing home office", "Walnut writing desk with a generous work surface for home offices and studies.", WALNUT_DESK_IMAGE, 399900, 529900, 210000, 11);
+                ensureProduct(connection, 18, brandId, rugCategoryId, "Handwoven Beige Wool Rug", "rug beige wool handwoven living room", "Handwoven beige wool rug that adds soft texture to neutral living rooms.", BEIGE_RUG_TEXTURE_IMAGE, 189900, 259900, 90000, 16);
+                ensureProduct(connection, 19, brandId, rugCategoryId, "Textured Grey Area Rug", "rug grey textured area living room", "Low-pile grey area rug with subtle texture for living and dining spaces.", GRAY_RUG_TEXTURE_IMAGE, 159900, 219900, 78000, 19);
+                ensureProduct(connection, 20, brandId, bedroomStorageCategoryId, "Oak Two-Drawer Nightstand", "nightstand oak two drawer bedroom", "Oak two-drawer nightstand with practical closed storage and a compact footprint.", TABLE_LAMP_NIGHTSTAND_IMAGE, 149900, 199900, 72000, 18);
+                ensureProduct(connection, 21, brandId, bedroomStorageCategoryId, "Walnut Six-Drawer Dresser", "dresser walnut six drawer bedroom", "Walnut six-drawer dresser offering balanced bedroom storage and warm wood tone.", WALNUT_DRESSER_IMAGE, 299900, 399900, 150000, 10);
+                ensureProduct(connection, 22, brandId, wardrobeCategoryId, "Natural Oak Wardrobe", "wardrobe natural oak bedroom storage", "Natural oak wardrobe with hanging space, shelves, and lower drawer storage.", WARDROBE_IMAGE, 699900, 899900, 380000, 6);
+                ensureProduct(connection, 23, brandId, lightingCategoryId, "Opal Glass Table Lamp", "table lamp opal glass bedside", "Opal glass table lamp that provides soft ambient light on nightstands and consoles.", WHITE_TABLE_LAMP_IMAGE, 89900, 129900, 36000, 26);
+                ensureProduct(connection, 24, brandId, lightingCategoryId, "Black Arc Floor Lamp", "floor lamp black arc reading", "Black arc floor lamp with focused illumination for sofa-side reading areas.", BLACK_FLOOR_LAMP_IMAGE, 169900, 229900, 82000, 21);
+                ensureProduct(connection, 25, brandId, storageCategoryId, "Walnut Four-Door Sideboard", "sideboard walnut four door dining storage", "Walnut four-door sideboard for tableware storage and living-room display.", SIDEBOARD_IMAGE, 329900, 449900, 170000, 12);
 
+                auditCatalog(connection);
                 connection.commit();
                 printCount(connection);
             } catch (Exception ex) {
                 connection.rollback();
                 throw ex;
+            }
+        }
+    }
+
+    private static void extendTenantExpiry(Connection connection) throws Exception {
+        try (PreparedStatement ps = connection.prepareStatement(
+                "update system_tenant set expire_time='2099-12-31 23:59:59', updater='furniture-agent-seed', update_time=current_timestamp where id=? and deleted=b'0'")) {
+            ps.setLong(1, TENANT_ID);
+            if (ps.executeUpdate() != 1) {
+                throw new IllegalStateException("Tenant 121 was not found.");
             }
         }
     }
@@ -253,11 +166,10 @@ public class SeedFurnitureAgentProducts {
         }
     }
 
-    private static void ensureProduct(Connection connection, long brandId, long categoryId, String name,
+    private static void ensureProduct(Connection connection, int position, long brandId, long categoryId, String name,
                                       String keyword, String introduction, String image, int price, int marketPrice,
                                       int costPrice, int stock) throws Exception {
-        Long existing = findId(connection, "select id from product_spu where tenant_id=? and keyword=? and deleted=b'0'",
-                TENANT_ID, keyword);
+        Long existing = findCatalogProductId(connection, position);
         if (existing != null) {
             updateProduct(connection, existing, brandId, categoryId, name, keyword, introduction, image, price, marketPrice, costPrice, stock);
             ensureSku(connection, existing, image, price, marketPrice, costPrice, stock);
@@ -271,6 +183,17 @@ public class SeedFurnitureAgentProducts {
             ps.executeUpdate();
             long spuId = generatedId(ps);
             ensureSku(connection, spuId, image, price, marketPrice, costPrice, stock);
+        }
+    }
+
+    private static Long findCatalogProductId(Connection connection, int position) throws Exception {
+        try (PreparedStatement ps = connection.prepareStatement(
+                "select id from product_spu where tenant_id=? and creator='furniture-agent-seed' and deleted=b'0' order by id limit ?,1")) {
+            ps.setLong(1, TENANT_ID);
+            ps.setInt(2, position);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getLong(1) : null;
+            }
         }
     }
 
@@ -296,7 +219,8 @@ public class SeedFurnitureAgentProducts {
         ps.setLong(5, categoryId);
         ps.setLong(6, brandId);
         ps.setString(7, image);
-        ps.setString(8, "[\"" + image + "\"]");
+        String galleryImage = image.replace("w=1200", "w=1600");
+        ps.setString(8, "[\"" + image + "\",\"" + galleryImage + "\"]");
         ps.setInt(9, 1);
         ps.setInt(10, 100);
         ps.setInt(11, 1);
@@ -388,6 +312,34 @@ public class SeedFurnitureAgentProducts {
         }
     }
 
+    private static void auditCatalog(Connection connection) throws Exception {
+        assertCount(connection, "active_products", 26,
+                "select count(*) from product_spu where tenant_id=121 and creator='furniture-agent-seed' and status=1 and deleted=b'0'");
+        assertCount(connection, "distinct_covers", 26,
+                "select count(distinct pic_url) from product_spu where tenant_id=121 and creator='furniture-agent-seed' and status=1 and deleted=b'0'");
+        assertZero(connection, "invalid_product_fields",
+                "select count(*) from product_spu where tenant_id=121 and creator='furniture-agent-seed' and status=1 and deleted=b'0' and (name='' or name like '%?%' or pic_url not like 'https://%' or json_length(slider_pic_urls)<2 or cost_price>=price or price>=market_price or stock<0)");
+        assertZero(connection, "tenant_mismatch",
+                "select count(*) from product_spu p left join product_category c on c.id=p.category_id and c.deleted=b'0' left join product_brand b on b.id=p.brand_id and b.deleted=b'0' where p.tenant_id=121 and p.creator='furniture-agent-seed' and p.deleted=b'0' and (c.tenant_id<>121 or b.tenant_id<>121 or c.id is null or b.id is null)");
+        assertZero(connection, "sku_mismatch",
+                "select count(*) from product_spu p left join product_sku s on s.spu_id=p.id and s.tenant_id=p.tenant_id and s.deleted=b'0' where p.tenant_id=121 and p.creator='furniture-agent-seed' and p.deleted=b'0' and (s.id is null or s.pic_url<>p.pic_url or s.price<>p.price or s.market_price<>p.market_price or s.cost_price<>p.cost_price or s.stock<>p.stock)");
+    }
+
+    private static void assertZero(Connection connection, String label, String sql) throws Exception {
+        assertCount(connection, label, 0, sql);
+    }
+
+    private static void assertCount(Connection connection, String label, int expected, String sql) throws Exception {
+        try (Statement statement = connection.createStatement(); ResultSet rs = statement.executeQuery(sql)) {
+            rs.next();
+            int actual = rs.getInt(1);
+            System.out.println("audit " + label + "=" + actual);
+            if (actual != expected) {
+                throw new IllegalStateException(label + " expected " + expected + " but was " + actual);
+            }
+        }
+    }
+
     private static void printCount(Connection connection) throws Exception {
         try (PreparedStatement ps = connection.prepareStatement(
                 "select id, name, price, stock from product_spu where tenant_id=? and creator='furniture-agent-seed' and status=1 and deleted=b'0' order by price asc")) {
@@ -406,11 +358,11 @@ public class SeedFurnitureAgentProducts {
 '@
 
 [System.IO.File]::WriteAllText($javaFile, $source, (New-Object System.Text.UTF8Encoding($false)))
-& "$javaHome\bin\javac.exe" -encoding UTF-8 -cp $driver $javaFile
+& $javac -encoding UTF-8 -cp $driver $javaFile
 if ($LASTEXITCODE -ne 0) {
     throw "Failed to compile seed helper."
 }
-& "$javaHome\bin\java.exe" -cp "$tmpDir;$driver" SeedFurnitureAgentProducts
+& $java -cp "$tmpDir;$driver" SeedFurnitureAgentProducts
 if ($LASTEXITCODE -ne 0) {
     throw "Failed to run seed helper."
 }
