@@ -71,7 +71,7 @@ describe("furniture assistant panel", () => {
     expect(source).toContain("getFurnitureAssistantConversation(savedId)");
     expect(source).toContain("safeJsonWrite(CONVERSATION_STORAGE_KEY, response.conversationId)");
     expect(source).toContain("products: restored.products || []");
-    expect(source).toContain('@click="open = false"');
+    expect(source).toContain('@click="closePanel"');
     expect(source).toContain("deleteFurnitureAssistantConversation(currentId)");
     expect(source).toContain('@click="startNewConversation"');
   });
@@ -135,7 +135,7 @@ describe("furniture assistant panel", () => {
     expect(source).toContain("assistant-source-chip");
     expect(source).toContain("source.type");
     expect(source).toContain("source.name");
-    expect(source).toContain('t("assistant.sourcesLabel")');
+    expect(source).toContain('t("assistant.evidenceLabel")');
     expect(styles).toContain(".assistant-source-list");
     expect(styles).toContain(".assistant-source-chip");
   });
@@ -144,7 +144,7 @@ describe("furniture assistant panel", () => {
   it("resets the dialog to its default size whenever it is opened", () => {
     const source = readSource("../src/components/FurnitureAssistantPanel.vue");
 
-    expect(source).toContain("const openPanel = () => {");
+    expect(source).toContain("const openPanel = async () => {");
     expect(source).toContain("setPanelState(defaultPanelState());");
     expect(source).not.toContain("persistPanelState");
     expect(source).not.toContain("safeJsonWrite(PANEL_STORAGE_KEY");
@@ -262,5 +262,50 @@ describe("furniture assistant panel", () => {
     expect(source).toContain("error:");
     expect(source).toContain("viewDetails:");
     expect(source).toContain("sourcesLabel:");
+  });
+
+  it("uses the premium concierge identity and compact header actions", () => {
+    const source = readSource("../src/components/FurnitureAssistantPanel.vue");
+
+    expect(source).toContain('from "@lucide/vue"');
+    expect(source).toContain("Sofa");
+    expect(source).toContain("SquarePen");
+    expect(source).toContain("ChevronDown");
+    expect(source).toContain('ref="launcherButton"');
+    expect(source).toContain('ref="composerInput"');
+  });
+
+  it("offers quick prompts and follows the latest assistant message", () => {
+    const source = readSource("../src/components/FurnitureAssistantPanel.vue");
+
+    expect(source).toContain("const quickPrompts = computed(() => [");
+    expect(source).toContain("const submitMessage = async (message) =>");
+    expect(source).toContain("const scrollThreadToLatest = async () =>");
+    expect(source).toContain('ref="threadElement"');
+    expect(source).toContain('v-for="prompt in quickPrompts"');
+    expect(source).toContain('@click="submitMessage(prompt.prompt)"');
+    expect(source).toContain("threadElement.value.scrollTop = threadElement.value.scrollHeight");
+  });
+
+  it("groups recommendation evidence and renders a thinking state", () => {
+    const source = readSource("../src/components/FurnitureAssistantPanel.vue");
+
+    expect(source).toContain('<details v-if="assistantSources.length" class="assistant-evidence">');
+    expect(source).toContain('t("assistant.evidenceLabel")');
+    expect(source).toContain("assistant-thinking-dots");
+    expect(source).not.toContain("assistant-chat-sources");
+  });
+
+  it("styles the premium concierge panel and mobile bottom sheet", () => {
+    const styles = readSource("../src/styles.css");
+
+    expect(styles).toContain(".assistant-launcher-hint");
+    expect(styles).toContain(".assistant-panel-enter-active");
+    expect(styles).toContain("@media (max-width: 640px)");
+    expect(styles).toContain("height: min(85dvh, 720px);");
+    expect(styles).toContain("@media (prefers-reduced-motion: reduce)");
+    expect(styles).toContain("min-width: 40px;");
+    expect(styles).toContain(".assistant-chat-row > .assistant-chat-avatar");
+    expect(styles).toContain(".assistant-chat-meta { display: none; }");
   });
 });

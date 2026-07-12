@@ -6,7 +6,7 @@
 
 **Architecture:** 保留 `FurnitureAssistantPanel.vue` 的聊天 API、会话恢复和商品行为，将可独立测试的位置计算抽到纯函数模块。组件负责状态、焦点、滚动和模板结构，`styles.css` 负责桌面/移动端视觉与动效，`i18n.js` 负责所有用户可见文案。
 
-**Tech Stack:** Vue 3 Composition API、Vite、Vitest、Lucide Vue Next、原生 Pointer Events、CSS media queries。
+**Tech Stack:** Vue 3 Composition API、Vite、Vitest、`@lucide/vue`、原生 Pointer Events、CSS media queries。
 
 ## Global Constraints
 
@@ -130,7 +130,7 @@ git commit -m "feat(ui): dock furniture assistant to viewport edges"
 - Modify: `furniture web/tests/furnitureAssistantPanel.test.js`
 
 **Interfaces:**
-- Produces: 从 `lucide-vue-next` 使用 `Sofa`、`Sparkles`、`SquarePen`、`ChevronDown`、`ArrowUp` 组件。
+- Produces: 从 `@lucide/vue` 使用 `Sofa`、`Sparkles`、`SquarePen`、`ChevronDown`、`ArrowUp` 组件。
 - Consumes: 图标仅作装饰时设置 `aria-hidden="true"`，由父按钮提供 `aria-label`。
 
 - [ ] **Step 1: 更新结构测试，使旧机器人和文字按钮先失败**
@@ -138,7 +138,7 @@ git commit -m "feat(ui): dock furniture assistant to viewport edges"
 ```js
 it("uses the premium concierge identity and compact header actions", () => {
   const source = readSource("../src/components/FurnitureAssistantPanel.vue");
-  expect(source).toContain('from "lucide-vue-next"');
+  expect(source).toContain('from "@lucide/vue"');
   expect(source).toContain("Sofa");
   expect(source).toContain("SquarePen");
   expect(source).toContain("ChevronDown");
@@ -157,11 +157,11 @@ Expected: FAIL，缺少 Lucide 图标和新焦点引用。
 - [ ] **Step 3: 安装并引入统一图标库**
 
 ```bash
-npm install lucide-vue-next
+npm install @lucide/vue
 ```
 
 ```js
-import { ArrowUp, ChevronDown, Sofa, Sparkles, SquarePen } from "lucide-vue-next";
+import { ArrowUp, ChevronDown, Sofa, Sparkles, SquarePen } from "@lucide/vue";
 ```
 
 - [ ] **Step 4: 重构头部和焦点恢复**

@@ -1,6 +1,12 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
+import { ArrowLeft, ArrowRight, ArrowUp, ChevronDown, Sofa, Sparkles, SquarePen } from "@lucide/vue";
 import { useI18n } from "../i18n.js";
+import {
+  getDefaultLauncherPosition,
+  getDefaultPanelState,
+  snapHorizontalPosition,
+} from "../utils/assistantFloatingPosition.js";
 import {
   createMockAssistantResponse,
   deleteFurnitureAssistantConversation,
@@ -13,13 +19,13 @@ const emit = defineEmits(["add-to-cart"]);
 const { t } = useI18n();
 const LAUNCHER_STORAGE_KEY = "furniture-assistant-position";
 const CONVERSATION_STORAGE_KEY = "furniture-assistant-conversation-id:v1";
-const LAUNCHER_SIZE = 60;
-const LAUNCHER_MARGIN = 20;
-const PANEL_DEFAULT_WIDTH = 520;
-const PANEL_DEFAULT_HEIGHT = 640;
+const LAUNCHER_SIZE = 56;
+const LAUNCHER_MARGIN = 24;
+const PANEL_DEFAULT_WIDTH = 460;
+const PANEL_DEFAULT_HEIGHT = 660;
 const PANEL_MIN_WIDTH = 320;
 const PANEL_MIN_HEIGHT = 420;
-const PANEL_MARGIN = 16;
+const PANEL_MARGIN = 24;
 const resizeDirections = ["top", "right", "bottom", "left", "top-left", "top-right", "bottom-right", "bottom-left"];
 
 const open = ref(false);
@@ -29,6 +35,9 @@ const launcherDragState = ref(null);
 const panelDragState = ref(null);
 const panelResizeState = ref(null);
 const draftMessage = ref("");
+const launcherButton = ref(null);
+const composerInput = ref(null);
+const threadElement = ref(null);
 const chatMessages = ref([
   {
     id: "assistant-welcome",
@@ -48,6 +57,11 @@ const productAnimationTimer = ref(null);
 const assistantProducts = computed(() => assistantResponse.value?.products || []);
 const assistantSources = computed(() => assistantResponse.value?.sources || []);
 const productCount = computed(() => assistantProducts.value.length);
+const quickPrompts = computed(() => [
+  { id: "living-room", label: "帮我搭配客厅", prompt: "请帮我搭配一个舒适、有质感的客厅" },
+  { id: "budget", label: "按预算选家具", prompt: "请根据我的预算推荐合适的家具" },
+  { id: "image", label: "根据图片找同款", prompt: "我想根据参考图片寻找相似风格的家具" },
+]);
 const assistantDisplayName = "AI小导购";
 const userDisplayName = "我";
 const assistantPresenceLabel = "在线服务";
@@ -182,22 +196,14 @@ const setPanelState = ({ left, top, width, height }) => {
 };
 
 const defaultPanelState = () => {
-  const viewport = viewportSize();
-  const width = Math.min(PANEL_DEFAULT_WIDTH, viewport.width - PANEL_MARGIN * 2);
-  const height = Math.min(PANEL_DEFAULT_HEIGHT, viewport.height - PANEL_MARGIN * 2);
-  const nextLeft = Math.min(launcherPosition.value.left, viewport.width - width - PANEL_MARGIN);
-  const nextTop = Math.min(launcherPosition.value.top, viewport.height - height - PANEL_MARGIN);
-
-  return {
-    left: Math.max(PANEL_MARGIN, nextLeft),
-    top: Math.max(PANEL_MARGIN, nextTop),
-    width,
-    height,
-  };
+  return getDefaultPanelState(viewportSize(), {
+    width: PANEL_DEFAULT_WIDTH,
+    height: PANEL_DEFAULT_HEIGHT,
+    margin: PANEL_MARGIN,
+  });
 };
 
 const loadLauncherPosition = () => {
-  const bounds = launcherBounds();
   const savedPosition = safeJsonRead(LAUNCHER_STORAGE_KEY);
 
   if (savedPosition && Number.isFinite(savedPosition.left) && Number.isFinite(savedPosition.top)) {
@@ -205,10 +211,7 @@ const loadLauncherPosition = () => {
     return;
   }
 
-  launcherPosition.value = {
-    left: bounds.maxLeft,
-    top: bounds.maxTop,
-  };
+  launcherPosition.value = getDefaultLauncherPosition(viewportSize(), LAUNCHER_SIZE, LAUNCHER_MARGIN);
 };
 
 const persistLauncherPosition = () => {
@@ -239,6 +242,15 @@ const moveDrag = (event) => {
 const endDrag = () => {
   if (!launcherDragState.value) return;
 
+  setLauncherPosition(
+    snapHorizontalPosition(
+      launcherPosition.value.left,
+      LAUNCHER_SIZE,
+      viewportSize().width,
+      LAUNCHER_MARGIN,
+    ),
+    launcherPosition.value.top,
+  );
   persistLauncherPosition();
   window.setTimeout(() => {
     launcherDragState.value = null;
@@ -246,6 +258,7 @@ const endDrag = () => {
 };
 
 const startPanelDrag = (event) => {
+  if (isMobileViewport()) return;
   if (event.target.closest?.("button")) return;
 
   event.preventDefault();
@@ -274,6 +287,15 @@ const movePanelDrag = (event) => {
 const endPanelDrag = () => {
   if (!panelDragState.value) return;
 
+  setPanelState({
+    ...panelState.value,
+    left: snapHorizontalPosition(
+      panelState.value.left,
+      panelState.value.width,
+      viewportSize().width,
+      PANEL_MARGIN,
+    ),
+  });
   panelDragState.value = null;
   window.removeEventListener("pointermove", movePanelDrag);
   window.removeEventListener("pointerup", endPanelDrag);
@@ -281,6 +303,7 @@ const endPanelDrag = () => {
 };
 
 const startPanelResize = (direction, event) => {
+  if (isMobileViewport()) return;
   event.preventDefault();
   event.stopPropagation();
   panelResizeState.value = {
@@ -351,15 +374,25 @@ const endPanelResize = () => {
   window.removeEventListener("pointercancel", endPanelResize);
 };
 
-const openPanel = () => {
+const isMobileViewport = () => globalThis.window?.matchMedia?.("(max-width: 640px)")?.matches === true;
+
+const openPanel = async () => {
   setPanelState(defaultPanelState());
   open.value = true;
+  await nextTick();
+  composerInput.value?.focus();
+};
+
+const closePanel = async () => {
+  open.value = false;
+  await nextTick();
+  launcherButton.value?.focus();
 };
 
 const togglePanel = () => {
   if (launcherDragState.value?.moved) return;
   if (open.value) {
-    open.value = false;
+    closePanel();
     return;
   }
   openPanel();
@@ -433,8 +466,14 @@ const selectProduct = (index) => {
   setActiveProduct(index, direction);
 };
 
-const submitDraft = async () => {
-  const message = draftMessage.value.trim();
+const scrollThreadToLatest = async () => {
+  await nextTick();
+  if (!threadElement.value) return;
+  threadElement.value.scrollTop = threadElement.value.scrollHeight;
+};
+
+const submitMessage = async (message) => {
+  message = String(message || "").trim();
   if (!message || isSubmitting.value) return;
 
   chatMessages.value.push({
@@ -445,6 +484,7 @@ const submitDraft = async () => {
   draftMessage.value = "";
   assistantError.value = "";
   isSubmitting.value = true;
+  await scrollThreadToLatest();
 
   try {
     const response = await sendFurnitureAssistantMessage(message, {
@@ -465,6 +505,7 @@ const submitDraft = async () => {
         content: cleanAssistantDisplayText(response.answer),
       });
     }
+    await scrollThreadToLatest();
   } catch (caught) {
     assistantResponse.value = { answer: "", products: [], sources: [] };
     clearProductAnimationTimer();
@@ -473,8 +514,11 @@ const submitDraft = async () => {
     assistantError.value = caught.message || t("assistant.error");
   } finally {
     isSubmitting.value = false;
+    await scrollThreadToLatest();
   }
 };
+
+const submitDraft = () => submitMessage(draftMessage.value);
 
 const handleViewportResize = () => {
   setLauncherPosition(launcherPosition.value.left, launcherPosition.value.top);
@@ -504,6 +548,7 @@ onBeforeUnmount(() => {
   <aside class="furniture-assistant" aria-live="polite">
     <button
       v-if="!open"
+      ref="launcherButton"
       class="furniture-assistant-launcher"
       type="button"
       :style="launcherStyle"
@@ -515,28 +560,13 @@ onBeforeUnmount(() => {
       @pointercancel="endDrag"
     >
       <span class="assistant-avatar">
-        <svg
-          class="assistant-avatar-icon"
-          aria-hidden="true"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.8"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path d="M12 8V5" />
-          <path d="M9 5h6" />
-          <rect width="14" height="11" x="5" y="8" rx="3" />
-          <path d="M3 13h2" />
-          <path d="M19 13h2" />
-          <path d="M9.5 13.5h.01" />
-          <path d="M14.5 13.5h.01" />
-          <path d="M10 17c1.2.7 2.8.7 4 0" />
-        </svg>
+        <Sofa aria-hidden="true" />
+        <Sparkles class="assistant-avatar-sparkle" aria-hidden="true" />
       </span>
+      <span class="assistant-launcher-hint">问问空间顾问</span>
     </button>
 
+    <Transition name="assistant-panel">
     <section
       v-if="open"
       class="furniture-assistant-panel"
@@ -550,41 +580,25 @@ onBeforeUnmount(() => {
       >
         <div class="assistant-panel-identity">
           <div class="assistant-panel-avatar" aria-hidden="true">
-            <svg
-              class="assistant-avatar-icon"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.8"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path d="M12 8V5" />
-              <path d="M9 5h6" />
-              <rect width="14" height="11" x="5" y="8" rx="3" />
-              <path d="M3 13h2" />
-              <path d="M19 13h2" />
-              <path d="M9.5 13.5h.01" />
-              <path d="M14.5 13.5h.01" />
-              <path d="M10 17c1.2.7 2.8.7 4 0" />
-            </svg>
+            <Sofa aria-hidden="true" />
+            <Sparkles class="assistant-avatar-sparkle" aria-hidden="true" />
           </div>
           <div class="assistant-panel-copy">
-            <p>{{ t("assistant.eyebrow") }}</p>
-            <h2 id="furniture-assistant-title">{{ t("assistant.title") }}</h2>
+            <p>FURNITURE CONCIERGE</p>
+            <h2 id="furniture-assistant-title">空间设计助手</h2>
             <span class="assistant-panel-presence">
               <span class="assistant-presence-dot" aria-hidden="true"></span>
-              {{ assistantPresenceLabel }}
+              AI 家居顾问 · 随时在线
             </span>
           </div>
         </div>
         <div class="assistant-panel-actions">
-          <button class="assistant-new-conversation" type="button" @click="startNewConversation">{{ t("assistant.newConversation") }}</button>
-          <button class="assistant-panel-close" type="button" :aria-label="t('common.close')" @click="open = false">×</button>
+          <button class="assistant-new-conversation" type="button" aria-label="新建对话" title="新建对话" @click="startNewConversation"><SquarePen aria-hidden="true" /></button>
+          <button class="assistant-panel-close" type="button" aria-label="收起对话" title="收起对话" @click="closePanel"><ChevronDown aria-hidden="true" /></button>
         </div>
       </header>
 
-      <div class="furniture-assistant-thread">
+      <div ref="threadElement" class="furniture-assistant-thread">
         <article
           v-for="message in chatMessages"
           :key="message.id"
@@ -622,6 +636,17 @@ onBeforeUnmount(() => {
           </div>
         </article>
 
+        <div v-if="chatMessages.length === 1" class="assistant-quick-prompts" aria-label="推荐问题">
+          <button
+            v-for="prompt in quickPrompts"
+            :key="prompt.id"
+            type="button"
+            @click="submitMessage(prompt.prompt)"
+          >
+            {{ prompt.label }}
+          </button>
+        </div>
+
         <article v-if="isSubmitting" class="assistant-chat-row assistant-chat-assistant assistant-chat-loading">
           <div class="assistant-chat-avatar" aria-hidden="true">
             <svg
@@ -648,7 +673,9 @@ onBeforeUnmount(() => {
               <span class="assistant-chat-name">{{ assistantDisplayName }}</span>
               <span class="assistant-message-time">{{ messageTimeLabel }}</span>
             </div>
-            <p class="assistant-chat-bubble">{{ t("assistant.loading") }}</p>
+            <span class="assistant-chat-bubble assistant-thinking-dots" role="status" :aria-label="t('assistant.loading')">
+              <i></i><i></i><i></i>
+            </span>
           </div>
         </article>
 
@@ -682,44 +709,19 @@ onBeforeUnmount(() => {
           </div>
         </article>
 
-        <article v-if="assistantSources.length" class="assistant-chat-row assistant-chat-assistant assistant-chat-sources">
-          <div class="assistant-chat-avatar" aria-hidden="true">
-            <svg
-              class="assistant-avatar-icon"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.8"
-              stroke-linecap="round"
-              stroke-linejoin="round"
+        <details v-if="assistantSources.length" class="assistant-evidence">
+          <summary>{{ t("assistant.evidenceLabel") }}</summary>
+          <div class="assistant-source-list">
+            <span
+              v-for="source in assistantSources"
+              :key="`${source.type}-${source.name}`"
+              class="assistant-source-chip"
             >
-              <path d="M12 8V5" />
-              <path d="M9 5h6" />
-              <rect width="14" height="11" x="5" y="8" rx="3" />
-              <path d="M3 13h2" />
-              <path d="M19 13h2" />
-              <path d="M9.5 13.5h.01" />
-              <path d="M14.5 13.5h.01" />
-              <path d="M10 17c1.2.7 2.8.7 4 0" />
-            </svg>
+              <span>{{ source.type }}</span>
+              {{ source.name }}
+            </span>
           </div>
-          <div class="assistant-chat-content">
-            <div class="assistant-chat-meta">
-              <span class="assistant-chat-name">{{ t("assistant.sourcesLabel") }}</span>
-              <span class="assistant-message-time">{{ messageTimeLabel }}</span>
-            </div>
-            <div class="assistant-chat-bubble assistant-source-list">
-              <span
-                v-for="source in assistantSources"
-                :key="`${source.type}-${source.name}`"
-                class="assistant-source-chip"
-              >
-                <span>{{ source.type }}</span>
-                {{ source.name }}
-              </span>
-            </div>
-          </div>
-        </article>
+        </details>
 
         <article v-if="assistantProducts.length" class="assistant-chat-row assistant-chat-assistant assistant-chat-recommendations">
           <div class="assistant-chat-avatar" aria-hidden="true">
@@ -846,23 +848,11 @@ onBeforeUnmount(() => {
         <label class="sr-only" for="furniture-assistant-input">{{ t("assistant.askPlaceholder") }}</label>
         <div class="assistant-composer-shell">
           <span class="assistant-composer-mode">{{ composerModeLabel }}</span>
-          <input id="furniture-assistant-input" v-model="draftMessage" type="text" :placeholder="t('assistant.askPlaceholder')" />
+          <input id="furniture-assistant-input" ref="composerInput" v-model="draftMessage" type="text" :placeholder="t('assistant.askPlaceholder')" />
         </div>
         <button class="assistant-send-button" type="submit" :disabled="isSubmitting || !draftMessage.trim()">
           <span class="sr-only">{{ t("assistant.send") }}</span>
-          <svg
-            class="assistant-send-icon"
-            aria-hidden="true"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.8"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="M5 12h13" />
-            <path d="m13 6 6 6-6 6" />
-          </svg>
+          <ArrowUp class="assistant-send-icon" aria-hidden="true" />
         </button>
       </form>
 
@@ -876,5 +866,6 @@ onBeforeUnmount(() => {
         @pointerdown="startPanelResize(direction, $event)"
       ></button>
     </section>
+    </Transition>
   </aside>
 </template>
