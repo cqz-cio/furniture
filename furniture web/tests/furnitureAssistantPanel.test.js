@@ -4,6 +4,14 @@ import { describe, expect, it } from "vitest";
 const readSource = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
 
 describe("furniture assistant panel", () => {
+  it("opens at the approved desktop concierge size", () => {
+    const source = readSource("../src/components/FurnitureAssistantPanel.vue");
+
+    expect(source).toContain("const PANEL_DEFAULT_WIDTH = 656;");
+    expect(source).toContain("height: viewport.height - PANEL_MARGIN * 2");
+    expect(source).toContain("const PANEL_MARGIN = 24;");
+  });
+
   it("mounts the assistant from the app shell", () => {
     const source = readSource("../src/App.vue");
 

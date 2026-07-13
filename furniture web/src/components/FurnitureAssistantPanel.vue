@@ -21,8 +21,7 @@ const LAUNCHER_STORAGE_KEY = "furniture-assistant-position";
 const CONVERSATION_STORAGE_KEY = "furniture-assistant-conversation-id:v1";
 const LAUNCHER_SIZE = 56;
 const LAUNCHER_MARGIN = 24;
-const PANEL_DEFAULT_WIDTH = 460;
-const PANEL_DEFAULT_HEIGHT = 660;
+const PANEL_DEFAULT_WIDTH = 656;
 const PANEL_MIN_WIDTH = 320;
 const PANEL_MIN_HEIGHT = 420;
 const PANEL_MARGIN = 24;
@@ -30,7 +29,7 @@ const resizeDirections = ["top", "right", "bottom", "left", "top-left", "top-rig
 
 const open = ref(false);
 const launcherPosition = ref({ left: 0, top: 0 });
-const panelState = ref({ left: 0, top: 0, width: PANEL_DEFAULT_WIDTH, height: PANEL_DEFAULT_HEIGHT });
+const panelState = ref({ left: 0, top: 0, width: PANEL_DEFAULT_WIDTH, height: PANEL_MIN_HEIGHT });
 const launcherDragState = ref(null);
 const panelDragState = ref(null);
 const panelResizeState = ref(null);
@@ -196,9 +195,11 @@ const setPanelState = ({ left, top, width, height }) => {
 };
 
 const defaultPanelState = () => {
-  return getDefaultPanelState(viewportSize(), {
+  const viewport = viewportSize();
+
+  return getDefaultPanelState(viewport, {
     width: PANEL_DEFAULT_WIDTH,
-    height: PANEL_DEFAULT_HEIGHT,
+    height: viewport.height - PANEL_MARGIN * 2,
     margin: PANEL_MARGIN,
   });
 };
