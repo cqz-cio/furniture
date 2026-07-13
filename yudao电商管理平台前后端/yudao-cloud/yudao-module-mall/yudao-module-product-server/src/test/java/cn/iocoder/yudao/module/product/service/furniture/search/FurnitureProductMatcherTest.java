@@ -84,7 +84,7 @@ class FurnitureProductMatcherTest {
     }
 
     @Test
-    void match_shouldEvaluateEveryTypedHardConstraint() {
+    void match_shouldEvaluateEverySearchableTypedHardConstraint() {
         FurnitureAssistantRequirements request = new FurnitureAssistantRequirements();
         request.setCategory("sofa");
         request.setBudgetMin(new BigDecimal("5000"));
@@ -110,9 +110,9 @@ class FurnitureProductMatcherTest {
         request.setPreferredFeatures(Collections.singletonList("rounded-edges"));
         request.setHardConstraints(new LinkedHashSet<>(Arrays.asList(
                 "budgetMin", "budgetMax", "styles", "colors", "materials", "excludedMaterials",
-                "roomTypes", "roomSize", "roomWidthMm", "roomDepthMm", "maxWidthMm", "maxDepthMm",
-                "maxHeightMm", "seatCount", "hasChildren", "hasPets", "easyClean", "scratchResistant",
-                "movable", "rentalFriendly", "preferredFeatures")));
+                "roomTypes", "maxWidthMm", "maxDepthMm", "maxHeightMm", "seatCount", "hasChildren",
+                "hasPets", "easyClean", "scratchResistant", "movable", "rentalFriendly",
+                "preferredFeatures")));
 
         FurnitureSkuSearchDO projection = FurnitureSkuSearchDO.builder()
                 .spuId(1001L).skuId(2001L).categoryCode("sofa")
@@ -128,8 +128,94 @@ class FurnitureProductMatcherTest {
         FurnitureCandidateMatch result = matcher.match(request, Collections.singletonList(candidate), 1).get(0);
 
         assertEquals(FurnitureMatchType.EXACT, result.getMatchType());
-        assertEquals(22, result.getMatchedConstraints().size());
+        assertEquals(19, result.getMatchedConstraints().size());
         assertTrue(result.getUnmetConstraints().isEmpty());
+    }
+
+    @Test
+    void match_shouldIgnoreRoomContextForMatchAndRank() {
+        FurnitureAssistantRequirements request = new FurnitureAssistantRequirements();
+        request.setCategory("sofa");
+        request.setRoomSize(new BigDecimal("4"));
+        request.setRoomWidthMm(2500);
+        request.setRoomDepthMm(2000);
+        request.setHardConstraints(new LinkedHashSet<>(
+                Arrays.asList("roomSize", "roomWidthMm", "roomDepthMm")));
+        FurnitureProductCandidate small = dimensionedCandidate(1001L, 2001L, 500000, 1, 2000, 1000);
+        FurnitureProductCandidate large = dimensionedCandidate(1002L, 2002L, 500000, 100, 4000, 3000);
+
+        List<FurnitureCandidateMatch> result = matcher.match(request, Arrays.asList(small, large), 2);
+
+        assertEquals(Arrays.asList(2002L, 2001L), Arrays.asList(
+                result.get(0).getCandidate().getSku().getId(),
+                result.get(1).getCandidate().getSku().getId()));
+        assertEquals(FurnitureMatchType.EXACT, result.get(0).getMatchType());
+        assertEquals(Collections.singletonList("category"), result.get(0).getMatchedConstraints());
+        assertEquals(1, result.get(0).getCoverageScore());
+    }
+
+    @Test
+    void match_shouldRejectUnknownMaterialWhenMaterialIsExcluded() {
+        FurnitureAssistantRequirements request = new FurnitureAssistantRequirements();
+        request.setCategory("sofa");
+        request.setExcludedMaterials(Collections.singletonList("leather"));
+        request.getHardConstraints().add("excludedMaterials");
+        request.getNonRelaxableConstraints().add("excludedMaterials");
+        FurnitureSkuSearchDO projection = FurnitureSkuSearchDO.builder()
+                .spuId(1001L).skuId(2001L).categoryCode("sofa").materialCodes(Collections.emptyList()).build();
+
+        assertTrue(matcher.match(request,
+                Collections.singletonList(candidate(projection, 500000, 10, true)), 1).isEmpty());
+    }
+
+    @Test
+    void match_shouldDiscloseUnknownRelaxableHardConstraint() {
+        FurnitureAssistantRequirements request = new FurnitureAssistantRequirements();
+        request.setCategory("sofa");
+        request.getHardConstraints().add("futureConstraint");
+        FurnitureProductCandidate candidate = candidate(1001L, 2001L, 500000, 10,
+                "sofa", "gray", "fabric", 3, 2000, true);
+
+        FurnitureCandidateMatch result = matcher.match(request, Collections.singletonList(candidate), 1).get(0);
+
+        assertEquals(FurnitureMatchType.PARTIAL, result.getMatchType());
+        assertEquals(Collections.singletonList("futureConstraint"), result.getUnmetConstraints());
+    }
+
+    @Test
+    void match_shouldRejectUnknownNonRelaxableConstraint() {
+        FurnitureAssistantRequirements request = new FurnitureAssistantRequirements();
+        request.setCategory("sofa");
+        request.getNonRelaxableConstraints().add("futureConstraint");
+        FurnitureProductCandidate candidate = candidate(1001L, 2001L, 500000, 10,
+                "sofa", "gray", "fabric", 3, 2000, true);
+
+        assertTrue(matcher.match(request, Collections.singletonList(candidate), 1).isEmpty());
+    }
+
+    @Test
+    void match_shouldTreatPreferredFeaturesAsSoftUnlessMetadataMakesThemMandatory() {
+        FurnitureAssistantRequirements soft = new FurnitureAssistantRequirements();
+        soft.setCategory("sofa");
+        soft.setPreferredFeatures(Collections.singletonList("rounded-edges"));
+        FurnitureProductCandidate missing = detailedCandidate(1001L, 2001L, 500000, 100,
+                "gray", Collections.emptyList(), Collections.emptyList());
+        FurnitureProductCandidate matching = detailedCandidate(1002L, 2002L, 500000, 1,
+                "gray", Collections.emptyList(), Collections.singletonList("rounded-edges"));
+
+        List<FurnitureCandidateMatch> softResult = matcher.match(soft, Arrays.asList(missing, matching), 2);
+
+        assertEquals(Long.valueOf(2002L), softResult.get(0).getCandidate().getSku().getId());
+        assertEquals(FurnitureMatchType.EXACT, softResult.get(1).getMatchType());
+        assertTrue(softResult.get(1).getUnmetConstraints().isEmpty());
+
+        FurnitureAssistantRequirements mandatory = new FurnitureAssistantRequirements();
+        mandatory.setCategory("sofa");
+        mandatory.setPreferredFeatures(Collections.singletonList("rounded-edges"));
+        mandatory.getHardConstraints().add("preferredFeatures");
+        mandatory.getNonRelaxableConstraints().add("preferredFeatures");
+
+        assertTrue(matcher.match(mandatory, Collections.singletonList(missing), 1).isEmpty());
     }
 
     @Test
@@ -189,6 +275,14 @@ class FurnitureProductMatcherTest {
                 .spuId(spuId).skuId(skuId).categoryCode("sofa").colorCode(color)
                 .styleCodes(styles).roomTypeCodes(Collections.singletonList("living-room"))
                 .featureCodes(features).build();
+        return candidate(projection, priceFen, stock, true);
+    }
+
+    private FurnitureProductCandidate dimensionedCandidate(long spuId, long skuId, int priceFen, int stock,
+                                                           int widthMm, int depthMm) {
+        FurnitureSkuSearchDO projection = FurnitureSkuSearchDO.builder()
+                .spuId(spuId).skuId(skuId).categoryCode("sofa")
+                .widthMm(widthMm).depthMm(depthMm).build();
         return candidate(projection, priceFen, stock, true);
     }
 

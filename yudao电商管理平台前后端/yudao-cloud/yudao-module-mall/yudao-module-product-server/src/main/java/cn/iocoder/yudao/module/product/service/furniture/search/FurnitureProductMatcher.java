@@ -15,13 +15,13 @@ import java.util.Set;
 public class FurnitureProductMatcher {
 
     private static final BigDecimal FEN_PER_YUAN = BigDecimal.valueOf(100);
-    private static final BigDecimal SQUARE_MM_PER_SQUARE_METER = BigDecimal.valueOf(1_000_000);
 
     private static final List<String> CONSTRAINT_ORDER = Collections.unmodifiableList(Arrays.asList(
             "category", "budgetMin", "budgetMax", "styles", "colors", "materials", "excludedMaterials",
-            "roomTypes", "roomSize", "roomWidthMm", "roomDepthMm", "maxWidthMm", "maxDepthMm",
-            "maxHeightMm", "seatCount", "hasChildren", "hasPets", "easyClean", "scratchResistant",
-            "movable", "rentalFriendly", "preferredFeatures"));
+            "roomTypes", "maxWidthMm", "maxDepthMm", "maxHeightMm", "seatCount", "hasChildren",
+            "hasPets", "easyClean", "scratchResistant", "movable", "rentalFriendly", "preferredFeatures"));
+    private static final Set<String> CONTEXT_ONLY_FIELDS = Collections.unmodifiableSet(new LinkedHashSet<>(
+            Arrays.asList("roomSize", "roomWidthMm", "roomDepthMm")));
 
     public List<FurnitureCandidateMatch> match(FurnitureAssistantRequirements request,
                                                List<FurnitureProductCandidate> candidates,
@@ -67,6 +67,7 @@ public class FurnitureProductMatcher {
         if (hasValues(request.getExcludedMaterials())) {
             requestedHard.add("excludedMaterials");
         }
+        requestedHard.removeAll(CONTEXT_ONLY_FIELDS);
 
         List<String> orderedHard = orderConstraints(requestedHard);
         List<String> matched = new ArrayList<>();
@@ -100,15 +101,10 @@ public class FurnitureProductMatcher {
             case "materials":
                 return containsAll(request.getMaterials(), projection.getMaterialCodes());
             case "excludedMaterials":
-                return !overlaps(request.getExcludedMaterials(), projection.getMaterialCodes());
+                return hasValues(projection.getMaterialCodes())
+                        && !overlaps(request.getExcludedMaterials(), projection.getMaterialCodes());
             case "roomTypes":
                 return overlaps(request.getRoomTypes(), projection.getRoomTypeCodes());
-            case "roomSize":
-                return fitsRoomArea(request.getRoomSize(), projection.getWidthMm(), projection.getDepthMm());
-            case "roomWidthMm":
-                return maximum(request.getRoomWidthMm(), projection.getWidthMm());
-            case "roomDepthMm":
-                return maximum(request.getRoomDepthMm(), projection.getDepthMm());
             case "maxWidthMm":
                 return maximum(request.getMaxWidthMm(), projection.getWidthMm());
             case "maxDepthMm":
@@ -158,9 +154,6 @@ public class FurnitureProductMatcher {
             case "materials": return hasValues(request.getMaterials());
             case "excludedMaterials": return hasValues(request.getExcludedMaterials());
             case "roomTypes": return hasValues(request.getRoomTypes());
-            case "roomSize": return request.getRoomSize() != null;
-            case "roomWidthMm": return request.getRoomWidthMm() != null;
-            case "roomDepthMm": return request.getRoomDepthMm() != null;
             case "maxWidthMm": return request.getMaxWidthMm() != null;
             case "maxDepthMm": return request.getMaxDepthMm() != null;
             case "maxHeightMm": return request.getMaxHeightMm() != null;
@@ -241,14 +234,6 @@ public class FurnitureProductMatcher {
 
     private boolean maximum(Integer requested, Integer actual) {
         return requested != null && actual != null && actual <= requested;
-    }
-
-    private boolean fitsRoomArea(BigDecimal roomSize, Integer widthMm, Integer depthMm) {
-        if (roomSize == null || widthMm == null || depthMm == null) {
-            return false;
-        }
-        BigDecimal footprint = BigDecimal.valueOf(widthMm).multiply(BigDecimal.valueOf(depthMm));
-        return footprint.compareTo(roomSize.multiply(SQUARE_MM_PER_SQUARE_METER)) <= 0;
     }
 
     private boolean containsCode(List<String> requested, String actual) {
