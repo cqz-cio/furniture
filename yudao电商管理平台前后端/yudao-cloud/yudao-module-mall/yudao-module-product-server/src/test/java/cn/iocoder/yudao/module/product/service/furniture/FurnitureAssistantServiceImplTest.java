@@ -6,19 +6,23 @@ import cn.iocoder.yudao.module.product.controller.app.furniture.vo.FurnitureAssi
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.ArgumentCaptor;
 
 import java.math.BigDecimal;
 import java.util.Collections;
+import java.util.Arrays;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.doThrow;
+import cn.iocoder.yudao.module.product.service.furniture.search.FurnitureMatchType;
 
 class FurnitureAssistantServiceImplTest extends BaseMockitoUnitTest {
 
@@ -35,11 +39,110 @@ class FurnitureAssistantServiceImplTest extends BaseMockitoUnitTest {
     private FurnitureAssistantAiClient aiClient;
 
     @Test
+    void chat_shouldExposeExactMatchThroughTypedSearch() {
+        when(knowledgeService.search(anyString())).thenReturn(Collections.emptyList());
+        when(productSearchTool.shouldSearchProducts(anyString(), any(), anyList())).thenReturn(true);
+        when(productSearchTool.searchProducts(any(FurnitureProductSearchRequest.class))).thenReturn(
+                FurnitureProductSearchResult.of(FurnitureMatchType.EXACT,
+                        Arrays.asList("category", "materials"), Collections.emptyList(),
+                        Collections.singletonList(product(1001L, 2001L, "Solid-Wood Bed", 6999,
+                                Collections.singletonList("Material: Solid Wood")))));
+
+        FurnitureAssistantChatReqVO request = new FurnitureAssistantChatReqVO();
+        request.setMessage("solid wood bed");
+
+        FurnitureAssistantChatRespVO result = service.chat(request);
+
+        assertEquals(FurnitureMatchType.EXACT, result.getMatchType());
+        assertEquals(Arrays.asList("category", "materials"), result.getMatchedConstraints());
+        assertTrue(result.getUnmetConstraints().isEmpty());
+        ArgumentCaptor<FurnitureProductSearchRequest> captor = ArgumentCaptor.forClass(FurnitureProductSearchRequest.class);
+        verify(productSearchTool).searchProducts(captor.capture());
+        assertEquals("solid wood bed", captor.getValue().getMessage());
+        assertTrue(captor.getValue().isIncludeAllVariants());
+    }
+
+    @Test
+    void chat_shouldExposePartialMatchWithoutClaimingMissingConstraint() {
+        when(knowledgeService.search(anyString())).thenReturn(Collections.emptyList());
+        when(productSearchTool.shouldSearchProducts(anyString(), any(), anyList())).thenReturn(true);
+        FurnitureProductSearchResult search = FurnitureProductSearchResult.of(
+                FurnitureMatchType.PARTIAL,
+                Arrays.asList("category", "materials"),
+                Collections.singletonList("maxWidthMm"),
+                Collections.singletonList(product(1001L, 2001L, "Solid-Wood Bed", 6999,
+                        Collections.singletonList("Material: Solid Wood"))));
+        when(productSearchTool.searchProducts(any(FurnitureProductSearchRequest.class))).thenReturn(search);
+
+        FurnitureAssistantChatReqVO request = new FurnitureAssistantChatReqVO();
+        request.setMessage("找宽度不超过180厘米的实木床");
+        FurnitureAssistantChatRespVO result = service.chat(request);
+
+        assertEquals(FurnitureMatchType.PARTIAL, result.getMatchType());
+        assertEquals(Collections.singletonList("maxWidthMm"), result.getUnmetConstraints());
+        assertTrue(result.getAnswer().contains("maxWidthMm"));
+        assertFalse(result.getAnswer().contains("宽度符合"));
+        assertEquals(Long.valueOf(2001L), result.getProducts().get(0).getSkuId());
+    }
+
+    @Test
+    void chat_shouldReturnNoCardsAndRelaxationGuidanceForNoMatch() {
+        when(knowledgeService.search(anyString())).thenReturn(Collections.emptyList());
+        when(productSearchTool.shouldSearchProducts(anyString(), any(), anyList())).thenReturn(true);
+        when(productSearchTool.searchProducts(any(FurnitureProductSearchRequest.class))).thenReturn(
+                FurnitureProductSearchResult.of(FurnitureMatchType.NONE, Collections.emptyList(),
+                        Arrays.asList("materials", "maxWidthMm"),
+                        Collections.singletonList(product(1001L, "Should not leak", 6999))));
+
+        FurnitureAssistantChatReqVO request = new FurnitureAssistantChatReqVO();
+        request.setMessage("solid wood bed no wider than 180 cm");
+        FurnitureAssistantChatRespVO result = service.chat(request);
+
+        assertEquals(FurnitureMatchType.NONE, result.getMatchType());
+        assertTrue(result.getProducts().isEmpty());
+        assertTrue(result.getAnswer().contains("materials"));
+        assertTrue(result.getAnswer().contains("maxWidthMm"));
+        assertTrue(result.getAnswer().toLowerCase().contains("relax"));
+    }
+
+    @Test
+    void chat_shouldGroupOnlySameSpuRowsAsSkuVariants() {
+        when(knowledgeService.search(anyString())).thenReturn(Collections.emptyList());
+        when(productSearchTool.shouldSearchProducts(anyString(), any(), anyList())).thenReturn(true);
+        FurnitureAssistantChatRespVO.Product oak = product(1001L, 2001L, "Storage Bed", 6999,
+                Arrays.asList("Material: Oak", "Size: 1.8m"));
+        FurnitureAssistantChatRespVO.Product walnut = product(1001L, 2002L, "Storage Bed", 7299,
+                Arrays.asList("Material: Walnut", "Size: 1.8m"));
+        FurnitureAssistantChatRespVO.Product otherSpu = product(1002L, 3001L, "Other Bed", 5999,
+                Collections.singletonList("Material: Pine"));
+        when(productSearchTool.searchProducts(any(FurnitureProductSearchRequest.class))).thenReturn(
+                FurnitureProductSearchResult.of(FurnitureMatchType.EXACT,
+                        Collections.singletonList("category"), Collections.emptyList(),
+                        Arrays.asList(oak, walnut, otherSpu)));
+
+        FurnitureAssistantChatReqVO request = new FurnitureAssistantChatReqVO();
+        request.setMessage("storage bed");
+        FurnitureAssistantChatRespVO result = service.chat(request);
+
+        assertEquals(2, result.getProducts().size());
+        FurnitureAssistantChatRespVO.Product groupedBed = result.getProducts().get(0);
+        assertEquals(Long.valueOf(1001L), groupedBed.getId());
+        assertEquals(2, groupedBed.getVariants().size());
+        assertEquals(Long.valueOf(2001L), groupedBed.getVariants().get(0).getSkuId());
+        assertEquals(Arrays.asList("Material: Oak", "Size: 1.8m"),
+                groupedBed.getVariants().get(0).getSkuProperties());
+        assertEquals(new BigDecimal("6999"), groupedBed.getVariants().get(0).getPrice());
+        assertEquals(Integer.valueOf(12), groupedBed.getVariants().get(0).getStock());
+        assertTrue(groupedBed.getVariants().stream().noneMatch(variant -> Long.valueOf(3001L).equals(variant.getSkuId())));
+        assertEquals(1, result.getProducts().get(1).getVariants().size());
+    }
+
+    @Test
     void chat_shouldSearchProductSpusAndFilterByBudget() {
         when(knowledgeService.search(anyString())).thenReturn(Collections.emptyList());
-        when(productSearchTool.shouldSearchProducts("cream fabric sofa under 8000", Collections.emptyList()))
+        when(productSearchTool.shouldSearchProducts(anyString(), any(), anyList()))
                 .thenReturn(true);
-        when(productSearchTool.searchForAssistant("cream fabric sofa under 8000"))
+        when(productSearchTool.searchProducts(any(FurnitureProductSearchRequest.class)))
                 .thenReturn(FurnitureProductSearchResult.of(products(
                         product(1001L, "Fabric Track Arm Sofa", 6999),
                         product(1003L, "Compact Apartment Sofa", 7999)
@@ -50,7 +153,7 @@ class FurnitureAssistantServiceImplTest extends BaseMockitoUnitTest {
 
         FurnitureAssistantChatRespVO response = service.chat(reqVO);
 
-        verify(productSearchTool).searchForAssistant("cream fabric sofa under 8000");
+        verify(productSearchTool).searchProducts(any(FurnitureProductSearchRequest.class));
 
         assertTrue(response.getAnswer().contains("2"));
         assertEquals(2, response.getProducts().size());
@@ -75,7 +178,7 @@ class FurnitureAssistantServiceImplTest extends BaseMockitoUnitTest {
 
         FurnitureAssistantChatRespVO response = service.chat(reqVO);
 
-        verify(productSearchTool, never()).searchForAssistant(anyString());
+        verify(productSearchTool, never()).searchProducts(any(FurnitureProductSearchRequest.class));
         assertTrue(response.getAnswer().contains("Membership prices can be used"));
         assertEquals(0, response.getProducts().size());
         assertEquals(2, response.getSources().size());
@@ -87,14 +190,14 @@ class FurnitureAssistantServiceImplTest extends BaseMockitoUnitTest {
     @Test
     void chat_shouldTreatLanguagePreferenceAsConversationInsteadOfProductSearch() {
         when(knowledgeService.search(anyString())).thenReturn(Collections.emptyList());
-        when(productSearchTool.shouldSearchProducts("说中文", Collections.emptyList())).thenReturn(false);
+        when(productSearchTool.shouldSearchProducts(anyString(), any(), anyList())).thenReturn(false);
 
         FurnitureAssistantChatReqVO reqVO = new FurnitureAssistantChatReqVO();
         reqVO.setMessage("说中文");
 
         FurnitureAssistantChatRespVO response = service.chat(reqVO);
 
-        verify(productSearchTool, never()).searchForAssistant(anyString());
+        verify(productSearchTool, never()).searchProducts(any(FurnitureProductSearchRequest.class));
         assertTrue(response.getAnswer().contains("接下来我会使用中文"));
         assertTrue(response.getProducts().isEmpty());
         assertEquals("fallback", response.getSources().get(0).getType());
@@ -103,9 +206,9 @@ class FurnitureAssistantServiceImplTest extends BaseMockitoUnitTest {
     @Test
     void chat_shouldUseChineseFallbackWhenRequestIsChineseAndAiIsDisabled() {
         when(knowledgeService.search(anyString())).thenReturn(Collections.emptyList());
-        when(productSearchTool.shouldSearchProducts("8000以内的米白色布艺沙发", Collections.emptyList()))
+        when(productSearchTool.shouldSearchProducts(anyString(), any(), anyList()))
                 .thenReturn(true);
-        when(productSearchTool.searchForAssistant("8000以内的米白色布艺沙发"))
+        when(productSearchTool.searchProducts(any(FurnitureProductSearchRequest.class)))
                 .thenReturn(FurnitureProductSearchResult.of(Collections.singletonList(
                         product(1001L, "Cream Fabric Sofa", 6999)
                 )));
@@ -123,9 +226,9 @@ class FurnitureAssistantServiceImplTest extends BaseMockitoUnitTest {
     @Test
     void chat_shouldUseAiAnswerWhenClientIsEnabledWithoutChangingProductCards() {
         when(knowledgeService.search(anyString())).thenReturn(Collections.emptyList());
-        when(productSearchTool.shouldSearchProducts("cream fabric sofa under 8000", Collections.emptyList()))
+        when(productSearchTool.shouldSearchProducts(anyString(), any(), anyList()))
                 .thenReturn(true);
-        when(productSearchTool.searchForAssistant("cream fabric sofa under 8000"))
+        when(productSearchTool.searchProducts(any(FurnitureProductSearchRequest.class)))
                 .thenReturn(FurnitureProductSearchResult.of(Collections.singletonList(
                         product(1001L, "Fabric Track Arm Sofa", 6999)
                 )));
@@ -151,9 +254,9 @@ class FurnitureAssistantServiceImplTest extends BaseMockitoUnitTest {
     @Test
     void chat_shouldCleanModelMarkdownAndKeepAnswerShortForChatBubble() {
         when(knowledgeService.search(anyString())).thenReturn(Collections.emptyList());
-        when(productSearchTool.shouldSearchProducts("8000以内的米白色布艺沙发", Collections.emptyList()))
+        when(productSearchTool.shouldSearchProducts(anyString(), any(), anyList()))
                 .thenReturn(true);
-        when(productSearchTool.searchForAssistant("8000以内的米白色布艺沙发"))
+        when(productSearchTool.searchProducts(any(FurnitureProductSearchRequest.class)))
                 .thenReturn(FurnitureProductSearchResult.of(products(
                         product(1001L, "Small Apartment Sofa", 3299),
                         product(1002L, "Cream Fabric Sofa", 6999)
@@ -182,8 +285,9 @@ class FurnitureAssistantServiceImplTest extends BaseMockitoUnitTest {
     @Test
     void chat_shouldExposeFallbackSourceWhenEnabledModelCallFails() {
         when(knowledgeService.search(anyString())).thenReturn(Collections.emptyList());
-        when(productSearchTool.shouldSearchProducts("sofa", Collections.emptyList())).thenReturn(true);
-        when(productSearchTool.searchForAssistant("sofa")).thenReturn(FurnitureProductSearchResult.empty());
+        when(productSearchTool.shouldSearchProducts(anyString(), any(), anyList())).thenReturn(true);
+        when(productSearchTool.searchProducts(any(FurnitureProductSearchRequest.class)))
+                .thenReturn(FurnitureProductSearchResult.empty());
         when(aiClient.isEnabled()).thenReturn(true);
         doThrow(new IllegalStateException("model unavailable")).when(aiClient)
                 .generateAnswer(any(FurnitureAssistantAiRequest.class));
@@ -201,9 +305,15 @@ class FurnitureAssistantServiceImplTest extends BaseMockitoUnitTest {
     }
 
     private static FurnitureAssistantChatRespVO.Product product(Long id, String name, int price) {
+        return product(id, id, name, price, Collections.emptyList());
+    }
+
+    private static FurnitureAssistantChatRespVO.Product product(Long id, Long skuId, String name, int price,
+                                                                 java.util.List<String> skuProperties) {
         FurnitureAssistantChatRespVO.Product product = new FurnitureAssistantChatRespVO.Product();
         product.setId(id);
-        product.setSkuId(id);
+        product.setSkuId(skuId);
+        product.setSkuProperties(skuProperties);
         product.setName(name);
         product.setSubtitle("");
         product.setPrice(new BigDecimal(price));

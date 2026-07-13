@@ -7,8 +7,33 @@ import java.math.BigDecimal;
 import java.util.Collections;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import cn.iocoder.yudao.module.product.service.furniture.search.FurnitureMatchType;
 
 class FurnitureAssistantPromptBuilderTest {
+
+    @Test
+    void buildUserPrompt_shouldGroundModelInMatchedAndUnmetConstraints() {
+        FurnitureAssistantChatRespVO.Product product = new FurnitureAssistantChatRespVO.Product();
+        product.setId(1001L);
+        product.setSkuId(2001L);
+        product.setName("Solid-Wood Bed");
+        product.setSkuProperties(Collections.singletonList("Material: Solid Wood"));
+        product.setVariants(Collections.emptyList());
+
+        FurnitureAssistantAiRequest request = new FurnitureAssistantAiRequest(
+                "solid wood bed no wider than 180 cm", "Closest match only",
+                Collections.singletonList(product), Collections.emptyList(),
+                "No earlier conversation is available.", FurnitureMatchType.PARTIAL,
+                java.util.Arrays.asList("category", "materials"), Collections.singletonList("maxWidthMm"));
+
+        String prompt = FurnitureAssistantPromptBuilder.buildUserPrompt(request);
+
+        assertTrue(prompt.contains("Match type: PARTIAL"));
+        assertTrue(prompt.contains("Matched constraints: category, materials"));
+        assertTrue(prompt.contains("Unmet constraints: maxWidthMm"));
+        assertTrue(prompt.contains("Never describe an unmet constraint as satisfied"));
+        assertTrue(prompt.contains("Material: Solid Wood"));
+    }
 
     @Test
     void buildUserPrompt_shouldGroundModelInReturnedProductsAndSafetyRules() {

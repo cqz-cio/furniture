@@ -81,6 +81,7 @@ public class FurnitureProductSearchResult {
         FurnitureAssistantChatRespVO.Product product = new FurnitureAssistantChatRespVO.Product();
         product.setId(candidate.getSpu().getId());
         product.setSkuId(candidate.getSku().getId());
+        product.setSkuProperties(toSkuProperties(candidate.getSku().getProperties()));
         product.setName(candidate.getSpu().getName());
         product.setSubtitle(candidate.getSpu().getIntroduction() == null ? "" : candidate.getSpu().getIntroduction());
         product.setPrice(toYuan(candidate.getSku().getPrice()));
@@ -91,6 +92,22 @@ public class FurnitureProductSearchResult {
         product.setReason(toReason(winningMatch));
         product.setDetailUrl("/sofa-pdp?id=" + candidate.getSpu().getId());
         return product;
+    }
+
+    private static List<String> toSkuProperties(
+            List<cn.iocoder.yudao.module.product.dal.dataobject.sku.ProductSkuDO.Property> properties) {
+        if (properties == null || properties.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return properties.stream().map(property -> {
+                    String name = property.getPropertyName();
+                    String value = property.getValueName();
+                    if (name == null || name.trim().isEmpty()) return value;
+                    if (value == null || value.trim().isEmpty()) return name;
+                    return name + ": " + value;
+                })
+                .filter(value -> value != null && !value.trim().isEmpty())
+                .collect(Collectors.toList());
     }
 
     private static String toReason(FurnitureCandidateMatch match) {

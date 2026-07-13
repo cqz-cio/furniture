@@ -3,6 +3,7 @@ package cn.iocoder.yudao.module.product.controller.app.furniture.vo;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import cn.iocoder.yudao.module.product.service.furniture.conversation.FurnitureAssistantRequirements;
+import cn.iocoder.yudao.module.product.service.furniture.search.FurnitureMatchType;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -19,6 +20,15 @@ public class FurnitureAssistantChatRespVO {
 
     @Schema(description = "Important fields still missing")
     private List<String> missingFields;
+
+    @Schema(description = "Catalog match classification")
+    private FurnitureMatchType matchType;
+
+    @Schema(description = "Requested constraints satisfied by the catalog match")
+    private List<String> matchedConstraints;
+
+    @Schema(description = "Requested constraints not satisfied by the catalog match")
+    private List<String> unmetConstraints;
 
     @Schema(description = "Assistant answer", requiredMode = Schema.RequiredMode.REQUIRED)
     private String answer;
@@ -38,6 +48,12 @@ public class FurnitureAssistantChatRespVO {
 
         @Schema(description = "SKU id")
         private Long skuId;
+
+        @Schema(description = "Native properties of the selected SKU")
+        private List<String> skuProperties;
+
+        @Schema(description = "Sellable SKU variants belonging to this SPU")
+        private List<SkuVariant> variants;
 
         @Schema(description = "Product name", requiredMode = Schema.RequiredMode.REQUIRED)
         private String name;
@@ -62,6 +78,24 @@ public class FurnitureAssistantChatRespVO {
 
         @Schema(description = "Frontend detail URL", requiredMode = Schema.RequiredMode.REQUIRED)
         private String detailUrl;
+
+    }
+
+    @Schema(description = "Sellable SKU variant")
+    @Data
+    public static class SkuVariant {
+
+        @Schema(description = "SKU id", requiredMode = Schema.RequiredMode.REQUIRED)
+        private Long skuId;
+
+        @Schema(description = "Native SKU properties", requiredMode = Schema.RequiredMode.REQUIRED)
+        private List<String> skuProperties;
+
+        @Schema(description = "Mall price in yuan", requiredMode = Schema.RequiredMode.REQUIRED)
+        private BigDecimal price;
+
+        @Schema(description = "ERP sellable stock", requiredMode = Schema.RequiredMode.REQUIRED)
+        private Integer stock;
 
     }
 

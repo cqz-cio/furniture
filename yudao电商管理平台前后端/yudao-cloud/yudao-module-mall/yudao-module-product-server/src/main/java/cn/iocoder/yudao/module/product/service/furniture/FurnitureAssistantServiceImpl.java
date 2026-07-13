@@ -7,11 +7,14 @@ import cn.iocoder.yudao.module.product.controller.app.furniture.vo.FurnitureAssi
 import cn.iocoder.yudao.module.product.service.furniture.conversation.FurnitureAssistantConversation;
 import cn.iocoder.yudao.module.product.service.furniture.conversation.FurnitureAssistantConversationStore;
 import cn.iocoder.yudao.module.product.service.furniture.conversation.FurnitureAssistantRequirementMerger;
+import cn.iocoder.yudao.module.product.service.furniture.search.FurnitureMatchType;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.Collections;
 import java.util.Optional;
@@ -50,19 +53,28 @@ public class FurnitureAssistantServiceImpl implements FurnitureAssistantService 
             requirementMerger.merge(conversation, message);
         }
         List<FurnitureAssistantKnowledgeMatch> knowledgeMatches = knowledgeService.search(message);
-        boolean shouldSearchProducts = productSearchTool.shouldSearchProducts(message, knowledgeMatches);
-        String searchMessage = buildSearchMessage(message, conversation);
+        FurnitureProductSearchRequest searchRequest = FurnitureProductSearchRequest.from(
+                message, conversation.getRequirements(), 3);
+        searchRequest.setIncludeAllVariants(true);
+        boolean shouldSearchProducts = productSearchTool.shouldSearchProducts(
+                message, conversation.getRequirements(), knowledgeMatches);
         FurnitureProductSearchResult searchResult = shouldSearchProducts
-                ? productSearchTool.searchForAssistant(searchMessage) : FurnitureProductSearchResult.empty();
+                ? productSearchTool.searchProducts(searchRequest) : FurnitureProductSearchResult.none();
 
         FurnitureAssistantChatRespVO respVO = new FurnitureAssistantChatRespVO();
-        List<FurnitureAssistantChatRespVO.Product> products = searchResult.getProducts();
-        String fallbackAnswer = buildAnswer(message, products.size(), knowledgeMatches, shouldSearchProducts);
-        AiAnswer aiAnswer = buildAiBackedAnswer(message, fallbackAnswer, products, knowledgeMatches, conversation);
-        respVO.setAnswer(aiAnswer.getAnswer());
+        List<FurnitureAssistantChatRespVO.Product> products = searchResult.getMatchType() == FurnitureMatchType.NONE
+                ? Collections.emptyList() : groupProductsBySpu(searchResult.getProducts());
         products = products.stream().filter(product -> !conversation.getExcludedProductIds().contains(product.getId()))
                 .collect(Collectors.toList());
+        String fallbackAnswer = buildAnswer(message, products.size(), knowledgeMatches, shouldSearchProducts,
+                searchResult.getMatchType(), searchResult.getMatchedConstraints(), searchResult.getUnmetConstraints());
+        AiAnswer aiAnswer = buildAiBackedAnswer(message, fallbackAnswer, products, knowledgeMatches, conversation,
+                searchResult);
+        respVO.setAnswer(aiAnswer.getAnswer());
         respVO.setProducts(products);
+        respVO.setMatchType(searchResult.getMatchType());
+        respVO.setMatchedConstraints(searchResult.getMatchedConstraints());
+        respVO.setUnmetConstraints(searchResult.getUnmetConstraints());
         respVO.setSources(buildSources(shouldSearchProducts, knowledgeMatches, aiAnswer.isModelBacked(),
                 aiAnswer.isModelFailure()));
         respVO.setConversationId(conversationId);
@@ -105,23 +117,19 @@ public class FurnitureAssistantServiceImpl implements FurnitureAssistantService 
         return stored.orElseGet(() -> FurnitureAssistantConversation.newConversation(conversationId));
     }
 
-    private String buildSearchMessage(String message, FurnitureAssistantConversation conversation) {
-        StringBuilder value = new StringBuilder(message);
-        if (conversation.getRequirements().getCategory() != null) value.append(' ').append(conversation.getRequirements().getCategory());
-        if (conversation.getRequirements().getBudgetMax() != null) value.append(" under ").append(conversation.getRequirements().getBudgetMax());
-        return value.toString();
-    }
-
     private AiAnswer buildAiBackedAnswer(String message, String fallbackAnswer,
                                          List<FurnitureAssistantChatRespVO.Product> products,
                                          List<FurnitureAssistantKnowledgeMatch> knowledgeMatches,
-                                         FurnitureAssistantConversation conversation) {
+                                         FurnitureAssistantConversation conversation,
+                                         FurnitureProductSearchResult searchResult) {
         if (!aiClient.isEnabled()) {
             return AiAnswer.modelFailure(fallbackAnswer);
         }
         try {
             String aiAnswer = aiClient.generateAnswer(new FurnitureAssistantAiRequest(
-                    message, fallbackAnswer, products, knowledgeMatches, buildConversationContext(conversation)));
+                    message, fallbackAnswer, products, knowledgeMatches, buildConversationContext(conversation),
+                    searchResult.getMatchType(), searchResult.getMatchedConstraints(),
+                    searchResult.getUnmetConstraints()));
             if (StrUtil.isBlank(aiAnswer)) {
                 return AiAnswer.modelFailure(fallbackAnswer);
             }
@@ -159,9 +167,30 @@ public class FurnitureAssistantServiceImpl implements FurnitureAssistantService 
     }
 
     private String buildAnswer(String message, int count, List<FurnitureAssistantKnowledgeMatch> knowledgeMatches,
-                               boolean productIntent) {
+                               boolean productIntent, FurnitureMatchType matchType,
+                               List<String> matchedConstraints, List<String> unmetConstraints) {
         String knowledgeSummary = buildKnowledgeSummary(knowledgeMatches);
         boolean chinese = containsChinese(message);
+        if (productIntent && matchType == FurnitureMatchType.NONE) {
+            String gaps = formatConstraints(unmetConstraints);
+            return chinese
+                    ? "当前没有商品满足全部条件" + (gaps.isEmpty() ? "" : "（未满足：" + gaps + "）")
+                    + "。可以放宽其中一个条件后再试。"
+                    : "No catalog product satisfies all requested constraints"
+                    + (gaps.isEmpty() ? "" : " (unmet: " + gaps + ")")
+                    + ". Try relaxing one constraint and search again.";
+        }
+        if (productIntent && matchType == FurnitureMatchType.PARTIAL) {
+            String matched = formatConstraints(matchedConstraints);
+            String gaps = formatConstraints(unmetConstraints);
+            return chinese
+                    ? "找到了 " + count + " 个最接近的商品"
+                    + (matched.isEmpty() ? "" : "，已匹配：" + matched)
+                    + (gaps.isEmpty() ? "" : "；未满足：" + gaps) + "。"
+                    : "I found " + count + " closest catalog " + (count == 1 ? "product" : "products")
+                    + (matched.isEmpty() ? "" : "; matched: " + matched)
+                    + (gaps.isEmpty() ? "" : "; unmet: " + gaps) + ".";
+        }
         if (count == 0) {
             if (!knowledgeSummary.isEmpty()) {
                 return knowledgeSummary;
@@ -186,6 +215,38 @@ public class FurnitureAssistantServiceImpl implements FurnitureAssistantService 
                 ? "我从当前商品库里找到了 " + count + " 个和“" + message + "”相关的上架家具。"
                 : "I found " + count + " live furniture products for \"" + message + "\" from the current catalog.";
         return knowledgeSummary.isEmpty() ? productAnswer : productAnswer + " " + knowledgeSummary;
+    }
+
+    private String formatConstraints(List<String> constraints) {
+        return constraints == null || constraints.isEmpty() ? "" : String.join(", ", constraints);
+    }
+
+    private List<FurnitureAssistantChatRespVO.Product> groupProductsBySpu(
+            List<FurnitureAssistantChatRespVO.Product> concreteProducts) {
+        Map<Long, FurnitureAssistantChatRespVO.Product> productsBySpu = new LinkedHashMap<>();
+        if (concreteProducts == null) return Collections.emptyList();
+        for (FurnitureAssistantChatRespVO.Product concrete : concreteProducts) {
+            if (concrete == null || concrete.getId() == null) continue;
+            FurnitureAssistantChatRespVO.Product primary = productsBySpu.get(concrete.getId());
+            if (primary == null) {
+                primary = concrete;
+                primary.setVariants(new ArrayList<>());
+                if (primary.getSkuProperties() == null) primary.setSkuProperties(Collections.emptyList());
+                productsBySpu.put(primary.getId(), primary);
+            }
+            primary.getVariants().add(toVariant(concrete));
+        }
+        return new ArrayList<>(productsBySpu.values());
+    }
+
+    private FurnitureAssistantChatRespVO.SkuVariant toVariant(FurnitureAssistantChatRespVO.Product concrete) {
+        FurnitureAssistantChatRespVO.SkuVariant variant = new FurnitureAssistantChatRespVO.SkuVariant();
+        variant.setSkuId(concrete.getSkuId());
+        variant.setSkuProperties(concrete.getSkuProperties() == null
+                ? Collections.emptyList() : new ArrayList<>(concrete.getSkuProperties()));
+        variant.setPrice(concrete.getPrice());
+        variant.setStock(concrete.getStock());
+        return variant;
     }
 
     private String buildConversationContext(FurnitureAssistantConversation conversation) {
