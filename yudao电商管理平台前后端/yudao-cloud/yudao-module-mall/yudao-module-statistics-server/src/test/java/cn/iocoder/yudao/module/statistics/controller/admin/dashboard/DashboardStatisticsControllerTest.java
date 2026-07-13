@@ -11,6 +11,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -47,6 +48,16 @@ class DashboardStatisticsControllerTest {
     void clean() {
         TenantContextHolder.clear();
         SecurityContextHolder.clearContext();
+    }
+
+    @Test
+    void profitExportRequiresProfitQueryAndProfitExportPermissions() throws Exception {
+        PreAuthorize guard = DashboardStatisticsController.class
+                .getMethod("profitExport", DashboardQueryReqVO.class, javax.servlet.http.HttpServletResponse.class)
+                .getAnnotation(PreAuthorize.class);
+        assertNotNull(guard);
+        assertTrue(guard.value().contains("statistics:dashboard:profit-query"));
+        assertTrue(guard.value().contains("statistics:dashboard:profit-export"));
     }
 
     @Test

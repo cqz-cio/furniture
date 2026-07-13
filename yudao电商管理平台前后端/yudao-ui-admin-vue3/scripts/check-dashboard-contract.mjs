@@ -29,5 +29,6 @@ for (const token of [
   '流量指标仅代表已同意分析的可测量访问，可能存在覆盖偏差', 'comparisonLabel',
   'trafficDataAvailableFrom', 'changeText', '对比期浏览量', '对比期净销售额'
 ]) assert.ok(page.includes(token), `missing dashboard page token: ${token}`)
+assert.match(page, /canProfitExport\s*=\s*computed\(\(\)\s*=>\s*canProfit\.value\s*&&\s*checkPermi\(\['statistics:dashboard:profit-export'\]\)\)/, 'profit export UI must also require profit query permission')
 assert.ok(!/from\s+['"](?:react|@radix|shadcn\/)/i.test(page), 'dashboard must use the existing Vue stack')
 console.log('dashboard contract: OK')

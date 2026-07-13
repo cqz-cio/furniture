@@ -77,7 +77,7 @@ public class DashboardStatisticsController {
     }
 
     @GetMapping("/profit-export")
-    @PreAuthorize("@ss.hasPermission('statistics:dashboard:export') and @ss.hasPermission('statistics:dashboard:profit-export')")
+    @PreAuthorize("@ss.hasPermission('statistics:dashboard:profit-query') and @ss.hasPermission('statistics:dashboard:profit-export')")
     @ApiAccessLog(operateModule = "数据看板", operateName = "导出利润数据", operateType = EXPORT)
     public void profitExport(@Valid DashboardQueryReqVO request, HttpServletResponse response) throws IOException {
         writeExport(request, response, true, "数据看板-利润.xlsx");

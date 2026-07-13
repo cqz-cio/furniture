@@ -80,7 +80,9 @@ export interface DashboardProduct {
   orderCount: number | null
   orderPayCount: number | null
   orderPayPrice: number | null
+  afterSaleCount: number | null
   afterSaleRefundPrice: number | null
+  netRevenue: number | null
   browseConvertPercent: number | null
   knownCostAmount: number | null
   costAmount: number | null

@@ -35,10 +35,13 @@ public class DashboardExportServiceImpl implements DashboardExportService {
                     .setCategoryId(product.getCategoryId()).setBrowseCount(product.getBrowseCount())
                     .setBrowseUserCount(product.getBrowseUserCount()).setCartCount(product.getCartCount())
                     .setOrderCount(product.getOrderCount()).setOrderPayCount(product.getOrderPayCount())
-                    .setOrderPayPrice(product.getOrderPayPrice()).setAfterSaleRefundPrice(product.getAfterSaleRefundPrice());
+                    .setOrderPayPrice(product.getOrderPayPrice()).setAfterSaleCount(product.getAfterSaleCount())
+                    .setAfterSaleRefundPrice(product.getAfterSaleRefundPrice()).setNetRevenue(product.getNetRevenue())
+                    .setBrowseConvertPercent(product.getBrowseConvertPercent()).setTrafficDataStatus(product.getTrafficDataStatus());
             if (includeProfit) {
                 row.setKnownCostAmount(product.getKnownCostAmount()).setCostAmount(product.getCostAmount())
-                        .setGrossProfit(product.getGrossProfit()).setGrossMarginPercent(product.getGrossMarginPercent());
+                        .setGrossProfit(product.getGrossProfit()).setGrossMarginPercent(product.getGrossMarginPercent())
+                        .setMissingCostItemCount(product.getMissingCostItemCount()).setProfitDataQuality(product.getProfitDataQuality());
             }
             rows.add(row);
         }

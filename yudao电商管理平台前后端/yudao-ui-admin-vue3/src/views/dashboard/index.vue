@@ -25,7 +25,7 @@ const router = useRouter()
 const canQuery = computed(() => checkPermi(['statistics:dashboard:query']))
 const canProfit = computed(() => checkPermi(['statistics:dashboard:profit-query']))
 const canExport = computed(() => checkPermi(['statistics:dashboard:export']))
-const canProfitExport = computed(() => checkPermi(['statistics:dashboard:profit-export']))
+const canProfitExport = computed(() => canProfit.value && checkPermi(['statistics:dashboard:profit-export']))
 
 const yesterday = dayjs().subtract(1, 'day')
 const routeValue = (key: string) => {
@@ -198,9 +198,25 @@ const metricCards = computed(() => {
   const trafficKey = query.scope === 'SITE' ? 'homePv' : 'productDetailPv'
   const cards = [
     { label: query.scope === 'SITE' ? '首页浏览量' : '商品详情浏览量', value: integer(query.scope === 'SITE' ? value.homePv : value.productDetailPv), hint: 'PV', change: changeText(trafficKey) },
+    { label: query.scope === 'SITE' ? '首页访客数' : '商品详情访客数', value: integer(query.scope === 'SITE' ? value.homeUv : value.productDetailUv), hint: 'UV', change: '' },
+    ...(query.scope === 'SITE' ? [
+      { label: '商品详情浏览量', value: integer(value.productDetailPv), hint: '全部商品详情 PV', change: changeText('productDetailPv') },
+      { label: '商品详情访客数', value: integer(value.productDetailUv), hint: '全部商品详情 UV', change: '' }
+    ] : []),
+    { label: '加购次数', value: integer(value.addCartCount), hint: '服务端确认成功', change: '' },
+    ...(query.scope === 'SITE' ? [
+      { label: '加购用户', value: integer(value.addCartUserCount), hint: '按访客去重', change: '' },
+      { label: '开始结算', value: integer(value.checkoutStartCount), hint: '结算发起次数', change: '' }
+    ] : []),
     { label: '支付订单', value: integer(value.paidOrderCount), hint: '按支付日归属', change: changeText('paidOrderCount') },
+    ...(query.scope === 'SITE' ? [
+      { label: '支付买家', value: integer(value.paidBuyerCount), hint: '支付买家去重', change: '' }
+    ] : []),
+    { label: '支付件数', value: integer(value.paidItemCount), hint: '支付商品数量', change: '' },
+    { label: '支付金额', value: money(value.paidRevenue), hint: '按支付成功日归属', change: changeText('paidRevenue', 'money') },
+    { label: '退款金额', value: money(value.refundAmount), hint: '按退款成功日归属', change: '' },
     { label: '净销售额', value: money(value.netRevenue), hint: '支付金额 - 退款金额', change: changeText('netRevenue', 'money') },
-    { label: '浏览至订单转化率', value: percent(value.browseOrderConversionPercent), hint: '订单量 / 商品详情 PV', change: changeText('browseOrderConversionPercent', 'rate') }
+    { label: '浏览至订单转化率', value: percent(value.browseOrderConversionPercent), hint: '订单量 / 商品详情 PV；规模比可超过 100%', change: changeText('browseOrderConversionPercent', 'rate') }
   ]
   if (canProfit.value) {
     cards.push(
@@ -384,14 +400,22 @@ onMounted(loadDashboard)
           </el-table-column>
           <el-table-column prop="spuId" label="SPU" min-width="100" sortable="custom" />
           <el-table-column prop="browseCount" label="详情 PV" min-width="100" sortable="custom"><template #default="{ row }">{{ integer(row.browseCount) }}</template></el-table-column>
+          <el-table-column prop="browseUserCount" label="详情 UV" min-width="100"><template #default="{ row }">{{ integer(row.browseUserCount) }}</template></el-table-column>
           <el-table-column prop="cartCount" label="加购" min-width="90"><template #default="{ row }">{{ integer(row.cartCount) }}</template></el-table-column>
           <el-table-column prop="orderCount" label="支付订单" min-width="110" sortable="custom"><template #default="{ row }">{{ integer(row.orderCount) }}</template></el-table-column>
+          <el-table-column prop="orderPayCount" label="支付件数" min-width="100"><template #default="{ row }">{{ integer(row.orderPayCount) }}</template></el-table-column>
           <el-table-column prop="orderPayPrice" label="支付金额" min-width="130" sortable="custom"><template #default="{ row }">{{ money(row.orderPayPrice) }}</template></el-table-column>
+          <el-table-column prop="afterSaleCount" label="退款件数" min-width="100"><template #default="{ row }">{{ integer(row.afterSaleCount) }}</template></el-table-column>
           <el-table-column prop="afterSaleRefundPrice" label="退款金额" min-width="130" sortable="custom"><template #default="{ row }">{{ money(row.afterSaleRefundPrice) }}</template></el-table-column>
+          <el-table-column prop="netRevenue" label="净销售额" min-width="130"><template #default="{ row }">{{ money(row.netRevenue) }}</template></el-table-column>
           <el-table-column prop="browseConvertPercent" label="转化率" min-width="100" sortable="custom"><template #default="{ row }">{{ percent(row.browseConvertPercent) }}</template></el-table-column>
+          <el-table-column prop="trafficDataStatus" label="流量状态" min-width="110" />
           <template v-if="canProfit">
+            <el-table-column prop="knownCostAmount" label="已知成本" min-width="130"><template #default="{ row }">{{ money(row.knownCostAmount) }}</template></el-table-column>
+            <el-table-column prop="costAmount" label="完整成本" min-width="130"><template #default="{ row }">{{ money(row.costAmount) }}</template></el-table-column>
             <el-table-column prop="grossProfit" label="毛利润" min-width="130" sortable="custom"><template #default="{ row }">{{ money(row.grossProfit) }}</template></el-table-column>
             <el-table-column prop="grossMarginPercent" label="毛利率" min-width="100" sortable="custom"><template #default="{ row }">{{ percent(row.grossMarginPercent) }}</template></el-table-column>
+            <el-table-column prop="missingCostItemCount" label="缺失成本明细" min-width="130"><template #default="{ row }">{{ integer(row.missingCostItemCount) }}</template></el-table-column>
             <el-table-column prop="profitDataQuality" label="成本质量" min-width="130" />
           </template>
         </el-table>

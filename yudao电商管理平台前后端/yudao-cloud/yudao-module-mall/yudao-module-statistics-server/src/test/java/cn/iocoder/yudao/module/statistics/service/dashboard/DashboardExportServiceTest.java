@@ -9,6 +9,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.math.BigDecimal;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -19,9 +20,15 @@ class DashboardExportServiceTest {
     void normalExportNeverContainsProfitFields() {
         DashboardQueryService query = mock(DashboardQueryService.class);
         when(query.products(any(), eq(false))).thenReturn(Collections.singletonList(new DashboardProductRespVO()
-                .setSpuId(1L).setKnownCostAmount(99L).setGrossProfit(20L)));
+                .setSpuId(1L).setAfterSaleCount(2L).setNetRevenue(800L)
+                .setBrowseConvertPercent(new BigDecimal("3.25")).setTrafficDataStatus("COMPLETE")
+                .setKnownCostAmount(99L).setGrossProfit(20L)));
         List<DashboardProductExcelVO> rows = service(query).build(new DashboardQueryReqVO().setScope("PRODUCT"), false);
         assertEquals(1, rows.size());
+        assertEquals(Long.valueOf(2L), rows.get(0).getAfterSaleCount());
+        assertEquals(Long.valueOf(800L), rows.get(0).getNetRevenue());
+        assertEquals(new BigDecimal("3.25"), rows.get(0).getBrowseConvertPercent());
+        assertEquals("COMPLETE", rows.get(0).getTrafficDataStatus());
         assertNull(rows.get(0).getKnownCostAmount());
         assertNull(rows.get(0).getGrossProfit());
         verify(query).products(any(), eq(false));

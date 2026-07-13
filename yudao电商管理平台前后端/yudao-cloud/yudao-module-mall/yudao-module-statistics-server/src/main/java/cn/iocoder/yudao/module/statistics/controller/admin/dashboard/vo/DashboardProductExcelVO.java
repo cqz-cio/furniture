@@ -18,9 +18,15 @@ public class DashboardProductExcelVO {
     @ExcelProperty("支付订单量") private Long orderCount;
     @ExcelProperty("支付件数") private Long orderPayCount;
     @ExcelProperty("支付金额（分）") private Long orderPayPrice;
+    @ExcelProperty("退款件数") private Long afterSaleCount;
     @ExcelProperty("退款金额（分）") private Long afterSaleRefundPrice;
+    @ExcelProperty("净销售额（分）") private Long netRevenue;
+    @ExcelProperty("浏览至支付转化率（%）") private BigDecimal browseConvertPercent;
+    @ExcelProperty("流量数据状态") private String trafficDataStatus;
     @ExcelProperty("已知成本（分）") private Long knownCostAmount;
     @ExcelProperty("完整成本（分）") private Long costAmount;
     @ExcelProperty("毛利润（分）") private Long grossProfit;
     @ExcelProperty("毛利率") private BigDecimal grossMarginPercent;
+    @ExcelProperty("缺失成本明细数") private Long missingCostItemCount;
+    @ExcelProperty("成本数据质量") private String profitDataQuality;
 }
