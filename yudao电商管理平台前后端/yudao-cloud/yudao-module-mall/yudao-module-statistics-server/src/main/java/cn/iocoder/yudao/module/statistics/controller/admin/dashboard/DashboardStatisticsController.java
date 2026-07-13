@@ -6,5 +6,7 @@ public class DashboardStatisticsController {
  @GetMapping("/summary") @PreAuthorize("@ss.hasPermission('statistics:dashboard:query')") public CommonResult<DashboardSummaryRespVO> summary(@Valid DashboardQueryReqVO request){return success(service.summary(request,profit()));}
  @GetMapping("/trend") @PreAuthorize("@ss.hasPermission('statistics:dashboard:query')") public CommonResult<List<DashboardTrendItemRespVO>> trend(@Valid DashboardQueryReqVO request){return success(service.trend(request,profit()));}
  @GetMapping("/product-page") @PreAuthorize("@ss.hasPermission('statistics:dashboard:query')") public CommonResult<List<DashboardProductRespVO>> products(@Valid DashboardQueryReqVO request){return success(service.products(request,profit()));}
+ @GetMapping("/stage-overview") @PreAuthorize("@ss.hasPermission('statistics:dashboard:query')") public CommonResult<DashboardStageOverviewRespVO> stage(@Valid DashboardQueryReqVO request){return success(service.stageOverview(request));}
+ @GetMapping("/attention") @PreAuthorize("@ss.hasPermission('statistics:dashboard:query')") public CommonResult<DashboardAttentionRespVO> attention(@Valid DashboardQueryReqVO request){return success(service.attention(request,profit()));}
  private boolean profit(){return security.hasPermission("statistics:dashboard:profit-query");}
 }
