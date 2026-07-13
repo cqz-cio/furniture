@@ -124,6 +124,9 @@ yudao:
     ignore-urls:
     ignore-tables:
   statistics:
+    dashboard:
+      enabled-tenant-ids: [121]
+      event-retention-days: ${DASHBOARD_EVENT_RETENTION_DAYS:180}
     behavior:
       enabled: ${STATISTICS_BEHAVIOR_ENABLED:false}
       consent-required: ${STATISTICS_BEHAVIOR_CONSENT_REQUIRED:true}

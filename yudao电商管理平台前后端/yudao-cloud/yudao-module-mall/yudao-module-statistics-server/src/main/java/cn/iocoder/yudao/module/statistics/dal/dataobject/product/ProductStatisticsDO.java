@@ -7,6 +7,8 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.*;
 
 import java.time.LocalDate;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 /**
  * 商品统计 DO
@@ -76,5 +78,15 @@ public class ProductStatisticsDO extends BaseDO {
      * 访客支付转化率（百分比）
      */
     private Integer browseConvertPercent;
+    private Long knownCostAmount;
+    private Long costAmount;
+    private Long grossProfit;
+    private BigDecimal grossMarginPercent;
+    private Long exactCostItemCount;
+    private Long estimatedCostItemCount;
+    private Long missingCostItemCount;
+    private Integer profitDataQuality;
+    private Integer trafficDataStatus;
+    private LocalDateTime trafficWatermark;
 
 }

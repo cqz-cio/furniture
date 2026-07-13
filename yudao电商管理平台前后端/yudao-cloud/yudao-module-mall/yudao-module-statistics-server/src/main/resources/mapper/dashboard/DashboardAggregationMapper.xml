@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.iocoder.yudao.module.statistics.dal.mysql.dashboard.DashboardAggregationMapper">
+  <select id="countHashVersions" resultType="java.lang.Integer">
+    SELECT COUNT(DISTINCT hash_key_version) FROM statistics_behavior_event
+    WHERE tenant_id=#{tenantId} AND event_day=#{day} AND deleted=FALSE
+  </select>
+
+  <select id="selectTrafficDaily" resultType="cn.iocoder.yudao.module.statistics.dal.dataobject.dashboard.TrafficDailyDO">
+    WITH accepted AS (
+      SELECT event_type, visitor_hash, user_id FROM statistics_behavior_event
+      WHERE tenant_id=#{tenantId} AND occurred_at &gt;= #{begin} AND occurred_at &lt; #{end}
+        AND traffic_quality=1 AND deleted=FALSE
+    ), paid AS (
+      SELECT COUNT(DISTINCT o.id) paid_order_count, COUNT(DISTINCT o.user_id) paid_buyer_count,
+             COALESCE(SUM(i.count),0) paid_item_count, COALESCE(SUM(i.pay_price),0) paid_revenue,
+             COALESCE(SUM(CASE WHEN i.cost_price IS NOT NULL THEN i.cost_price*i.count ELSE 0 END),0) paid_known_cost,
+             SUM(CASE WHEN i.cost_price IS NOT NULL AND i.cost_estimated=FALSE THEN 1 ELSE 0 END) exact_rows,
+             SUM(CASE WHEN i.cost_price IS NOT NULL AND i.cost_estimated=TRUE THEN 1 ELSE 0 END) estimated_rows,
+             SUM(CASE WHEN i.cost_price IS NULL THEN 1 ELSE 0 END) missing_rows
+      FROM trade_order o JOIN trade_order_item i ON i.order_id=o.id AND i.tenant_id=o.tenant_id AND i.deleted=FALSE
+      WHERE o.tenant_id=#{tenantId} AND o.deleted=FALSE AND o.pay_status=TRUE AND o.pay_time &gt;=#{begin} AND o.pay_time &lt;#{end}
+    ), refunded AS (
+      SELECT COALESCE(SUM(a.refund_price),0) refund_amount,
+             COALESCE(SUM(CASE WHEN a.way=20 AND i.cost_price IS NOT NULL THEN i.cost_price*a.count ELSE 0 END),0) returned_cost,
+             SUM(CASE WHEN a.way=20 AND i.cost_price IS NOT NULL AND i.cost_estimated=FALSE THEN 1 ELSE 0 END) exact_rows,
+             SUM(CASE WHEN a.way=20 AND i.cost_price IS NOT NULL AND i.cost_estimated=TRUE THEN 1 ELSE 0 END) estimated_rows,
+             SUM(CASE WHEN a.way=20 AND i.cost_price IS NULL THEN 1 ELSE 0 END) missing_rows
+      FROM trade_after_sale a JOIN trade_order_item i ON i.id=a.order_item_id AND i.tenant_id=a.tenant_id AND i.deleted=FALSE
+      WHERE a.tenant_id=#{tenantId} AND a.deleted=FALSE AND a.refund_time &gt;=#{begin} AND a.refund_time &lt;#{end}
+    ), coverage AS (
+      SELECT COUNT(*) gap_count FROM statistics_behavior_ingestion_gap
+      WHERE tenant_id=#{tenantId} AND day=#{day} AND deleted=FALSE
+    )
+    SELECT #{day} day, 'USD' currency_code,
+      CASE WHEN coverage.gap_count&gt;0 THEN NULL ELSE SUM(CASE WHEN event_type=1 THEN 1 ELSE 0 END) END home_pv,
+      CASE WHEN coverage.gap_count&gt;0 THEN NULL ELSE COUNT(DISTINCT CASE WHEN event_type=1 THEN visitor_hash END) END home_uv,
+      CASE WHEN coverage.gap_count&gt;0 THEN NULL ELSE SUM(CASE WHEN event_type=2 THEN 1 ELSE 0 END) END product_detail_pv,
+      CASE WHEN coverage.gap_count&gt;0 THEN NULL ELSE COUNT(DISTINCT CASE WHEN event_type=2 THEN visitor_hash END) END product_detail_uv,
+      CASE WHEN coverage.gap_count&gt;0 THEN NULL ELSE SUM(CASE WHEN event_type=3 THEN 1 ELSE 0 END) END add_cart_count,
+      CASE WHEN coverage.gap_count&gt;0 THEN NULL ELSE COUNT(DISTINCT CASE WHEN event_type=3 THEN visitor_hash END) END add_cart_user_count,
+      CASE WHEN coverage.gap_count&gt;0 THEN NULL ELSE SUM(CASE WHEN event_type=4 THEN 1 ELSE 0 END) END checkout_start_count,
+      paid.paid_order_count,paid.paid_buyer_count,paid.paid_item_count,paid.paid_revenue,refunded.refund_amount,
+      paid.paid_revenue-refunded.refund_amount net_revenue,
+      paid.paid_known_cost-refunded.returned_cost known_cost_amount,
+      CASE WHEN paid.missing_rows+refunded.missing_rows&gt;0 THEN NULL ELSE paid.paid_known_cost-refunded.returned_cost END cost_amount,
+      CASE WHEN paid.missing_rows+refunded.missing_rows&gt;0 THEN NULL ELSE paid.paid_revenue-refunded.refund_amount-(paid.paid_known_cost-refunded.returned_cost) END gross_profit,
+      paid.exact_rows+refunded.exact_rows exact_cost_item_count,paid.estimated_rows+refunded.estimated_rows estimated_cost_item_count,
+      paid.missing_rows+refunded.missing_rows missing_cost_item_count,
+      CASE WHEN paid.missing_rows+refunded.missing_rows&gt;0 THEN 4 WHEN paid.exact_rows+paid.estimated_rows+refunded.exact_rows+refunded.estimated_rows=0 THEN 5 WHEN paid.exact_rows+refunded.exact_rows&gt;0 AND paid.estimated_rows+refunded.estimated_rows&gt;0 THEN 2 WHEN paid.estimated_rows+refunded.estimated_rows&gt;0 THEN 3 ELSE 1 END profit_data_quality,
+      COUNT(accepted.event_type) accepted_event_count,0 excluded_event_count,
+      CASE WHEN coverage.gap_count&gt;0 OR #{day}=CURRENT_DATE THEN 2 ELSE 1 END traffic_data_status
+    FROM accepted CROSS JOIN paid CROSS JOIN refunded CROSS JOIN coverage
+    GROUP BY coverage.gap_count,paid.paid_order_count,paid.paid_buyer_count,paid.paid_item_count,paid.paid_revenue,
+      paid.paid_known_cost,paid.exact_rows,paid.estimated_rows,paid.missing_rows,refunded.refund_amount,
+      refunded.returned_cost,refunded.exact_rows,refunded.estimated_rows,refunded.missing_rows
+  </select>
+
+  <select id="selectProductDaily" resultType="cn.iocoder.yudao.module.statistics.dal.dataobject.product.ProductStatisticsDO">
+    WITH e AS (
+      SELECT spu_id,
+       SUM(CASE WHEN event_type=2 THEN 1 ELSE 0 END) browse_count,
+       COUNT(DISTINCT CASE WHEN event_type=2 THEN visitor_hash END) browse_user_count,
+       SUM(CASE WHEN event_type=3 THEN 1 ELSE 0 END) cart_count
+      FROM statistics_behavior_event WHERE tenant_id=#{tenantId} AND occurred_at&gt;=#{begin} AND occurred_at&lt;#{end} AND traffic_quality=1 AND deleted=FALSE AND spu_id IS NOT NULL GROUP BY spu_id
+    ), p AS (
+      SELECT i.spu_id,SUM(i.count) order_pay_count,SUM(i.pay_price) order_pay_price,COUNT(DISTINCT o.id) order_count,
+       SUM(CASE WHEN i.cost_price IS NOT NULL THEN i.cost_price*i.count ELSE 0 END) known_cost_amount,
+       SUM(CASE WHEN i.cost_price IS NULL THEN 1 ELSE 0 END) missing_cost_item_count,
+       SUM(CASE WHEN i.cost_price IS NOT NULL AND i.cost_estimated=FALSE THEN 1 ELSE 0 END) exact_cost_item_count,
+       SUM(CASE WHEN i.cost_price IS NOT NULL AND i.cost_estimated=TRUE THEN 1 ELSE 0 END) estimated_cost_item_count
+      FROM trade_order o JOIN trade_order_item i ON i.order_id=o.id AND i.tenant_id=o.tenant_id AND i.deleted=FALSE
+      WHERE o.tenant_id=#{tenantId} AND o.deleted=FALSE AND o.pay_status=TRUE AND o.pay_time&gt;=#{begin} AND o.pay_time&lt;#{end} GROUP BY i.spu_id
+    ), r AS (
+      SELECT a.spu_id,SUM(a.refund_price) after_sale_refund_price,SUM(a.count) after_sale_count,
+       SUM(CASE WHEN a.way=20 AND i.cost_price IS NOT NULL THEN i.cost_price*a.count ELSE 0 END) returned_cost
+      FROM trade_after_sale a JOIN trade_order_item i ON i.id=a.order_item_id AND i.tenant_id=a.tenant_id AND i.deleted=FALSE
+      WHERE a.tenant_id=#{tenantId} AND a.deleted=FALSE AND a.refund_time&gt;=#{begin} AND a.refund_time&lt;#{end} GROUP BY a.spu_id
+    ), ids AS (SELECT spu_id FROM e UNION SELECT spu_id FROM p UNION SELECT spu_id FROM r)
+    SELECT #{day} time,ids.spu_id,COALESCE(e.browse_count,0) browse_count,COALESCE(e.browse_user_count,0) browse_user_count,
+      COALESCE(e.cart_count,0) cart_count,COALESCE(p.order_count,0) order_count,COALESCE(p.order_pay_count,0) order_pay_count,
+      COALESCE(p.order_pay_price,0) order_pay_price,COALESCE(r.after_sale_count,0) after_sale_count,COALESCE(r.after_sale_refund_price,0) after_sale_refund_price,
+      COALESCE(p.known_cost_amount,0)-COALESCE(r.returned_cost,0) known_cost_amount,
+      CASE WHEN COALESCE(p.missing_cost_item_count,0)&gt;0 THEN NULL ELSE COALESCE(p.known_cost_amount,0)-COALESCE(r.returned_cost,0) END cost_amount,
+      COALESCE(p.exact_cost_item_count,0) exact_cost_item_count,COALESCE(p.estimated_cost_item_count,0) estimated_cost_item_count,COALESCE(p.missing_cost_item_count,0) missing_cost_item_count,
+      CASE WHEN COALESCE(p.missing_cost_item_count,0)&gt;0 THEN 4 WHEN COALESCE(p.exact_cost_item_count,0)+COALESCE(p.estimated_cost_item_count,0)=0 THEN 5 WHEN COALESCE(p.exact_cost_item_count,0)&gt;0 AND COALESCE(p.estimated_cost_item_count,0)&gt;0 THEN 2 WHEN COALESCE(p.estimated_cost_item_count,0)&gt;0 THEN 3 ELSE 1 END profit_data_quality,
+      CASE WHEN EXISTS(SELECT 1 FROM statistics_behavior_ingestion_gap g WHERE g.tenant_id=#{tenantId} AND g.day=#{day} AND g.deleted=FALSE) OR #{day}=CURRENT_DATE THEN 2 ELSE 1 END traffic_data_status
+    FROM ids LEFT JOIN e ON e.spu_id=ids.spu_id LEFT JOIN p ON p.spu_id=ids.spu_id LEFT JOIN r ON r.spu_id=ids.spu_id
+  </select>
+</mapper>
