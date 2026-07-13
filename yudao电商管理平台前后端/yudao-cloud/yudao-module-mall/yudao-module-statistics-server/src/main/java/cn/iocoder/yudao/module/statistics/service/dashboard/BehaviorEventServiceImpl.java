@@ -25,7 +25,7 @@ public class BehaviorEventServiceImpl implements BehaviorEventService {
     @Resource private BehaviorHmacDayVersionService versionService;
     @Resource private BehaviorEventMapper eventMapper;
     @Resource private BehaviorIngestionGapService gapService;
-    @Resource private StringRedisTemplate redisTemplate;
+    @Resource(name = "stringRedisTemplate") private StringRedisTemplate redisTemplate;
 
     @Override @Transactional(rollbackFor=Exception.class)
     public void trackPublic(AppBehaviorEventTrackReqVO request, String rawVisitorId, String rawSessionId, String clientIp, Long userId) {

@@ -15,12 +15,18 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Collections;
 import java.util.concurrent.TimeUnit;
+import javax.annotation.Resource;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 class BehaviorEventServiceImplTest {
+    @Test void stringRedisTemplateUsesExplicitBeanName() throws Exception {
+        Resource resource = BehaviorEventServiceImpl.class.getDeclaredField("redisTemplate").getAnnotation(Resource.class);
+        assertNotNull(resource);
+        assertEquals("stringRedisTemplate", resource.name());
+    }
     private BehaviorEventMapper eventMapper;
     private BehaviorIngestionGapService gapService;
     private ValueOperations<String,String> values;
