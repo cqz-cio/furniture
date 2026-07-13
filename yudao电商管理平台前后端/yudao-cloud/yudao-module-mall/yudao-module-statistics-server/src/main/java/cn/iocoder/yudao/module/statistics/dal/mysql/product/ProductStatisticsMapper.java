@@ -29,6 +29,8 @@ public interface ProductStatisticsMapper extends BaseMapperX<ProductStatisticsDO
     int physicalDeleteByTenantAndDay(@org.apache.ibatis.annotations.Param("tenantId") long tenantId,
                                      @org.apache.ibatis.annotations.Param("day") java.time.LocalDate day);
 
+    default java.util.List<ProductStatisticsDO> selectBetween(java.time.LocalDate start,java.time.LocalDate end){return selectList(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<ProductStatisticsDO>().between(ProductStatisticsDO::getTime,start,end).orderByDesc(ProductStatisticsDO::getOrderPayPrice));}
+
     default PageResult<ProductStatisticsDO> selectPageGroupBySpuId(ProductStatisticsReqVO reqVO, SortablePageParam pageParam) {
         return selectPage(pageParam, buildWrapper(reqVO)
                 .groupBy(ProductStatisticsDO::getSpuId)

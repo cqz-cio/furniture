@@ -1,0 +1,3 @@
+package cn.iocoder.yudao.module.statistics.controller.admin.dashboard.vo;
+import lombok.Data;import java.math.BigDecimal;import java.time.LocalDateTime;
+@Data public class DashboardSummaryRespVO { private Long homePv,homeUv,productDetailPv,productDetailUv,addCartCount,addCartUserCount,checkoutStartCount,paidOrderCount,paidBuyerCount,paidItemCount,paidRevenue,refundAmount,netRevenue;private Long knownCostAmount,costAmount,grossProfit,exactCostItemCount,estimatedCostItemCount,missingCostItemCount;private BigDecimal grossMarginPercent,browseOrderConversionPercent;private String trafficDataStatus,freshnessStatus,snapshotId;private LocalDateTime asOf,trafficWatermark,tradeWatermark,refundWatermark;private Boolean profitVisible; }
