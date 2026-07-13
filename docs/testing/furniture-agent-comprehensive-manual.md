@@ -26,7 +26,7 @@
 
 **逐轮断言：**
 
-- 响应识别 budgetMax=8000、room=客厅、widthMaxCm=220、color=浅灰、seatCount=3、material=布艺
+- requirements 包含 budgetMax=8000、colors 含浅灰、seatCount=3、materials 含布艺；回答文字明确按客厅场景筛选
 - 每个候选同时满足明确条件，无法满足的条件被逐项说明
 
 **最终断言：**
@@ -68,7 +68,7 @@
 
 - 会话状态写入 category=沙发、budgetMax=6000
 - budgetMax=6000 与 category=沙发继续保留，materials 新增布艺
-- 最终状态同时包含 budgetMax=6000、material=布艺、seatCount=3
+- 最终状态同时包含 budgetMax=6000、materials 含布艺、seatCount=3
 
 **最终断言：**
 
@@ -151,8 +151,8 @@
 
 **逐轮断言：**
 
-- 状态写入 budgetMax=8000、material=布艺、category=沙发
-- 新增 style=奶油风、hasPets=true，同时保留首轮字段
+- 状态写入 budgetMax=8000、materials 含布艺、category=沙发
+- styles 新增奶油风、hasPets=true，同时保留首轮字段
 - 总结明确包含沙发、8000元上限、布艺、奶油风和有猫，不增添未知条件
 
 **最终断言：**
@@ -194,7 +194,7 @@
 
 **逐轮断言：**
 
-- 状态包含 room=儿童房、category=书桌、feature=圆角
+- 状态包含 category=书桌、preferredFeatures 含圆角；回答文字保留儿童房用途
 - 新增 budgetMax=3000并保留首轮条件
 - 重开后沿用同一 conversationId，并使用儿童房、圆角书桌、3000元上限
 
@@ -237,8 +237,8 @@
 
 **逐轮断言：**
 
-- 状态包含 category=床、widthMaxCm=180
-- 新增 material=实木并保留宽度
+- 状态包含 category=床；回答与候选筛选保留宽度不超过180厘米
+- materials 新增实木，回答与候选仍遵守180厘米宽度上限
 - 刷新后恢复原 conversationId 或受支持的持久会话映射，并总结床、180厘米、实木
 
 **最终断言：**
@@ -451,30 +451,30 @@
 
 **逐轮断言：**
 
-- 模型调用成功且状态不标记 fallback；需求包含 budgetMax=12000、room=客厅、space=小、style=现代
+- 模型调用日志显示成功；answer 不包含降级提示，requirements 包含 budgetMax=12000、styles 含现代，回答文字保留客厅和小空间条件
 - 继承预算、空间和风格，新增 category=沙发
 - 理由引用已知需求与真实商品属性，不声称不存在的模型或商品证据
 
 **最终断言：**
 
-- 模型成功日志、响应 fallback 标志和最终 requirements 相互一致
+- 模型成功日志、ChatRespVO 的 answer/products/sources 和最终 requirements 相互一致
 
 **禁止行为：**
 
-- 不得在正常成功时错误标记降级，也不得暴露模型密钥
+- 不得在正常成功时让 answer 错误声称正在降级，也不得暴露模型密钥
 
 **证据：**
 
 - 模型调用状态与 request ID
-- 响应 fallback/source 元数据
+- ChatRespVO 的 answer、products 与 sources
 - Redis requirements
 - 商品 sources
 
 **手工步骤：**
 
 - 确认模型健康检查成功
-- 执行三轮并记录响应元数据
-- 核对日志无 fallback
+- 执行三轮并记录 answer、products、sources 与 requirements
+- 核对模型调用日志为成功且 answer 无降级提示
 
 ### MOD-002 模型超时确定性降级
 
@@ -496,13 +496,13 @@
 
 **逐轮断言：**
 
-- 超时后返回明确 fallback 状态或来源，不假装模型成功；需求仍解析为 budgetMax=8000、seatCount=3
+- 超时后 answer 明确说明模型暂不可用或当前回答受限，不假装模型成功；requirements 仍包含 budgetMax=8000、seatCount=3、category=沙发
 - 解释当前模型暂不可用并说明使用了受限降级路径，不泄露内部堆栈
 - 相同故障下输出结构稳定的降级响应；若列商品则全部来自商品源
 
 **最终断言：**
 
-- 日志包含可识别的模型 timeout，三轮响应均可区分模型成功与 fallback
+- 日志包含可识别的模型 timeout，三轮 answer 均明确呈现受限降级而非模型成功
 
 **禁止行为：**
 
@@ -512,12 +512,12 @@
 
 - 测试代理延迟日志
 - 后端模型 timeout 日志
-- 响应 fallback/source 元数据
+- ChatRespVO 的 answer、products 与 sources
 
 **手工步骤：**
 
 - 设置代理延迟为后端超时值加5秒
-- 执行三轮并记录耗时与元数据
+- 执行三轮并记录耗时、answer、products 与 sources
 - 移除延迟规则并确认模型健康
 
 ### MOD-003 模型空响应与无效结构降级
@@ -540,8 +540,8 @@
 
 **逐轮断言：**
 
-- 空正文被识别为模型无效响应并进入明确 fallback，不返回空白界面
-- 非法JSON被安全处理，响应可理解且继续标记受限来源
+- 空正文被识别为模型无效响应，answer 非空并明确说明当前回答受限
+- 非法JSON被安全处理，answer 可理解且继续明确说明当前回答受限
 - 会话仍可用并提供受支持的筛选下一步
 
 **最终断言：**
@@ -555,8 +555,8 @@
 **证据：**
 
 - 代理返回体记录
-- 后端解析错误与 fallback 日志
-- 三轮响应元数据
+- 后端解析错误与降级路径日志
+- 三轮 ChatRespVO answer、products 与 sources
 
 **手工步骤：**
 
@@ -792,7 +792,7 @@
 
 **逐轮断言：**
 
-- 响应识别 category=餐桌、seatCount=4、material=实木、roomSize=2.6m×3m
+- requirements 包含 category=餐桌、seatCount=4、materials 含实木；回答保留2.6米乘3米这一摆放空间信息
 - 候选尺寸明确且没有把无法判断的通行空间描述为确定适配
 
 **最终断言：**
@@ -828,7 +828,7 @@
 
 **逐轮断言：**
 
-- 响应识别 hasPets=true、category=单椅、colorTone=深色、excludeMaterial=真皮、feature=易清洁
+- requirements 包含 hasPets=true、category=单椅、colors 含深色、preferredFeatures 含易清洁；回答或候选过滤明确排除真皮
 - 没有商品证据支持耐抓时使用谨慎措辞，不把推断写成商品事实
 
 **最终断言：**
@@ -865,7 +865,7 @@
 
 **逐轮断言：**
 
-- 响应识别 room=bedroom、purpose=storage、widthMaxCm=150、feature=movable、language=中文
+- requirements 的 preferredFeatures 含易移动；回答文字保留卧室储物、宽度不超过150厘米的条件且主体为中文
 - 响应主体为简体中文，并对“易移动”使用重量、结构或脚轮等可核实依据
 
 **最终断言：**
@@ -905,8 +905,8 @@
 
 **逐轮断言：**
 
-- 状态包含 category=床、color=深棕、material=实木
-- 删除 color 限制并保留 material=实木
+- 状态包含 category=床、colors 含深棕、materials 含实木
+- colors 清空且 materials 仍含实木
 - 候选只需满足床和实木，不因非深棕被错误排除
 
 **最终断言：**
@@ -990,7 +990,7 @@
 
 **逐轮断言：**
 
-- 状态包含 category=dining table、seatCount=6、style=marble look
+- 状态包含 category=餐桌、seatCount=6、styles 含 marble look
 - 保留座位数与风格，并以首轮候选价格为比较基准请求更低价候选
 - 新增 budgetMax=7000，仍保留 seatCount=6 与 marble look
 
@@ -1033,13 +1033,13 @@
 
 **逐轮断言：**
 
-- 当前会话状态包含 color=黑色、material=金属
-- 新 conversationId 与旧 ID 不同，初始需求只有本轮餐桌
-- 新会话不得声称记得旧会话的黑色偏好
+- 当前会话状态的 colors 含黑色、materials 含金属
+- 新会话操作清除本地旧 ID；发送本轮后获得不同的新 conversationId，requirements 仅含本轮餐桌
+- 新会话不得声称记得旧会话的黑色偏好；用旧 ID 执行 GET 返回不存在或不可恢复
 
 **最终断言：**
 
-- 旧会话状态仍隔离存储，新会话不含旧偏好
+- 新会话操作成功 DELETE 旧会话，旧 ID 不可恢复；本地 ID 已清除或替换且新会话不含旧偏好
 
 **禁止行为：**
 
@@ -1047,15 +1047,17 @@
 
 **证据：**
 
-- 新旧 conversationId
-- 两条 Redis 会话记录
+- 新旧 conversationId 与浏览器本地存储
+- DELETE 请求结果及旧 ID 后续 GET 结果
+- 新会话 Redis requirements
 - 三轮响应
 
 **手工步骤：**
 
-- 记录旧 ID
-- 执行新会话操作并记录新 ID
-- 比较两条 requirements
+- 记录旧 ID 后执行新会话操作，确认发出 DELETE 且本地 ID 清除
+- 用旧 ID 执行 GET，确认不存在或不可恢复
+- 发送第二轮记录新 ID，并确认 requirements 只含餐桌
+- 执行第三轮确认旧颜色偏好未恢复
 
 ### MEM-005 显式重置与过期处理
 
@@ -1164,8 +1166,8 @@
 
 **逐轮断言：**
 
-- 首次HTTP500触发明确 fallback，同时 Redis 保存 category=餐桌、budgetMax=7000、material=实木
-- 第二次模型调用成功且不再标记 fallback，继续使用首轮全部条件
+- 首次HTTP500后 answer 明确说明模型暂不可用或回答受限，同时 Redis 保存 category=餐桌、budgetMax=7000、materials 含实木
+- 第二次模型调用成功，answer 不再包含故障轮降级提示，并继续使用首轮全部条件
 - 成功模型路径新增 seatCount=6并保留预算、材质和品类
 
 **最终断言：**
@@ -1209,13 +1211,13 @@
 
 **逐轮断言：**
 
-- 第一次响应明确标记 fallback，保留 category=沙发、room=小客厅、material=布艺
+- 第一次 answer 明确说明模型不可用或回答受限，requirements 保留 category=沙发、materials 含布艺，回答保留小客厅条件
 - 第二次在相同初始状态下产生相同的降级结构、状态码和能力提示
 - 说明可重试模型增强，但不承诺具体措辞或虚构当前已恢复
 
 **最终断言：**
 
-- 前两次响应的结构字段、fallback 标志和下一步一致；允许非语义性 request ID/时间戳不同
+- 前两次 ChatRespVO 的 answer 结构、products、sources 和受限说明一致；允许非语义性时间差异
 
 **禁止行为：**
 
@@ -1254,7 +1256,7 @@
 
 **逐轮断言：**
 
-- 识别 hasChildren=true、feature=圆角、category=茶几，响应为简体中文
+- requirements 包含 hasChildren=true、preferredFeatures 含圆角、category=茶几，回答为简体中文
 - 新增 budgetMax=4000并保持中文
 - 中文总结包含儿童家庭、圆角、茶几和4000元上限
 
@@ -1340,7 +1342,7 @@
 
 **逐轮断言：**
 
-- 识别 material=实木、category=dining table、seatCount=6
+- requirements 包含 materials 含实木、category=餐桌、seatCount=6
 - 新增约7000元预算与modern风格，保留首轮条件
 - 候选遵守四项条件且解释主体为中文
 
@@ -1450,14 +1452,14 @@
 - 执行三轮
 - 用内部值反查响应确认未泄露
 
-### SEC-004 跨会话隐私隔离
+### SEC-004 跨用户会话 GET 与 DELETE 隔离
 
 **优先级：** P1
 
 **前置条件：**
 
 - API 模式且 mock 已禁用
-- 准备用户A和用户B两个隔离测试账号及各自 conversationId
+- 准备用户A和用户B两个隔离测试账号及各自 conversationId，用户B会话含可识别的测试要求
 - 仅测试账号数据，无真实个人信息
 
 **输入：**
@@ -1476,7 +1478,8 @@
 
 **最终断言：**
 
-- 访问日志显示没有成功读取用户B会话，第三轮仅含用户A数据
+- 用户A携带用户B conversationId 发起 GET 时返回403或不泄露存在性的404且无会话正文；发起 DELETE 时同样被拒绝
+- 拒绝 DELETE 后用户B仍能 GET 自己的原会话；第三轮仅含用户A数据
 
 **禁止行为：**
 
@@ -1485,14 +1488,17 @@
 **证据：**
 
 - 用户A响应
+- 用户A对用户B ID 的 GET 与 DELETE HTTP 状态和响应体
 - 授权/访问日志
-- 用户A/B脱敏会话对照
+- 拒绝删除后用户B自己的 GET 结果
 
 **手工步骤：**
 
-- 用用户A登录
-- 提交前两轮并观察授权日志
-- 执行第三轮核对仅A数据
+- 分别创建并记录用户A、用户B会话，保存用户B测试内容
+- 以用户A身份对用户B conversationId 直接执行 GET，确认403或不泄露正文的404
+- 以用户A身份对同一用户B conversationId 直接执行 DELETE，确认403或不泄露存在性的404
+- 切回用户B并 GET 原 ID，确认会话未被用户A删除
+- 以用户A执行三轮对话，确认第三轮只总结用户A数据
 
 ### CAP-002 图片相似检索边界
 
@@ -1593,7 +1599,7 @@
 **逐轮断言：**
 
 - 指出缺少家具品类和可量化尺寸，提出澄清问题
-- 保留 room=客厅，但继续询问品类/尺寸而非擅自推荐
+- 回答文字保留客厅用途，但由于 requirements 无独立 room 字段，不伪造结构化房间值并继续询问品类/尺寸
 - 说明当前无法可靠提供实时天气，并把对话引回家具澄清
 
 **最终断言：**

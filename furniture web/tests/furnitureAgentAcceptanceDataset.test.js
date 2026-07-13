@@ -33,8 +33,8 @@ function manualSections(guide) {
   }));
 }
 
-describe("furniture Agent acceptance dataset", () => {
-  it("has comprehensive, uniquely identified and executable scenarios", () => {
+describe("furniture Agent acceptance dataset structural contract", () => {
+  it("has complete, uniquely identified and structurally distinct scenario definitions", () => {
     const dataset = JSON.parse(readFileSync(fixtureUrl, "utf8"));
     const ids = dataset.scenarios.map((scenario) => scenario.id);
     const turnCount = dataset.scenarios.reduce((sum, scenario) => sum + scenario.turns.length, 0);
