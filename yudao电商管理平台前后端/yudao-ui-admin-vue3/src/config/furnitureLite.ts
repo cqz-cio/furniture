@@ -6,6 +6,7 @@ export type FurnitureLiteRoute = {
 
 const allowedMenuPaths = new Set([
   '/index',
+  '/dashboard',
   '/mall/home',
   '/mall/product',
   '/mall/product/spu',
