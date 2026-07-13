@@ -123,5 +123,15 @@ yudao:
     enable: true
     ignore-urls:
     ignore-tables:
+  statistics:
+    behavior:
+      enabled: ${STATISTICS_BEHAVIOR_ENABLED:false}
+      consent-required: ${STATISTICS_BEHAVIOR_CONSENT_REQUIRED:true}
+      enabled-tenant-ids: [121]
+      hmac-tenants:
+        "121":
+          active-version: ${STATISTICS_BEHAVIOR_HMAC_TENANT_121_ACTIVE_VERSION:1}
+          active-key-ref: ${STATISTICS_BEHAVIOR_HMAC_TENANT_121_ACTIVE_KEY_REF:}
+          activates-at: ${STATISTICS_BEHAVIOR_HMAC_TENANT_121_ACTIVATES_AT:2026-07-11T00:00:00+08:00}
 
 debug: false
