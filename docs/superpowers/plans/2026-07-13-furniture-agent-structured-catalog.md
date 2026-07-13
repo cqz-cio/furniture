@@ -82,7 +82,7 @@ void upsert_shouldRejectMismatchedSpu() {
 Run from `yudao电商管理平台前后端/yudao-cloud`:
 
 ```powershell
-mvn -pl yudao-module-mall/yudao-module-product-server -am "-Dtest=FurnitureSkuSearchServiceImplTest" -Dsurefire.failIfNoSpecifiedTests=false test
+mvn.cmd -pl yudao-module-mall/yudao-module-product-server -am "-Dtest=FurnitureSkuSearchServiceImplTest" "-Dsurefire.failIfNoSpecifiedTests=false" test
 ```
 
 Expected: FAIL because `FurnitureSkuSearchDO` and `FurnitureSkuSearchServiceImpl` do not exist.
@@ -262,7 +262,7 @@ void normalize_shouldExtractEnglishRentalStorageConstraints() {
 - [ ] **Step 2: Run tests and verify the normalizer is missing**
 
 ```powershell
-mvn -pl yudao-module-mall/yudao-module-product-server -am "-Dtest=FurnitureRequirementNormalizerTest,FurnitureAssistantRequirementMergerTest" -Dsurefire.failIfNoSpecifiedTests=false test
+mvn.cmd -pl yudao-module-mall/yudao-module-product-server -am "-Dtest=FurnitureRequirementNormalizerTest,FurnitureAssistantRequirementMergerTest" "-Dsurefire.failIfNoSpecifiedTests=false" test
 ```
 
 Expected: FAIL because `FurnitureRequirementPatch` and `FurnitureRequirementNormalizer` do not exist.
@@ -403,7 +403,7 @@ Also test that category mismatch, explicit `leather` exclusion, non-relaxable re
 - [ ] **Step 2: Run the focused matcher test and verify missing classes**
 
 ```powershell
-mvn -pl yudao-module-mall/yudao-module-product-server -am "-Dtest=FurnitureProductMatcherTest" -Dsurefire.failIfNoSpecifiedTests=false test
+mvn.cmd -pl yudao-module-mall/yudao-module-product-server -am "-Dtest=FurnitureProductMatcherTest" "-Dsurefire.failIfNoSpecifiedTests=false" test
 ```
 
 Expected: FAIL because the search package does not exist.
@@ -496,7 +496,7 @@ Add tests for batch call count, disabled/deleted SKU exclusion, ERP failure fail
 - [ ] **Step 2: Run the focused search test and verify current SPU-only behavior fails**
 
 ```powershell
-mvn -pl yudao-module-mall/yudao-module-product-server -am "-Dtest=FurnitureProductSearchToolTest" -Dsurefire.failIfNoSpecifiedTests=false test
+mvn.cmd -pl yudao-module-mall/yudao-module-product-server -am "-Dtest=FurnitureProductSearchToolTest" "-Dsurefire.failIfNoSpecifiedTests=false" test
 ```
 
 Expected: FAIL because the current tool queries `ProductSpuService.getSpuPage`, assigns `skuId = spuId`, and does not call ERP.
@@ -584,7 +584,7 @@ Add an exact case, a no-match case with no product cards, a model prompt asserti
 - [ ] **Step 2: Run service and prompt tests and verify missing fields**
 
 ```powershell
-mvn -pl yudao-module-mall/yudao-module-product-server -am "-Dtest=FurnitureAssistantServiceImplTest,FurnitureAssistantPromptBuilderTest" -Dsurefire.failIfNoSpecifiedTests=false test
+mvn.cmd -pl yudao-module-mall/yudao-module-product-server -am "-Dtest=FurnitureAssistantServiceImplTest,FurnitureAssistantPromptBuilderTest" "-Dsurefire.failIfNoSpecifiedTests=false" test
 ```
 
 Expected: FAIL because the response contract and typed search integration do not exist.
@@ -653,7 +653,7 @@ Update audit-source assertions to require `active_skus`, `empty_sku_properties`,
 Run from `furniture web`:
 
 ```powershell
-npm test -- productSeedScript.test.js
+npm.cmd test -- productSeedScript.test.js
 ```
 
 Expected: FAIL because the current seed creates one empty-property SKU per SPU and no search projections.
@@ -749,7 +749,7 @@ it("maps every active seeded SKU without a fixed legacy count", () => {
 - [ ] **Step 2: Run the ERP seed test and verify the legacy fixed-count assertion fails**
 
 ```powershell
-npm test -- mallErpSeed.test.js
+npm.cmd test -- mallErpSeed.test.js
 ```
 
 Expected: FAIL because the current script requires exactly 26 Mall SKUs.
@@ -829,7 +829,7 @@ expect(dataset.meta.userTurnCount).toBe(110);
 - [ ] **Step 2: Run Web acceptance tests and fix only contract mismatches**
 
 ```powershell
-npm test -- furnitureAgentAcceptanceDataset.test.js furnitureAgentCatalogCoverage.test.js productSeedScript.test.js mallErpSeed.test.js
+npm.cmd test -- furnitureAgentAcceptanceDataset.test.js furnitureAgentCatalogCoverage.test.js productSeedScript.test.js mallErpSeed.test.js
 ```
 
 Expected: PASS with 40 scenarios and 110 turns unchanged.
@@ -839,7 +839,7 @@ Expected: PASS with 40 scenarios and 110 turns unchanged.
 From `yudao电商管理平台前后端/yudao-cloud`:
 
 ```powershell
-mvn -pl yudao-module-mall/yudao-module-product-server -am "-Dtest=FurnitureSkuSearchServiceImplTest,FurnitureRequirementNormalizerTest,FurnitureAssistantRequirementMergerTest,FurnitureProductMatcherTest,FurnitureProductSearchToolTest,FurnitureAssistantServiceImplTest,FurnitureAssistantPromptBuilderTest" -Dsurefire.failIfNoSpecifiedTests=false test
+mvn.cmd -pl yudao-module-mall/yudao-module-product-server -am "-Dtest=FurnitureSkuSearchServiceImplTest,FurnitureRequirementNormalizerTest,FurnitureAssistantRequirementMergerTest,FurnitureProductMatcherTest,FurnitureProductSearchToolTest,FurnitureAssistantServiceImplTest,FurnitureAssistantPromptBuilderTest" "-Dsurefire.failIfNoSpecifiedTests=false" test
 ```
 
 Expected: all focused furniture tests PASS.
@@ -849,8 +849,8 @@ Expected: all focused furniture tests PASS.
 From `furniture web`:
 
 ```powershell
-npm test
-npm run build
+npm.cmd test
+npm.cmd run build
 ```
 
 Expected: all Vitest tests PASS and Vite production build exits `0`.
