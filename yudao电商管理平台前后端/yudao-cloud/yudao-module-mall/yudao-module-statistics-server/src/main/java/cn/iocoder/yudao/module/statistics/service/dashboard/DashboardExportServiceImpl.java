@@ -1,13 +1,19 @@
 package cn.iocoder.yudao.module.statistics.service.dashboard;
 
 import cn.iocoder.yudao.module.statistics.controller.admin.dashboard.vo.DashboardProductExcelVO;
+import cn.iocoder.yudao.module.statistics.controller.admin.dashboard.vo.DashboardProductNormalExcelVO;
 import cn.iocoder.yudao.module.statistics.controller.admin.dashboard.vo.DashboardProductRespVO;
 import cn.iocoder.yudao.module.statistics.controller.admin.dashboard.vo.DashboardQueryReqVO;
+import cn.idev.excel.FastExcelFactory;
+import cn.idev.excel.converters.longconverter.LongStringConverter;
+import cn.iocoder.yudao.framework.common.util.object.BeanUtils;
+import cn.hutool.crypto.SecureUtil;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
 import java.util.ArrayList;
 import java.util.List;
+import java.io.ByteArrayOutputStream;
 
 @Service
 public class DashboardExportServiceImpl implements DashboardExportService {
@@ -25,7 +31,8 @@ public class DashboardExportServiceImpl implements DashboardExportService {
         List<DashboardProductExcelVO> rows = new ArrayList<>(products.size());
         for (DashboardProductRespVO product : products) {
             DashboardProductExcelVO row = new DashboardProductExcelVO()
-                    .setSpuId(product.getSpuId()).setBrowseCount(product.getBrowseCount())
+                    .setSpuId(product.getSpuId()).setProductName(escapeFormula(product.getProductName()))
+                    .setCategoryId(product.getCategoryId()).setBrowseCount(product.getBrowseCount())
                     .setBrowseUserCount(product.getBrowseUserCount()).setCartCount(product.getCartCount())
                     .setOrderCount(product.getOrderCount()).setOrderPayCount(product.getOrderPayCount())
                     .setOrderPayPrice(product.getOrderPayPrice()).setAfterSaleRefundPrice(product.getAfterSaleRefundPrice());
@@ -36,6 +43,23 @@ public class DashboardExportServiceImpl implements DashboardExportService {
             rows.add(row);
         }
         return rows;
+    }
+
+    @Override
+    public DashboardExportArtifact generate(DashboardQueryReqVO request, boolean includeProfit) {
+        List<DashboardProductExcelVO> rows = build(request, includeProfit);
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        if (includeProfit) {
+            FastExcelFactory.write(output, DashboardProductExcelVO.class)
+                    .autoCloseStream(false).registerConverter(new LongStringConverter())
+                    .sheet("数据").doWrite(rows);
+        } else {
+            FastExcelFactory.write(output, DashboardProductNormalExcelVO.class)
+                    .autoCloseStream(false).registerConverter(new LongStringConverter())
+                    .sheet("数据").doWrite(BeanUtils.toBean(rows, DashboardProductNormalExcelVO.class));
+        }
+        byte[] content = output.toByteArray();
+        return new DashboardExportArtifact(content, SecureUtil.sha256().digestHex(content), rows.size(), rows);
     }
 
     static String escapeFormula(String value) {

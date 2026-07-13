@@ -105,7 +105,7 @@ public class ProductStatisticsServiceImpl implements ProductStatisticsService {
             for (ProductStatisticsDO record : page.getRecords()) {
                 record.setTime(date.toLocalDate());
                 if (record.getBrowseUserCount() != null && ObjUtil.notEqual(record.getBrowseUserCount(), 0)) {
-                    record.setBrowseConvertPercent(100 * record.getOrderPayCount() / record.getBrowseUserCount());
+                    record.setBrowseConvertPercent((int) (100L * record.getOrderPayCount() / record.getBrowseUserCount()));
                 }
             }
             // 4.2 插入数据

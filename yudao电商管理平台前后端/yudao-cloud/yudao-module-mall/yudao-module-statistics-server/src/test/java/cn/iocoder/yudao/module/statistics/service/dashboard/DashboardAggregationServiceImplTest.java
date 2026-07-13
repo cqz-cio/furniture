@@ -10,7 +10,7 @@ class DashboardAggregationServiceImplTest {
  @Test void recompute_physicallyReplacesOneTenantDayAndPreservesUnknownProfit(){
   DashboardAggregationMapper aggregate=mock(DashboardAggregationMapper.class);TrafficDailyMapper traffic=mock(TrafficDailyMapper.class);ProductStatisticsMapper product=mock(ProductStatisticsMapper.class);
   LocalDate day=LocalDate.of(2026,7,12);TrafficDailyDO site=new TrafficDailyDO().setDay(day).setPaidRevenue(1000L).setRefundAmount(0L).setKnownCostAmount(500L).setMissingCostItemCount(1L);
-  ProductStatisticsDO row=new ProductStatisticsDO().setTime(day).setSpuId(10L).setOrderPayPrice(1000).setAfterSaleRefundPrice(0).setKnownCostAmount(500L).setMissingCostItemCount(1L);
+  ProductStatisticsDO row=new ProductStatisticsDO().setTime(day).setSpuId(10L).setOrderPayPrice(1000L).setAfterSaleRefundPrice(0L).setKnownCostAmount(500L).setMissingCostItemCount(1L);
   when(aggregate.countHashVersions(121L,day)).thenReturn(1);when(aggregate.selectTrafficDaily(eq(121L),eq(day),any(),any())).thenReturn(site);when(aggregate.selectProductDaily(eq(121L),eq(day),any(),any())).thenReturn(Collections.singletonList(row));
   DashboardAggregationServiceImpl service=new DashboardAggregationServiceImpl();ReflectionTestUtils.setField(service,"aggregationMapper",aggregate);ReflectionTestUtils.setField(service,"trafficMapper",traffic);ReflectionTestUtils.setField(service,"productMapper",product);ReflectionTestUtils.setField(service,"calculator",new DashboardMetricCalculator());
   service.recomputeDay(121L,day);

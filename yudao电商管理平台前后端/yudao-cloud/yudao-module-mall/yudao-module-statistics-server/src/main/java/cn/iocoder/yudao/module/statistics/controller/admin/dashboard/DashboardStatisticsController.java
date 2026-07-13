@@ -3,12 +3,13 @@ package cn.iocoder.yudao.module.statistics.controller.admin.dashboard;
 import cn.iocoder.yudao.framework.apilog.core.annotation.ApiAccessLog;
 import cn.iocoder.yudao.framework.common.pojo.CommonResult;
 import cn.iocoder.yudao.framework.common.pojo.PageResult;
-import cn.iocoder.yudao.framework.common.util.object.BeanUtils;
-import cn.iocoder.yudao.framework.excel.core.util.ExcelUtils;
+import cn.iocoder.yudao.framework.common.util.http.HttpUtils;
 import cn.iocoder.yudao.framework.security.core.service.SecurityFrameworkService;
 import cn.iocoder.yudao.framework.security.core.util.SecurityFrameworkUtils;
 import cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder;
 import cn.iocoder.yudao.module.statistics.controller.admin.dashboard.vo.*;
+import cn.iocoder.yudao.module.statistics.service.dashboard.DashboardExportArtifact;
+import cn.iocoder.yudao.module.statistics.service.dashboard.DashboardExportAuditService;
 import cn.iocoder.yudao.module.statistics.service.dashboard.DashboardExportRateLimiter;
 import cn.iocoder.yudao.module.statistics.service.dashboard.DashboardExportService;
 import cn.iocoder.yudao.module.statistics.service.dashboard.DashboardQueryService;
@@ -35,6 +36,7 @@ public class DashboardStatisticsController {
     @Resource private DashboardQueryService service;
     @Resource private DashboardExportService exportService;
     @Resource private DashboardExportRateLimiter exportRateLimiter;
+    @Resource private DashboardExportAuditService exportAuditService;
     @Resource private SecurityFrameworkService security;
 
     @GetMapping("/summary")
@@ -71,22 +73,46 @@ public class DashboardStatisticsController {
     @PreAuthorize("@ss.hasPermission('statistics:dashboard:export')")
     @ApiAccessLog(operateModule = "数据看板", operateName = "导出经营数据", operateType = EXPORT)
     public void export(@Valid DashboardQueryReqVO request, HttpServletResponse response) throws IOException {
-        protectExport();
-        ExcelUtils.write(response, "数据看板-商品经营.xls", "数据", DashboardProductNormalExcelVO.class,
-                BeanUtils.toBean(exportService.build(request, false), DashboardProductNormalExcelVO.class));
+        writeExport(request, response, false, "数据看板-商品经营.xlsx");
     }
 
     @GetMapping("/profit-export")
     @PreAuthorize("@ss.hasPermission('statistics:dashboard:export') and @ss.hasPermission('statistics:dashboard:profit-export')")
     @ApiAccessLog(operateModule = "数据看板", operateName = "导出利润数据", operateType = EXPORT)
     public void profitExport(@Valid DashboardQueryReqVO request, HttpServletResponse response) throws IOException {
-        protectExport();
-        ExcelUtils.write(response, "数据看板-利润.xls", "数据", DashboardProductExcelVO.class,
-                exportService.build(request, true));
+        writeExport(request, response, true, "数据看板-利润.xlsx");
     }
 
-    private void protectExport() {
-        exportRateLimiter.acquire(TenantContextHolder.getRequiredTenantId(), SecurityFrameworkUtils.getLoginUserId());
+    private void writeExport(DashboardQueryReqVO request, HttpServletResponse response,
+                             boolean includeProfit, String filename) throws IOException {
+        Long tenantId = TenantContextHolder.getRequiredTenantId();
+        Long userId = SecurityFrameworkUtils.getLoginUserId();
+        try {
+            exportRateLimiter.acquire(tenantId, userId);
+            DashboardExportArtifact artifact = exportService.generate(request, includeProfit);
+            exportAuditService.recordSuccess(tenantId, userId, request, includeProfit,
+                    artifact.getRowCount(), artifact.getFileSha256());
+            response.addHeader("Content-Disposition", "attachment;filename=" + HttpUtils.encodeUtf8(filename));
+            response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            response.getOutputStream().write(artifact.getContent());
+        } catch (RuntimeException exception) {
+            auditFailure(tenantId, userId, request, includeProfit, exception);
+            throw exception;
+        } catch (IOException exception) {
+            auditFailure(tenantId, userId, request, includeProfit, exception);
+            throw exception;
+        }
+    }
+
+    private void auditFailure(Long tenantId, Long userId, DashboardQueryReqVO request,
+                              boolean includeProfit, Exception exception) {
+        String failureCode = exception.getClass().getSimpleName()
+                .replaceAll("([a-z0-9])([A-Z])", "$1_$2").toUpperCase();
+        try {
+            exportAuditService.recordFailure(tenantId, userId, request, includeProfit, failureCode);
+        } catch (RuntimeException auditException) {
+            exception.addSuppressed(auditException);
+        }
     }
 
     private boolean profit() {

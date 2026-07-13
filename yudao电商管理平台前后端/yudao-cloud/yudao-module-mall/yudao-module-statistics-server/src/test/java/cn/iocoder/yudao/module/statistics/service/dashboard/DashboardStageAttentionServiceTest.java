@@ -33,7 +33,7 @@ class DashboardStageAttentionServiceTest {
 
         ProductStatisticsMapper products = mock(ProductStatisticsMapper.class);
         when(products.selectBetween(any(), any())).thenReturn(Collections.singletonList(new ProductStatisticsDO()
-                .setBrowseUserCount(30).setCartCount(9).setOrderCount(4)));
+                .setBrowseUserCount(30L).setCartCount(9L).setOrderCount(4L)));
         DashboardStageOverviewRespVO product = service(mock(TrafficDailyMapper.class), products)
                 .stageOverview(new DashboardQueryReqVO().setScope("PRODUCT"));
         assertEquals("NOT_APPLICABLE", product.getItems().get(0).getApplicability());
@@ -90,8 +90,8 @@ class DashboardStageAttentionServiceTest {
 
     private ProductStatisticsDO product(Long spuId, int pv, int orders, int paidOrders, int revenue,
                                         int refund, Long grossProfit, Long missingCost, int traffic, int profit) {
-        return new ProductStatisticsDO().setSpuId(spuId).setBrowseCount(pv).setOrderCount(orders)
-                .setOrderPayCount(paidOrders).setOrderPayPrice(revenue).setAfterSaleRefundPrice(refund)
+        return new ProductStatisticsDO().setSpuId(spuId).setBrowseCount((long) pv).setOrderCount((long) orders)
+                .setOrderPayCount((long) paidOrders).setOrderPayPrice((long) revenue).setAfterSaleRefundPrice((long) refund)
                 .setGrossProfit(grossProfit).setGrossMarginPercent(grossProfit == null ? null : java.math.BigDecimal.valueOf(5))
                 .setMissingCostItemCount(missingCost).setTrafficDataStatus(traffic).setProfitDataQuality(profit);
     }

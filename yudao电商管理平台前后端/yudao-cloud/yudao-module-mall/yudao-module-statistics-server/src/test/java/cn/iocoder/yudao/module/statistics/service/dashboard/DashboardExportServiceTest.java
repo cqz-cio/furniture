@@ -46,6 +46,19 @@ class DashboardExportServiceTest {
         assertTrue(error.getMessage().contains("10,000"));
     }
 
+    @Test
+    void generatedArtifactContainsAllRowsAndStableSha() {
+        DashboardQueryService query = mock(DashboardQueryService.class);
+        when(query.products(any(), eq(false))).thenReturn(Collections.singletonList(new DashboardProductRespVO()
+                .setSpuId(1L).setCategoryId(8L).setProductName("=dangerous chair").setBrowseCount(12L)));
+        DashboardExportArtifact artifact = service(query).generate(
+                new DashboardQueryReqVO().setScope("PRODUCT").setPageNo(9).setPageSize(1), false);
+        assertEquals(1, artifact.getRowCount());
+        assertTrue(artifact.getContent().length > 0);
+        assertEquals(64, artifact.getFileSha256().length());
+        assertEquals("'=dangerous chair", artifact.getRows().get(0).getProductName());
+    }
+
     private DashboardExportServiceImpl service(DashboardQueryService query) {
         DashboardExportServiceImpl service = new DashboardExportServiceImpl();
         ReflectionTestUtils.setField(service, "queryService", query);

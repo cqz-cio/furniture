@@ -7,4 +7,5 @@ import java.util.List;
 
 public interface DashboardExportService {
     List<DashboardProductExcelVO> build(DashboardQueryReqVO request, boolean includeProfit);
+    DashboardExportArtifact generate(DashboardQueryReqVO request, boolean includeProfit);
 }

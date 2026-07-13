@@ -41,39 +41,39 @@ public class ProductStatisticsDO extends BaseDO {
     /**
      * 浏览量
      */
-    private Integer browseCount;
+    private Long browseCount;
     /**
      * 访客量
      */
-    private Integer browseUserCount;
+    private Long browseUserCount;
     /**
      * 收藏数量
      */
-    private Integer favoriteCount;
+    private Long favoriteCount;
     /**
      * 加购数量
      */
-    private Integer cartCount;
+    private Long cartCount;
     /**
      * 下单件数
      */
-    private Integer orderCount;
+    private Long orderCount;
     /**
      * 支付件数
      */
-    private Integer orderPayCount;
+    private Long orderPayCount;
     /**
      * 支付金额，单位：分
      */
-    private Integer orderPayPrice;
+    private Long orderPayPrice;
     /**
      * 退款件数
      */
-    private Integer afterSaleCount;
+    private Long afterSaleCount;
     /**
      * 退款金额，单位：分
      */
-    private Integer afterSaleRefundPrice;
+    private Long afterSaleRefundPrice;
     /**
      * 访客支付转化率（百分比）
      */

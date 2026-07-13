@@ -101,6 +101,23 @@ CREATE TABLE IF NOT EXISTS `statistics_dashboard_migration_checkpoint` (
   PRIMARY KEY (`id`), UNIQUE KEY `uk_checkpoint_tenant_phase` (`tenant_id`,`phase`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Resumable dashboard migration checkpoint';
 
+CREATE TABLE IF NOT EXISTS `statistics_dashboard_export_audit` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `user_id` bigint NOT NULL,
+  `export_type` varchar(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `filter_hash` char(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `row_count` int NOT NULL DEFAULT 0,
+  `file_sha256` char(64) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL,
+  `result` varchar(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `failure_code` varchar(64) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL,
+  `creator` varchar(64) DEFAULT '', `create_time` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updater` varchar(64) DEFAULT '', `update_time` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted` bit(1) NOT NULL DEFAULT b'0', `tenant_id` bigint NOT NULL,
+  PRIMARY KEY (`id`), KEY `idx_dashboard_export_tenant_user_time` (`tenant_id`,`user_id`,`create_time`),
+  CONSTRAINT `chk_dashboard_export_rows` CHECK (`row_count` BETWEEN 0 AND 10000),
+  CONSTRAINT `chk_dashboard_export_result` CHECK (`result` IN ('SUCCESS','FAILURE'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Privacy-safe dashboard export audit';
+
 -- Guarded forward-compatible columns. Existing incompatible definitions must fail preflight review.
 SET @ddl = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='trade_order_item' AND COLUMN_NAME='cost_price')=0,
   'ALTER TABLE `trade_order_item` ADD COLUMN `cost_price` bigint DEFAULT NULL COMMENT ''cost snapshot in minor currency unit''', 'SELECT 1'); PREPARE s FROM @ddl; EXECUTE s; DEALLOCATE PREPARE s;
@@ -108,8 +125,17 @@ SET @ddl = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEM
   'ALTER TABLE `trade_order_item` ADD COLUMN `cost_estimated` bit(1) DEFAULT NULL COMMENT ''0 exact, 1 historical estimate, NULL missing''', 'SELECT 1'); PREPARE s FROM @ddl; EXECUTE s; DEALLOCATE PREPARE s;
 
 -- Product aggregate financial and coverage columns (all amounts are minor currency units).
+SET @ddl = IF((SELECT DATA_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='product_statistics' AND COLUMN_NAME='browse_count')<>'bigint', 'ALTER TABLE `product_statistics` MODIFY COLUMN `browse_count` bigint NOT NULL DEFAULT 0', 'SELECT 1'); PREPARE s FROM @ddl; EXECUTE s; DEALLOCATE PREPARE s;
+SET @ddl = IF((SELECT DATA_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='product_statistics' AND COLUMN_NAME='browse_user_count')<>'bigint', 'ALTER TABLE `product_statistics` MODIFY COLUMN `browse_user_count` bigint NOT NULL DEFAULT 0', 'SELECT 1'); PREPARE s FROM @ddl; EXECUTE s; DEALLOCATE PREPARE s;
+SET @ddl = IF((SELECT DATA_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='product_statistics' AND COLUMN_NAME='favorite_count')<>'bigint', 'ALTER TABLE `product_statistics` MODIFY COLUMN `favorite_count` bigint NOT NULL DEFAULT 0', 'SELECT 1'); PREPARE s FROM @ddl; EXECUTE s; DEALLOCATE PREPARE s;
+SET @ddl = IF((SELECT DATA_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='product_statistics' AND COLUMN_NAME='cart_count')<>'bigint', 'ALTER TABLE `product_statistics` MODIFY COLUMN `cart_count` bigint NOT NULL DEFAULT 0', 'SELECT 1'); PREPARE s FROM @ddl; EXECUTE s; DEALLOCATE PREPARE s;
+SET @ddl = IF((SELECT DATA_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='product_statistics' AND COLUMN_NAME='order_count')<>'bigint', 'ALTER TABLE `product_statistics` MODIFY COLUMN `order_count` bigint NOT NULL DEFAULT 0', 'SELECT 1'); PREPARE s FROM @ddl; EXECUTE s; DEALLOCATE PREPARE s;
+SET @ddl = IF((SELECT DATA_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='product_statistics' AND COLUMN_NAME='order_pay_count')<>'bigint', 'ALTER TABLE `product_statistics` MODIFY COLUMN `order_pay_count` bigint NOT NULL DEFAULT 0', 'SELECT 1'); PREPARE s FROM @ddl; EXECUTE s; DEALLOCATE PREPARE s;
+SET @ddl = IF((SELECT DATA_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='product_statistics' AND COLUMN_NAME='after_sale_count')<>'bigint', 'ALTER TABLE `product_statistics` MODIFY COLUMN `after_sale_count` bigint NOT NULL DEFAULT 0', 'SELECT 1'); PREPARE s FROM @ddl; EXECUTE s; DEALLOCATE PREPARE s;
 SET @ddl = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='product_statistics' AND COLUMN_NAME='order_pay_price')=0, 'ALTER TABLE `product_statistics` ADD COLUMN `order_pay_price` bigint NOT NULL DEFAULT 0', 'SELECT 1'); PREPARE s FROM @ddl; EXECUTE s; DEALLOCATE PREPARE s;
+SET @ddl = IF((SELECT DATA_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='product_statistics' AND COLUMN_NAME='order_pay_price')<>'bigint', 'ALTER TABLE `product_statistics` MODIFY COLUMN `order_pay_price` bigint NOT NULL DEFAULT 0', 'SELECT 1'); PREPARE s FROM @ddl; EXECUTE s; DEALLOCATE PREPARE s;
 SET @ddl = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='product_statistics' AND COLUMN_NAME='after_sale_refund_price')=0, 'ALTER TABLE `product_statistics` ADD COLUMN `after_sale_refund_price` bigint NOT NULL DEFAULT 0', 'SELECT 1'); PREPARE s FROM @ddl; EXECUTE s; DEALLOCATE PREPARE s;
+SET @ddl = IF((SELECT DATA_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='product_statistics' AND COLUMN_NAME='after_sale_refund_price')<>'bigint', 'ALTER TABLE `product_statistics` MODIFY COLUMN `after_sale_refund_price` bigint NOT NULL DEFAULT 0', 'SELECT 1'); PREPARE s FROM @ddl; EXECUTE s; DEALLOCATE PREPARE s;
 SET @ddl = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='product_statistics' AND COLUMN_NAME='known_cost_amount')=0, 'ALTER TABLE `product_statistics` ADD COLUMN `known_cost_amount` bigint NOT NULL DEFAULT 0', 'SELECT 1'); PREPARE s FROM @ddl; EXECUTE s; DEALLOCATE PREPARE s;
 SET @ddl = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='product_statistics' AND COLUMN_NAME='cost_amount')=0, 'ALTER TABLE `product_statistics` ADD COLUMN `cost_amount` bigint DEFAULT NULL', 'SELECT 1'); PREPARE s FROM @ddl; EXECUTE s; DEALLOCATE PREPARE s;
 SET @ddl = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='product_statistics' AND COLUMN_NAME='gross_profit')=0, 'ALTER TABLE `product_statistics` ADD COLUMN `gross_profit` bigint DEFAULT NULL', 'SELECT 1'); PREPARE s FROM @ddl; EXECUTE s; DEALLOCATE PREPARE s;
