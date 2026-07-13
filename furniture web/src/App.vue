@@ -13,6 +13,7 @@ import {
 } from "./services/localCart.js";
 import { clearYudaoSession, readYudaoSession, redactSecret } from "./services/authSession.js";
 import { playAddToCartFlyAnimation } from "./services/cartFlyAnimation.js";
+import { trackCheckoutStart, trackHomeView } from "./services/analytics.js";
 import { addLocalWishlistItem } from "./services/localWishlist.js";
 import { ANNUAL_MEMBERSHIP_PRODUCT, hasMembershipService } from "./services/membershipCart.js";
 import { getCheckoutEntryRoute } from "./services/membershipNavigation.js";
@@ -430,14 +431,23 @@ const handleOrderCreated = async (orderId) => {
 
 const startCheckout = () => {
   const nextRoute = getCheckoutEntryRoute(cartItems.value);
+  if (nextRoute.split("?")[0] === pageRoutes.checkout) void trackCheckoutStart();
   currentPage.value = pageFromPath(nextRoute.split("?")[0]);
   window.history.pushState({ page: currentPage.value }, "", nextRoute);
   cartOpen.value = false;
 };
 
 const continueCheckout = () => {
+  void trackCheckoutStart();
   currentPage.value = "checkout";
 };
+
+let lastTrackedHomeSignature = "";
+watch(routeSignature, (signature) => {
+  if (window.location.pathname !== "/" || signature === lastTrackedHomeSignature) return;
+  lastTrackedHomeSignature = signature;
+  void trackHomeView();
+}, { immediate: true });
 
 watch(currentPage, (page) => {
   applySeo(page);

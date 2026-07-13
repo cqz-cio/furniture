@@ -1,10 +1,12 @@
 import { mapCartResponseToItems } from "./yudaoMappers.js";
+import { analyticsIdentityHeaders } from "./analytics.js";
 import { requestYudao } from "./yudaoRequest.js";
 
 export const addCartItem = (skuId, count = 1, options = {}) =>
   requestYudao("/trade/cart/add", {
     ...options,
     method: "POST",
+    headers: { ...analyticsIdentityHeaders(), ...(options.headers || {}) },
     body: JSON.stringify({
       skuId,
       count,

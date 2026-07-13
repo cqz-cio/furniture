@@ -4,6 +4,7 @@ import { demoProducts } from "../data/demoProducts.js";
 import { useI18n } from "../i18n.js";
 import { registryProductToItemPayload } from "../services/giftRegistry.js";
 import { buildProductDetailModel } from "../services/productDetailModel.js";
+import { trackProductDetailView } from "../services/analytics.js";
 import { resolveProductBackendFailure } from "../services/productBackendFallback.js";
 import {
   isWishlistItemSaved,
@@ -340,6 +341,7 @@ onMounted(async () => {
   try {
     product.value = await getProductDetail(id);
     source.value = "yudao";
+    void trackProductDetailView(product.value.id);
     catalogError.value = false;
   } catch {
     const failure = resolveProductBackendFailure({ demoProducts });
