@@ -16,6 +16,7 @@ class DashboardAggregationServiceImplTest {
   service.recomputeDay(121L,day);
   verify(traffic).physicalDeleteByTenantAndDay(121L,day);verify(product).physicalDeleteByTenantAndDay(121L,day);verify(traffic).insert(site);verify(product).insertBatch(anyCollection());
   assertNull(site.getCostAmount());assertNull(site.getGrossProfit());assertEquals(4,site.getProfitDataQuality());assertNull(row.getGrossProfit());
+  assertNotNull(row.getTrafficWatermark());assertEquals(row.getTrafficWatermark(),row.getTradeWatermark());assertEquals(row.getTrafficWatermark(),row.getRefundWatermark());
  }
  @Test void multipleHashVersions_abortBeforeDelete(){DashboardAggregationMapper aggregate=mock(DashboardAggregationMapper.class);TrafficDailyMapper traffic=mock(TrafficDailyMapper.class);ProductStatisticsMapper product=mock(ProductStatisticsMapper.class);LocalDate day=LocalDate.now();when(aggregate.countHashVersions(121L,day)).thenReturn(2);DashboardAggregationServiceImpl service=new DashboardAggregationServiceImpl();ReflectionTestUtils.setField(service,"aggregationMapper",aggregate);ReflectionTestUtils.setField(service,"trafficMapper",traffic);ReflectionTestUtils.setField(service,"productMapper",product);ReflectionTestUtils.setField(service,"calculator",new DashboardMetricCalculator());assertThrows(IllegalStateException.class,()->service.recomputeDay(121L,day));verifyNoInteractions(traffic,product);}
 }

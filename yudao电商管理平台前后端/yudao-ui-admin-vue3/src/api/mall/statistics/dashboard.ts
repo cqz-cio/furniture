@@ -8,6 +8,7 @@ export interface DashboardQuery {
   scope: DashboardScope
   startDate: string
   endDate: string
+  compare?: boolean
   categoryId?: number
   spuId?: number
   riskType?: string
@@ -44,12 +45,25 @@ export interface DashboardSummary {
   trafficWatermark: string | null
   tradeWatermark: string | null
   refundWatermark: string | null
-  asOf: string
+  trafficDataAvailableFrom: string | null
+  comparisonStartDate: string | null
+  comparisonEndDate: string | null
+  asOf: string | null
   snapshotId: string
   profitVisible: boolean
+  reference: DashboardSummary | null
+  changes: Record<string, DashboardMetricChange> | null
 }
 
-export interface DashboardTrendItem extends Partial<DashboardSummary> { day: string }
+export interface DashboardMetricChange {
+  referenceValue: number | null
+  changeAmount: number | null
+  changePercent: number | null
+  referenceRate: number | null
+  changePercentagePoints: number | null
+}
+
+export interface DashboardTrendItem extends Partial<DashboardSummary> { day: string; referenceDay: string | null }
 export interface DashboardStageItem { stage: string; value: number | null; unit: string; dedupeScope: string; applicability: 'APPLICABLE' | 'NOT_APPLICABLE' }
 export interface DashboardStageOverview { cohortAligned: false; explanation: string; items: DashboardStageItem[] }
 export interface DashboardAttentionItem { spuId: number; riskType: string; copy: string }

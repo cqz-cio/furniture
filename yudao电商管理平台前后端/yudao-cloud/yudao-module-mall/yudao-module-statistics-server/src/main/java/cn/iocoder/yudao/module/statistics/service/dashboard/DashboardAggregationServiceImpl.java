@@ -34,7 +34,7 @@ public class DashboardAggregationServiceImpl implements DashboardAggregationServ
  }
  private void completeProduct(ProductStatisticsDO d,LocalDateTime now){
   DashboardMetricCalculator.Result r=calculator.calculate(nvl(d.getOrderPayPrice()),nvl(d.getAfterSaleRefundPrice()),nvl(d.getKnownCostAmount()),nvl(d.getMissingCostItemCount()),nvl(d.getExactCostItemCount()),nvl(d.getEstimatedCostItemCount()),d.getBrowseCount()==null?null:d.getBrowseCount().longValue(),d.getOrderCount()==null?0:d.getOrderCount());
-  d.setCostAmount(r.getCostAmount()).setGrossProfit(r.getGrossProfit()).setGrossMarginPercent(r.getGrossMarginPercent()).setProfitDataQuality(r.getProfitDataQuality()).setTrafficWatermark(now);
+  d.setCostAmount(r.getCostAmount()).setGrossProfit(r.getGrossProfit()).setGrossMarginPercent(r.getGrossMarginPercent()).setProfitDataQuality(r.getProfitDataQuality()).setTrafficWatermark(now).setTradeWatermark(now).setRefundWatermark(now);
   d.setBrowseConvertPercent(r.getBrowseOrderConversionPercent()==null?null:r.getBrowseOrderConversionPercent().setScale(0,java.math.RoundingMode.HALF_UP).intValue());
  }
  private long nvl(Number value){return value==null?0:value.longValue();}

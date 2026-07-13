@@ -1,5 +1,6 @@
 <script lang="ts" setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import dayjs from 'dayjs'
 import { ElMessage } from 'element-plus'
 import download from '@/utils/download'
@@ -18,20 +19,50 @@ import {
 
 defineOptions({ name: 'FurnitureDashboard' })
 
+const route = useRoute()
+const router = useRouter()
+
 const canQuery = computed(() => checkPermi(['statistics:dashboard:query']))
 const canProfit = computed(() => checkPermi(['statistics:dashboard:profit-query']))
 const canExport = computed(() => checkPermi(['statistics:dashboard:export']))
 const canProfitExport = computed(() => checkPermi(['statistics:dashboard:profit-export']))
 
 const yesterday = dayjs().subtract(1, 'day')
+const routeValue = (key: string) => {
+  const value = route.query[key]
+  return Array.isArray(value) ? value[0] : value
+}
+const validDate = (value: string | null | undefined) =>
+  Boolean(value && /^\d{4}-\d{2}-\d{2}$/.test(value) && dayjs(value).format('YYYY-MM-DD') === value)
+const positiveInteger = (value: string | null | undefined) => {
+  const parsed = Number(value)
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined
+}
+const riskTypes = [
+  { label: '高流量低转化', value: 'HIGH_TRAFFIC_LOW_CONVERSION' },
+  { label: '高退款', value: 'HIGH_REFUND' },
+  { label: '低毛利或负毛利', value: 'LOW_OR_NEGATIVE_MARGIN' },
+  { label: '成本缺失', value: 'MISSING_COST' }
+]
+const sortFields = ['spuId', 'browseCount', 'orderCount', 'paidRevenue', 'refundAmount', 'conversion', 'grossProfit', 'grossMargin']
+const restoredScope: DashboardScope = routeValue('scope') === 'PRODUCT' ? 'PRODUCT' : 'SITE'
+const restoredStart = routeValue('startDate')
+const restoredEnd = routeValue('endDate')
+const restoredPageSize = positiveInteger(routeValue('pageSize'))
 const query = reactive<DashboardQuery>({
-  scope: 'SITE',
-  startDate: yesterday.subtract(29, 'day').format('YYYY-MM-DD'),
-  endDate: yesterday.format('YYYY-MM-DD'),
-  pageNo: 1,
-  pageSize: 20,
-  sortField: 'paidRevenue',
-  sortOrder: 'desc'
+  scope: restoredScope,
+  startDate: validDate(restoredStart) ? restoredStart! : yesterday.subtract(29, 'day').format('YYYY-MM-DD'),
+  endDate: validDate(restoredEnd) ? restoredEnd! : yesterday.format('YYYY-MM-DD'),
+  compare: routeValue('compare') !== 'false',
+  pageNo: positiveInteger(routeValue('pageNo')) || 1,
+  pageSize: restoredPageSize && [10, 20, 50, 100].includes(restoredPageSize) ? restoredPageSize : 20,
+  sortField: sortFields.includes(routeValue('sortField') || '') ? routeValue('sortField')! : 'paidRevenue',
+  sortOrder: routeValue('sortOrder') === 'asc' ? 'asc' : 'desc',
+  ...(restoredScope === 'PRODUCT' ? {
+    categoryId: positiveInteger(routeValue('categoryId')),
+    spuId: positiveInteger(routeValue('spuId')),
+    riskType: riskTypes.some((item) => item.value === routeValue('riskType')) ? routeValue('riskType')! : undefined
+  } : {})
 })
 const dateRange = ref<[string, string]>([query.startDate, query.endDate])
 const loading = ref(false)
@@ -43,7 +74,27 @@ const stage = ref<DashboardStageOverview | null>(null)
 const attention = ref<DashboardAttention | null>(null)
 const products = ref<DashboardProduct[]>([])
 const productTotal = ref(0)
+const productPanel = ref<HTMLElement | null>(null)
 let loadSequence = 0
+
+const syncUrl = () => {
+  const urlQuery: Record<string, string> = {
+    scope: query.scope,
+    startDate: query.startDate,
+    endDate: query.endDate,
+    compare: String(query.compare !== false),
+    pageNo: String(query.pageNo || 1),
+    pageSize: String(query.pageSize || 20),
+    sortField: query.sortField || 'paidRevenue',
+    sortOrder: query.sortOrder || 'desc'
+  }
+  if (query.scope === 'PRODUCT') {
+    if (query.categoryId) urlQuery.categoryId = String(query.categoryId)
+    if (query.spuId) urlQuery.spuId = String(query.spuId)
+    if (query.riskType) urlQuery.riskType = query.riskType
+  }
+  void router.replace({ query: urlQuery })
+}
 
 const quickRanges = [
   { label: '今日', days: 0 },
@@ -58,6 +109,7 @@ const selectRange = (days: number) => {
   dateRange.value = [start.format('YYYY-MM-DD'), end.format('YYYY-MM-DD')]
   query.startDate = dateRange.value[0]
   query.endDate = dateRange.value[1]
+  query.compare = days !== 0
   void loadDashboard()
 }
 
@@ -70,16 +122,20 @@ const applyDateRange = () => {
 
 const loadDashboard = async () => {
   if (!canQuery.value) return
+  syncUrl()
   const sequence = ++loadSequence
   loading.value = true
   error.value = ''
   const normalized = { ...query }
   try {
+    const attentionQuery: DashboardQuery = query.scope === 'SITE'
+      ? { ...normalized, scope: 'PRODUCT', categoryId: undefined, spuId: undefined, riskType: undefined }
+      : normalized
     const requests: Promise<unknown>[] = [
       DashboardApi.getSummary(normalized),
       DashboardApi.getTrend(normalized),
       DashboardApi.getStageOverview(normalized),
-      DashboardApi.getAttention(normalized)
+      DashboardApi.getAttention(attentionQuery)
     ]
     if (query.scope === 'PRODUCT') requests.push(DashboardApi.getProductPage(normalized))
     const results = await Promise.all(requests)
@@ -115,19 +171,41 @@ const money = (value: number | null | undefined) => value == null ? '—' : `$${
 const integer = (value: number | null | undefined) => value == null ? '—' : value.toLocaleString('zh-CN')
 const percent = (value: number | null | undefined) => value == null ? '—' : `${value.toFixed(2)}%`
 
+const comparisonLabel = computed(() => {
+  const value = summary.value
+  return value?.comparisonStartDate && value.comparisonEndDate
+    ? `对比周期 ${value.comparisonStartDate} 至 ${value.comparisonEndDate}`
+    : ''
+})
+
+const changeText = (key: string, format: 'count' | 'money' | 'rate' = 'count') => {
+  const change = summary.value?.changes?.[key]
+  if (!change) return query.compare ? '流量不完整，暂不比较' : ''
+  if (format === 'rate') {
+    const points = change.changePercentagePoints
+    return points == null ? '基期不可用' : `${points > 0 ? '+' : ''}${points.toFixed(2)} 个百分点`
+  }
+  if (change.changeAmount == null) return '基期不可用'
+  const amount = format === 'money' ? money(Math.abs(change.changeAmount)) : integer(Math.abs(change.changeAmount))
+  const direction = change.changeAmount > 0 ? '增加' : change.changeAmount < 0 ? '减少' : '持平'
+  const ratio = change.changePercent == null ? '（基期为 0，变化率不可计算）' : `（${change.changePercent > 0 ? '+' : ''}${change.changePercent.toFixed(2)}%）`
+  return direction === '持平' ? '较基期持平' : `较基期${direction} ${amount}${ratio}`
+}
+
 const metricCards = computed(() => {
   const value = summary.value
   if (!value) return []
+  const trafficKey = query.scope === 'SITE' ? 'homePv' : 'productDetailPv'
   const cards = [
-    { label: query.scope === 'SITE' ? '首页浏览量' : '商品详情浏览量', value: integer(query.scope === 'SITE' ? value.homePv : value.productDetailPv), hint: 'PV' },
-    { label: '支付订单', value: integer(value.paidOrderCount), hint: '按支付日归属' },
-    { label: '净销售额', value: money(value.netRevenue), hint: '支付金额 - 退款金额' },
-    { label: '浏览至订单转化率', value: percent(value.browseOrderConversionPercent), hint: '订单量 / 商品详情 PV' }
+    { label: query.scope === 'SITE' ? '首页浏览量' : '商品详情浏览量', value: integer(query.scope === 'SITE' ? value.homePv : value.productDetailPv), hint: 'PV', change: changeText(trafficKey) },
+    { label: '支付订单', value: integer(value.paidOrderCount), hint: '按支付日归属', change: changeText('paidOrderCount') },
+    { label: '净销售额', value: money(value.netRevenue), hint: '支付金额 - 退款金额', change: changeText('netRevenue', 'money') },
+    { label: '浏览至订单转化率', value: percent(value.browseOrderConversionPercent), hint: '订单量 / 商品详情 PV', change: changeText('browseOrderConversionPercent', 'rate') }
   ]
   if (canProfit.value) {
     cards.push(
-      { label: '毛利润', value: money(value.grossProfit), hint: value.missingCostItemCount ? '成本不完整' : '已扣除退款及成本' },
-      { label: '毛利率', value: percent(value.grossMarginPercent), hint: value.missingCostItemCount ? '暂不可计算' : '毛利润 / 净销售额' }
+      { label: '毛利润', value: money(value.grossProfit), hint: value.missingCostItemCount ? '成本不完整' : '已扣除退款及成本', change: changeText('grossProfit', 'money') },
+      { label: '毛利率', value: percent(value.grossMarginPercent), hint: value.missingCostItemCount ? '暂不可计算' : '毛利润 / 净销售额', change: '' }
     )
   }
   return cards
@@ -136,13 +214,17 @@ const metricCards = computed(() => {
 const chartOptions = computed(() => ({
   aria: { enabled: true, description: '按日展示浏览量和净销售额趋势' },
   tooltip: { trigger: 'axis' },
-  legend: { data: ['浏览量', '净销售额'] },
+  legend: { data: query.compare ? ['浏览量', '净销售额', '对比期浏览量', '对比期净销售额'] : ['浏览量', '净销售额'] },
   grid: { left: 20, right: 24, top: 46, bottom: 20, containLabel: true },
   xAxis: { type: 'category', data: trend.value.map((item) => item.day), boundaryGap: false },
   yAxis: [{ type: 'value', name: 'PV' }, { type: 'value', name: 'USD', axisLabel: { formatter: (v: number) => `$${v}` } }],
   series: [
     { name: '浏览量', type: 'line', smooth: true, connectNulls: false, data: trend.value.map((item) => query.scope === 'SITE' ? item.homePv : item.productDetailPv), itemStyle: { color: '#111827' } },
-    { name: '净销售额', type: 'bar', yAxisIndex: 1, data: trend.value.map((item) => item.netRevenue == null ? null : item.netRevenue / 100), itemStyle: { color: '#c7a66a' } }
+    { name: '净销售额', type: 'bar', yAxisIndex: 1, data: trend.value.map((item) => item.netRevenue == null ? null : item.netRevenue / 100), itemStyle: { color: '#c7a66a' } },
+    ...(query.compare ? [
+      { name: '对比期浏览量', type: 'line', smooth: true, connectNulls: false, lineStyle: { type: 'dashed' }, data: trend.value.map((item) => query.scope === 'SITE' ? item.reference?.homePv : item.reference?.productDetailPv), itemStyle: { color: '#6b7280' } },
+      { name: '对比期净销售额', type: 'line', yAxisIndex: 1, connectNulls: false, lineStyle: { type: 'dotted' }, data: trend.value.map((item) => item.reference?.netRevenue == null ? null : item.reference.netRevenue / 100), itemStyle: { color: '#9a7b45' } }
+    ] : [])
   ]
 }))
 
@@ -151,11 +233,36 @@ const openAttention = (item: { spuId: number; riskType: string }) => {
   query.spuId = item.spuId
   query.riskType = item.riskType
   query.pageNo = 1
+  void nextTick(() => productPanel.value?.focus())
+}
+
+const attentionEvaluatedEmpty = computed(() => Boolean(
+  attention.value && attention.value.items.length === 0 && attention.value.notEvaluated.length === 0
+))
+
+const stageLabels: Record<string, string> = {
+  HOME_UV: '首页访客', PRODUCT_DETAIL_UV: '商品详情访客', ADD_CART_USER: '加购用户',
+  CHECKOUT_SESSION: '开始结算', PAID_BUYER: '支付买家'
 }
 
 const applyProductFilters = () => {
   query.pageNo = 1
   void loadDashboard()
+}
+
+const changeCategory = () => {
+  if (query.spuId) {
+    query.spuId = undefined
+    ElMessage.info('分类已变化，原商品筛选已清除，请重新选择商品')
+  }
+  applyProductFilters()
+}
+
+const clearProductFilters = () => {
+  query.categoryId = undefined
+  query.spuId = undefined
+  query.riskType = undefined
+  applyProductFilters()
 }
 
 const changeProductPage = (pageNo: number) => {
@@ -220,20 +327,25 @@ onMounted(loadDashboard)
         </div>
         <el-date-picker v-model="dateRange" type="daterange" value-format="YYYY-MM-DD" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" :clearable="false" @change="applyDateRange" />
         <template v-if="query.scope === 'PRODUCT'">
-          <el-input-number v-model="query.categoryId" :min="1" :controls="false" placeholder="分类 ID" aria-label="分类 ID" @change="applyProductFilters" />
+          <el-input-number v-model="query.categoryId" :min="1" :controls="false" placeholder="分类 ID" aria-label="分类 ID" @change="changeCategory" />
           <el-input-number v-model="query.spuId" :min="1" :controls="false" placeholder="商品 SPU" aria-label="商品 SPU" @change="applyProductFilters" />
-          <el-button v-if="query.categoryId || query.spuId" text @click="query.categoryId = undefined; query.spuId = undefined; applyProductFilters()">清除商品筛选</el-button>
+          <el-select v-model="query.riskType" clearable placeholder="经营风险" aria-label="经营风险" @change="applyProductFilters">
+            <el-option v-for="item in riskTypes" :key="item.value" :label="item.label" :value="item.value" />
+          </el-select>
+          <el-button v-if="query.categoryId || query.spuId || query.riskType" text @click="clearProductFilters">清除商品筛选</el-button>
         </template>
         <el-button type="primary" @click="loadDashboard">刷新</el-button>
       </section>
 
       <el-alert v-if="error" type="error" show-icon :closable="false" :title="error"><template #default><el-button text @click="loadDashboard">重试</el-button></template></el-alert>
+      <el-alert v-if="summary" class="quality-alert" type="info" show-icon :closable="false" :title="`流量指标仅代表已同意分析的可测量访问，可能存在覆盖偏差${summary.trafficDataAvailableFrom ? `；最早可用日期 ${summary.trafficDataAvailableFrom}` : ''}。`" />
       <el-alert v-if="summary && summary.trafficDataStatus !== 'COMPLETE'" class="quality-alert" type="warning" show-icon :closable="false" :title="`流量数据状态：${summary.trafficDataStatus}，未知值保持为—，不会伪装成 0。`" />
       <el-alert v-if="summary?.freshnessStatus === 'STALE'" class="quality-alert" type="error" show-icon :closable="false" title="数据已过期，当前保留最后一次成功结果，请关注聚合任务。" />
+      <p v-if="comparisonLabel" class="comparison-period">{{ comparisonLabel }}</p>
 
       <section class="metric-grid" aria-label="核心经营指标">
         <article v-for="card in metricCards" :key="card.label" class="metric-card">
-          <span>{{ card.label }}</span><strong>{{ card.value }}</strong><small>{{ card.hint }}</small>
+          <span>{{ card.label }}</span><strong>{{ card.value }}</strong><small>{{ card.hint }}</small><small v-if="card.change" class="metric-change">{{ card.change }}</small>
         </article>
       </section>
 
@@ -242,13 +354,13 @@ onMounted(loadDashboard)
           <div class="panel-heading"><div><h2>销售与访问趋势</h2><p>时区 Asia/Shanghai · 金额 USD</p></div><span v-if="summary">更新于 {{ summary.asOf }}</span></div>
           <Echart v-if="trend.length" :height="340" :options="chartOptions" />
           <el-empty v-else description="当前范围暂无趋势数据" />
-          <details v-if="trend.length" class="data-alternative"><summary>查看趋势数据表</summary><table><thead><tr><th>日期</th><th>浏览量</th><th>净销售额</th></tr></thead><tbody><tr v-for="item in trend" :key="item.day"><td>{{ item.day }}</td><td>{{ integer(query.scope === 'SITE' ? item.homePv : item.productDetailPv) }}</td><td>{{ money(item.netRevenue) }}</td></tr></tbody></table></details>
+          <details v-if="trend.length" class="data-alternative"><summary>查看趋势数据表</summary><table><thead><tr><th>日期</th><th>浏览量</th><th>净销售额</th><th v-if="query.compare">对比日期</th><th v-if="query.compare">对比期浏览量</th><th v-if="query.compare">对比期净销售额</th></tr></thead><tbody><tr v-for="item in trend" :key="item.day"><td>{{ item.day }}</td><td>{{ integer(query.scope === 'SITE' ? item.homePv : item.productDetailPv) }}</td><td>{{ money(item.netRevenue) }}</td><td v-if="query.compare">{{ item.referenceDay || '—' }}</td><td v-if="query.compare">{{ integer(query.scope === 'SITE' ? item.reference?.homePv : item.reference?.productDetailPv) }}</td><td v-if="query.compare">{{ money(item.reference?.netRevenue) }}</td></tr></tbody></table></details>
         </article>
 
         <article class="panel stage-panel">
           <div class="panel-heading"><div><h2>阶段概览</h2><p>不同阶段去重口径不同，不是同一批用户的漏斗。</p></div></div>
           <div v-if="stage" class="stage-list">
-            <div v-for="item in stage.items" :key="item.stage" :class="{ muted: item.applicability === 'NOT_APPLICABLE' }"><span>{{ item.stage }}</span><strong>{{ integer(item.value) }}</strong><small>{{ item.unit }} · {{ item.dedupeScope }}</small></div>
+            <div v-for="item in stage.items" :key="item.stage" :class="{ muted: item.applicability === 'NOT_APPLICABLE' }"><span>{{ stageLabels[item.stage] || item.stage }}</span><strong>{{ integer(item.value) }}</strong><small>{{ item.unit }} · {{ item.dedupeScope }}</small></div>
           </div>
           <el-empty v-else description="暂无阶段数据" />
         </article>
@@ -259,11 +371,12 @@ onMounted(loadDashboard)
         <div v-if="attention?.items.length" class="attention-list">
           <button v-for="item in attention.items" :key="`${item.spuId}-${item.riskType}`" @click="openAttention(item)"><span>{{ item.riskType }}</span><strong>SPU {{ item.spuId }}</strong><small>{{ item.copy }}</small></button>
         </div>
-        <el-empty v-else description="已评估的规则中，暂无商品命中当前关注条件" />
+        <el-empty v-if="attentionEvaluatedEmpty" description="已评估的规则中，暂无商品命中当前关注条件" />
+        <el-alert v-else-if="attention && !attention.items.length && attention.notEvaluated.length" type="warning" :closable="false" title="部分规则因数据不完整尚未评估，不能视为没有经营风险。" />
         <el-alert v-for="item in attention?.notEvaluated || []" :key="`${item.spuId}-${item.riskType}`" type="warning" :closable="false" :title="`${item.riskType}：${item.copy}`" />
       </section>
 
-      <section v-if="query.scope === 'PRODUCT'" class="panel product-panel">
+      <section v-if="query.scope === 'PRODUCT'" ref="productPanel" class="panel product-panel" tabindex="-1">
         <div class="panel-heading"><div><h2>商品经营明细</h2><p>点击运营关注项可快速聚焦对应商品。</p></div></div>
         <el-table :data="products" row-key="spuId" stripe @sort-change="changeProductSort">
           <el-table-column prop="productName" label="商品名称" min-width="220">

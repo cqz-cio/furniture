@@ -88,5 +88,7 @@ public class ProductStatisticsDO extends BaseDO {
     private Integer profitDataQuality;
     private Integer trafficDataStatus;
     private LocalDateTime trafficWatermark;
+    private LocalDateTime tradeWatermark;
+    private LocalDateTime refundWatermark;
 
 }

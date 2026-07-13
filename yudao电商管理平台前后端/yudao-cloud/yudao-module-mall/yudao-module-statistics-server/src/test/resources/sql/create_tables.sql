@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS "product_statistics" (
   "missing_cost_item_count" bigint NOT NULL DEFAULT 0,
   "profit_data_quality" tinyint NOT NULL DEFAULT 5,
   "traffic_data_status" tinyint NOT NULL DEFAULT 3, "traffic_watermark" timestamp,
+  "trade_watermark" timestamp, "refund_watermark" timestamp,
   "creator" varchar DEFAULT '', "create_time" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updater" varchar DEFAULT '', "update_time" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "deleted" bit NOT NULL DEFAULT FALSE, "tenant_id" bigint NOT NULL DEFAULT 0,
