@@ -8,7 +8,9 @@ import cn.iocoder.yudao.module.erp.service.integration.MallErpProductSyncService
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 
 import static cn.iocoder.yudao.framework.common.pojo.CommonResult.success;
 
@@ -35,5 +37,9 @@ public class MallErpProductApiImpl implements MallErpProductApi {
 
     public CommonResult<List<MallErpStockDTO>> validateSellableStock(List<MallErpStockRequestDTO> items) {
         return success(items.stream().map(syncService::validateStock).collect(java.util.stream.Collectors.toList()));
+    }
+
+    public CommonResult<Set<Long>> getMappedMallSkuIds(Collection<Long> mallSkuIds) {
+        return success(syncService.getMappedMallSkuIds(mallSkuIds));
     }
 }

@@ -74,6 +74,10 @@ describe("furniture assistant client", () => {
     expect(response.sources).toEqual([{ type: "knowledge", name: "Membership Rules" }]);
   });
 
+  it("does not invent product recommendations when no aligned catalog is supplied", () => {
+    expect(createMockAssistantResponse("recommend a sofa").products).toEqual([]);
+  });
+
   it("can call the configured backend endpoint and normalize its payload", async () => {
     const request = vi.fn().mockResolvedValue({
       answer: "Here are live Yudao products.",

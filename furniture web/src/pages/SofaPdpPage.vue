@@ -1,6 +1,5 @@
 <script setup>
 import { computed, onMounted, ref } from "vue";
-import { demoProducts } from "../data/demoProducts.js";
 import { useI18n } from "../i18n.js";
 import { buildProductDetailModel } from "../services/productDetailModel.js";
 import { getProductDetail } from "../services/yudaoClient.js";
@@ -8,13 +7,11 @@ import { getProductDetail } from "../services/yudaoClient.js";
 const emit = defineEmits(["add-to-cart"]);
 const { t } = useI18n();
 
-const product = ref(demoProducts[0]);
+const product = ref(null);
 const loading = ref(true);
-const source = ref("demo");
 const quantity = ref(1);
 
 const productId = computed(() => new URLSearchParams(window.location.search).get("id"));
-const sourceLabel = computed(() => (source.value === "yudao" ? t("connectedCatalog") : t("offlineCatalog")));
 const money = (value) => `$${value.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 const activeGalleryIndex = ref(0);
 const detail = computed(() => buildProductDetailModel(product.value));
@@ -29,10 +26,8 @@ onMounted(async () => {
 
   try {
     product.value = await getProductDetail(id);
-    source.value = "yudao";
   } catch {
-    product.value = demoProducts.find((item) => String(item.id) === String(id)) || demoProducts[0];
-    source.value = "demo";
+    product.value = null;
   } finally {
     activeGalleryIndex.value = 0;
     loading.value = false;
@@ -43,8 +38,9 @@ onMounted(async () => {
 <template>
   <section class="product-detail-page">
     <p v-if="loading" class="product-loading">{{ t("loadingProducts") }}</p>
+    <p v-else-if="!product" class="product-loading">{{ t("productUnavailable") }}</p>
 
-    <div class="product-detail-grid">
+    <div v-else class="product-detail-grid">
       <div class="product-detail-media">
         <figure class="product-gallery-main" :class="`tone-${activeGalleryItem.tone}`">
           <img v-if="activeGalleryItem.src" :src="activeGalleryItem.src" :alt="`${detail.name} ${activeGalleryItem.label}`" />
@@ -69,7 +65,7 @@ onMounted(async () => {
       </div>
 
       <article class="product-detail-panel">
-        <p class="eyebrow">{{ sourceLabel }} / {{ detail.collection }}</p>
+        <p class="eyebrow">{{ detail.collection }}</p>
         <h1>{{ detail.name }}</h1>
         <p class="product-detail-copy">{{ detail.description }}</p>
         <div class="product-detail-price">

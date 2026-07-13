@@ -1,4 +1,3 @@
-import { demoProducts } from "../data/demoProducts.js";
 import { requestYudao } from "./yudaoClient.js";
 
 export const FURNITURE_ASSISTANT_ENDPOINT = "/ai/furniture-assistant/chat";
@@ -78,7 +77,7 @@ const findMockKnowledgeResponse = (message) => {
   return KNOWLEDGE_MOCK_RESPONSES.find((entry) => entry.keywords.some((keyword) => normalized.includes(keyword)));
 };
 
-export const createMockAssistantResponse = (message, products = demoProducts) => {
+export const createMockAssistantResponse = (message, products = []) => {
   const prompt = String(message || "").trim();
   const knowledgeResponse = findMockKnowledgeResponse(prompt);
 
@@ -121,7 +120,7 @@ export const sendFurnitureAssistantMessage = async (message, options = {}) => {
   if (!content) return createMockAssistantResponse("");
 
   if (shouldUseMockResponse(options)) {
-    return createMockAssistantResponse(content, options.products || demoProducts);
+    return createMockAssistantResponse(content, options.products || []);
   }
 
   const request = options.request || requestYudao;

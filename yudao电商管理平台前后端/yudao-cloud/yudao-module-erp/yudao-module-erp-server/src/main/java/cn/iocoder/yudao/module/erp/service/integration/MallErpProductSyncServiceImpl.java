@@ -28,7 +28,13 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
+
+import static cn.iocoder.yudao.framework.common.util.collection.CollectionUtils.convertMap;
 
 @Service
 @RequiredArgsConstructor
@@ -41,6 +47,24 @@ public class MallErpProductSyncServiceImpl implements MallErpProductSyncService 
     private final ErpStockMapper erpStockMapper;
     private final MallErpProductMappingMapper mappingMapper;
     private final MallErpSyncLogMapper syncLogMapper;
+
+    @Override
+    public Set<Long> getMappedMallSkuIds(Collection<Long> mallSkuIds) {
+        if (mallSkuIds == null || mallSkuIds.isEmpty()) {
+            return Collections.emptySet();
+        }
+        List<MallErpProductMappingDO> mappings = mappingMapper.selectListByMallSkuIds(mallSkuIds);
+        if (mappings.isEmpty()) {
+            return Collections.emptySet();
+        }
+        Map<Long, ErpProductDO> products = convertMap(
+                erpProductMapper.selectBatchIds(mappings.stream().map(MallErpProductMappingDO::getErpProductId)
+                        .collect(Collectors.toSet())), ErpProductDO::getId);
+        return mappings.stream().filter(mapping -> {
+                    ErpProductDO product = products.get(mapping.getErpProductId());
+                    return product != null && CommonStatusEnum.ENABLE.getStatus().equals(product.getStatus());
+                }).map(MallErpProductMappingDO::getMallSkuId).collect(Collectors.toSet());
+    }
 
     @Override
     @Transactional(rollbackFor = Exception.class)

@@ -11,7 +11,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 
 @FeignClient(name = ApiConstants.NAME)
 public interface MallErpProductApi {
@@ -33,5 +35,8 @@ public interface MallErpProductApi {
 
     @PostMapping(PREFIX + "/validate-stock")
     CommonResult<List<MallErpStockDTO>> validateSellableStock(@RequestBody List<MallErpStockRequestDTO> items);
+
+    @PostMapping(PREFIX + "/mapped-sku-ids")
+    CommonResult<Set<Long>> getMappedMallSkuIds(@RequestBody Collection<Long> mallSkuIds);
 
 }
