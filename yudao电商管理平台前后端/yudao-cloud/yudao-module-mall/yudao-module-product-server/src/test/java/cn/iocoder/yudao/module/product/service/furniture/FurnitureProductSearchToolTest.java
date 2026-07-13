@@ -10,12 +10,15 @@ import cn.iocoder.yudao.module.product.dal.dataobject.sku.ProductSkuDO;
 import cn.iocoder.yudao.module.product.dal.dataobject.spu.ProductSpuDO;
 import cn.iocoder.yudao.module.product.service.furniture.catalog.FurnitureSkuSearchService;
 import cn.iocoder.yudao.module.product.service.furniture.conversation.FurnitureAssistantRequirements;
+import cn.iocoder.yudao.module.product.service.furniture.conversation.FurnitureRequirementNormalizer;
+import cn.iocoder.yudao.module.product.service.furniture.search.FurnitureCandidateMatch;
 import cn.iocoder.yudao.module.product.service.furniture.search.FurnitureMatchType;
+import cn.iocoder.yudao.module.product.service.furniture.search.FurnitureProductCandidate;
 import cn.iocoder.yudao.module.product.service.sku.ProductSkuService;
 import cn.iocoder.yudao.module.product.service.spu.ProductSpuService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 
 import java.math.BigDecimal;
@@ -34,7 +37,6 @@ import static org.mockito.Mockito.when;
 
 class FurnitureProductSearchToolTest extends BaseMockitoUnitTest {
 
-    @InjectMocks
     private FurnitureProductSearchTool tool;
 
     @Mock
@@ -45,6 +47,12 @@ class FurnitureProductSearchToolTest extends BaseMockitoUnitTest {
     private ProductSpuService productSpuService;
     @Mock
     private MallErpProductApi mallErpProductApi;
+
+    @BeforeEach
+    void setUp() {
+        tool = new FurnitureProductSearchTool(projectionService, productSkuService, productSpuService,
+                mallErpProductApi, new FurnitureRequirementNormalizer());
+    }
 
     @Test
     void shouldSearchProducts_shouldUseNormalizedCategoryOrExplicitProductIntent() {
@@ -98,6 +106,25 @@ class FurnitureProductSearchToolTest extends BaseMockitoUnitTest {
     }
 
     @Test
+    void searchForAssistant_shouldPreserveNormalizedUnderBudgetConstraintUntilTypedCallerMigration() {
+        List<FurnitureSkuSearchDO> projections = Arrays.asList(
+                projection(1001L, 2001L, "gray", "fabric", 3, 2100),
+                projection(1002L, 2002L, "gray", "fabric", 3, 2100));
+        prepareMall(projections, Arrays.asList(
+                sku(2001L, 1001L, 699900, "Color", "Gray"),
+                sku(2002L, 1002L, 899900, "Color", "Gray")), Arrays.asList(
+                spu(1001L, "Under Budget", 1), spu(1002L, "Over Budget", 1)));
+        when(mallErpProductApi.validateSellableStock(anyList())).thenReturn(stockResponse(
+                stock(2001L, "5", true), stock(2002L, "5", true)));
+
+        FurnitureProductSearchResult result = tool.searchForAssistant("sofa under 8000");
+
+        assertEquals(1, result.getProducts().size());
+        assertEquals(Long.valueOf(2001L), result.getProducts().get(0).getSkuId());
+        assertTrue(result.getMatchedConstraints().contains("budgetMax"));
+    }
+
+    @Test
     void searchProducts_shouldExcludeMissingSkuAndDisabledSpu() {
         List<FurnitureSkuSearchDO> projections = Arrays.asList(
                 projection(1001L, 2001L, "gray", "fabric", 3, 2100),
@@ -138,6 +165,21 @@ class FurnitureProductSearchToolTest extends BaseMockitoUnitTest {
     }
 
     @Test
+    void searchProducts_shouldFailClosedForConflictingDuplicateErpStockRows() {
+        FurnitureSkuSearchDO projection = projection(1001L, 2001L, "gray", "fabric", 3, 2100);
+        prepareMall(Collections.singletonList(projection),
+                Collections.singletonList(sku(2001L, 1001L, 500000, "Color", "Gray")),
+                Collections.singletonList(spu(1001L, "Ambiguous Stock", 1)));
+        when(mallErpProductApi.validateSellableStock(anyList())).thenReturn(stockResponse(
+                stock(2001L, "8", true), stock(2001L, "2", true)));
+
+        FurnitureProductSearchResult result = tool.searchProducts(request("sofa", 3));
+
+        assertEquals(FurnitureMatchType.NONE, result.getMatchType());
+        assertTrue(result.getProducts().isEmpty());
+    }
+
+    @Test
     void searchProducts_shouldDisclosePartialMatchAndKeepDeterministicOrder() {
         List<FurnitureSkuSearchDO> projections = Arrays.asList(
                 projection(1002L, 2002L, "gray", "fabric", 4, 2100),
@@ -164,9 +206,9 @@ class FurnitureProductSearchToolTest extends BaseMockitoUnitTest {
     @Test
     void searchProducts_shouldGroupAllVariantsOnlyFromSelectedSpu() {
         List<FurnitureSkuSearchDO> projections = Arrays.asList(
-                projection(1001L, 2001L, "gray", "fabric", 3, 2100),
-                projection(1001L, 2002L, "cream", "fabric", 3, 2100),
-                projection(1002L, 3001L, "black", "fabric", 3, 2100));
+                projection(1001L, 2001L, "gray", "fabric", 6, 2100),
+                projection(1001L, 2002L, "cream", "fabric", 4, 2100),
+                projection(1002L, 3001L, "black", "fabric", 6, 2100));
         prepareMall(projections, Arrays.asList(
                 sku(2001L, 1001L, 500000, "Color", "Gray"),
                 sku(2002L, 1001L, 550000, "Color", "Cream"),
@@ -174,7 +216,10 @@ class FurnitureProductSearchToolTest extends BaseMockitoUnitTest {
                 spu(1001L, "Chosen Family", 1), spu(1002L, "Other Family", 1)));
         when(mallErpProductApi.validateSellableStock(anyList())).thenReturn(stockResponse(
                 stock(2001L, "10", true), stock(2002L, "9", true), stock(3001L, "1", true)));
-        FurnitureProductSearchRequest request = request("sofa", 1);
+        FurnitureAssistantRequirements requirements = requirements("sofa");
+        requirements.setSeatCount(6);
+        requirements.setHardConstraints(Collections.singleton("seatCount"));
+        FurnitureProductSearchRequest request = FurnitureProductSearchRequest.from("six seat sofa", requirements, 1);
         request.setIncludeAllVariants(true);
 
         FurnitureProductSearchResult result = tool.searchProducts(request);
@@ -182,6 +227,26 @@ class FurnitureProductSearchToolTest extends BaseMockitoUnitTest {
         assertEquals(2, result.getProducts().size());
         assertEquals(Arrays.asList(1001L, 1001L), Arrays.asList(
                 result.getProducts().get(0).getId(), result.getProducts().get(1).getId()));
+        assertEquals(Arrays.asList(2001L, 2002L), Arrays.asList(
+                result.getProducts().get(0).getSkuId(), result.getProducts().get(1).getSkuId()));
+        assertEquals(FurnitureMatchType.EXACT, result.getMatchType());
+        assertTrue(result.getUnmetConstraints().isEmpty());
+        assertTrue(result.getMatchedConstraints().contains("seatCount"));
+    }
+
+    @Test
+    void fromWinningMatch_shouldKeepWinningMetadataWhenConcreteSiblingsDiffer() {
+        FurnitureProductCandidate winner = candidate(1001L, 2001L, 6, 500000, "10");
+        FurnitureProductCandidate partialSibling = candidate(1001L, 2002L, 4, 550000, "9");
+        FurnitureCandidateMatch winningMatch = new FurnitureCandidateMatch(winner, FurnitureMatchType.EXACT,
+                Arrays.asList("category", "seatCount"), Collections.emptyList(), 2);
+
+        FurnitureProductSearchResult result = FurnitureProductSearchResult.fromWinningMatch(
+                winningMatch, Arrays.asList(winner, partialSibling));
+
+        assertEquals(FurnitureMatchType.EXACT, result.getMatchType());
+        assertEquals(Arrays.asList("category", "seatCount"), result.getMatchedConstraints());
+        assertTrue(result.getUnmetConstraints().isEmpty());
         assertEquals(Arrays.asList(2001L, 2002L), Arrays.asList(
                 result.getProducts().get(0).getSkuId(), result.getProducts().get(1).getSkuId()));
     }
@@ -224,6 +289,14 @@ class FurnitureProductSearchToolTest extends BaseMockitoUnitTest {
         return new MallErpStockDTO().setMallSkuId(skuId).setErpProductId(skuId + 10000)
                 .setRequestedCount(BigDecimal.ONE).setSellableStock(new BigDecimal(sellable))
                 .setAvailable(available);
+    }
+
+    private static FurnitureProductCandidate candidate(Long spuId, Long skuId, Integer seats,
+                                                       Integer price, String sellableStock) {
+        return new FurnitureProductCandidate(
+                projection(spuId, skuId, "gray", "fabric", seats, 2100),
+                sku(skuId, spuId, price, "Seats", String.valueOf(seats)),
+                spu(spuId, "Variant Family", 1), new BigDecimal(sellableStock), true);
     }
 
     private static CommonResult<List<MallErpStockDTO>> stockResponse(MallErpStockDTO... stock) {

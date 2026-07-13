@@ -11,6 +11,7 @@ import cn.iocoder.yudao.module.product.dal.dataobject.spu.ProductSpuDO;
 import cn.iocoder.yudao.module.product.enums.spu.ProductSpuStatusEnum;
 import cn.iocoder.yudao.module.product.service.furniture.catalog.FurnitureSkuSearchService;
 import cn.iocoder.yudao.module.product.service.furniture.conversation.FurnitureAssistantRequirements;
+import cn.iocoder.yudao.module.product.service.furniture.conversation.FurnitureRequirementNormalizer;
 import cn.iocoder.yudao.module.product.service.furniture.search.FurnitureCandidateMatch;
 import cn.iocoder.yudao.module.product.service.furniture.search.FurnitureProductCandidate;
 import cn.iocoder.yudao.module.product.service.furniture.search.FurnitureProductMatcher;
@@ -47,28 +48,30 @@ public class FurnitureProductSearchTool {
     private static final List<String> PRODUCT_TERMS = Collections.unmodifiableList(Arrays.asList(
             "sofa", "chair", "table", "bed", "desk", "wardrobe", "cabinet", "rug", "lamp", "lighting",
             "\u6c99\u53d1", "\u6905", "\u9910\u684c", "\u8336\u51e0", "\u5e8a", "\u4e66\u684c", "\u8863\u67dc", "\u67dc", "\u5730\u6bef", "\u706f"));
-    private static final Map<String, String> CATEGORY_ALIASES = categoryAliases();
 
     private final FurnitureSkuSearchService projectionService;
     private final ProductSkuService productSkuService;
     private final ProductSpuService productSpuService;
     private final MallErpProductApi mallErpProductApi;
+    private final FurnitureRequirementNormalizer requirementNormalizer;
     private final FurnitureProductMatcher matcher = new FurnitureProductMatcher();
 
     public FurnitureProductSearchTool(FurnitureSkuSearchService projectionService,
                                       ProductSkuService productSkuService,
                                       ProductSpuService productSpuService,
-                                      MallErpProductApi mallErpProductApi) {
+                                      MallErpProductApi mallErpProductApi,
+                                      FurnitureRequirementNormalizer requirementNormalizer) {
         this.projectionService = projectionService;
         this.productSkuService = productSkuService;
         this.productSpuService = productSpuService;
         this.mallErpProductApi = mallErpProductApi;
+        this.requirementNormalizer = requirementNormalizer;
     }
 
     /** Compatibility bridge until Task 5 supplies normalized conversation requirements directly. */
     public FurnitureProductSearchResult searchForAssistant(String message) {
         FurnitureAssistantRequirements requirements = new FurnitureAssistantRequirements();
-        requirements.setCategory(extractCategory(message));
+        requirementNormalizer.normalize(message).applyTo(requirements);
         return searchProducts(FurnitureProductSearchRequest.from(message, requirements, DEFAULT_LIMIT));
     }
 
@@ -110,10 +113,15 @@ public class FurnitureProductSearchTool {
             return FurnitureProductSearchResult.none();
         }
 
-        int matchLimit = request.isIncludeAllVariants() ? candidates.size() : limit;
-        List<FurnitureCandidateMatch> matches = matcher.match(requirements, candidates, matchLimit);
+        List<FurnitureCandidateMatch> matches = matcher.match(requirements, candidates,
+                request.isIncludeAllVariants() ? 1 : limit);
+        if (matches.isEmpty()) {
+            return FurnitureProductSearchResult.none();
+        }
         if (request.isIncludeAllVariants()) {
-            matches = keepWinningSpu(matches);
+            FurnitureCandidateMatch winningMatch = matches.get(0);
+            return FurnitureProductSearchResult.fromWinningMatch(
+                    winningMatch, getSellableSiblings(candidates, winningMatch));
         }
         return FurnitureProductSearchResult.fromMatches(matches);
     }
@@ -136,8 +144,8 @@ public class FurnitureProductSearchTool {
                                                              CommonResult<List<MallErpStockDTO>> stockResponse) {
         boolean responseAvailable = stockResponse != null && stockResponse.isSuccess()
                 && stockResponse.getData() != null;
-        Map<Long, MallErpStockDTO> stocks = responseAvailable
-                ? convertMap(stockResponse.getData(), MallErpStockDTO::getMallSkuId) : Collections.emptyMap();
+        StockIndex stockIndex = responseAvailable
+                ? indexStocks(stockResponse.getData()) : StockIndex.empty();
         List<FurnitureProductCandidate> candidates = new ArrayList<>();
         for (FurnitureSkuSearchDO projection : projections) {
             Long skuId = projection.getSkuId();
@@ -155,7 +163,11 @@ public class FurnitureProductSearchTool {
                 exclude("ERP_UNAVAILABLE", projection);
                 continue;
             }
-            MallErpStockDTO stock = stocks.get(skuId);
+            if (stockIndex.duplicateSkuIds.contains(skuId)) {
+                exclude("ERP_UNAVAILABLE", projection);
+                continue;
+            }
+            MallErpStockDTO stock = stockIndex.stocks.get(skuId);
             if (stock == null || stock.getErpProductId() == null) {
                 exclude("ERP_UNMAPPED", projection);
                 continue;
@@ -174,14 +186,31 @@ public class FurnitureProductSearchTool {
         return candidates;
     }
 
-    private List<FurnitureCandidateMatch> keepWinningSpu(List<FurnitureCandidateMatch> matches) {
-        if (matches.isEmpty()) {
-            return matches;
-        }
-        Long selectedSpuId = matches.get(0).getCandidate().getSpu().getId();
-        return matches.stream()
-                .filter(match -> selectedSpuId.equals(match.getCandidate().getSpu().getId()))
+    private List<FurnitureProductCandidate> getSellableSiblings(List<FurnitureProductCandidate> candidates,
+                                                                FurnitureCandidateMatch winningMatch) {
+        Long selectedSpuId = winningMatch.getCandidate().getSpu().getId();
+        Long winningSkuId = winningMatch.getCandidate().getSku().getId();
+        return candidates.stream()
+                .filter(candidate -> selectedSpuId.equals(candidate.getSpu().getId()))
+                .sorted(java.util.Comparator
+                        .comparing((FurnitureProductCandidate candidate) ->
+                                !winningSkuId.equals(candidate.getSku().getId()))
+                        .thenComparing(candidate -> candidate.getSku().getId()))
                 .collect(Collectors.toList());
+    }
+
+    private StockIndex indexStocks(List<MallErpStockDTO> values) {
+        Map<Long, MallErpStockDTO> stocks = new LinkedHashMap<>();
+        Set<Long> duplicateSkuIds = new LinkedHashSet<>();
+        for (MallErpStockDTO value : values) {
+            if (value == null || value.getMallSkuId() == null) {
+                continue;
+            }
+            if (stocks.putIfAbsent(value.getMallSkuId(), value) != null) {
+                duplicateSkuIds.add(value.getMallSkuId());
+            }
+        }
+        return new StockIndex(stocks, duplicateSkuIds);
     }
 
     private void exclude(String reason, FurnitureSkuSearchDO projection) {
@@ -191,44 +220,6 @@ public class FurnitureProductSearchTool {
 
     private int normalizeLimit(Integer limit) {
         return limit == null || limit <= 0 ? DEFAULT_LIMIT : Math.min(limit, MAX_LIMIT);
-    }
-
-    private String extractCategory(String message) {
-        String normalized = StrUtil.blankToDefault(message, "").toLowerCase(Locale.ROOT);
-        for (Map.Entry<String, String> alias : CATEGORY_ALIASES.entrySet()) {
-            if (normalized.contains(alias.getKey())) {
-                return alias.getValue();
-            }
-        }
-        return null;
-    }
-
-    private static Map<String, String> categoryAliases() {
-        Map<String, String> aliases = new LinkedHashMap<>();
-        aliases.put("coffee table", "coffee-table");
-        aliases.put("dining table", "dining-table");
-        aliases.put("side table", "side-table");
-        aliases.put("table lamp", "lighting");
-        aliases.put("floor lamp", "lighting");
-        aliases.put("nightstand", "side-table");
-        aliases.put("sofa", "sofa");
-        aliases.put("rug", "rug");
-        aliases.put("bed", "bed");
-        aliases.put("desk", "desk");
-        aliases.put("wardrobe", "wardrobe");
-        aliases.put("chair", "single-chair");
-        aliases.put("\u5e8a\u5934\u67dc", "side-table");
-        aliases.put("\u9910\u684c", "dining-table");
-        aliases.put("\u8336\u51e0", "coffee-table");
-        aliases.put("\u8fb9\u51e0", "side-table");
-        aliases.put("\u6c99\u53d1", "sofa");
-        aliases.put("\u5730\u6bef", "rug");
-        aliases.put("\u8863\u67dc", "wardrobe");
-        aliases.put("\u4e66\u684c", "desk");
-        aliases.put("\u706f", "lighting");
-        aliases.put("\u5e8a", "bed");
-        aliases.put("\u6905", "single-chair");
-        return Collections.unmodifiableMap(aliases);
     }
 
     private static <T> Map<Long, T> convertMap(Collection<T> values, Function<T, Long> keyFunction) {
@@ -259,5 +250,19 @@ public class FurnitureProductSearchTool {
 
     private static <T> List<T> safeList(List<T> values) {
         return values == null ? Collections.emptyList() : values;
+    }
+
+    private static final class StockIndex {
+        private final Map<Long, MallErpStockDTO> stocks;
+        private final Set<Long> duplicateSkuIds;
+
+        private StockIndex(Map<Long, MallErpStockDTO> stocks, Set<Long> duplicateSkuIds) {
+            this.stocks = stocks;
+            this.duplicateSkuIds = duplicateSkuIds;
+        }
+
+        private static StockIndex empty() {
+            return new StockIndex(Collections.emptyMap(), Collections.emptySet());
+        }
     }
 }

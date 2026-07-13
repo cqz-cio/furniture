@@ -3,6 +3,7 @@ package cn.iocoder.yudao.module.product.service.furniture;
 import cn.iocoder.yudao.module.product.controller.app.furniture.vo.FurnitureAssistantChatRespVO;
 import cn.iocoder.yudao.module.product.service.furniture.search.FurnitureCandidateMatch;
 import cn.iocoder.yudao.module.product.service.furniture.search.FurnitureMatchType;
+import cn.iocoder.yudao.module.product.service.furniture.search.FurnitureProductCandidate;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -46,11 +47,27 @@ public class FurnitureProductSearchResult {
         if (matches == null || matches.isEmpty()) {
             return none();
         }
-        FurnitureCandidateMatch first = matches.get(0);
-        List<FurnitureAssistantChatRespVO.Product> products = matches.stream()
-                .map(FurnitureProductSearchResult::toProduct)
+        FurnitureCandidateMatch winningMatch = matches.get(0);
+        List<FurnitureProductCandidate> candidates = matches.stream()
+                .map(FurnitureCandidateMatch::getCandidate).collect(Collectors.toList());
+        return fromWinningMatch(winningMatch, candidates);
+    }
+
+    /**
+     * Builds a result whose top-level match metadata always describes the winning match. Concrete candidates may
+     * include sellable sibling variants which do not independently have the winner's exact/partial classification.
+     */
+    public static FurnitureProductSearchResult fromWinningMatch(
+            FurnitureCandidateMatch winningMatch,
+            List<FurnitureProductCandidate> candidates) {
+        if (winningMatch == null || candidates == null || candidates.isEmpty()) {
+            return none();
+        }
+        List<FurnitureAssistantChatRespVO.Product> products = candidates.stream()
+                .map(candidate -> toProduct(candidate, winningMatch))
                 .collect(Collectors.toList());
-        return of(first.getMatchType(), first.getMatchedConstraints(), first.getUnmetConstraints(), products);
+        return of(winningMatch.getMatchType(), winningMatch.getMatchedConstraints(),
+                winningMatch.getUnmetConstraints(), products);
     }
 
     public static FurnitureProductSearchResult none() {
@@ -58,20 +75,21 @@ public class FurnitureProductSearchResult {
                 Collections.emptyList());
     }
 
-    private static FurnitureAssistantChatRespVO.Product toProduct(FurnitureCandidateMatch match) {
+    private static FurnitureAssistantChatRespVO.Product toProduct(
+            FurnitureProductCandidate candidate,
+            FurnitureCandidateMatch winningMatch) {
         FurnitureAssistantChatRespVO.Product product = new FurnitureAssistantChatRespVO.Product();
-        product.setId(match.getCandidate().getSpu().getId());
-        product.setSkuId(match.getCandidate().getSku().getId());
-        product.setName(match.getCandidate().getSpu().getName());
-        product.setSubtitle(match.getCandidate().getSpu().getIntroduction() == null
-                ? "" : match.getCandidate().getSpu().getIntroduction());
-        product.setPrice(toYuan(match.getCandidate().getSku().getPrice()));
-        product.setMarketPrice(toYuan(match.getCandidate().getSku().getMarketPrice()));
-        product.setStock(match.getCandidate().getSellableStock().intValue());
-        product.setCover(match.getCandidate().getSku().getPicUrl() == null
-                ? match.getCandidate().getSpu().getPicUrl() : match.getCandidate().getSku().getPicUrl());
-        product.setReason(toReason(match));
-        product.setDetailUrl("/sofa-pdp?id=" + match.getCandidate().getSpu().getId());
+        product.setId(candidate.getSpu().getId());
+        product.setSkuId(candidate.getSku().getId());
+        product.setName(candidate.getSpu().getName());
+        product.setSubtitle(candidate.getSpu().getIntroduction() == null ? "" : candidate.getSpu().getIntroduction());
+        product.setPrice(toYuan(candidate.getSku().getPrice()));
+        product.setMarketPrice(toYuan(candidate.getSku().getMarketPrice()));
+        product.setStock(candidate.getSellableStock().intValue());
+        product.setCover(candidate.getSku().getPicUrl() == null
+                ? candidate.getSpu().getPicUrl() : candidate.getSku().getPicUrl());
+        product.setReason(toReason(winningMatch));
+        product.setDetailUrl("/sofa-pdp?id=" + candidate.getSpu().getId());
         return product;
     }
 
