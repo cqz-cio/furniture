@@ -406,7 +406,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
             AfterSaleLogUtils.setAfterSaleInfo(afterSale.getId(), afterSale.getStatus(), AfterSaleStatusEnum.COMPLETE.getStatus());
 
             // 更新交易订单项的售后状态为【已完成】
-            tradeOrderUpdateService.updateOrderItemWhenAfterSaleSuccess(afterSale.getOrderItemId(), afterSale.getRefundPrice());
+            tradeOrderUpdateService.updateOrderItemWhenAfterSaleSuccess(afterSale);
             // 【情况二：退款失败】
         } else if (PayRefundStatusEnum.isFailure(payRefund.getStatus())) {
             // 记录售后日志

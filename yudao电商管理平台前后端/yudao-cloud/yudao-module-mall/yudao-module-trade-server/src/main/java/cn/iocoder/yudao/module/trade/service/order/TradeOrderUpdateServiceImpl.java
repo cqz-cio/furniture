@@ -43,6 +43,7 @@ import cn.iocoder.yudao.module.trade.controller.app.order.vo.AppTradeOrderSettle
 import cn.iocoder.yudao.module.trade.controller.app.order.vo.item.AppTradeOrderItemCommentCreateReqVO;
 import cn.iocoder.yudao.module.trade.convert.order.TradeOrderConvert;
 import cn.iocoder.yudao.module.trade.dal.dataobject.cart.CartDO;
+import cn.iocoder.yudao.module.trade.dal.dataobject.aftersale.AfterSaleDO;
 import cn.iocoder.yudao.module.trade.dal.dataobject.delivery.DeliveryExpressDO;
 import cn.iocoder.yudao.module.trade.dal.dataobject.delivery.DeliveryPickUpStoreDO;
 import cn.iocoder.yudao.module.trade.dal.dataobject.order.TradeOrderDO;
@@ -968,17 +969,18 @@ public class TradeOrderUpdateServiceImpl implements TradeOrderUpdateService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void updateOrderItemWhenAfterSaleSuccess(Long id, Integer refundPrice) {
+    public void updateOrderItemWhenAfterSaleSuccess(AfterSaleDO afterSale) {
+        Long id = afterSale.getOrderItemId();
         // 1.1 更新订单项
         updateOrderItemAfterSaleStatus(id, TradeOrderItemAfterSaleStatusEnum.APPLY.getStatus(),
                 TradeOrderItemAfterSaleStatusEnum.SUCCESS.getStatus(), null);
         // 1.2 执行 TradeOrderHandler 的后置处理
         TradeOrderItemDO orderItem = tradeOrderItemMapper.selectById(id);
         TradeOrderDO order = tradeOrderMapper.selectById(orderItem.getOrderId());
-        tradeOrderHandlers.forEach(handler -> handler.afterCancelOrderItem(order, orderItem));
+        tradeOrderHandlers.forEach(handler -> handler.afterAfterSaleSuccess(order, orderItem, afterSale));
 
         // 2.1 更新订单的退款金额、积分
-        Integer orderRefundPrice = order.getRefundPrice() + refundPrice;
+        Integer orderRefundPrice = order.getRefundPrice() + afterSale.getRefundPrice();
         Integer orderRefundPoint = order.getRefundPoint() + orderItem.getUsePoint();
         Integer refundStatus = isAllOrderItemAfterSaleSuccess(order.getId()) ?
                 TradeOrderRefundStatusEnum.ALL.getStatus() // 如果都售后成功，则需要取消订单

@@ -184,6 +184,8 @@ public class TradePriceCalculateRespBO {
          * 对应 taobao 的 order.price 字段
          */
         private Integer price;
+        /** SKU cost snapshot per unit, in the smallest currency unit. */
+        private Long costPrice;
         /**
          * 优惠金额（总），单位：分
          *

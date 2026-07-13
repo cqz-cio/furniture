@@ -81,6 +81,7 @@ public interface TradeOrderConvert {
             orderItem.setUserId(tradeOrderDO.getUserId());
             orderItem.setAfterSaleStatus(TradeOrderItemAfterSaleStatusEnum.NONE.getStatus());
             orderItem.setCommentStatus(false);
+            orderItem.setCostEstimated(Boolean.FALSE);
             return orderItem;
         });
     }

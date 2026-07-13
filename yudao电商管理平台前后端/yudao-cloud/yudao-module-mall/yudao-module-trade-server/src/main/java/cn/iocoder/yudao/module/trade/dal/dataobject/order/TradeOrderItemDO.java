@@ -100,6 +100,10 @@ public class TradeOrderItemDO extends BaseDO {
      * 对应 taobao 的 order.price 字段
      */
     private Integer price;
+    /** Cost per unit captured when the order is priced; null means unavailable. */
+    private Long costPrice;
+    /** False for checkout-time exact cost, true only for historical backfill. */
+    private Boolean costEstimated = Boolean.FALSE;
     /**
      * 优惠金额（总），单位：分
      *

@@ -167,7 +167,7 @@ public interface TradeOrderUpdateService {
      * @param id          交易订单项编号
      * @param refundPrice 退款金额
      */
-    void updateOrderItemWhenAfterSaleSuccess(@NotNull Long id, @NotNull Integer refundPrice);
+    void updateOrderItemWhenAfterSaleSuccess(@NotNull cn.iocoder.yudao.module.trade.dal.dataobject.aftersale.AfterSaleDO afterSale);
 
     /**
      * 当售后取消（用户取消、管理员驳回、管理员拒绝收货）后，更新交易订单项的售后状态

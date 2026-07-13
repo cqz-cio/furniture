@@ -3,6 +3,7 @@ package cn.iocoder.yudao.module.trade.service.order.handler;
 import cn.iocoder.yudao.framework.common.util.collection.CollectionUtils;
 import cn.iocoder.yudao.module.trade.dal.dataobject.order.TradeOrderDO;
 import cn.iocoder.yudao.module.trade.dal.dataobject.order.TradeOrderItemDO;
+import cn.iocoder.yudao.module.trade.dal.dataobject.aftersale.AfterSaleDO;
 import cn.iocoder.yudao.module.trade.enums.order.TradeOrderItemAfterSaleStatusEnum;
 
 import java.util.List;
@@ -54,6 +55,9 @@ public interface TradeOrderHandler {
      * @param orderItem 订单项
      */
     default void afterCancelOrderItem(TradeOrderDO order, TradeOrderItemDO orderItem) {}
+
+    /** Called after a successful after-sale; unlike cancellation, inventory semantics depend on its way/count. */
+    default void afterAfterSaleSuccess(TradeOrderDO order, TradeOrderItemDO orderItem, AfterSaleDO afterSale) {}
 
     /**
      * 订单发货前

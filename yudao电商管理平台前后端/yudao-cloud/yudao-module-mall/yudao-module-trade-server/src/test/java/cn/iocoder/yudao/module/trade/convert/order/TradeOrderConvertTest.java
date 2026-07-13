@@ -26,6 +26,21 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class TradeOrderConvertTest {
 
     @Test
+    public void testConvertList_copiesCostAndDefaultsExact() {
+        TradePriceCalculateRespBO.OrderItem source = new TradePriceCalculateRespBO.OrderItem()
+                .setSkuId(10L).setSpuId(20L).setCount(2)
+                .setPrice(5000).setPayPrice(10000).setCostPrice(3500L);
+        TradeOrderDO order = new TradeOrderDO().setId(1L).setUserId(9L);
+        TradePriceCalculateRespBO calculation = new TradePriceCalculateRespBO()
+                .setItems(Collections.singletonList(source));
+
+        TradeOrderItemDO item = TradeOrderConvert.INSTANCE.convertList(order, calculation).get(0);
+
+        assertEquals(Long.valueOf(3500L), item.getCostPrice());
+        assertEquals(Boolean.FALSE, item.getCostEstimated());
+    }
+
+    @Test
     public void testConvertCreateReq_keepsAddressVerificationAudit() {
         AppTradeOrderCreateReqVO createReqVO = new AppTradeOrderCreateReqVO();
         createReqVO.setAddressVerification(buildAddressVerification());
