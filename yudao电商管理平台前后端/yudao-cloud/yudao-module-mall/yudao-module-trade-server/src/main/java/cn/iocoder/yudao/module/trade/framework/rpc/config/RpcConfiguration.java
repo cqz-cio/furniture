@@ -25,6 +25,7 @@ import cn.iocoder.yudao.module.system.api.notify.NotifyMessageSendApi;
 import cn.iocoder.yudao.module.system.api.social.SocialClientApi;
 import cn.iocoder.yudao.module.system.api.social.SocialUserApi;
 import cn.iocoder.yudao.module.system.api.user.AdminUserApi;
+import cn.iocoder.yudao.module.statistics.api.behavior.StatisticsBehaviorApi;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.context.annotation.Configuration;
 
@@ -35,7 +36,8 @@ import org.springframework.context.annotation.Configuration;
         MemberUserApi.class, MemberPointApi.class, MemberLevelApi.class, MemberAddressApi.class, MemberConfigApi.class,
         ProductSpuApi.class, ProductSkuApi.class, ProductCommentApi.class, ProductCategoryApi.class,
         PayOrderApi.class, PayRefundApi.class, PayTransferApi.class, PayWalletApi.class,
-        AdminUserApi.class, NotifyMessageSendApi.class, SocialClientApi.class, SocialUserApi.class
+        AdminUserApi.class, NotifyMessageSendApi.class, SocialClientApi.class, SocialUserApi.class,
+        StatisticsBehaviorApi.class
 })
 public class RpcConfiguration {
 }

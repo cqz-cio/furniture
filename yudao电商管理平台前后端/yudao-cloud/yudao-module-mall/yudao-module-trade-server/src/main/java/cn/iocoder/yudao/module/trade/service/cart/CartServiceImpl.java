@@ -11,6 +11,9 @@ import cn.iocoder.yudao.module.trade.dal.dataobject.cart.CartDO;
 import cn.iocoder.yudao.module.trade.dal.mysql.cart.CartMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.context.ApplicationEventPublisher;
+import cn.iocoder.yudao.module.trade.service.cart.behavior.BehaviorTrackingConsentPolicy;
+import cn.iocoder.yudao.module.trade.service.cart.event.CartAddedEvent;
 import org.springframework.validation.annotation.Validated;
 
 import javax.annotation.Resource;
@@ -42,8 +45,11 @@ public class CartServiceImpl implements CartService {
     private ProductSpuApi productSpuApi;
     @Resource
     private ProductSkuApi productSkuApi;
+    @Resource private ApplicationEventPublisher eventPublisher;
+    @Resource private BehaviorTrackingConsentPolicy trackingConsentPolicy;
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public Long addCart(Long userId, AppCartAddReqVO addReqVO) {
         // 查询 TradeCartDO
         CartDO cart = nonNull(addReqVO.getRegistryItemId())
@@ -59,6 +65,7 @@ public class CartServiceImpl implements CartService {
                     .setCount(cart.getCount() + count)
                     .setRegistryId(addReqVO.getRegistryId())
                     .setRegistryItemId(addReqVO.getRegistryItemId()));
+            publishCartAdded(cart.getId(),userId,cart.getSpuId(),cart.getSkuId(),count);
             return cart.getId();
             // 情况二：不存在，则进行插入
         } else {
@@ -68,7 +75,14 @@ public class CartServiceImpl implements CartService {
                     .setRegistryItemId(addReqVO.getRegistryItemId());
             cartMapper.insert(cart);
         }
+        publishCartAdded(cart.getId(),userId,cart.getSpuId(),cart.getSkuId(),count);
         return cart.getId();
+    }
+
+    private void publishCartAdded(Long cartId,Long userId,Long spuId,Long skuId,Integer quantity){
+        BehaviorTrackingConsentPolicy.Decision decision=trackingConsentPolicy.currentDecision(userId);
+        if(!decision.isAllowed())return;
+        eventPublisher.publishEvent(new CartAddedEvent(java.util.UUID.randomUUID().toString(),cartId,userId,spuId,skuId,quantity,decision.getVisitorId(),decision.getSessionId()));
     }
 
     @Override
