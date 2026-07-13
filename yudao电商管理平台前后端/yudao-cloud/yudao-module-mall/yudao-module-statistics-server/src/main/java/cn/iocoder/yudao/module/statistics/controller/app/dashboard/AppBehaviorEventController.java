@@ -14,8 +14,9 @@ public class AppBehaviorEventController {
     @PostMapping("/track")
     public CommonResult<Boolean> track(@Valid @RequestBody AppBehaviorEventTrackReqVO request,
             @RequestHeader("x-analytics-visitor-id") String visitorId,
-            @RequestHeader("x-analytics-session-id") String sessionId) {
-        behaviorEventService.trackPublic(request, visitorId, sessionId, ServletUtils.getClientIP(), SecurityFrameworkUtils.getLoginUserId());
+            @RequestHeader("x-analytics-session-id") String sessionId,
+            @RequestHeader(value="x-analytics-consent-evidence",required=false) String consentEvidence) {
+        behaviorEventService.trackPublic(request, visitorId, sessionId, consentEvidence, ServletUtils.getClientIP(), SecurityFrameworkUtils.getLoginUserId());
         return CommonResult.success(true);
     }
 }

@@ -10,5 +10,5 @@ import javax.annotation.Resource;
 public class CartAddedEventListener {
  @Resource private StatisticsBehaviorApi api;
  @Async @TransactionalEventListener(phase=TransactionPhase.AFTER_COMMIT)
- public void onCartAdded(CartAddedEvent e){try{api.recordCartAdded(new CartBehaviorRecordReqDTO().setEventId(e.getEventId()).setUserId(e.getUserId()).setSpuId(e.getSpuId()).setSkuId(e.getSkuId()).setQuantity(e.getQuantity()).setVisitorId(e.getVisitorId()).setSessionId(e.getSessionId())).checkError();}catch(Exception ex){log.warn("[recordCartAdded][cartId({}) statistics unavailable]",e.getCartId());}}
+ public void onCartAdded(CartAddedEvent e){try{api.recordCartAdded(new CartBehaviorRecordReqDTO().setEventId(e.getEventId()).setUserId(e.getUserId()).setSpuId(e.getSpuId()).setSkuId(e.getSkuId()).setQuantity(e.getQuantity()).setVisitorId(e.getVisitorId()).setSessionId(e.getSessionId()).setConsentEvidence(e.getConsentEvidence())).checkError();}catch(Exception ex){log.warn("[recordCartAdded][cartId({}) statistics unavailable]",e.getCartId());}}
 }

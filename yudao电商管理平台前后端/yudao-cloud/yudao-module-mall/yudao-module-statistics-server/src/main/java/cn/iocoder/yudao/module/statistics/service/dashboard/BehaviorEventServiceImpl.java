@@ -25,13 +25,14 @@ public class BehaviorEventServiceImpl implements BehaviorEventService {
     @Resource private BehaviorHmacDayVersionService versionService;
     @Resource private BehaviorEventMapper eventMapper;
     @Resource private BehaviorIngestionGapService gapService;
+    @Resource private ConsentEvidenceVerifier consentEvidenceVerifier;
     @Resource(name = "stringRedisTemplate") private StringRedisTemplate redisTemplate;
 
     @Override @Transactional(rollbackFor=Exception.class)
-    public void trackPublic(AppBehaviorEventTrackReqVO request, String rawVisitorId, String rawSessionId, String clientIp, Long userId) {
+    public void trackPublic(AppBehaviorEventTrackReqVO request, String rawVisitorId, String rawSessionId, String consentEvidence, String clientIp, Long userId) {
         Long tenantId = TenantContextHolder.getRequiredTenantId();
         if (!properties.isEnabled() || !properties.getEnabledTenantIds().contains(tenantId)) throw new IllegalStateException("tracking is disabled");
-        if (properties.isConsentRequired() && !Boolean.TRUE.equals(request.getConsentGranted())) throw new IllegalArgumentException("analytics consent is required");
+        if (properties.isConsentRequired() && !consentEvidenceVerifier.verify(tenantId, consentEvidence, Instant.now())) throw new IllegalArgumentException("valid analytics consent evidence is required");
         BehaviorEventTypeEnum type = BehaviorEventTypeEnum.of(request.getEventType());
         if (type == BehaviorEventTypeEnum.ADD_TO_CART) throw new IllegalArgumentException("public add-to-cart is forbidden");
         LocalDateTime receivedAt = LocalDateTime.now(BUSINESS_ZONE);
@@ -64,6 +65,7 @@ public class BehaviorEventServiceImpl implements BehaviorEventService {
     @Override @Transactional(rollbackFor=Exception.class)
     public void recordTrusted(TrustedBehaviorEventCommand command) {
         Long tenantId = TenantContextHolder.getRequiredTenantId();
+        if (properties.isConsentRequired() && !consentEvidenceVerifier.verify(tenantId, command.getConsentEvidence(), Instant.now())) throw new IllegalArgumentException("valid analytics consent evidence is required");
         LocalDateTime receivedAt = LocalDateTime.now(BUSINESS_ZONE); LocalDate day = receivedAt.toLocalDate();
         int version = versionService.activeVersion(tenantId, day);
         try {

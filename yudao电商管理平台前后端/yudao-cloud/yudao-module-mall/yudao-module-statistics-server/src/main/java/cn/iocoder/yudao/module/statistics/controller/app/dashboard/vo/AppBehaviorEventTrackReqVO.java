@@ -10,5 +10,4 @@ public class AppBehaviorEventTrackReqVO {
     @NotBlank @Size(max=255) private String pagePath;
     @Size(max=255) private String referrerHost;
     private Integer deviceType;
-    @NotNull private Boolean consentGranted;
 }

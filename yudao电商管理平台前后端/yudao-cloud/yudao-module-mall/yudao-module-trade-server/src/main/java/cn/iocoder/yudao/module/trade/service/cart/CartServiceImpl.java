@@ -82,7 +82,7 @@ public class CartServiceImpl implements CartService {
     private void publishCartAdded(Long cartId,Long userId,Long spuId,Long skuId,Integer quantity){
         BehaviorTrackingConsentPolicy.Decision decision=trackingConsentPolicy.currentDecision(userId);
         if(!decision.isAllowed())return;
-        eventPublisher.publishEvent(new CartAddedEvent(java.util.UUID.randomUUID().toString(),cartId,userId,spuId,skuId,quantity,decision.getVisitorId(),decision.getSessionId()));
+        eventPublisher.publishEvent(new CartAddedEvent(java.util.UUID.randomUUID().toString(),cartId,userId,spuId,skuId,quantity,decision.getVisitorId(),decision.getSessionId(),decision.getConsentEvidence()));
     }
 
     @Override

@@ -23,7 +23,9 @@ const readConsent = () => {
   if (!isAnalyticsConsentRequired()) return { granted: true, evidence: "" };
   try {
     const value = JSON.parse(localStorage.getItem(CONSENT_KEY) || "null");
-    return value?.granted === true ? value : null;
+    return value?.granted === true && typeof value.evidence === "string" && value.evidence.trim()
+      ? value
+      : null;
   } catch {
     return null;
   }
@@ -105,7 +107,6 @@ const track = async (eventType, { spuId } = {}) => {
     ...(spuId ? { spuId: Number(spuId) } : {}),
     pagePath: eventType === "HOME_VIEW" ? "/" : eventType === "PRODUCT_DETAIL_VIEW" ? "/product" : "/checkout",
     ...(safeReferrerHost() ? { referrerHost: safeReferrerHost() } : {}),
-    consentGranted: true,
   };
   const body = JSON.stringify(payload);
   for (let attempt = 0; attempt < 2; attempt += 1) {

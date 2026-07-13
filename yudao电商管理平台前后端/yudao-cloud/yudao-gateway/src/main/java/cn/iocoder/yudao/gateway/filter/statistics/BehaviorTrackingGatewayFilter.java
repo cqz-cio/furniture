@@ -51,7 +51,7 @@ public class BehaviorTrackingGatewayFilter implements GlobalFilter, Ordered {
         exchange.getResponse().getHeaders().set(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, site.getOrigin());
         exchange.getResponse().getHeaders().set(HttpHeaders.ACCESS_CONTROL_ALLOW_METHODS, "POST, OPTIONS");
         exchange.getResponse().getHeaders().set(HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS,
-                "Content-Type, Authorization, X-Analytics-Visitor-Id, X-Analytics-Session-Id, X-Analytics-Consent");
+                "Content-Type, Authorization, X-Analytics-Visitor-Id, X-Analytics-Session-Id, X-Analytics-Consent-Evidence");
         exchange.getResponse().getHeaders().set(HttpHeaders.ACCESS_CONTROL_MAX_AGE, "3600");
 
         ServerHttpRequest request = exchange.getRequest().mutate().headers(headers -> {

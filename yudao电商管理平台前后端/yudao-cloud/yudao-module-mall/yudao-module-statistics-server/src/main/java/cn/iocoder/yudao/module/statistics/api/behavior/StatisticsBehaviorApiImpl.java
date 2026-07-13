@@ -9,5 +9,5 @@ import static cn.iocoder.yudao.framework.common.pojo.CommonResult.success;
 @RestController @Validated
 public class StatisticsBehaviorApiImpl implements StatisticsBehaviorApi {
  @Resource private BehaviorEventService service;
- @Override public CommonResult<Boolean> recordCartAdded(CartBehaviorRecordReqDTO r){ service.recordTrusted(new TrustedBehaviorEventCommand().setEventId(r.getEventId()).setUserId(r.getUserId()).setSpuId(r.getSpuId()).setSkuId(r.getSkuId()).setQuantity(r.getQuantity()).setRawVisitorId(r.getVisitorId()).setRawSessionId(r.getSessionId())); return success(true); }
+ @Override @cn.iocoder.yudao.framework.apilog.core.annotation.ApiAccessLog(sanitizeKeys={"visitorId","sessionId","consentEvidence"}) public CommonResult<Boolean> recordCartAdded(CartBehaviorRecordReqDTO r){ service.recordTrusted(new TrustedBehaviorEventCommand().setEventId(r.getEventId()).setUserId(r.getUserId()).setSpuId(r.getSpuId()).setSkuId(r.getSkuId()).setQuantity(r.getQuantity()).setRawVisitorId(r.getVisitorId()).setRawSessionId(r.getSessionId()).setConsentEvidence(r.getConsentEvidence())); return success(true); }
 }

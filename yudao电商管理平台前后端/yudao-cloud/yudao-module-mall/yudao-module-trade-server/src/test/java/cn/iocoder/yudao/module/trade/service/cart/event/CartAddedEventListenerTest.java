@@ -19,5 +19,5 @@ class CartAddedEventListenerTest {
   org.mockito.ArgumentCaptor<CartBehaviorRecordReqDTO> c=org.mockito.ArgumentCaptor.forClass(CartBehaviorRecordReqDTO.class); verify(api).recordCartAdded(c.capture());
   org.junit.jupiter.api.Assertions.assertEquals(2,c.getValue().getQuantity()); org.junit.jupiter.api.Assertions.assertEquals(20L,c.getValue().getSpuId());
  }
- private CartAddedEvent event(){return new CartAddedEvent("evt",1L,9L,20L,10L,2,"visitor","session");}
+ private CartAddedEvent event(){return new CartAddedEvent("evt",1L,9L,20L,10L,2,"visitor","session","valid-evidence");}
 }

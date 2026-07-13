@@ -46,6 +46,19 @@ describe("analytics privacy gate", () => {
     expect(sessionStorage.getItem("oakved_session_id")).toBeNull();
   });
 
+  it("rejects granted consent without server-verifiable evidence", async () => {
+    vi.stubEnv("VITE_BEHAVIOR_TRACKING_ENABLED", "true");
+    vi.stubEnv("VITE_ANALYTICS_CONSENT_REQUIRED", "true");
+    const analytics = await import("../src/services/analytics.js");
+    analytics.setAnalyticsConsent({ granted: true, evidence: "" });
+
+    expect(analytics.analyticsIdentityHeaders()).toEqual({});
+    expect(await analytics.trackHomeView()).toBe(false);
+    expect(fetch).not.toHaveBeenCalled();
+    expect(localStorage.getItem("oakved_analytics_visitor")).toBeNull();
+    expect(sessionStorage.length).toBe(0);
+  });
+
   it("retries once with the same event id", async () => {
     vi.stubEnv("VITE_BEHAVIOR_TRACKING_ENABLED", "true");
     vi.stubEnv("VITE_ANALYTICS_CONSENT_REQUIRED", "false");
@@ -59,5 +72,6 @@ describe("analytics privacy gate", () => {
     expect(first.spuId).toBe(88);
     expect(first).not.toHaveProperty("userId");
     expect(first).not.toHaveProperty("clientTime");
+    expect(first).not.toHaveProperty("consentGranted");
   });
 });

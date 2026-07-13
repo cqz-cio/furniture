@@ -12,5 +12,5 @@ public class BehaviorTrackingProperties {
     private int perTenantPerMinute = 6000;
     private int globalPerMinute = 30000;
     private Map<String, TenantHmac> hmacTenants = new HashMap<>();
-    @Data public static class TenantHmac { private Integer activeVersion; private String activeKeyRef; private String activatesAt; private Integer previousVersion; private String previousKeyRef; }
+    @Data public static class TenantHmac { private Integer activeVersion; private String activeKeyRef; private String activatesAt; private Integer previousVersion; private String previousKeyRef; private String consentEvidenceKeyRef; }
 }

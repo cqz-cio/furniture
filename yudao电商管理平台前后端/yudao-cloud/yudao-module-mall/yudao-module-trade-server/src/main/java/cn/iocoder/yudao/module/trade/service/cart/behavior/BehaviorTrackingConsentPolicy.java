@@ -9,11 +9,11 @@ public class BehaviorTrackingConsentPolicy {
  @org.springframework.beans.factory.annotation.Value("${yudao.trade.cart-tracking.consent-required:true}") private boolean consentRequired;
  public Decision currentDecision(Long userId){
   if(!enabled)return Decision.denied(); HttpServletRequest r=ServletUtils.getRequest();
-  if(!consentRequired)return new Decision(true,null,null);
-  if(r==null||!"granted".equals(r.getHeader("x-analytics-consent")))return Decision.denied();
-  String v=r.getHeader("x-analytics-visitor-id"),s=r.getHeader("x-analytics-session-id");
-  if(v==null||v.trim().isEmpty()||s==null||s.trim().isEmpty())return Decision.denied();
-  return new Decision(true,v,s);
+  if(!consentRequired)return new Decision(true,null,null,null);
+  if(r==null)return Decision.denied();
+  String v=r.getHeader("x-analytics-visitor-id"),s=r.getHeader("x-analytics-session-id"),e=r.getHeader("x-analytics-consent-evidence");
+  if(v==null||v.trim().isEmpty()||s==null||s.trim().isEmpty()||e==null||e.trim().isEmpty())return Decision.denied();
+  return new Decision(true,v,s,e);
  }
- @Value public static class Decision { boolean allowed; String visitorId; String sessionId; static Decision denied(){return new Decision(false,null,null);} }
+ @Value public static class Decision { boolean allowed; String visitorId; String sessionId; String consentEvidence; static Decision denied(){return new Decision(false,null,null,null);} }
 }
