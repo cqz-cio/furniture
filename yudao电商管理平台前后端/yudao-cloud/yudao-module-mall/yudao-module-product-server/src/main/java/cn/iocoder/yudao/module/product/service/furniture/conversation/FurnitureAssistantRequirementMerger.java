@@ -1,32 +1,36 @@
 package cn.iocoder.yudao.module.product.service.furniture.conversation;
 
-import cn.hutool.core.util.StrUtil;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
+import java.util.Arrays;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.Locale;
+import java.util.Objects;
 
 @Component
 public class FurnitureAssistantRequirementMerger {
 
-    private static final Pattern MAX_BUDGET = Pattern.compile("([0-9]+(?:\\.[0-9]+)?)\\s*(?:元)?\\s*(?:以内|以下|之内|不超过)");
+    private static final List<String> CATEGORY_SPECIFIC_FIELDS = Arrays.asList(
+            "seatCount", "maxWidthMm", "maxDepthMm", "maxHeightMm", "preferredFeatures");
+
+    private final FurnitureRequirementNormalizer normalizer = new FurnitureRequirementNormalizer();
 
     public MergeResult merge(FurnitureAssistantConversation conversation, String message) {
-        String text = StrUtil.blankToDefault(message, "").toLowerCase();
-        FurnitureAssistantRequirements requirements = conversation.getRequirements();
-        if (containsAny(text, "沙发", "sofa")) requirements.setCategory("sofa");
-        if (containsAny(text, "床", "bed")) requirements.setCategory("bed");
-        if (containsAny(text, "餐桌", "dining table")) requirements.setCategory("dining table");
-        addIfPresent(requirements.getMaterials(), text, "布艺", "真皮", "实木", "岩板");
-        addIfPresent(requirements.getStyles(), text, "奶油风", "现代简约", "原木风", "轻奢");
-        addIfPresent(requirements.getColors(), text, "米白色", "白色", "黑色", "原木色");
-        if (containsAny(text, "有猫", "有狗", "宠物", "pet")) requirements.setHasPets(true);
-        if (containsAny(text, "有孩子", "儿童", "小孩")) requirements.setHasChildren(true);
-        Matcher budget = MAX_BUDGET.matcher(text);
-        if (budget.find()) requirements.setBudgetMax(new BigDecimal(budget.group(1)));
-        applyOrdinalExclusion(conversation, text);
+        FurnitureRequirementPatch patch = normalizer.normalize(message);
+        FurnitureAssistantRequirements target = conversation.getRequirements();
+        if (patch.mentions("category") && !Objects.equals(target.getCategory(), patch.getCategory())) {
+            target.setCategory(patch.getCategory());
+            target.setSeatCount(null);
+            target.setMaxWidthMm(null);
+            target.setMaxDepthMm(null);
+            target.setMaxHeightMm(null);
+            target.getPreferredFeatures().clear();
+            target.getHardConstraints().removeAll(CATEGORY_SPECIFIC_FIELDS);
+            target.getNonRelaxableConstraints().removeAll(CATEGORY_SPECIFIC_FIELDS);
+        }
+        patch.applyTo(target);
+        applyOrdinalExclusion(conversation, message == null ? "" : message.toLowerCase(Locale.ROOT));
         return new MergeResult(false);
     }
 
@@ -38,16 +42,7 @@ public class FurnitureAssistantRequirementMerger {
         }
         if (containsAny(text, "便宜", "太贵", "cheaper") && selected.getPrice() != null) {
             conversation.getRequirements().setBudgetMax(selected.getPrice().subtract(BigDecimal.ONE));
-        }
-    }
-
-    private void addIfPresent(List<String> values, String text, String... candidates) {
-        for (String candidate : candidates) {
-            if (text.contains(candidate)) {
-                values.clear();
-                values.add(candidate);
-                return;
-            }
+            conversation.getRequirements().getHardConstraints().add("budgetMax");
         }
     }
 
@@ -67,5 +62,4 @@ public class FurnitureAssistantRequirementMerger {
             return clarificationRequired;
         }
     }
-
 }
