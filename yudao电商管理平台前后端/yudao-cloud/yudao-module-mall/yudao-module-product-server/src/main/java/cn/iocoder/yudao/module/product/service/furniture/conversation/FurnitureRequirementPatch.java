@@ -20,6 +20,7 @@ public class FurnitureRequirementPatch {
     private List<String> colors = new ArrayList<>();
     private List<String> materials = new ArrayList<>();
     private List<String> excludedMaterials = new ArrayList<>();
+    private List<String> removedExcludedMaterials = new ArrayList<>();
     private List<String> roomTypes = new ArrayList<>();
     private BigDecimal roomSize;
     private Integer roomWidthMm;
@@ -53,7 +54,12 @@ public class FurnitureRequirementPatch {
         if (mentions("styles")) target.setStyles(copy(styles));
         if (mentions("colors")) target.setColors(copy(colors));
         if (mentions("materials")) target.setMaterials(copy(materials));
-        if (mentions("excludedMaterials")) target.setExcludedMaterials(copy(excludedMaterials));
+        if (mentions("excludedMaterials")) {
+            target.getExcludedMaterials().removeAll(removedExcludedMaterials);
+            for (String material : excludedMaterials) {
+                if (!target.getExcludedMaterials().contains(material)) target.getExcludedMaterials().add(material);
+            }
+        }
         if (mentions("roomTypes")) target.setRoomTypes(copy(roomTypes));
         if (mentions("roomSize")) target.setRoomSize(roomSize);
         if (mentions("roomWidthMm")) target.setRoomWidthMm(roomWidthMm);
@@ -71,6 +77,10 @@ public class FurnitureRequirementPatch {
         if (mentions("preferredFeatures")) target.setPreferredFeatures(copy(preferredFeatures));
         mergeConstraintPresence(target.getHardConstraints(), hardConstraints);
         mergeConstraintPresence(target.getNonRelaxableConstraints(), nonRelaxableConstraints);
+        if (mentions("excludedMaterials") && !target.getExcludedMaterials().isEmpty()) {
+            target.getHardConstraints().add("excludedMaterials");
+            target.getNonRelaxableConstraints().add("excludedMaterials");
+        }
     }
 
     private void mergeConstraintPresence(Set<String> target, Set<String> patchConstraints) {

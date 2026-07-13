@@ -98,6 +98,42 @@ class FurnitureAssistantRequirementMergerTest {
     }
 
     @Test
+    void shouldNotTreatBedroomAsBedCategory() {
+        FurnitureAssistantConversation conversation = FurnitureAssistantConversation.newConversation("c-1");
+        merger.merge(conversation, "3 seat sofa under 220 cm wide with storage.");
+
+        merger.merge(conversation, "For the bedroom.");
+
+        FurnitureAssistantRequirements value = conversation.getRequirements();
+        assertEquals("sofa", value.getCategory());
+        assertEquals(Integer.valueOf(3), value.getSeatCount());
+        assertEquals(Integer.valueOf(2200), value.getMaxWidthMm());
+        assertEquals(Collections.singletonList("storage"), value.getPreferredFeatures());
+        assertEquals(Collections.singletonList("bedroom"), value.getRoomTypes());
+    }
+
+    @Test
+    void shouldAccumulateMaterialExclusionsAcrossTurns() {
+        FurnitureAssistantConversation conversation = FurnitureAssistantConversation.newConversation("c-1");
+        merger.merge(conversation, "No leather.");
+
+        merger.merge(conversation, "Also no glass.");
+
+        assertEquals(java.util.Arrays.asList("leather", "glass"),
+                conversation.getRequirements().getExcludedMaterials());
+    }
+
+    @Test
+    void shouldRemoveOnlyExplicitlyRetractedMaterialExclusion() {
+        FurnitureAssistantConversation conversation = FurnitureAssistantConversation.newConversation("c-1");
+        merger.merge(conversation, "No leather and no glass.");
+
+        merger.merge(conversation, "Leather is okay now.");
+
+        assertEquals(Collections.singletonList("glass"), conversation.getRequirements().getExcludedMaterials());
+    }
+
+    @Test
     void shouldExcludeFirstRecommendationAndLowerBudget() {
         FurnitureAssistantConversation conversation = FurnitureAssistantConversation.newConversation("c-1");
         conversation.getLastRecommendations().add(new FurnitureAssistantConversation.RecommendationRef(

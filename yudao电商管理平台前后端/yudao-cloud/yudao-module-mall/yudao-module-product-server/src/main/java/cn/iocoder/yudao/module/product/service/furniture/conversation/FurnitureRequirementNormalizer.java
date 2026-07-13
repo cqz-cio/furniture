@@ -103,12 +103,13 @@ public class FurnitureRequirementNormalizer {
         extractLists(text, patch);
         extractHousehold(text, patch);
         extractCapabilities(text, patch);
+        classifyConstraints(text, patch);
         return patch;
     }
 
     private void extractSingle(String text, Map<String, String> aliases, FurnitureRequirementPatch patch, String field) {
         for (Map.Entry<String, String> entry : aliases.entrySet()) {
-            if (text.contains(entry.getKey())) {
+            if (containsAlias(text, entry.getKey())) {
                 patch.setCategory(entry.getValue());
                 patch.mention(field);
                 return;
@@ -190,6 +191,7 @@ public class FurnitureRequirementNormalizer {
             }
         }
 
+        extractExcludedMaterialRetractions(text, patch);
         extractAliases(text, MATERIAL_ALIASES, patch.getExcludedMaterials(), Boolean.TRUE);
         if (!patch.getExcludedMaterials().isEmpty()) {
             patch.mention("excludedMaterials");
@@ -200,6 +202,7 @@ public class FurnitureRequirementNormalizer {
             patch.mention("materials");
         } else {
             extractAliases(text, MATERIAL_ALIASES, patch.getMaterials(), Boolean.FALSE);
+            patch.getMaterials().removeAll(patch.getRemovedExcludedMaterials());
             if (!patch.getMaterials().isEmpty()) {
                 hard(patch, "materials");
                 if (mandatory) nonRelaxable(patch, "materials");
@@ -210,6 +213,23 @@ public class FurnitureRequirementNormalizer {
         if (!patch.getRoomTypes().isEmpty()) patch.mention("roomTypes");
         extractAliases(text, FEATURE_ALIASES, patch.getPreferredFeatures(), null);
         if (!patch.getPreferredFeatures().isEmpty()) hard(patch, "preferredFeatures");
+    }
+
+    private void extractExcludedMaterialRetractions(String text, FurnitureRequirementPatch patch) {
+        for (Map.Entry<String, String> entry : MATERIAL_ALIASES.entrySet()) {
+            int index = text.indexOf(entry.getKey());
+            if (index < 0) continue;
+            int end = index + entry.getKey().length();
+            String prefix = text.substring(Math.max(0, index - 12), index);
+            String suffix = text.substring(end, Math.min(text.length(), end + 16));
+            boolean retracted = suffix.matches("^\\s*(?:is\\s+)?(?:okay|ok|acceptable|allowed).*")
+                    || suffix.matches("^\\s*(?:可以|能接受|不用排除).*")
+                    || prefix.matches(".*(?:allow|accept|可以接受|不再排除)\\s*$");
+            if (retracted && !patch.getRemovedExcludedMaterials().contains(entry.getValue())) {
+                patch.getRemovedExcludedMaterials().add(entry.getValue());
+                patch.mention("excludedMaterials");
+            }
+        }
     }
 
     private void extractAliases(String text, Map<String, String> aliases, List<String> target, Boolean excluded) {
@@ -256,6 +276,20 @@ public class FurnitureRequirementNormalizer {
         capability(text, patch, "scratchResistant", new String[]{"防刮", "耐刮", "scratch resistant", "scratch-resistant"});
         capability(text, patch, "movable", new String[]{"可移动", "易移动", "movable", "easy to move"});
         capability(text, patch, "rentalFriendly", new String[]{"适合租房", "租房友好", "rental apartment", "rental friendly", "rental-friendly"});
+    }
+
+    private void classifyConstraints(String text, FurnitureRequirementPatch patch) {
+        if (patch.mentions("category")) patch.getHardConstraints().add("category");
+        if (!containsMandatoryLanguage(text)) return;
+        for (String field : patch.getMentionedFields()) {
+            patch.getHardConstraints().add(field);
+            patch.getNonRelaxableConstraints().add(field);
+        }
+    }
+
+    private boolean containsMandatoryLanguage(String text) {
+        return containsAny(text, "必须", "只要", "只能", "一定要", "只推荐")
+                || Pattern.compile("\\b(?:must|only)\\b").matcher(text).find();
     }
 
     private void capability(String text, FurnitureRequirementPatch patch, String field, String[] aliases) {
@@ -313,6 +347,12 @@ public class FurnitureRequirementNormalizer {
     private boolean containsAny(String text, String... values) {
         for (String value : values) if (text.contains(value)) return true;
         return false;
+    }
+
+    private boolean containsAlias(String text, String alias) {
+        if (!alias.matches(".*[a-z0-9].*")) return text.contains(alias);
+        return Pattern.compile("(?<![a-z0-9])" + Pattern.quote(alias) + "(?![a-z0-9])")
+                .matcher(text).find();
     }
 
     private static Map<String, String> aliasMap(String[][] entries) {

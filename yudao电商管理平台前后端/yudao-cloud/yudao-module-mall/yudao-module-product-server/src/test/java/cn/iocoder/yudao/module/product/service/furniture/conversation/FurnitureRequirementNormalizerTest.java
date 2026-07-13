@@ -69,4 +69,31 @@ class FurnitureRequirementNormalizerTest {
         assertTrue(value.mentions("colors"));
         assertTrue(value.getColors().isEmpty());
     }
+
+    @Test
+    void normalize_shouldClassifyMandatoryCategoryAsHardAndNonRelaxable() {
+        FurnitureRequirementPatch value = normalizer.normalize("It must be a sofa.");
+
+        assertEquals("sofa", value.getCategory());
+        assertTrue(value.getHardConstraints().contains("category"));
+        assertTrue(value.getNonRelaxableConstraints().contains("category"));
+    }
+
+    @Test
+    void normalize_shouldClassifyMandatoryWidthAsNonRelaxable() {
+        FurnitureRequirementPatch value = normalizer.normalize("It must be under 220 cm wide.");
+
+        assertEquals(Integer.valueOf(2200), value.getMaxWidthMm());
+        assertTrue(value.getHardConstraints().contains("maxWidthMm"));
+        assertTrue(value.getNonRelaxableConstraints().contains("maxWidthMm"));
+    }
+
+    @Test
+    void normalize_shouldClassifyMandatoryMovableAsNonRelaxable() {
+        FurnitureRequirementPatch value = normalizer.normalize("It must be movable.");
+
+        assertEquals(Boolean.TRUE, value.getMovable());
+        assertTrue(value.getHardConstraints().contains("movable"));
+        assertTrue(value.getNonRelaxableConstraints().contains("movable"));
+    }
 }
