@@ -154,6 +154,15 @@ spring:
           filters:
             - RewritePath=/app-api/trade/v3/api-docs, /v3/api-docs
         ## statistics-server 服务
+        - id: statistics-app-behavior-track
+          uri: grayLb://statistics-server
+          predicates:
+            - Path=/app-api/statistics/behavior/track
+            - Method=POST,OPTIONS
+          filters:
+            - name: RequestSize
+              args:
+                maxSize: 8KB
         - id: statistics-admin-api # 路由的编号
           uri: grayLb://statistics-server
           predicates: # 断言，作为路由的匹配条件，对应 RouteDefinition 数组
@@ -277,3 +286,10 @@ knife4j:
 yudao:
   info:
     version: 1.0.0
+  gateway:
+    behavior-tracking:
+      enabled: ${BEHAVIOR_TRACKING_GATEWAY_ENABLED:false}
+      allowed-sites:
+        - host: ${FURNITURE_TRACKING_HOST:shop.oakved.example}
+          origin: ${FURNITURE_TRACKING_ORIGIN:https://shop.oakved.example}
+          tenant-id: ${FURNITURE_TRACKING_TENANT_ID:121}

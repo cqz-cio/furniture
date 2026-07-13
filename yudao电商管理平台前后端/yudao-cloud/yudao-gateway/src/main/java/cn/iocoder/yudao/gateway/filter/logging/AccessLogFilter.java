@@ -6,6 +6,7 @@ import cn.hutool.json.JSONUtil;
 import cn.iocoder.yudao.framework.common.util.json.JsonUtils;
 import cn.iocoder.yudao.gateway.util.SecurityFrameworkUtils;
 import cn.iocoder.yudao.gateway.util.WebFrameworkUtils;
+import cn.iocoder.yudao.gateway.filter.statistics.BehaviorTrackingGatewayFilter;
 import com.alibaba.nacos.common.utils.StringUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.reactivestreams.Publisher;
@@ -117,9 +118,23 @@ public class AccessLogFilter implements GlobalFilter, Ordered {
         gatewayLog.setRequestMethod(request.getMethodValue());
         gatewayLog.setRequestUrl(request.getURI().getRawPath());
         gatewayLog.setQueryParams(request.getQueryParams());
-        gatewayLog.setRequestHeaders(request.getHeaders());
+        gatewayLog.setRequestHeaders(sanitizeHeaders(request.getHeaders()));
         gatewayLog.setStartTime(LocalDateTime.now());
         gatewayLog.setUserIp(WebFrameworkUtils.getClientIP(exchange));
+
+        if (BehaviorTrackingGatewayFilter.TRACK_PATH.equals(request.getURI().getPath())) {
+            gatewayLog.setRequestHeaders(new HttpHeaders());
+            gatewayLog.setQueryParams(new org.springframework.util.LinkedMultiValueMap<>());
+            gatewayLog.setUserIp(null);
+            return chain.filter(exchange).doFinally(signal -> {
+                gatewayLog.setEndTime(LocalDateTime.now());
+                gatewayLog.setDuration((int) LocalDateTimeUtil.between(gatewayLog.getStartTime(),
+                        gatewayLog.getEndTime()).toMillis());
+                gatewayLog.setHttpStatus(exchange.getResponse().getStatusCode());
+                gatewayLog.setResponseHeaders(new HttpHeaders());
+                writeAccessLog(gatewayLog);
+            });
+        }
 
         // 继续 filter 过滤
         MediaType mediaType = request.getHeaders().getContentType();
@@ -128,6 +143,16 @@ public class AccessLogFilter implements GlobalFilter, Ordered {
             return filterWithRequestBody(exchange, chain, gatewayLog);
         }
         return filterWithoutRequestBody(exchange, chain, gatewayLog);
+    }
+
+    private HttpHeaders sanitizeHeaders(HttpHeaders source) {
+        HttpHeaders safe = new HttpHeaders();
+        safe.putAll(source);
+        safe.remove("x-analytics-visitor-id");
+        safe.remove("x-analytics-session-id");
+        safe.remove("x-analytics-consent");
+        safe.remove("x-analytics-consent-evidence");
+        return safe;
     }
 
     private Mono<Void> filterWithoutRequestBody(ServerWebExchange exchange, GatewayFilterChain chain, AccessLog accessLog) {
