@@ -1,14 +1,94 @@
 package cn.iocoder.yudao.module.statistics.controller.admin.dashboard;
-import cn.iocoder.yudao.framework.common.pojo.CommonResult;import cn.iocoder.yudao.framework.common.util.object.BeanUtils;import cn.iocoder.yudao.framework.excel.core.util.ExcelUtils;import cn.iocoder.yudao.framework.security.core.service.SecurityFrameworkService;import cn.iocoder.yudao.module.statistics.controller.admin.dashboard.vo.*;import cn.iocoder.yudao.module.statistics.service.dashboard.DashboardExportService;import cn.iocoder.yudao.module.statistics.service.dashboard.DashboardQueryService;import org.springframework.security.access.prepost.PreAuthorize;import org.springframework.validation.annotation.Validated;import org.springframework.web.bind.annotation.*;import javax.annotation.Resource;import javax.servlet.http.HttpServletResponse;import javax.validation.Valid;import java.io.IOException;import java.util.List;import static cn.iocoder.yudao.framework.common.pojo.CommonResult.success;
-@RestController @RequestMapping("/statistics/dashboard") @Validated
+
+import cn.iocoder.yudao.framework.apilog.core.annotation.ApiAccessLog;
+import cn.iocoder.yudao.framework.common.pojo.CommonResult;
+import cn.iocoder.yudao.framework.common.util.object.BeanUtils;
+import cn.iocoder.yudao.framework.excel.core.util.ExcelUtils;
+import cn.iocoder.yudao.framework.security.core.service.SecurityFrameworkService;
+import cn.iocoder.yudao.framework.security.core.util.SecurityFrameworkUtils;
+import cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder;
+import cn.iocoder.yudao.module.statistics.controller.admin.dashboard.vo.*;
+import cn.iocoder.yudao.module.statistics.service.dashboard.DashboardExportRateLimiter;
+import cn.iocoder.yudao.module.statistics.service.dashboard.DashboardExportService;
+import cn.iocoder.yudao.module.statistics.service.dashboard.DashboardQueryService;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import javax.annotation.Resource;
+import javax.servlet.http.HttpServletResponse;
+import javax.validation.Valid;
+import java.io.IOException;
+import java.util.List;
+
+import static cn.iocoder.yudao.framework.apilog.core.enums.OperateTypeEnum.EXPORT;
+import static cn.iocoder.yudao.framework.common.pojo.CommonResult.success;
+
+@RestController
+@RequestMapping("/statistics/dashboard")
+@Validated
 public class DashboardStatisticsController {
- @Resource private DashboardQueryService service;@Resource private DashboardExportService exportService;@Resource private SecurityFrameworkService security;
- @GetMapping("/summary") @PreAuthorize("@ss.hasPermission('statistics:dashboard:query')") public CommonResult<DashboardSummaryRespVO> summary(@Valid DashboardQueryReqVO request){return success(service.summary(request,profit()));}
- @GetMapping("/trend") @PreAuthorize("@ss.hasPermission('statistics:dashboard:query')") public CommonResult<List<DashboardTrendItemRespVO>> trend(@Valid DashboardQueryReqVO request){return success(service.trend(request,profit()));}
- @GetMapping("/product-page") @PreAuthorize("@ss.hasPermission('statistics:dashboard:query')") public CommonResult<List<DashboardProductRespVO>> products(@Valid DashboardQueryReqVO request){return success(service.products(request,profit()));}
- @GetMapping("/stage-overview") @PreAuthorize("@ss.hasPermission('statistics:dashboard:query')") public CommonResult<DashboardStageOverviewRespVO> stage(@Valid DashboardQueryReqVO request){return success(service.stageOverview(request));}
- @GetMapping("/attention") @PreAuthorize("@ss.hasPermission('statistics:dashboard:query')") public CommonResult<DashboardAttentionRespVO> attention(@Valid DashboardQueryReqVO request){return success(service.attention(request,profit()));}
- @GetMapping("/export") @PreAuthorize("@ss.hasPermission('statistics:dashboard:export')") public void export(@Valid DashboardQueryReqVO request,HttpServletResponse response)throws IOException{ExcelUtils.write(response,"数据看板-商品经营.xls","数据",DashboardProductNormalExcelVO.class,BeanUtils.toBean(exportService.build(request,false),DashboardProductNormalExcelVO.class));}
- @GetMapping("/profit-export") @PreAuthorize("@ss.hasPermission('statistics:dashboard:export') and @ss.hasPermission('statistics:dashboard:profit-export')") public void profitExport(@Valid DashboardQueryReqVO request,HttpServletResponse response)throws IOException{ExcelUtils.write(response,"数据看板-利润.xls","数据",DashboardProductExcelVO.class,exportService.build(request,true));}
- private boolean profit(){return security.hasPermission("statistics:dashboard:profit-query");}
+
+    @Resource private DashboardQueryService service;
+    @Resource private DashboardExportService exportService;
+    @Resource private DashboardExportRateLimiter exportRateLimiter;
+    @Resource private SecurityFrameworkService security;
+
+    @GetMapping("/summary")
+    @PreAuthorize("@ss.hasPermission('statistics:dashboard:query')")
+    public CommonResult<DashboardSummaryRespVO> summary(@Valid DashboardQueryReqVO request) {
+        return success(service.summary(request, profit()));
+    }
+
+    @GetMapping("/trend")
+    @PreAuthorize("@ss.hasPermission('statistics:dashboard:query')")
+    public CommonResult<List<DashboardTrendItemRespVO>> trend(@Valid DashboardQueryReqVO request) {
+        return success(service.trend(request, profit()));
+    }
+
+    @GetMapping("/product-page")
+    @PreAuthorize("@ss.hasPermission('statistics:dashboard:query')")
+    public CommonResult<List<DashboardProductRespVO>> products(@Valid DashboardQueryReqVO request) {
+        return success(service.products(request, profit()));
+    }
+
+    @GetMapping("/stage-overview")
+    @PreAuthorize("@ss.hasPermission('statistics:dashboard:query')")
+    public CommonResult<DashboardStageOverviewRespVO> stage(@Valid DashboardQueryReqVO request) {
+        return success(service.stageOverview(request));
+    }
+
+    @GetMapping("/attention")
+    @PreAuthorize("@ss.hasPermission('statistics:dashboard:query')")
+    public CommonResult<DashboardAttentionRespVO> attention(@Valid DashboardQueryReqVO request) {
+        return success(service.attention(request, profit()));
+    }
+
+    @GetMapping("/export")
+    @PreAuthorize("@ss.hasPermission('statistics:dashboard:export')")
+    @ApiAccessLog(operateModule = "数据看板", operateName = "导出经营数据", operateType = EXPORT)
+    public void export(@Valid DashboardQueryReqVO request, HttpServletResponse response) throws IOException {
+        protectExport();
+        ExcelUtils.write(response, "数据看板-商品经营.xls", "数据", DashboardProductNormalExcelVO.class,
+                BeanUtils.toBean(exportService.build(request, false), DashboardProductNormalExcelVO.class));
+    }
+
+    @GetMapping("/profit-export")
+    @PreAuthorize("@ss.hasPermission('statistics:dashboard:export') and @ss.hasPermission('statistics:dashboard:profit-export')")
+    @ApiAccessLog(operateModule = "数据看板", operateName = "导出利润数据", operateType = EXPORT)
+    public void profitExport(@Valid DashboardQueryReqVO request, HttpServletResponse response) throws IOException {
+        protectExport();
+        ExcelUtils.write(response, "数据看板-利润.xls", "数据", DashboardProductExcelVO.class,
+                exportService.build(request, true));
+    }
+
+    private void protectExport() {
+        exportRateLimiter.acquire(TenantContextHolder.getRequiredTenantId(), SecurityFrameworkUtils.getLoginUserId());
+    }
+
+    private boolean profit() {
+        return security.hasPermission("statistics:dashboard:profit-query");
+    }
 }
