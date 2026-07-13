@@ -70,6 +70,24 @@ class DashboardStageAttentionServiceTest {
         assertTrue(result.getNotEvaluated().stream().noneMatch(i -> i.getRiskType().contains("MARGIN") || i.getRiskType().contains("COST")));
     }
 
+    @Test
+    void attention_aggregatesEachSpuAcrossTheRequestedDateRangeBeforeEvaluatingRules() {
+        ProductStatisticsMapper products = mock(ProductStatisticsMapper.class);
+        when(products.selectBetween(any(), any())).thenReturn(Arrays.asList(
+                product(7L, 60, 0, 5, 60000, 4000, 12000L, 0L, 1, 1),
+                product(7L, 60, 0, 5, 60000, 9000, 10000L, 0L, 1, 1)));
+
+        DashboardAttentionRespVO result = service(mock(TrafficDailyMapper.class), products)
+                .attention(new DashboardQueryReqVO().setScope("PRODUCT"), true);
+
+        assertEquals(1L, result.getItems().stream()
+                .filter(i -> "HIGH_TRAFFIC_LOW_CONVERSION".equals(i.getRiskType())).count());
+        assertEquals(1L, result.getItems().stream()
+                .filter(i -> "HIGH_REFUND".equals(i.getRiskType())).count());
+        assertEquals(1L, result.getItems().stream()
+                .filter(i -> Long.valueOf(7L).equals(i.getSpuId())).map(i -> i.getSpuId()).distinct().count());
+    }
+
     private ProductStatisticsDO product(Long spuId, int pv, int orders, int paidOrders, int revenue,
                                         int refund, Long grossProfit, Long missingCost, int traffic, int profit) {
         return new ProductStatisticsDO().setSpuId(spuId).setBrowseCount(pv).setOrderCount(orders)
