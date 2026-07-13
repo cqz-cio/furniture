@@ -8,6 +8,7 @@ import {
   DashboardApi,
   type DashboardAttention,
   type DashboardProduct,
+  type DashboardProductPage,
   type DashboardQuery,
   type DashboardScope,
   type DashboardStageOverview,
@@ -26,7 +27,11 @@ const yesterday = dayjs().subtract(1, 'day')
 const query = reactive<DashboardQuery>({
   scope: 'SITE',
   startDate: yesterday.subtract(29, 'day').format('YYYY-MM-DD'),
-  endDate: yesterday.format('YYYY-MM-DD')
+  endDate: yesterday.format('YYYY-MM-DD'),
+  pageNo: 1,
+  pageSize: 20,
+  sortField: 'paidRevenue',
+  sortOrder: 'desc'
 })
 const dateRange = ref<[string, string]>([query.startDate, query.endDate])
 const loading = ref(false)
@@ -37,6 +42,7 @@ const trend = ref<DashboardTrendItem[]>([])
 const stage = ref<DashboardStageOverview | null>(null)
 const attention = ref<DashboardAttention | null>(null)
 const products = ref<DashboardProduct[]>([])
+const productTotal = ref(0)
 let loadSequence = 0
 
 const quickRanges = [
@@ -82,7 +88,9 @@ const loadDashboard = async () => {
     trend.value = results[1] as DashboardTrendItem[]
     stage.value = results[2] as DashboardStageOverview
     attention.value = results[3] as DashboardAttention
-    products.value = query.scope === 'PRODUCT' ? results[4] as DashboardProduct[] : []
+    const productPage = query.scope === 'PRODUCT' ? results[4] as DashboardProductPage : null
+    products.value = productPage?.list || []
+    productTotal.value = productPage?.total || 0
   } catch (caught) {
     if (sequence !== loadSequence) return
     error.value = caught instanceof Error ? caught.message : '数据加载失败'
@@ -96,6 +104,9 @@ watch(() => query.scope, (scope: DashboardScope) => {
     delete query.categoryId
     delete query.spuId
     delete query.riskType
+    productTotal.value = 0
+  } else {
+    query.pageNo = 1
   }
   void loadDashboard()
 })
@@ -139,6 +150,36 @@ const openAttention = (item: { spuId: number; riskType: string }) => {
   query.scope = 'PRODUCT'
   query.spuId = item.spuId
   query.riskType = item.riskType
+  query.pageNo = 1
+}
+
+const applyProductFilters = () => {
+  query.pageNo = 1
+  void loadDashboard()
+}
+
+const changeProductPage = (pageNo: number) => {
+  query.pageNo = pageNo
+  void loadDashboard()
+}
+
+const changeProductPageSize = (pageSize: number) => {
+  query.pageSize = pageSize
+  query.pageNo = 1
+  void loadDashboard()
+}
+
+const changeProductSort = ({ prop, order }: { prop: string; order: string | null }) => {
+  const fields: Record<string, string> = {
+    spuId: 'spuId', browseCount: 'browseCount', orderCount: 'orderCount',
+    orderPayPrice: 'paidRevenue', afterSaleRefundPrice: 'refundAmount',
+    browseConvertPercent: 'conversion', grossProfit: 'grossProfit', grossMarginPercent: 'grossMargin'
+  }
+  if (!fields[prop]) return
+  query.sortField = fields[prop]
+  query.sortOrder = order === 'ascending' ? 'asc' : 'desc'
+  query.pageNo = 1
+  void loadDashboard()
 }
 
 const exportRows = async (profitExport: boolean) => {
@@ -178,6 +219,11 @@ onMounted(loadDashboard)
           <el-button v-for="item in quickRanges" :key="item.label" text @click="selectRange(item.days)">{{ item.label }}</el-button>
         </div>
         <el-date-picker v-model="dateRange" type="daterange" value-format="YYYY-MM-DD" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" :clearable="false" @change="applyDateRange" />
+        <template v-if="query.scope === 'PRODUCT'">
+          <el-input-number v-model="query.categoryId" :min="1" :controls="false" placeholder="分类 ID" aria-label="分类 ID" @change="applyProductFilters" />
+          <el-input-number v-model="query.spuId" :min="1" :controls="false" placeholder="商品 SPU" aria-label="商品 SPU" @change="applyProductFilters" />
+          <el-button v-if="query.categoryId || query.spuId" text @click="query.categoryId = undefined; query.spuId = undefined; applyProductFilters()">清除商品筛选</el-button>
+        </template>
         <el-button type="primary" @click="loadDashboard">刷新</el-button>
       </section>
 
@@ -219,20 +265,24 @@ onMounted(loadDashboard)
 
       <section v-if="query.scope === 'PRODUCT'" class="panel product-panel">
         <div class="panel-heading"><div><h2>商品经营明细</h2><p>点击运营关注项可快速聚焦对应商品。</p></div></div>
-        <el-table :data="products" row-key="spuId" stripe>
-          <el-table-column prop="spuId" label="SPU" min-width="100" />
-          <el-table-column prop="browseCount" label="详情 PV" min-width="100"><template #default="{ row }">{{ integer(row.browseCount) }}</template></el-table-column>
+        <el-table :data="products" row-key="spuId" stripe @sort-change="changeProductSort">
+          <el-table-column prop="productName" label="商品名称" min-width="220">
+            <template #default="{ row }"><div class="product-identity"><el-image v-if="row.picUrl" :src="row.picUrl" fit="cover" /><span><strong>{{ row.productName || `SPU ${row.spuId}` }}</strong><small>SPU {{ row.spuId }} · 分类 {{ row.categoryId || '—' }}</small></span></div></template>
+          </el-table-column>
+          <el-table-column prop="spuId" label="SPU" min-width="100" sortable="custom" />
+          <el-table-column prop="browseCount" label="详情 PV" min-width="100" sortable="custom"><template #default="{ row }">{{ integer(row.browseCount) }}</template></el-table-column>
           <el-table-column prop="cartCount" label="加购" min-width="90"><template #default="{ row }">{{ integer(row.cartCount) }}</template></el-table-column>
-          <el-table-column prop="orderCount" label="支付订单" min-width="110"><template #default="{ row }">{{ integer(row.orderCount) }}</template></el-table-column>
-          <el-table-column prop="orderPayPrice" label="支付金额" min-width="130"><template #default="{ row }">{{ money(row.orderPayPrice) }}</template></el-table-column>
-          <el-table-column prop="afterSaleRefundPrice" label="退款金额" min-width="130"><template #default="{ row }">{{ money(row.afterSaleRefundPrice) }}</template></el-table-column>
-          <el-table-column prop="browseConvertPercent" label="转化率" min-width="100"><template #default="{ row }">{{ percent(row.browseConvertPercent) }}</template></el-table-column>
+          <el-table-column prop="orderCount" label="支付订单" min-width="110" sortable="custom"><template #default="{ row }">{{ integer(row.orderCount) }}</template></el-table-column>
+          <el-table-column prop="orderPayPrice" label="支付金额" min-width="130" sortable="custom"><template #default="{ row }">{{ money(row.orderPayPrice) }}</template></el-table-column>
+          <el-table-column prop="afterSaleRefundPrice" label="退款金额" min-width="130" sortable="custom"><template #default="{ row }">{{ money(row.afterSaleRefundPrice) }}</template></el-table-column>
+          <el-table-column prop="browseConvertPercent" label="转化率" min-width="100" sortable="custom"><template #default="{ row }">{{ percent(row.browseConvertPercent) }}</template></el-table-column>
           <template v-if="canProfit">
-            <el-table-column prop="grossProfit" label="毛利润" min-width="130"><template #default="{ row }">{{ money(row.grossProfit) }}</template></el-table-column>
-            <el-table-column prop="grossMarginPercent" label="毛利率" min-width="100"><template #default="{ row }">{{ percent(row.grossMarginPercent) }}</template></el-table-column>
+            <el-table-column prop="grossProfit" label="毛利润" min-width="130" sortable="custom"><template #default="{ row }">{{ money(row.grossProfit) }}</template></el-table-column>
+            <el-table-column prop="grossMarginPercent" label="毛利率" min-width="100" sortable="custom"><template #default="{ row }">{{ percent(row.grossMarginPercent) }}</template></el-table-column>
             <el-table-column prop="profitDataQuality" label="成本质量" min-width="130" />
           </template>
         </el-table>
+        <el-pagination v-if="productTotal" class="product-pagination" :current-page="query.pageNo" :page-size="query.pageSize" :page-sizes="[10, 20, 50, 100]" :total="productTotal" layout="total, sizes, prev, pager, next" @current-change="changeProductPage" @size-change="changeProductPageSize" />
         <el-empty v-if="!products.length" description="当前筛选范围暂无商品经营数据" />
       </section>
     </template>
@@ -258,6 +308,7 @@ onMounted(loadDashboard)
 .stage-list { display: grid; gap: 8px; }.stage-list > div { display: grid; grid-template-columns: 1fr auto; gap: 3px 16px; padding: 13px; border-radius: 10px; background: #f7f6f2; }.stage-list small { grid-column: 1 / -1; color: #7c828b; }.stage-list .muted { opacity: .5; }
 .attention-list { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }.attention-list button { display: flex; flex-direction: column; gap: 6px; padding: 15px; text-align: left; border: 1px solid #eadfcb; border-radius: 12px; background: #fffaf2; cursor: pointer; }.attention-list span { color: #9a5d27; font-size: 11px; font-weight: 700; }.attention-list small { color: #6b7280; }
 .data-alternative { margin-top: 10px; }.data-alternative table { width: 100%; margin-top: 8px; border-collapse: collapse; }.data-alternative th, .data-alternative td { padding: 7px; text-align: left; border-bottom: 1px solid #eee; }
+.product-identity { display: flex; align-items: center; gap: 10px; }.product-identity .el-image { width: 42px; height: 42px; border-radius: 8px; background: #f3f4f6; }.product-identity span { display: flex; flex-direction: column; gap: 3px; }.product-identity small { color: #7c828b; }.product-pagination { justify-content: flex-end; margin-top: 18px; }
 @media (max-width: 1100px) { .metric-grid { grid-template-columns: repeat(2, 1fr); }.dashboard-grid { grid-template-columns: 1fr; }.attention-list { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 700px) { .furniture-dashboard { padding: 12px; }.dashboard-header { flex-direction: column; padding: 20px; }.header-actions, .filter-bar { align-items: stretch; flex-direction: column; }.metric-grid, .attention-list { grid-template-columns: 1fr; }.quick-ranges { flex-wrap: wrap; } }
 </style>

@@ -57,6 +57,9 @@ export interface DashboardNotEvaluated { spuId: number; riskType: string; reason
 export interface DashboardAttention { items: DashboardAttentionItem[]; notEvaluated: DashboardNotEvaluated[]; disclaimer: string }
 export interface DashboardProduct {
   spuId: number
+  categoryId: number | null
+  productName: string | null
+  picUrl: string | null
   browseCount: number | null
   browseUserCount: number | null
   cartCount: number | null
@@ -73,6 +76,7 @@ export interface DashboardProduct {
   trafficDataStatus: TrafficDataStatus
   profitDataQuality: string
 }
+export interface DashboardProductPage { list: DashboardProduct[]; total: number }
 
 const normalize = (query: DashboardQuery) => {
   const params = { ...query }
@@ -89,7 +93,7 @@ export const DashboardApi = {
   getTrend: (query: DashboardQuery) => request.get<DashboardTrendItem[]>({ url: '/statistics/dashboard/trend', params: normalize(query) }),
   getStageOverview: (query: DashboardQuery) => request.get<DashboardStageOverview>({ url: '/statistics/dashboard/stage-overview', params: normalize(query) }),
   getAttention: (query: DashboardQuery) => request.get<DashboardAttention>({ url: '/statistics/dashboard/attention', params: normalize(query) }),
-  getProductPage: (query: DashboardQuery) => request.get<DashboardProduct[]>({ url: '/statistics/dashboard/product-page', params: normalize(query) }),
+  getProductPage: (query: DashboardQuery) => request.get<DashboardProductPage>({ url: '/statistics/dashboard/product-page', params: normalize(query) }),
   exportProductExcel: (query: DashboardQuery) => request.download({ url: '/statistics/dashboard/export', params: normalize(query) }),
   exportProfitExcel: (query: DashboardQuery) => request.download({ url: '/statistics/dashboard/profit-export', params: normalize(query) })
 }

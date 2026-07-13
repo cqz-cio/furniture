@@ -2,6 +2,7 @@ package cn.iocoder.yudao.module.statistics.controller.admin.dashboard;
 
 import cn.iocoder.yudao.framework.apilog.core.annotation.ApiAccessLog;
 import cn.iocoder.yudao.framework.common.pojo.CommonResult;
+import cn.iocoder.yudao.framework.common.pojo.PageResult;
 import cn.iocoder.yudao.framework.common.util.object.BeanUtils;
 import cn.iocoder.yudao.framework.excel.core.util.ExcelUtils;
 import cn.iocoder.yudao.framework.security.core.service.SecurityFrameworkService;
@@ -50,8 +51,8 @@ public class DashboardStatisticsController {
 
     @GetMapping("/product-page")
     @PreAuthorize("@ss.hasPermission('statistics:dashboard:query')")
-    public CommonResult<List<DashboardProductRespVO>> products(@Valid DashboardQueryReqVO request) {
-        return success(service.products(request, profit()));
+    public CommonResult<PageResult<DashboardProductRespVO>> products(@Valid DashboardQueryReqVO request) {
+        return success(service.productPage(request, profit()));
     }
 
     @GetMapping("/stage-overview")
