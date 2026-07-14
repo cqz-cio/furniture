@@ -53,7 +53,7 @@ tenant-id: {{appTenantId}}
 ### 请求 /logout 接口 => 成功
 POST {{appApi}}/member/auth/logout
 Content-Type: application/json
-Authorization: Bearer c1b76bdaf2c146c581caa4d7fd81ee66
+Authorization: Bearer <token>
 tenant-id: {{appTenantId}}
 
 ### 请求 /auth/refresh-token 接口 => 成功

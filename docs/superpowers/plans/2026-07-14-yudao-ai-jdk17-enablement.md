@@ -213,7 +213,7 @@ git commit -m "fix: preserve commerce services on Spring Boot 3"
 **Interfaces:**
 - Produces: buildable `ai-server` on port 48090; administrative endpoints initialize with zero configured providers; provider invocation returns an existing Yudao business error instead of terminating the application.
 
-- [ ] **Step 1: Write the secret and configuration contract test**
+- [x] **Step 1: Write the secret and configuration contract test**
 
 ```powershell
 $files = Get-ChildItem "$PSScriptRoot/../../../yudao-module-ai" -Recurse -File -Include *.yaml,*.yml,*.properties
@@ -223,27 +223,27 @@ $local = Get-Content -Raw "$PSScriptRoot/../../../yudao-module-ai/yudao-module-a
 if ($local -notmatch '\$\{[A-Z0-9_]+:}') { throw 'Expected empty environment-variable provider defaults' }
 ```
 
-- [ ] **Step 2: Run the safety test and confirm current demonstration values fail it**
+- [x] **Step 2: Run the safety test and confirm current demonstration values fail it**
 
 Run: `powershell -NoProfile -File .\script\jdk17\tests\AiSecretSafety.Tests.ps1`
 
 Expected: non-zero exit identifying file and line only, with matched secret text redacted from console output.
 
-- [ ] **Step 3: Enable the AI module and sanitize configuration**
+- [x] **Step 3: Enable the AI module and sanitize configuration**
 
 Uncomment `yudao-module-ai` in the root reactor, retain official Spring AI dependency management, keep `server.port: 48090`, and replace all checked-in provider values with empty environment-variable defaults such as `${OPENAI_API_KEY:}`. Do not add provider auto-configuration that requires a non-empty key during bean creation.
 
-- [ ] **Step 4: Add keyless service tests**
+- [x] **Step 4: Add keyless service tests**
 
 Create/adjust AI Spring tests so an empty provider repository can construct API-key, model, role, knowledge-metadata, and workflow services, while chat/model lookup without an enabled key throws the module's explicit configuration error. Assert the exception is returned by the request and does not close the Spring context.
 
-- [ ] **Step 5: Build and test AI**
+- [x] **Step 5: Build and test AI**
 
 Run: `powershell -NoProfile -File .\script\jdk17\Invoke-MavenJdk17.ps1 -MavenArgs @('-pl','yudao-module-ai/yudao-module-ai-server','-am','test')`
 
 Expected: `BUILD SUCCESS`; tests requiring live providers remain opt-in and do not execute in the default suite.
 
-- [ ] **Step 6: Re-run the secret contract and scan the repository**
+- [x] **Step 6: Re-run the secret contract and scan the repository**
 
 Run: `powershell -NoProfile -File .\script\jdk17\tests\AiSecretSafety.Tests.ps1`
 
@@ -251,7 +251,7 @@ Run: `rg -l "(?i)(sk-[A-Za-z0-9_-]{12,}|Bearer [A-Za-z0-9._-]{12,})" --glob '!ta
 
 Expected: the AI safety test passes and no credential-like provider value remains in tracked runtime configuration or release SQL.
 
-- [ ] **Step 7: Commit AI enablement**
+- [x] **Step 7: Commit AI enablement**
 
 ```powershell
 git add pom.xml yudao-dependencies/pom.xml yudao-module-ai script/jdk17/tests/AiSecretSafety.Tests.ps1

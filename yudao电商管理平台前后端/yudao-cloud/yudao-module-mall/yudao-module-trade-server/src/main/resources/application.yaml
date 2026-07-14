@@ -132,11 +132,11 @@ yudao:
     express:
       client: kd_100
       kd-niao:
-        api-key: cb022f1e-48f1-4c4a-a723-9001ac9676b8
-        business-id: 1809751
+        api-key: ${KD_NIAO_API_KEY:}
+        business-id: ${KD_NIAO_BUSINESS_ID:}
         request-type: 1002 # 免费版 1002；付费版 8001
       kd100:
-        key: pLXUGAwK5305
-        customer: E77DF18BE109F454A5CD319E44BF5177
+        key: ${KD100_KEY:}
+        customer: ${KD100_CUSTOMER:}
 
 debug: false

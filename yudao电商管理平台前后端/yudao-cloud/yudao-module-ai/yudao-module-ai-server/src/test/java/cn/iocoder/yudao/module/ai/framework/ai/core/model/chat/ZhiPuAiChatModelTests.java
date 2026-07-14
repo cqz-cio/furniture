@@ -23,7 +23,7 @@ import java.util.List;
 public class ZhiPuAiChatModelTests {
 
     private final ZhiPuAiChatModel chatModel = new ZhiPuAiChatModel(
-            ZhiPuAiApi.builder().apiKey("2f35fb6ca4ea41fab898729b7fac086c.6ESSfPcCkxaKEUlR").build(), // 密钥
+            ZhiPuAiApi.builder().apiKey(System.getenv().getOrDefault("AI_TEST_API_KEY", "test-api-key")).build(), // 密钥
             ZhiPuAiChatOptions.builder()
                     .model(ZhiPuAiApi.ChatModel.GLM_4.getName()) // 模型
                     .build()

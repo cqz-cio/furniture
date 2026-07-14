@@ -52,7 +52,7 @@ yudao:
       merchant-order-id: 1
     express:
       kd-niao:
-        api-key: xxxx
+        api-key: ${TEST_KD_NIAO_API_KEY:xxxx}
         business-id: xxxxx
       kd100:
         customer: xxxxx

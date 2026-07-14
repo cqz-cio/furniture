@@ -23,7 +23,7 @@ import java.util.concurrent.TimeUnit;
 public class StabilityAiImageModelTests {
 
     private final StabilityAiImageModel imageModel = new StabilityAiImageModel(
-            new StabilityAiApi("sk-e53UqbboF8QJCscYvzJscJxJXoFcFg4iJjl1oqgE7baJETmx") // 密钥
+            new StabilityAiApi(System.getenv().getOrDefault("AI_TEST_API_KEY", "test-api-key")) // 密钥
     );
 
     @Test

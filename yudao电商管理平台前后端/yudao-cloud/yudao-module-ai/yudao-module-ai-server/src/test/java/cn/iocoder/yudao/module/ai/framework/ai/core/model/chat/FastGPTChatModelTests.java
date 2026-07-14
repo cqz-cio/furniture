@@ -24,7 +24,7 @@ public class FastGPTChatModelTests {
     private final OpenAiChatModel chatModel = OpenAiChatModel.builder()
             .openAiApi(OpenAiApi.builder()
                     .baseUrl("https://cloud.fastgpt.cn/api")
-                    .apiKey("fastgpt-aqcc61kFtF8CeaglnGAfQOCIDWwjGdJVJHv6hIlMo28otFlva2aZNK") // apiKey
+                    .apiKey(System.getenv().getOrDefault("AI_TEST_API_KEY", "test-api-key")) // apiKey
                     .build())
             .build();
 
