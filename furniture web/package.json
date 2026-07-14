@@ -24,6 +24,7 @@
     "verify:launch-env-alignment": "node scripts/verify-launch-env-alignment.mjs",
     "verify:launch-smoke-env": "node scripts/verify-launch-smoke-env.mjs",
     "verify:db-migrations": "node scripts/verify-db-migrations.mjs",
+    "build:db-baseline": "node ../yudao电商管理平台前后端/yudao-cloud/sql/mysql/build-oakved-baseline.mjs",
     "verify:launch-readiness": "node scripts/verify-launch-readiness.mjs"
   },
   "dependencies": {

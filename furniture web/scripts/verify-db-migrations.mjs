@@ -1,170 +1,69 @@
-import { existsSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const BACKEND_SQL_ROOT = "../yudao电商管理平台前后端/yudao-cloud/sql/mysql";
+const WEB_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const SQL_ROOT = resolve(WEB_ROOT, "../yudao电商管理平台前后端/yudao-cloud/sql/mysql");
+const DOCKER_ROOT = resolve(SQL_ROOT, "../../script/docker");
 
-const BACKEND_DOCKER_ROOT = BACKEND_SQL_ROOT.replace("/sql/mysql", "/script/docker");
-const INFRA_REFERENCE_PATHS = [
-  `${BACKEND_DOCKER_ROOT}/docker-compose-local-infra.yml`,
-  `${BACKEND_DOCKER_ROOT}/start-local-infra.ps1`,
-  `${BACKEND_DOCKER_ROOT}/README-local-infra.md`,
-];
-
-export const buildMigrationChecks = () => [
-  {
-    name: "product-favorite-sku-wishlist",
-    relativePath: `${BACKEND_SQL_ROOT}/product-favorite-sku-wishlist.sql`,
-    requiredTokens: [
-      "ALTER TABLE `product_favorite`",
-      "ADD COLUMN `sku_id`",
-      "ADD COLUMN `count`",
-      "ADD COLUMN `spu_name`",
-      "ADD COLUMN `pic_url`",
-      "ADD COLUMN `price`",
-      "ADD COLUMN `market_price`",
-      "ADD COLUMN `color`",
-      "ADD COLUMN `fabric`",
-      "ADD COLUMN `width`",
-      "ADD COLUMN `delivery`",
-      "ADD COLUMN `dimensions`",
-      "COMMENT 'Product SKU id'",
-      "COMMENT 'Favorite quantity'",
-      "COMMENT 'SPU name snapshot'",
-      "COMMENT 'Product image snapshot'",
-      "COMMENT 'Product price snapshot in cents'",
-      "COMMENT 'Market price snapshot in cents'",
-      "COMMENT 'Color snapshot'",
-      "COMMENT 'Fabric snapshot'",
-      "COMMENT 'Width snapshot'",
-      "COMMENT 'Delivery note snapshot'",
-      "COMMENT 'Dimensions snapshot'",
-      "idx_product_favorite_user_spu_sku",
-    ],
-  },
-  {
-    name: "trade-order-address-verification",
-    relativePath: `${BACKEND_SQL_ROOT}/trade-order-address-verification.sql`,
-    requiredTokens: [
-      "TABLE_NAME = 'trade_order'",
-      "COLUMN_NAME = 'address_verification'",
-      "ADD COLUMN `address_verification` json",
-    ],
-  },
-  {
-    name: "member-address-address-verification",
-    relativePath: `${BACKEND_SQL_ROOT}/member-address-address-verification.sql`,
-    requiredTokens: [
-      "TABLE_NAME = 'member_address'",
-      "COLUMN_NAME = 'address_verification'",
-      "ADD COLUMN `address_verification` json",
-    ],
-  },
-  {
-    name: "member-trade-application",
-    relativePath: `${BACKEND_SQL_ROOT}/member-trade-application.sql`,
-    requiredTokens: [
-      "CREATE TABLE IF NOT EXISTS `member_trade_application`",
-      "trade_id",
-      "member:trade-application:query",
-      "member:trade-application:review",
-      "member/trade/application/index",
-    ],
-    infraReferences: ["member-trade-application.sql"],
-  },
-  {
-    name: "member-membership",
-    relativePath: `${BACKEND_SQL_ROOT}/member-membership.sql`,
-    requiredTokens: [
-      "CREATE TABLE IF NOT EXISTS `member_membership`",
-      "source_order_id",
-      "source_pay_order_id",
-      "member:membership:query",
-      "member:membership:update",
-      "member/membership/index",
-    ],
-    infraReferences: ["member-membership.sql"],
-  },
-  {
-    name: "member-gift-registry",
-    relativePath: `${BACKEND_SQL_ROOT}/member-gift-registry.sql`,
-    requiredTokens: [
-      "CREATE TABLE IF NOT EXISTS `member_gift_registry`",
-      "CREATE TABLE IF NOT EXISTS `member_gift_registry_item`",
-      "public_code",
-      "quantity_purchased",
-      "member:gift-registry:query",
-      "member:gift-registry:update",
-      "member/gift-registry/index",
-    ],
-    infraReferences: ["member-gift-registry.sql"],
-  },
-  {
-    name: "trade-gift-registry-context",
-    relativePath: `${BACKEND_SQL_ROOT}/trade-gift-registry-context.sql`,
-    requiredTokens: [
-      "TABLE_NAME = 'trade_cart'",
-      "TABLE_NAME = 'trade_order_item'",
-      "COLUMN_NAME = 'registry_id'",
-      "COLUMN_NAME = 'registry_item_id'",
-      "ADD COLUMN `registry_id`",
-      "ADD COLUMN `registry_item_id`",
-    ],
-    infraReferences: ["trade-gift-registry-context.sql"],
-  },
-];
+export const buildMigrationChecks = () => {
+  const migrationsRoot = resolve(SQL_ROOT, "migrations");
+  return readdirSync(migrationsRoot)
+    .filter((name) => /^V\d{3}__[a-z0-9_]+\.sql$/.test(name))
+    .sort()
+    .map((fileName, index) => ({
+      name: fileName.replace(/\.sql$/, ""),
+      fileName,
+      version: index + 1,
+      absolutePath: resolve(migrationsRoot, fileName),
+      requiredTokens: [],
+    }));
+};
 
 export const verifyDbMigrations = (checks = buildMigrationChecks()) => {
   const errors = [];
   const checked = [];
 
-  for (const check of checks) {
-    const absolutePath = resolve(process.cwd(), check.relativePath);
-    if (!existsSync(absolutePath)) {
-      errors.push(`${check.name}: missing migration file at ${absolutePath}`);
-      continue;
+  checks.forEach((check, index) => {
+    const expectedPrefix = `V${String(index + 1).padStart(3, "0")}__`;
+    if (!check.fileName.startsWith(expectedPrefix)) {
+      errors.push(`${check.name}: expected contiguous version ${expectedPrefix}`);
     }
-
-    const source = readFileSync(absolutePath, "utf8");
+    if (!existsSync(check.absolutePath)) {
+      errors.push(`${check.name}: missing migration file at ${check.absolutePath}`);
+      return;
+    }
+    const source = readFileSync(check.absolutePath, "utf8");
     const missingTokens = check.requiredTokens.filter((token) => !source.includes(token));
     if (missingTokens.length) {
       errors.push(`${check.name}: missing required token(s): ${missingTokens.join(", ")}`);
     }
+    checked.push(check);
+  });
 
-    const infraReferencePaths = [];
-    if (check.infraReferences?.length) {
-      const infraSources = INFRA_REFERENCE_PATHS.map((relativePath) => {
-        const infraPath = resolve(process.cwd(), relativePath);
-        infraReferencePaths.push(infraPath);
+  const infrastructureChecks = [
+    [resolve(SQL_ROOT, "build-oakved-baseline.mjs"), ["schema_migrations", "checksum_sha256"]],
+    [resolve(SQL_ROOT, "oakved-baseline.sql"), ["CREATE TABLE IF NOT EXISTS `schema_migrations`", "Oakved demo catalog"]],
+    [resolve(SQL_ROOT, "oakved-demo-data.sql"), ["CALL seed_oakved_product", "expected 26 active demo products"]],
+    [resolve(DOCKER_ROOT, "invoke-local-migrations.ps1"), ["GET_LOCK", "checksum_sha256"]],
+    [resolve(DOCKER_ROOT, "reset-local-infra.ps1"), ["mysqldump", "RESET OAKVED LOCAL DATA", "down", "-v"]],
+    [resolve(DOCKER_ROOT, "docker-compose-local-infra.yml"), ["oakved-baseline.sql:/docker-entrypoint-initdb.d/01-oakved-baseline.sql:ro"]],
+    [resolve(DOCKER_ROOT, "start-local-infra.ps1"), ["invoke-local-migrations.ps1"]],
+  ];
 
-        if (!existsSync(infraPath)) {
-          errors.push(`${check.name}: missing infra reference file at ${infraPath}`);
-          return "";
-        }
-
-        return readFileSync(infraPath, "utf8");
-      });
-
-      const missingInfraReferences = check.infraReferences.filter((reference) =>
-        infraSources.some((source) => !source.includes(reference)),
-      );
-      if (missingInfraReferences.length) {
-        errors.push(`${check.name}: missing local infra reference(s): ${missingInfraReferences.join(", ")}`);
-      }
+  for (const [absolutePath, requiredTokens] of infrastructureChecks) {
+    if (!existsSync(absolutePath)) {
+      errors.push(`missing infrastructure file at ${absolutePath}`);
+      continue;
     }
-
-    checked.push({
-      ...check,
-      absolutePath,
-      infraReferencePaths,
-    });
+    const source = readFileSync(absolutePath, "utf8");
+    const missingTokens = requiredTokens.filter((token) => !source.includes(token));
+    if (missingTokens.length) {
+      errors.push(`${absolutePath}: missing required token(s): ${missingTokens.join(", ")}`);
+    }
   }
 
-  return {
-    ok: errors.length === 0,
-    errors,
-    checked,
-  };
+  return { ok: errors.length === 0, errors, checked };
 };
 
 const isCli = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
@@ -172,10 +71,7 @@ const isCli = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(impo
 if (isCli) {
   const result = verifyDbMigrations();
   if (result.ok) {
-    console.log(`Database migration check passed: ${result.checked.length} file(s)`);
-    for (const check of result.checked) {
-      console.log(`- ${check.name}: ${check.absolutePath}`);
-    }
+    console.log(`Database migration check passed: ${result.checked.length} numbered migration(s)`);
   } else {
     console.error("Database migration check failed:");
     result.errors.forEach((error) => console.error(`error: ${error}`));

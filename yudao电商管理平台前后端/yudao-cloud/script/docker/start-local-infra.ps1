@@ -1,7 +1,3 @@
-param(
-  [switch] $Recreate
-)
-
 $ErrorActionPreference = "Stop"
 
 $composeFile = Join-Path $PSScriptRoot "docker-compose-local-infra.yml"
@@ -11,10 +7,6 @@ $mysqlRootPassword = "123456"
 
 if (-not (Test-Path -LiteralPath $composeFile)) {
   throw "Cannot find compose file: $composeFile"
-}
-
-if ($Recreate) {
-  docker compose -f $composeFile down -v
 }
 
 docker compose -f $composeFile up -d
@@ -67,37 +59,9 @@ for ($attempt = 1; $attempt -le 60; $attempt++) {
   Start-Sleep -Seconds 2
 }
 
-function Invoke-MySqlMigration {
-  param(
-    [Parameter(Mandatory = $true)]
-    [string] $SqlPath
-  )
-
-  if (-not (Test-Path -LiteralPath $SqlPath)) {
-    throw "Cannot find SQL migration: $SqlPath"
-  }
-
-  $containerPath = "/tmp/" + [System.IO.Path]::GetFileName($SqlPath)
-  Write-Host "Applying MySQL migration: $SqlPath"
-  docker compose -f $composeFile cp $SqlPath "mysql:$containerPath"
-  if ($LASTEXITCODE -ne 0) {
-    throw "Failed to copy SQL migration into MySQL container: $SqlPath"
-  }
-
-  docker compose -f $composeFile exec -T mysql mysql @mysqlClientArgs --execute "source $containerPath"
-  if ($LASTEXITCODE -ne 0) {
-    throw "Failed to apply SQL migration: $SqlPath"
-  }
-}
-
-$mysqlSqlDir = Resolve-Path (Join-Path $PSScriptRoot "..\..\sql\mysql")
-Invoke-MySqlMigration (Join-Path $mysqlSqlDir "yudao-module-tables.sql")
-Invoke-MySqlMigration (Join-Path $mysqlSqlDir "member-email-auth.sql")
-Invoke-MySqlMigration (Join-Path $mysqlSqlDir "mall-erp-integration.sql")
-Invoke-MySqlMigration (Join-Path $mysqlSqlDir "member-trade-application.sql")
-Invoke-MySqlMigration (Join-Path $mysqlSqlDir "member-membership.sql")
-Invoke-MySqlMigration (Join-Path $mysqlSqlDir "member-gift-registry.sql")
-Invoke-MySqlMigration (Join-Path $mysqlSqlDir "trade-gift-registry-context.sql")
+$migrationScript = Join-Path $PSScriptRoot "invoke-local-migrations.ps1"
+& powershell -ExecutionPolicy Bypass -File $migrationScript -ComposeFile $composeFile -Database $mysqlDatabase -RootPassword $mysqlRootPassword
+if ($LASTEXITCODE -ne 0) { throw "Database migration failed." }
 
 Write-Host ""
 Write-Host "Yudao local infrastructure:"
