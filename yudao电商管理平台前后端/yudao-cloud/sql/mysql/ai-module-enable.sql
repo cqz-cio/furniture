@@ -333,12 +333,42 @@ END$$
 DELIMITER ;
 
 CALL ai_add_column_if_missing('ai_api_key', 'url', 'varchar(512) DEFAULT NULL');
+CALL ai_add_column_if_missing('ai_api_key', 'tenant_id', 'bigint NOT NULL DEFAULT 0 COMMENT ''租户编号''');
+CALL ai_add_column_if_missing('ai_model', 'tenant_id', 'bigint NOT NULL DEFAULT 0 COMMENT ''租户编号''');
+CALL ai_add_column_if_missing('ai_chat_role', 'tenant_id', 'bigint NOT NULL DEFAULT 0 COMMENT ''租户编号''');
+CALL ai_add_column_if_missing('ai_chat_conversation', 'tenant_id', 'bigint NOT NULL DEFAULT 0 COMMENT ''租户编号''');
+CALL ai_add_column_if_missing('ai_chat_message', 'tenant_id', 'bigint NOT NULL DEFAULT 0 COMMENT ''租户编号''');
+CALL ai_add_column_if_missing('ai_image', 'tenant_id', 'bigint NOT NULL DEFAULT 0 COMMENT ''租户编号''');
+CALL ai_add_column_if_missing('ai_knowledge', 'tenant_id', 'bigint NOT NULL DEFAULT 0 COMMENT ''租户编号''');
+CALL ai_add_column_if_missing('ai_knowledge_document', 'tenant_id', 'bigint NOT NULL DEFAULT 0 COMMENT ''租户编号''');
+CALL ai_add_column_if_missing('ai_knowledge_segment', 'tenant_id', 'bigint NOT NULL DEFAULT 0 COMMENT ''租户编号''');
+CALL ai_add_column_if_missing('ai_mind_map', 'tenant_id', 'bigint NOT NULL DEFAULT 0 COMMENT ''租户编号''');
+CALL ai_add_column_if_missing('ai_tool', 'tenant_id', 'bigint NOT NULL DEFAULT 0 COMMENT ''租户编号''');
+CALL ai_add_column_if_missing('ai_music', 'tenant_id', 'bigint NOT NULL DEFAULT 0 COMMENT ''租户编号''');
+CALL ai_add_column_if_missing('ai_workflow', 'tenant_id', 'bigint NOT NULL DEFAULT 0 COMMENT ''租户编号''');
+CALL ai_add_column_if_missing('ai_write', 'tenant_id', 'bigint NOT NULL DEFAULT 0 COMMENT ''租户编号''');
 CALL ai_add_column_if_missing('ai_model', 'type', 'tinyint NOT NULL DEFAULT 1');
 CALL ai_add_column_if_missing('ai_model', 'temperature', 'double DEFAULT NULL');
 CALL ai_add_column_if_missing('ai_model', 'max_tokens', 'int DEFAULT NULL');
 CALL ai_add_column_if_missing('ai_model', 'max_contexts', 'int DEFAULT NULL');
 CALL ai_add_column_if_missing('ai_knowledge', 'embedding_model_id', 'bigint NOT NULL DEFAULT 0');
 CALL ai_add_column_if_missing('ai_knowledge', 'embedding_model', "varchar(128) NOT NULL DEFAULT ''");
+
+-- Legacy AI tables did not have tenant isolation. Attach those rows to the default tenant.
+UPDATE ai_api_key SET tenant_id = 1 WHERE tenant_id = 0;
+UPDATE ai_model SET tenant_id = 1 WHERE tenant_id = 0;
+UPDATE ai_chat_role SET tenant_id = 1 WHERE tenant_id = 0;
+UPDATE ai_chat_conversation SET tenant_id = 1 WHERE tenant_id = 0;
+UPDATE ai_chat_message SET tenant_id = 1 WHERE tenant_id = 0;
+UPDATE ai_image SET tenant_id = 1 WHERE tenant_id = 0;
+UPDATE ai_knowledge SET tenant_id = 1 WHERE tenant_id = 0;
+UPDATE ai_knowledge_document SET tenant_id = 1 WHERE tenant_id = 0;
+UPDATE ai_knowledge_segment SET tenant_id = 1 WHERE tenant_id = 0;
+UPDATE ai_mind_map SET tenant_id = 1 WHERE tenant_id = 0;
+UPDATE ai_tool SET tenant_id = 1 WHERE tenant_id = 0;
+UPDATE ai_music SET tenant_id = 1 WHERE tenant_id = 0;
+UPDATE ai_workflow SET tenant_id = 1 WHERE tenant_id = 0;
+UPDATE ai_write SET tenant_id = 1 WHERE tenant_id = 0;
 CALL ai_add_column_if_missing('ai_knowledge', 'top_k', 'int NOT NULL DEFAULT 3');
 CALL ai_add_column_if_missing('ai_knowledge', 'similarity_threshold', 'double NOT NULL DEFAULT 0.65');
 DROP PROCEDURE IF EXISTS `ai_add_column_if_missing`;

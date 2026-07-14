@@ -49,6 +49,16 @@ if ($missingTables.Count -gt 0) {
     throw "Missing AI tables: $($missingTables -join ', ')"
 }
 
+$tenantTables = Invoke-MySqlQuery -Sql (
+    "SELECT table_name FROM information_schema.columns " +
+    "WHERE table_schema = '$DatabaseName' AND column_name = 'tenant_id' " +
+    "AND table_name LIKE 'ai\_%' ORDER BY table_name"
+)
+$tablesWithoutTenant = @($requiredTables | Where-Object { $_ -notin $tenantTables })
+if ($tablesWithoutTenant.Count -gt 0) {
+    throw "AI tables missing tenant_id: $($tablesWithoutTenant -join ', ')"
+}
+
 $duplicateMenus = Invoke-MySqlQuery -Sql @"
 WITH RECURSIVE ai_menus AS (
   SELECT id, parent_id, name, permission FROM system_menu WHERE deleted = 0 AND path IN ('ai', '/ai')
