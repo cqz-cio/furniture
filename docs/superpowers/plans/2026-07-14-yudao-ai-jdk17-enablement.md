@@ -6,7 +6,7 @@
 
 **Architecture:** Use official `yudao-cloud` commit `ff4ed31c1b1141e9c9b25c7e8edd61d8cd8745d6` as the JDK 17 counterpart to this repository's `2026.04-SNAPSHOT` baseline, then replay local changes with a deterministic three-way merge whose common base is local commit `57087aa6`. JDK 17 is selected only by repository PowerShell wrappers; database changes are backed up first and applied through a repeatable migration; `ai-server` remains isolated behind Gateway and only contacts providers for explicit feature requests.
 
-**Tech Stack:** Temurin JDK 17, Maven, Spring Boot 3.5.x, Spring Cloud 2025.0.x, Spring AI 1.1.x, MyBatis Plus, Nacos, Redis, MySQL 8, PowerShell 7/Windows PowerShell 5.1, Docker.
+**Tech Stack:** Microsoft OpenJDK 17 or Temurin JDK 17, Maven, Spring Boot 3.5.x, Spring Cloud 2025.0.x, Spring AI 1.1.x, MyBatis Plus, Nacos, Redis, MySQL 8, PowerShell 7/Windows PowerShell 5.1, Docker.
 
 ## Global Constraints
 
@@ -48,7 +48,7 @@
 **Interfaces:**
 - Produces: `Resolve-Jdk17.ps1` writes a validated JDK home path; `Invoke-MavenJdk17.ps1 -MavenArgs string[]` forwards Maven's exit code.
 
-- [ ] **Step 1: Write the failing PowerShell contract test**
+- [x] **Step 1: Write the failing PowerShell contract test**
 
 ```powershell
 $beforeJavaHome = $env:JAVA_HOME
@@ -61,29 +61,31 @@ if ($LASTEXITCODE -ne 0) { throw 'Maven wrapper failed' }
 if ($env:JAVA_HOME -ne $beforeJavaHome) { throw 'Parent JAVA_HOME was modified' }
 ```
 
-- [ ] **Step 2: Run it and confirm the wrapper is missing**
+- [x] **Step 2: Run it and confirm the wrapper is missing**
 
 Run: `powershell -NoProfile -File .\script\jdk17\tests\Jdk17Toolchain.Tests.ps1`
 
 Expected: non-zero exit because `Resolve-Jdk17.ps1` does not exist.
 
-- [ ] **Step 3: Install Temurin 17 side by side if no Java 17 is installed**
+- [x] **Step 3: Install a trusted OpenJDK 17 side by side if no Java 17 is installed**
 
-Run: `winget install --id EclipseAdoptium.Temurin.17.JDK --exact --scope machine --accept-package-agreements --accept-source-agreements`
+Preferred run: `winget install --id EclipseAdoptium.Temurin.17.JDK --exact --scope machine --accept-package-agreements --accept-source-agreements`
 
-Expected: Temurin 17 appears under `C:\Program Files\Eclipse Adoptium`; the existing Temurin 8 directory remains present.
+Fallback when GitHub Releases is unreachable: `winget install --id Microsoft.OpenJDK.17 --exact --scope machine --accept-package-agreements --accept-source-agreements`
 
-- [ ] **Step 4: Implement the resolver and Maven wrapper**
+Expected: Java 17 appears under its vendor's `Program Files` directory; the existing Temurin 8 directory remains present.
+
+- [x] **Step 4: Implement the resolver and Maven wrapper**
 
 The resolver checks `YUDao_JAVA17_HOME`, then `C:\Program Files\Eclipse Adoptium\jdk-17*`, executes `bin\java.exe -version`, accepts only major version 17, and returns a single resolved path. The Maven wrapper saves the child environment, assigns `JAVA_HOME` and prepends `bin` only while invoking `mvn.cmd`, then exits with Maven's exit code.
 
-- [ ] **Step 5: Run the contract and verify the system default is unchanged**
+- [x] **Step 5: Run the contract and verify the system default is unchanged**
 
 Run: `powershell -NoProfile -File .\script\jdk17\tests\Jdk17Toolchain.Tests.ps1`
 
 Expected: exit 0; Maven reports Java 17; a new `java -version` in the original shell still reports Java 8.
 
-- [ ] **Step 6: Commit the scoped toolchain**
+- [x] **Step 6: Commit the scoped toolchain**
 
 ```powershell
 git add script/jdk17/Resolve-Jdk17.ps1 script/jdk17/Invoke-MavenJdk17.ps1 script/jdk17/tests/Jdk17Toolchain.Tests.ps1
