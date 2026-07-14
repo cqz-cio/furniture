@@ -1,6 +1,7 @@
 import { membershipRoutes } from "./membershipNavigation.js";
 
 export const MEMBERSHIP_STATUSES = {
+  loggedOut: "logged_out",
   notMember: "not_member",
   activeAnnual: "active_annual",
   activeWholeRoom: "active_whole_room",
@@ -73,14 +74,14 @@ export const MEMBERSHIP_ACCOUNT_SCENARIOS = {
     profile: createMembershipProfile({
       status: MEMBERSHIP_STATUSES.expired,
       planName: "Annual Membership",
-      memberId: "RH-MEMBER-2025",
+      memberId: "OAKVED-MEMBER-2025",
       memberEmail: "customer@example.com",
       startedAt: "2025-06-03",
       expiresAt: "2026-06-03",
       growthPoints: 210,
     }),
     membershipValue: { annualSavings: "$420", eligibleSpend: "$1,680", renewalWindow: "Expired" },
-    orders: [{ key: "livingRoom", id: "RH-0924", date: "2026-05-08", savings: "$220" }],
+    orders: [{ key: "livingRoom", id: "OAKVED-0924", date: "2026-05-08", savings: "$220" }],
     eligibilityItems: [
       { name: "Outdoor Dining Table", category: "merchandise", regularPrice: 3200, memberPrice: 3200 },
       { name: "Delivery Service", category: "service", regularPrice: 299, memberPrice: 299 },
@@ -90,7 +91,7 @@ export const MEMBERSHIP_ACCOUNT_SCENARIOS = {
     profile: createMembershipProfile({
       status: MEMBERSHIP_STATUSES.activeAnnual,
       planName: "Annual Membership",
-      memberId: "RH-MEMBER-2026",
+      memberId: "OAKVED-MEMBER-2026",
       memberEmail: "customer@example.com",
       startedAt: "2026-06-03",
       expiresAt: "2027-06-03",
@@ -100,9 +101,9 @@ export const MEMBERSHIP_ACCOUNT_SCENARIOS = {
     }),
     membershipValue: { annualSavings: "$640", eligibleSpend: "$2,560", renewalWindow: "30" },
     orders: [
-      { key: "livingRoom", id: "RH-1024", date: "2026-05-28", savings: "$320" },
-      { key: "dining", id: "RH-1018", date: "2026-04-12", savings: "$180" },
-      { key: "outdoor", id: "RH-1007", date: "2026-03-09", savings: "$140" },
+      { key: "livingRoom", id: "OAKVED-1024", date: "2026-05-28", savings: "$320" },
+      { key: "dining", id: "OAKVED-1018", date: "2026-04-12", savings: "$180" },
+      { key: "outdoor", id: "OAKVED-1007", date: "2026-03-09", savings: "$140" },
     ],
     eligibilityItems: [
       { name: "Cloud Sofa", category: "merchandise", regularPrice: 4295, memberPrice: 3221 },
@@ -114,7 +115,7 @@ export const MEMBERSHIP_ACCOUNT_SCENARIOS = {
     profile: createMembershipProfile({
       status: MEMBERSHIP_STATUSES.activeWholeRoom,
       planName: "Whole-Room Membership",
-      memberId: "RH-WHOLE-2026",
+      memberId: "OAKVED-WHOLE-2026",
       memberEmail: "customer@example.com",
       startedAt: "2026-04-16",
       expiresAt: "2027-04-16",
@@ -125,8 +126,8 @@ export const MEMBERSHIP_ACCOUNT_SCENARIOS = {
     }),
     membershipValue: { annualSavings: "$1,120", eligibleSpend: "$4,480", renewalWindow: "45" },
     orders: [
-      { key: "livingRoom", id: "RH-1102", date: "2026-05-31", savings: "$520" },
-      { key: "dining", id: "RH-1091", date: "2026-05-05", savings: "$360" },
+      { key: "livingRoom", id: "OAKVED-1102", date: "2026-05-31", savings: "$520" },
+      { key: "dining", id: "OAKVED-1091", date: "2026-05-05", savings: "$360" },
     ],
     eligibilityItems: [
       { name: "Room Plan Sofa", category: "merchandise", regularPrice: 5200, memberPrice: 3900 },
@@ -162,6 +163,15 @@ export const getMembershipAccountScenario = (key = "activeAnnual") => {
 
 export const getMembershipStatusView = (profile = createMembershipProfile()) => {
   const status = profile.status;
+
+  if (status === MEMBERSHIP_STATUSES.loggedOut) {
+    return {
+      label: "Sign In Required",
+      tone: "attention",
+      ctaLabel: "Sign In",
+      ctaHref: membershipRoutes.checkoutAuth,
+    };
+  }
 
   if (status === MEMBERSHIP_STATUSES.activeAnnual) {
     return {
@@ -312,5 +322,66 @@ export const getMembershipEligibilityReview = (items = []) => {
     eligibleCount: lines.filter((line) => line.eligible).length,
     ineligibleCount: lines.filter((line) => !line.eligible).length,
     savingsTotal: lines.reduce((total, line) => total + line.savings, 0),
+  };
+};
+
+const formatMembershipMoney = (value = 0) =>
+  `$${Math.max(0, Number(value) || 0).toLocaleString("en-US", {
+    maximumFractionDigits: 0,
+  })}`;
+
+const getOrderIdentifier = (order = {}) => String(order.no || order.id || "");
+
+const getOrderEligibilityReview = (order = {}) =>
+  getMembershipEligibilityReview(getMembershipEligibilityItemsFromOrderItems(order.items || []));
+
+const getLiveMembershipStateFlags = (status) => {
+  const hasActiveBenefits =
+    status === MEMBERSHIP_STATUSES.activeAnnual || status === MEMBERSHIP_STATUSES.activeWholeRoom;
+  const requiresAttention = status === MEMBERSHIP_STATUSES.expired || status === MEMBERSHIP_STATUSES.pendingLink;
+  const emptyStateKey = hasActiveBenefits
+    ? ""
+    : status === MEMBERSHIP_STATUSES.expired
+      ? "expired"
+      : status === MEMBERSHIP_STATUSES.pendingLink
+        ? "pendingLink"
+        : status === MEMBERSHIP_STATUSES.loggedOut
+          ? "loggedOut"
+          : "notMember";
+
+  return { hasActiveBenefits, requiresAttention, emptyStateKey };
+};
+
+export const getLiveMembershipAccountScenario = (profile = createMembershipProfile(), orders = []) => {
+  const safeOrders = Array.isArray(orders) ? orders : [];
+  const eligibilityItems = safeOrders.flatMap((order) => getMembershipEligibilityItemsFromOrderItems(order.items || []));
+  const eligibilityReview = getMembershipEligibilityReview(eligibilityItems);
+  const eligibleSpend = eligibilityReview.lines
+    .filter((line) => line.eligible)
+    .reduce((total, line) => total + line.regularPrice, 0);
+  const status = profile.status;
+  const stateFlags = getLiveMembershipStateFlags(status);
+
+  return {
+    key: stateFlags.emptyStateKey || "activeAnnual",
+    profile,
+    membershipValue: {
+      annualSavings: formatMembershipMoney(eligibilityReview.savingsTotal),
+      eligibleSpend: formatMembershipMoney(eligibleSpend),
+      renewalWindow: status === MEMBERSHIP_STATUSES.expired ? "Expired" : "0",
+    },
+    orders: safeOrders.slice(0, 5).map((order) => {
+      const orderReview = getOrderEligibilityReview(order);
+      const id = getOrderIdentifier(order);
+      return {
+        key: "liveOrder",
+        id,
+        label: id,
+        date: order.createTime || order.payTime || order.date || "",
+        savings: formatMembershipMoney(orderReview.savingsTotal),
+      };
+    }),
+    eligibilityItems,
+    ...stateFlags,
   };
 };

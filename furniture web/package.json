@@ -7,7 +7,24 @@
     "dev": "vite --host 127.0.0.1",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:e2e:checkout": "node scripts/checkout-e2e-smoke.mjs",
+    "test:e2e:checkout:preview": "node scripts/checkout-preview-smoke.mjs",
+    "test:smoke:wishlist": "node scripts/wishlist-api-smoke.mjs",
+    "test:smoke:live-business": "node scripts/live-business-smoke.mjs",
+    "test:smoke:order-live": "node scripts/order-live-smoke.mjs",
+    "test:smoke:real-account": "node scripts/real-account-readiness-smoke.mjs",
+    "test:deploy:health": "node scripts/post-deploy-health-check.mjs",
+    "create:launch-evidence": "node scripts/create-launch-evidence.mjs",
+    "audit:launch-evidence": "node scripts/audit-launch-evidence.mjs",
+    "audit:initial-launch-readiness": "node scripts/audit-initial-launch-readiness.mjs",
+    "verify:production-env": "node scripts/verify-production-env.mjs",
+    "verify:backend-production-config": "node scripts/verify-backend-production-config.mjs",
+    "verify:backend-production-env": "node scripts/verify-backend-production-env.mjs",
+    "verify:launch-env-alignment": "node scripts/verify-launch-env-alignment.mjs",
+    "verify:launch-smoke-env": "node scripts/verify-launch-smoke-env.mjs",
+    "verify:db-migrations": "node scripts/verify-db-migrations.mjs",
+    "verify:launch-readiness": "node scripts/verify-launch-readiness.mjs"
   },
   "dependencies": {
     "@lucide/vue": "^1.24.0",
@@ -16,7 +33,7 @@
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.2",
     "playwright": "^1.60.0",
-    "vite": "^7.2.7",
-    "vitest": "^4.0.16"
+    "vite": "^8.1.2",
+    "vitest": "^4.1.9"
   }
 }

@@ -11,10 +11,11 @@ export const membershipRoutes = {
   accountAddressBook: "/account/address-book",
   accountBilling: "/account/billing",
   accountPaymentMethods: "/account",
-  accountWishlist: "/account",
+  accountWishlist: "/account/wishlist",
   accountProfile: "/account/profile",
   accountGiftRegistry: "/gift-registry",
   checkoutAuth: "/checkout/auth",
+  checkout: "/checkout",
   giftRegistry: "/gift-registry",
   giftRegistryCreate: "/gift-registry/create",
   giftRegistryFind: "/gift-registry/find",
@@ -71,7 +72,7 @@ export const checkoutAuthOptions = [
 ];
 
 export const getCheckoutEntryRoute = (items = []) =>
-  hasMembershipService(items) ? `${membershipRoutes.checkoutAuth}?intent=membership` : membershipRoutes.checkoutAuth;
+  hasMembershipService(items) ? `${membershipRoutes.checkoutAuth}?intent=membership` : `${membershipRoutes.checkout}?guest=true`;
 
 export const getCheckoutAuthOptions = (items = []) => {
   const containsMembership = hasMembershipService(items);

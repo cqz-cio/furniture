@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   getCheckoutAuthOptions,
   getCheckoutEntryRoute,
+  accountMenuLabelKeys,
   accountMenuItems,
   checkoutAuthOptions,
   getMembershipJoinTarget,
@@ -9,19 +10,21 @@ import {
 } from "../src/services/membershipNavigation.js";
 
 describe("membership navigation model", () => {
-  it("defines RH-aligned membership and account routes", () => {
+  it("defines Oakved membership and account routes", () => {
     expect(membershipRoutes.membership).toBe("/membership");
     expect(membershipRoutes.membershipEnrollment).toBe("/membership/enrollment");
     expect(membershipRoutes.membershipTerms).toBe("/membership/terms");
     expect(membershipRoutes.membershipFaqs).toBe("/membership/faqs");
     expect(membershipRoutes.accountMembership).toBe("/account/membership");
     expect(membershipRoutes.accountOrders).toBe("/account/orders");
+    expect(membershipRoutes.accountWishlist).toBe("/account/wishlist");
     expect(membershipRoutes.accountGiftRegistry).toBe("/gift-registry");
     expect(membershipRoutes.checkoutAuth).toBe("/checkout/auth");
+    expect(membershipRoutes.checkout).toBe("/checkout");
     expect(membershipRoutes.giftRegistry).toBe("/gift-registry");
   });
 
-  it("keeps the My Account menu order aligned with RH", () => {
+  it("keeps the My Account menu order aligned with Oakved service priorities", () => {
     expect(accountMenuItems.map((item) => item.label)).toEqual([
       "Account Profile",
       "Address Book",
@@ -32,6 +35,12 @@ describe("membership navigation model", () => {
       "Wish List",
       "Gift Registry",
     ]);
+  });
+
+  it("keeps every account menu item connected to a translation key", () => {
+    for (const item of accountMenuItems) {
+      expect(accountMenuLabelKeys[item.label], `${item.label} should have a label key`).toMatch(/^membership\.account\./);
+    }
   });
 
   it("uses three checkout auth choices and blocks guest membership purchase", () => {
@@ -50,8 +59,8 @@ describe("membership navigation model", () => {
     expect(getMembershipJoinTarget({ signedIn: true, memberStatus: "active" })).toBe("/account/membership");
   });
 
-  it("starts checkout through the auth split and flags membership intent", () => {
-    expect(getCheckoutEntryRoute([])).toBe("/checkout/auth");
+  it("starts regular checkout directly and flags membership intent when needed", () => {
+    expect(getCheckoutEntryRoute([])).toBe("/checkout?guest=true");
     expect(getCheckoutEntryRoute([{ skuId: "membership-annual", quantity: 1 }])).toBe("/checkout/auth?intent=membership");
   });
 

@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
 /**
  * 交易订单 Base VO，提供给添加、修改、详细的子 VO 使用
@@ -37,6 +38,9 @@ public class TradeOrderBaseVO {
 
     @Schema(description = "用户备注", requiredMode = Schema.RequiredMode.REQUIRED, example = "你猜")
     private String userRemark;
+
+    @Schema(description = "Address verification audit payload")
+    private Map<String, Object> addressVerification;
 
     @Schema(description = "订单状态", requiredMode = Schema.RequiredMode.REQUIRED, example = "1")
     private Integer status;

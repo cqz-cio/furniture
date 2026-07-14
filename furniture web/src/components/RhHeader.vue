@@ -4,15 +4,14 @@ import {
   babyChildNavigation,
   globalMenuPanels,
   globalMenuLinkHref,
-  livingMegaMenu,
-  livingMegaSubmenus,
   mobileDrawerNavigation,
   primaryNavigation,
-  saleMegaMenu,
+  woodFurnitureDropdownLabels,
+  woodFurnitureMegaMenus,
 } from "../data/rhLayout.js";
+import { generatedFurnitureAssets } from "../data/generatedFurnitureAssets.js";
 import { useI18n } from "../i18n.js";
 import AuthModal from "./AuthModal.vue";
-import ImageSpecPlaceholder from "./ImageSpecPlaceholder.vue";
 
 defineProps({
   overlay: {
@@ -34,19 +33,98 @@ const page = defineModel("page", { type: String, default: "home" });
 const { availableLocales, currentLocale, setLocale, t } = useI18n();
 const headerRef = ref(null);
 const regionSwitcherRef = ref(null);
+const navButtonRefs = ref({});
 const menuOpen = ref(false);
 const activeDropdown = ref("");
 const activeMegaItem = ref("");
+const categoryMenuLeft = ref("80px");
 const regionOpen = ref(false);
 const accountOpen = ref(false);
-const navItems = computed(() => (page.value === "baby-child" ? babyChildNavigation : primaryNavigation));
-const hoverMenuItems = computed(() => (activeDropdown.value === "Sale" ? saleMegaMenu : livingMegaMenu));
-const hoverSecondaryMenuItems = computed(() =>
-  activeDropdown.value === "Living" && activeMegaItem.value ? livingMegaSubmenus[activeMegaItem.value] || [] : [],
+const searchOpen = ref(false);
+const isBabyChildSitePage = computed(
+  () => page.value === "baby-child" || page.value.startsWith("baby-child-"),
 );
+const babyChildPageMap = {
+  Furniture: "baby-child-furniture",
+  Bedding: "baby-child-bedding",
+  Nursery: "baby-child-nursery",
+  Decor: "baby-child-decor",
+  Lighting: "baby-child-lighting",
+  Rugs: "baby-child-rugs",
+  Windows: "baby-child-windows",
+  Storage: "baby-child-storage",
+  Playroom: "baby-child-playroom",
+  Gifts: "baby-child-gifts",
+  Teen: "baby-child-teen",
+  Sale: "baby-child-sale",
+  Registry: "baby-child-registry",
+};
+const primaryNavigationLabelKeys = {
+  "Bedroom Furniture": "navigation.primary.bedroomFurniture",
+  "Storage Cabinets": "navigation.primary.storageCabinets",
+  "Desks & Tables": "navigation.primary.desksTables",
+  "Seating & Benches": "navigation.primary.seatingBenches",
+  "Room Sets": "navigation.primary.roomSets",
+  Woodcraft: "navigation.primary.woodcraft",
+  "New & Sale": "navigation.primary.newSale",
+};
+const babyChildNavigationLabelKeys = {
+  Furniture: "navigation.babyChild.furniture",
+  Bedding: "navigation.babyChild.bedding",
+  Nursery: "navigation.babyChild.nursery",
+  Decor: "navigation.babyChild.decor",
+  Lighting: "navigation.babyChild.lighting",
+  Rugs: "navigation.babyChild.rugs",
+  Windows: "navigation.babyChild.windows",
+  Storage: "navigation.babyChild.storage",
+  Playroom: "navigation.babyChild.playroom",
+  Gifts: "navigation.babyChild.gifts",
+  Teen: "navigation.babyChild.teen",
+  Sale: "navigation.babyChild.sale",
+  Registry: "navigation.babyChild.registry",
+};
+const navigationLabelKey = (label) =>
+  (isBabyChildSitePage.value ? babyChildNavigationLabelKeys[label] : primaryNavigationLabelKeys[label]) ||
+  primaryNavigationLabelKeys[label] ||
+  babyChildNavigationLabelKeys[label] ||
+  "";
+const navItemLabel = (label) => t(navigationLabelKey(label));
+const menuItemLabel = (label) => (navigationLabelKey(label) ? navItemLabel(label) : label);
+const navItems = computed(() => (isBabyChildSitePage.value ? babyChildNavigation : primaryNavigation));
+const hasWoodDropdown = (label) => !isBabyChildSitePage.value && woodFurnitureDropdownLabels.includes(label);
+const hoverMenuItems = computed(() => woodFurnitureMegaMenus[activeDropdown.value] || []);
+const hoverSecondaryMenuItems = computed(() => []);
+const dropdownPositionStyle = computed(() => ({
+  "--category-menu-left": categoryMenuLeft.value,
+}));
+const mobileDrawerSections = computed(() => [
+  {
+    heading: "Shop Furniture",
+    items: mobileDrawerNavigation,
+  },
+  {
+    heading: "Service",
+    items: [
+      { label: "Membership FAQ", href: "/membership/faqs" },
+      { label: "Gift Registry", href: "/gift-registry" },
+      { label: "Trade Program", href: "/trade/sign-in" },
+    ],
+  },
+]);
+const generatedGlobalMenuImages = [
+  generatedFurnitureAssets.products.sofa.cover,
+  generatedFurnitureAssets.home.modules["004"].desktop,
+  generatedFurnitureAssets.home.modules["002"].desktop,
+  generatedFurnitureAssets.products.pendant.gallery,
+];
 
 const pageKey = (label) => {
-  if (label === "Living") return "sofas-plp";
+  if (isBabyChildSitePage.value && babyChildPageMap[label]) {
+    return babyChildPageMap[label];
+  }
+  if (primaryNavigation.some((item) => item.label === label)) {
+    return label === "New & Sale" ? "sale" : "sofas-plp";
+  }
   if (label === "Furniture") return "baby-child";
   if (label === "Baby & Child") return "baby-child";
   if (label === "Sale") return "sale";
@@ -61,6 +139,10 @@ const localeButtonLabel = computed(
 );
 
 const isActive = (label) => {
+  if (isBabyChildSitePage.value && page.value === "baby-child") return label === "Furniture";
+  if (isBabyChildSitePage.value && babyChildPageMap[label]) {
+    return babyChildPageMap[label] === page.value;
+  }
   if (page.value === "baby-child") return label === "Furniture";
   return pageKey(label) === page.value;
 };
@@ -71,16 +153,27 @@ const toggleMenu = () => {
   activeMegaItem.value = "";
   regionOpen.value = false;
   accountOpen.value = false;
+  searchOpen.value = false;
 };
 
 const closeMenu = () => {
   menuOpen.value = false;
 };
 
+const toggleSearch = () => {
+  searchOpen.value = !searchOpen.value;
+  menuOpen.value = false;
+  activeDropdown.value = "";
+  activeMegaItem.value = "";
+  regionOpen.value = false;
+  accountOpen.value = false;
+};
+
 const toggleRegion = () => {
   regionOpen.value = !regionOpen.value;
   activeDropdown.value = "";
   accountOpen.value = false;
+  searchOpen.value = false;
   closeMenu();
 };
 
@@ -93,6 +186,7 @@ const openAccount = () => {
   accountOpen.value = true;
   regionOpen.value = false;
   activeDropdown.value = "";
+  searchOpen.value = false;
   closeMenu();
 };
 
@@ -103,6 +197,30 @@ const closeAccount = () => {
 const hideDropdown = () => {
   activeDropdown.value = "";
   activeMegaItem.value = "";
+};
+
+const setNavButtonRef = (label, element) => {
+  if (element) {
+    navButtonRefs.value[label] = element;
+    return;
+  }
+  delete navButtonRefs.value[label];
+};
+
+const updateDropdownPosition = (label) => {
+  const button = navButtonRefs.value[label];
+  if (!button || typeof window === "undefined") return;
+
+  const buttonRect = button.getBoundingClientRect();
+  const headerRect = headerRef.value?.getBoundingClientRect() || { left: 0, width: window.innerWidth };
+  const menuWidth = 516;
+  const gutter = 24;
+  const headerWidth = headerRect.width || window.innerWidth;
+  const navCenter = buttonRect.left - headerRect.left + buttonRect.width / 2;
+  const maxLeft = Math.max(gutter, headerWidth - menuWidth - gutter);
+  const nextLeft = Math.min(Math.max(navCenter - menuWidth / 2, gutter), maxLeft);
+
+  categoryMenuLeft.value = `${Math.round(nextLeft)}px`;
 };
 
 const setBodyMenuState = (isOpen) => {
@@ -116,10 +234,22 @@ const activatePage = (label) => {
   hideDropdown();
   regionOpen.value = false;
   accountOpen.value = false;
+  searchOpen.value = false;
 };
 
 const handleNavClick = (label) => {
-  if (!menuOpen.value && ["Living", "Sale"].includes(label)) {
+  if (!isBabyChildSitePage.value && label === "Baby & Child") {
+    window.open("/baby-child", "_blank", "noopener,noreferrer");
+    closeMenu();
+    hideDropdown();
+    regionOpen.value = false;
+    accountOpen.value = false;
+    searchOpen.value = false;
+    return;
+  }
+
+  if (!menuOpen.value && woodFurnitureDropdownLabels.includes(label)) {
+    updateDropdownPosition(label);
     activeDropdown.value = activeDropdown.value === label ? "" : label;
     activeMegaItem.value = "";
     regionOpen.value = false;
@@ -134,6 +264,8 @@ const activateMegaItem = (label) => {
   activeMegaItem.value = label;
 };
 
+const generatedGlobalMenuImage = (index) => generatedGlobalMenuImages[index % generatedGlobalMenuImages.length];
+
 const handleDocumentPointerDown = (event) => {
   if (regionOpen.value && !regionSwitcherRef.value?.contains(event.target)) {
     regionOpen.value = false;
@@ -144,14 +276,20 @@ const handleDocumentPointerDown = (event) => {
   }
 };
 
+const handleWindowResize = () => {
+  if (activeDropdown.value) updateDropdownPosition(activeDropdown.value);
+};
+
 watch(menuOpen, setBodyMenuState);
 
 onMounted(() => {
   document.addEventListener("pointerdown", handleDocumentPointerDown);
+  window.addEventListener("resize", handleWindowResize);
 });
 
 onBeforeUnmount(() => {
   document.removeEventListener("pointerdown", handleDocumentPointerDown);
+  window.removeEventListener("resize", handleWindowResize);
   setBodyMenuState(false);
 });
 </script>
@@ -164,7 +302,7 @@ onBeforeUnmount(() => {
       'is-overlay': overlay,
       'menu-is-open': menuOpen,
       'region-is-open': regionOpen,
-      'is-baby-child': page === 'baby-child',
+      'is-baby-child': isBabyChildSitePage,
     }"
   >
     <div class="header-topline">
@@ -182,26 +320,31 @@ onBeforeUnmount(() => {
           <span></span>
         </button>
         <div class="header-search">
-          <button class="icon-button search-icon" type="button" :aria-label="t('common.search')"></button>
+          <button
+            class="icon-button search-icon"
+            type="button"
+            :aria-label="t('common.search')"
+            :aria-expanded="searchOpen"
+            aria-controls="mobile-search-panel"
+            @click="toggleSearch"
+          ></button>
           <input class="search-input" :aria-label="t('common.search')" type="search" />
         </div>
       </div>
 
       <button
         class="brand-button"
-        :class="{ 'baby-brand': page === 'baby-child' }"
+        :class="{ 'baby-brand': isBabyChildSitePage }"
         type="button"
-        :aria-label="page === 'baby-child' ? 'RH Baby and Child' : 'The World of RH'"
-        @click="page = page === 'baby-child' ? 'baby-child' : 'home'"
+        :aria-label="isBabyChildSitePage ? 'Oakved Baby and Child' : 'Oakved'"
+        @click="page = isBabyChildSitePage ? 'baby-child' : 'home'"
       >
-        <template v-if="page === 'baby-child'">
-          <span>baby &amp; child</span>
-          <strong>RH</strong>
+        <template v-if="isBabyChildSitePage">
+          <img class="brand-logo" src="/assets/brand/oakved-logo-black.png" alt="Oakved" />
+          <span class="brand-button-suffix">baby &amp; child</span>
         </template>
         <template v-else>
-          <span>The</span>
-          <span>WORLD of</span>
-          <strong>RH</strong>
+          <img class="brand-logo" src="/assets/brand/oakved-logo-black.png" alt="Oakved" />
         </template>
       </button>
 
@@ -232,10 +375,20 @@ onBeforeUnmount(() => {
           </section>
         </div>
         <button class="account-icon" type="button" :aria-label="t('header.account')" @click="openAccount"></button>
-        <button class="bag-icon" type="button" :aria-label="t('header.bag')" @click="emit('open-cart')">
+        <button
+          class="bag-icon"
+          type="button"
+          :aria-label="t('header.bag')"
+          data-cart-animation-target
+          @click="emit('open-cart')"
+        >
           <span v-if="cartCount" class="bag-count">{{ cartCount }}</span>
         </button>
       </div>
+    </div>
+
+    <div v-if="searchOpen" id="mobile-search-panel" class="mobile-search-panel" role="search">
+      <input :aria-label="t('common.search')" type="search" />
     </div>
 
     <nav class="primary-nav" aria-label="Primary navigation">
@@ -243,56 +396,51 @@ onBeforeUnmount(() => {
         <button
           v-for="item in navItems"
           :key="item.label"
+          :ref="(element) => setNavButtonRef(item.label, element)"
           class="nav-link"
           :class="{ active: isActive(item.label) }"
           type="button"
-          :aria-expanded="['Living', 'Sale'].includes(item.label) ? activeDropdown === item.label : undefined"
+          :aria-expanded="hasWoodDropdown(item.label) ? activeDropdown === item.label : undefined"
           @click="handleNavClick(item.label)"
         >
-          {{ item.label }}
+          {{ navItemLabel(item.label) }}
         </button>
       </div>
     </nav>
 
     <section
-      v-if="['Living', 'Sale'].includes(activeDropdown)"
+      v-if="woodFurnitureDropdownLabels.includes(activeDropdown)"
       class="category-mega-menu"
-      :class="{ 'is-sale-menu': activeDropdown === 'Sale' }"
+      :class="{ 'is-sale-menu': activeDropdown === 'New & Sale' }"
+      :style="dropdownPositionStyle"
       :aria-label="`${activeDropdown} category menu`"
     >
       <ul>
         <li v-for="item in hoverMenuItems" :key="item.label">
-          <button
-            v-if="activeDropdown === 'Living'"
+          <a
             class="category-mega-link"
             :class="{ accent: item.accent, active: activeMegaItem === item.label }"
-            type="button"
-            @click="activateMegaItem(item.label)"
+            :href="item.href"
+            @click="hideDropdown"
           >
-            {{ item.label }}
-          </button>
-          <a v-else :class="{ accent: item.accent }" :href="item.href" @click="hideDropdown">{{ item.label }}</a>
+            {{ menuItemLabel(item.label) }}
+          </a>
         </li>
       </ul>
       <ul v-if="hoverSecondaryMenuItems.length" class="category-mega-secondary">
         <li v-for="item in hoverSecondaryMenuItems" :key="item.label">
-          <a :href="item.href" @click="hideDropdown">{{ item.label }}</a>
+          <a :href="item.href" @click="hideDropdown">{{ menuItemLabel(item.label) }}</a>
         </li>
       </ul>
       <div v-else class="category-mega-empty" aria-hidden="true"></div>
     </section>
 
-    <section v-if="menuOpen" class="global-menu" aria-label="RH menu">
-      <article v-for="panel in globalMenuPanels" :key="panel.heading" class="global-menu-panel">
-        <ImageSpecPlaceholder
-          class="global-menu-spec"
-          :label="panel.spec.label"
-          :rendered="panel.spec.rendered"
-          :recommended2x="panel.spec.recommended2x"
-          :file-size="panel.spec.fileSize"
-          :fit="panel.spec.fit"
-          :ratio="panel.spec.ratio"
-          :natural="panel.spec.natural"
+    <section v-if="menuOpen" class="global-menu" aria-label="Oakved menu">
+      <article v-for="(panel, index) in globalMenuPanels" :key="panel.heading" class="global-menu-panel">
+        <img
+          class="global-menu-image"
+          :src="generatedGlobalMenuImage(index)"
+          :alt="`${panel.heading} menu collection`"
         />
         <p>Our</p>
         <h2>{{ panel.heading }}</h2>
@@ -308,24 +456,27 @@ onBeforeUnmount(() => {
       </article>
     </section>
 
-    <div v-if="menuOpen" class="mobile-drawer-layer" aria-label="Mobile RH menu">
+    <div v-if="menuOpen" class="mobile-drawer-layer" aria-label="Mobile Oakved menu">
       <aside class="mobile-menu-drawer">
-        <button
-          v-for="item in mobileDrawerNavigation"
-          :key="item.label"
-          type="button"
-          :class="{ accent: item.accent }"
-          @click="activatePage(item.label)"
-        >
-          <span>{{ item.label }}</span>
-          <span aria-hidden="true">›</span>
-        </button>
+        <section v-for="section in mobileDrawerSections" :key="section.heading" class="mobile-drawer-section">
+          <h2>{{ section.heading }}</h2>
+          <a
+            v-for="item in section.items"
+            :key="item.label"
+            :class="{ accent: item.accent }"
+            :href="item.href"
+            @click="closeMenu"
+          >
+            <span>{{ menuItemLabel(item.label) }}</span>
+            <span aria-hidden="true">›</span>
+          </a>
+        </section>
         <button class="mobile-region" type="button">
           <span>{{ t("header.mobileRegion") }}</span>
           <span aria-hidden="true">›</span>
         </button>
         <div class="mobile-drawer-brand">
-          <span>The</span> WORLD <span>of</span> RH
+          <img class="mobile-drawer-brand-logo" src="/assets/brand/oakved-logo-black.png" alt="Oakved" />
         </div>
       </aside>
       <button class="mobile-drawer-scrim" type="button" :aria-label="t('header.menuClose')" @click="closeMenu"></button>

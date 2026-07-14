@@ -6,6 +6,7 @@ export type FurnitureLiteRoute = {
 
 const allowedMenuPaths = new Set([
   '/index',
+  '/dashboard',
   '/mall/home',
   '/mall/product',
   '/mall/product/spu',
@@ -25,6 +26,9 @@ const allowedMenuPaths = new Set([
   '/mall/trade/delivery/pick-up-store',
   '/member',
   '/member/user',
+  '/member/membership',
+  '/member/gift-registry',
+  '/member/trade-application',
   '/member/level',
   '/member/tag',
   '/member/group',
@@ -32,47 +36,6 @@ const allowedMenuPaths = new Set([
   '/pay/app',
   '/pay/order',
   '/pay/refund',
-  '/ai',
-  '/ai/console',
-  '/ai/console/chat',
-  '/ai/console/image',
-  '/ai/console/knowledge',
-  '/ai/console/mind-map',
-  '/ai/console/model',
-  '/ai/console/music',
-  '/ai/console/workflow',
-  '/ai/console/write',
-  '/ai/chat',
-  '/ai/chat/index',
-  '/ai/chat/manager',
-  '/ai/model',
-  '/ai/model/model',
-  '/ai/model/api-key',
-  '/ai/model/apiKey',
-  '/ai/model/chat-role',
-  '/ai/model/chatRole',
-  '/ai/model/tool',
-  '/ai/knowledge',
-  '/ai/knowledge/knowledge',
-  '/ai/knowledge/document',
-  '/ai/knowledge/segment',
-  '/ai/workflow',
-  '/ai/write',
-  '/ai/write/index',
-  '/ai/write/manager',
-  '/ai/image',
-  '/ai/image/index',
-  '/ai/image/manager',
-  '/ai/image/square',
-  '/ai/music',
-  '/ai/music/index',
-  '/ai/music/manager',
-  '/ai/mind-map',
-  '/ai/mind-map/index',
-  '/ai/mind-map/manager',
-  '/ai/mindmap',
-  '/ai/mindmap/index',
-  '/ai/mindmap/manager',
   '/infra/file',
   '/infra/file-config',
   '/infra/file/file-config',
@@ -81,15 +44,13 @@ const allowedMenuPaths = new Set([
   '/system/menu'
 ])
 
-const deniedFixedRoutePrefixes = [
-  '/bpm',
-  '/crm',
-  '/iot',
-  '/mes',
-  '/diy',
-  '/codegen',
-  '/job'
-]
+const deniedFixedRoutePrefixes = ['/ai', '/bpm', '/crm', '/iot', '/mes', '/diy', '/codegen', '/job']
+
+const menuTitleOverrides: Record<string, string> = {
+  '/member/trade-application': '交易申请',
+  '/member/membership': '会员权益',
+  '/member/gift-registry': '礼品登记'
+}
 
 const isFalseEnvValue = (value: unknown): boolean =>
   typeof value === 'string' && value.toLowerCase() === 'false'
@@ -112,6 +73,17 @@ const isPathAllowed = (path: string): boolean => allowedMenuPaths.has(path)
 
 const isPathDenied = (path: string): boolean =>
   deniedFixedRoutePrefixes.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))
+
+const applyFurnitureLiteTitles = <T extends FurnitureLiteRoute>(route: T, fullPath: string): T => {
+  const nextRoute = { ...route }
+  const overrideTitle = menuTitleOverrides[fullPath]
+
+  if (overrideTitle && 'name' in nextRoute) {
+    ;(nextRoute as T & { name?: string }).name = overrideTitle
+  }
+
+  return nextRoute
+}
 
 export const isFurnitureLiteMode = (): boolean =>
   import.meta.env.VITE_ADMIN_MODE === 'furniture-lite'
@@ -137,7 +109,7 @@ export const filterFurnitureLiteMenus = <T extends FurnitureLiteRoute>(routes: T
         return filteredRoutes
       }
 
-      const nextRoute = { ...route }
+      const nextRoute = applyFurnitureLiteTitles(route, fullPath)
       if (route.children) {
         nextRoute.children = children
       }

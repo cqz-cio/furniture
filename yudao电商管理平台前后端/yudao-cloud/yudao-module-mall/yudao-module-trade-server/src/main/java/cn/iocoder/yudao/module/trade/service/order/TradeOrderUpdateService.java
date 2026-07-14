@@ -4,6 +4,8 @@ import cn.iocoder.yudao.module.trade.controller.admin.order.vo.TradeOrderDeliver
 import cn.iocoder.yudao.module.trade.controller.admin.order.vo.TradeOrderRemarkReqVO;
 import cn.iocoder.yudao.module.trade.controller.admin.order.vo.TradeOrderUpdateAddressReqVO;
 import cn.iocoder.yudao.module.trade.controller.admin.order.vo.TradeOrderUpdatePriceReqVO;
+import cn.iocoder.yudao.module.trade.controller.app.order.vo.AppTradeOrderCommentCreateReqVO;
+import cn.iocoder.yudao.module.trade.controller.app.order.vo.AppTradeOrderCommentCreateRespVO;
 import cn.iocoder.yudao.module.trade.controller.app.order.vo.AppTradeOrderCreateReqVO;
 import cn.iocoder.yudao.module.trade.controller.app.order.vo.AppTradeOrderSettlementReqVO;
 import cn.iocoder.yudao.module.trade.controller.app.order.vo.AppTradeOrderSettlementRespVO;
@@ -165,7 +167,7 @@ public interface TradeOrderUpdateService {
      * @param id          交易订单项编号
      * @param refundPrice 退款金额
      */
-    void updateOrderItemWhenAfterSaleSuccess(@NotNull Long id, @NotNull Integer refundPrice);
+    void updateOrderItemWhenAfterSaleSuccess(@NotNull cn.iocoder.yudao.module.trade.dal.dataobject.aftersale.AfterSaleDO afterSale);
 
     /**
      * 当售后取消（用户取消、管理员驳回、管理员拒绝收货）后，更新交易订单项的售后状态
@@ -181,6 +183,19 @@ public interface TradeOrderUpdateService {
      * @param createReqVO 创建请求
      * @return 得到评价 id
      */
+    /**
+     * 【会员】整单集中评价。
+     *
+     * 保留和单订单项评价并行存在，供新整单评价页独立调用；
+     * 新整单评价链路不应与 {@link #createOrderItemCommentByMember(Long, AppTradeOrderItemCommentCreateReqVO)}
+     * 在同一笔订单上混用。
+     *
+     * @param userId      用户编号
+     * @param createReqVO 创建请求
+     * @return 评价结果
+     */
+    AppTradeOrderCommentCreateRespVO createOrderCommentsByMember(Long userId, AppTradeOrderCommentCreateReqVO createReqVO);
+
     Long createOrderItemCommentByMember(Long userId, AppTradeOrderItemCommentCreateReqVO createReqVO);
 
     /**

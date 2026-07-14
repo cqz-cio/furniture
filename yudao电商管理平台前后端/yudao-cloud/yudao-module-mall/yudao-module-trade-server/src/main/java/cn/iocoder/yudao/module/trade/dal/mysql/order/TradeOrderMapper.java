@@ -1,5 +1,7 @@
 package cn.iocoder.yudao.module.trade.dal.mysql.order;
 
+import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.util.StrUtil;
 import cn.iocoder.yudao.framework.common.pojo.PageResult;
 import cn.iocoder.yudao.framework.mybatis.core.mapper.BaseMapperX;
 import cn.iocoder.yudao.framework.mybatis.core.query.LambdaQueryWrapperX;
@@ -42,6 +44,18 @@ public interface TradeOrderMapper extends BaseMapperX<TradeOrderDO> {
                 .inIfPresent(TradeOrderDO::getPickUpStoreId, reqVO.getPickUpStoreIds())
                 .likeIfPresent(TradeOrderDO::getPickUpVerifyCode, reqVO.getPickUpVerifyCode())
                 .betweenIfPresent(TradeOrderDO::getCreateTime, reqVO.getCreateTime())
+                .isNull(isMissingAddressVerificationStatus(reqVO.getAddressVerificationStatus()),
+                        TradeOrderDO::getAddressVerification)
+                .apply(StrUtil.isNotBlank(reqVO.getAddressVerificationStatus())
+                                && !isMissingAddressVerificationStatus(reqVO.getAddressVerificationStatus()),
+                        "JSON_UNQUOTE(JSON_EXTRACT(address_verification, '$.status')) = {0}",
+                        reqVO.getAddressVerificationStatus())
+                .apply(StrUtil.isNotBlank(reqVO.getAddressVerificationSource()),
+                        "JSON_UNQUOTE(JSON_EXTRACT(address_verification, '$.source')) = {0}",
+                        reqVO.getAddressVerificationSource())
+                .apply(StrUtil.isNotBlank(reqVO.getAddressVerificationProviderStatus()),
+                        "JSON_UNQUOTE(JSON_EXTRACT(address_verification, '$.providerStatus')) = {0}",
+                        reqVO.getAddressVerificationProviderStatus())
                 .orderByDesc(TradeOrderDO::getId));
     }
 
@@ -60,10 +74,31 @@ public interface TradeOrderMapper extends BaseMapperX<TradeOrderDO> {
                 .eqIfPresent(TradeOrderDO::getPayChannelCode, reqVO.getPayChannelCode())
                 .eqIfPresent(TradeOrderDO::getTerminal, reqVO.getTerminal())
                 .eqIfPresent(TradeOrderDO::getLogisticsId, reqVO.getLogisticsId())
-                .inIfPresent(TradeOrderDO::getPickUpStoreId, reqVO.getPickUpStoreIds())
-                .likeIfPresent(TradeOrderDO::getPickUpVerifyCode, reqVO.getPickUpVerifyCode())
-                .betweenIfPresent(TradeOrderDO::getCreateTime, reqVO.getCreateTime())
+                .isNull(isMissingAddressVerificationStatus(reqVO.getAddressVerificationStatus()),
+                        TradeOrderDO::getAddressVerification)
+                .apply(StrUtil.isNotBlank(reqVO.getAddressVerificationStatus())
+                                && !isMissingAddressVerificationStatus(reqVO.getAddressVerificationStatus()),
+                        "JSON_UNQUOTE(JSON_EXTRACT(address_verification, '$.status')) = {0}",
+                        reqVO.getAddressVerificationStatus())
+                .apply(StrUtil.isNotBlank(reqVO.getAddressVerificationSource()),
+                        "JSON_UNQUOTE(JSON_EXTRACT(address_verification, '$.source')) = {0}",
+                        reqVO.getAddressVerificationSource())
+                .apply(StrUtil.isNotBlank(reqVO.getAddressVerificationProviderStatus()),
+                        "JSON_UNQUOTE(JSON_EXTRACT(address_verification, '$.providerStatus')) = {0}",
+                        reqVO.getAddressVerificationProviderStatus())
+                .in(CollUtil.isNotEmpty(reqVO.getPickUpStoreIds()),
+                        TradeOrderDO::getPickUpStoreId, reqVO.getPickUpStoreIds())
+                .like(StrUtil.isNotBlank(reqVO.getPickUpVerifyCode()),
+                        TradeOrderDO::getPickUpVerifyCode, reqVO.getPickUpVerifyCode())
+                .between(reqVO.getCreateTime() != null && reqVO.getCreateTime().length == 2,
+                        TradeOrderDO::getCreateTime,
+                        reqVO.getCreateTime() == null ? null : reqVO.getCreateTime()[0],
+                        reqVO.getCreateTime() == null ? null : reqVO.getCreateTime()[1])
                 .groupBy(TradeOrderDO::getRefundStatus)); // 按售后状态分组
+    }
+
+    static boolean isMissingAddressVerificationStatus(String status) {
+        return "missing".equals(status);
     }
 
     default PageResult<TradeOrderDO> selectPage(AppTradeOrderPageReqVO reqVO, Long userId) {

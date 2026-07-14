@@ -1,16 +1,17 @@
 <script setup>
 import { computed, onUnmounted, ref } from "vue";
 import { useI18n } from "../i18n.js";
+import { isEmailAddress, isSixDigitCode } from "../services/formValidation.js";
 import {
   createEmailCaptchaChallenge,
   loginByTradeAccount,
   sendTradeLoginCode,
   verifyEmailCaptchaChallenge,
   YUDAO_MEMBER_ERROR_CODES,
-} from "../services/yudaoClient.js";
+} from "../services/yudaoAuthApi.js";
 import { tradeRoutes } from "../services/tradeProgram.js";
 
-const emit = defineEmits(["authenticated", "sign-in"]);
+const emit = defineEmits(["authenticated", "sign-in", "close"]);
 defineProps({
   showReturnLink: {
     type: Boolean,
@@ -34,8 +35,8 @@ const captchaError = ref("");
 let cooldownTimer = null;
 
 const isTradeReady = computed(() => tradeId.value.trim().length > 0);
-const isEmailValid = computed(() => email.value.length <= 255 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value));
-const isCodeValid = computed(() => /^\d{6}$/.test(verificationCode.value));
+const isEmailValid = computed(() => isEmailAddress(email.value));
+const isCodeValid = computed(() => isSixDigitCode(verificationCode.value));
 const canSendCode = computed(
   () => isTradeReady.value && isEmailValid.value && !busy.value && !codeBusy.value && !captchaChallenge.value && codeCooldown.value === 0,
 );
@@ -256,8 +257,8 @@ onUnmounted(() => {
       {{ busy ? t("common.working") : t("auth.trade.submit") }}
     </button>
     <div class="account-modal-links is-stacked">
-      <a :href="tradeRoutes.apply">{{ t("auth.trade.apply") }}</a>
-      <a :href="tradeRoutes.faq">{{ t("auth.trade.faq") }}</a>
+      <a :href="tradeRoutes.apply" @click="emit('close')">{{ t("auth.trade.apply") }}</a>
+      <a :href="tradeRoutes.faq" @click="emit('close')">{{ t("auth.trade.faq") }}</a>
       <button v-if="showReturnLink" type="button" @click="emit('sign-in')">{{ t("auth.returnToSignIn") }}</button>
     </div>
   </form>

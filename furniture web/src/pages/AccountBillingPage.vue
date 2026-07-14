@@ -1,7 +1,8 @@
 <script setup>
 import { onMounted, ref, watch } from "vue";
 import { accountMenuItems, accountMenuLabelKeys, membershipRoutes } from "../services/membershipNavigation.js";
-import { getOrderPage, readYudaoToken } from "../services/yudaoClient.js";
+import { getOrderPage } from "../services/yudaoOrderApi.js";
+import { isYudaoAuthError, readYudaoToken } from "../services/yudaoRequest.js";
 import { useI18n } from "../i18n.js";
 
 const props = defineProps({
@@ -38,8 +39,12 @@ const loadBilling = async () => {
     const page = await getOrderPage({ pageNo: 1, pageSize: 20 });
     if (requestId !== billingRequestId) return;
     orders.value = page.list;
-  } catch {
+  } catch (error) {
     if (requestId !== billingRequestId) return;
+    if (isYudaoAuthError(error)) {
+      tokenRequired.value = true;
+      return;
+    }
     error.value = t("membership.account.billingHistory.error");
   } finally {
     if (requestId === billingRequestId) loading.value = false;
@@ -63,8 +68,22 @@ watch(() => props.authVersion, loadBilling);
       <p class="eyebrow">{{ t("membership.account.billingHistory.eyebrow") }}</p>
       <h1>{{ t("membership.account.billingHistory.title") }}</h1>
       <p v-if="loading" class="product-loading">{{ t("membership.account.billingHistory.loading") }}</p>
-      <p v-if="tokenRequired" class="checkout-error">{{ t("membership.account.billingHistory.signInRequired") }}</p>
-      <p v-else-if="error" class="checkout-error">{{ error }}</p>
+      <div v-if="tokenRequired" class="checkout-error">
+        <p>{{ t("membership.account.billingHistory.signInRequired") }}</p>
+        <div class="orders-recovery-actions">
+          <a class="orders-recovery-action" :href="membershipRoutes.checkoutAuth">
+            {{ t("membership.account.billingHistory.actions.connectAccount") }}
+          </a>
+        </div>
+      </div>
+      <div v-else-if="error" class="checkout-error">
+        <p>{{ error }}</p>
+        <div class="orders-recovery-actions">
+          <button class="orders-recovery-action" type="button" @click="loadBilling">
+            {{ t("membership.account.billingHistory.actions.retry") }}
+          </button>
+        </div>
+      </div>
 
       <aside class="membership-billing-context" :aria-label="t('membership.account.billingHistory.contextAria')">
         <header>
@@ -109,9 +128,12 @@ watch(() => props.authVersion, loadBilling);
           </div>
         </article>
       </section>
-      <p v-else-if="!loading && !tokenRequired && !error" class="orders-empty">
-        {{ t("membership.account.billingHistory.empty") }}
-      </p>
+      <div v-else-if="!loading && !tokenRequired && !error" class="orders-empty">
+        <p>{{ t("membership.account.billingHistory.empty") }}</p>
+        <a class="orders-recovery-action" :href="membershipRoutes.checkoutAuth">
+          {{ t("membership.account.billingHistory.actions.createOrder") }}
+        </a>
+      </div>
     </section>
   </section>
 </template>

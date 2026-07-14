@@ -18,7 +18,7 @@ const customItem = {
 };
 
 describe("checkout flow model", () => {
-  it("defines the RH-aligned checkout step order", () => {
+  it("defines the Oakved checkout step order", () => {
     expect(CHECKOUT_STEP_KEYS).toEqual([
       "details",
       "custom-check",
@@ -63,6 +63,20 @@ describe("checkout flow model", () => {
     expect(canPlaceCheckoutOrder(flow)).toBe(false);
   });
 
+  it("allows payment after the buyer confirms the entered address", () => {
+    const flow = buildCheckoutFlow([regularItem], {
+      address: { line1: "12 Main", postalCode: "02116" },
+      addressConfirmed: true,
+      paymentMethod: "card",
+      cardComplete: true,
+      termsAccepted: true,
+    });
+
+    expect(flow.addressVerification.status).toBe("verified");
+    expect(flow.readyForPayment).toBe(true);
+    expect(canPlaceCheckoutOrder(flow)).toBe(true);
+  });
+
   it("allows payment and order placement after a verified address and terms agreement", () => {
     const flow = buildCheckoutFlow([regularItem], {
       address: { line1: "12 Main Street", city: "Boston", region: "MA", postalCode: "02116-0000" },
@@ -84,5 +98,15 @@ describe("checkout flow model", () => {
       status: "verified",
       issue: "",
     });
+  });
+
+  it("treats a null checkout address as missing instead of throwing", () => {
+    expect(getAddressVerification(null)).toMatchObject({
+      status: "missing",
+      issue: "Shipping address is required before payment.",
+      suggestedAddress: null,
+    });
+
+    expect(buildCheckoutFlow([regularItem], { address: null }).readyForPayment).toBe(false);
   });
 });

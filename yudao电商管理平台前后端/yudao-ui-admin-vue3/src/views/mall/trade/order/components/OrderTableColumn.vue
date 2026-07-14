@@ -21,9 +21,12 @@
           配送方式
         </div>
         <div :style="{ width: orderTableHeadWidthList[6] + 'px' }" class="flex justify-center">
-          订单状态
+          地址核对
         </div>
         <div :style="{ width: orderTableHeadWidthList[7] + 'px' }" class="flex justify-center">
+          订单状态
+        </div>
+        <div :style="{ width: orderTableHeadWidthList[8] + 'px' }" class="flex justify-center">
           操作
         </div>
       </div>
@@ -151,6 +154,32 @@
             <dict-tag :type="DICT_TYPE.TRADE_DELIVERY_TYPE" :value="scope.row.deliveryType" />
           </template>
         </el-table-column>
+        <el-table-column align="center" label="地址核对" width="160">
+          <template #default>
+            <div class="flex flex-col items-center gap-4px">
+              <el-tag :type="orderAddressVerificationStatusType(scope.row.addressVerification?.status)">
+                {{ orderAddressVerificationStatusLabel(scope.row.addressVerification?.status) }}
+              </el-tag>
+              <el-tag v-if="scope.row.addressVerification?.source" effect="plain">
+                {{ orderAddressVerificationSourceLabel(scope.row.addressVerification?.source) }}
+              </el-tag>
+              <el-tooltip
+                v-if="scope.row.addressVerification?.providerStatus === 'fallback'"
+                content="远程地址核对服务不可用，仅记录本地 ZIP 核对结果"
+                placement="top"
+              >
+                <el-tag effect="plain" type="warning">服务降级</el-tag>
+              </el-tooltip>
+              <el-tooltip
+                v-if="orderAddressVerificationLowTrustWarning(scope.row.addressVerification)"
+                :content="orderAddressVerificationLowTrustWarning(scope.row.addressVerification)"
+                placement="top"
+              >
+                <el-tag effect="plain" type="warning">需人工确认</el-tag>
+              </el-tooltip>
+            </div>
+          </template>
+        </el-table-column>
         <el-table-column align="center" label="订单状态" width="120">
           <template #default>
             <dict-tag :type="DICT_TYPE.TRADE_ORDER_STATUS" :value="scope.row.status" />
@@ -185,9 +214,9 @@ const props = defineProps<{
 }>()
 
 const headerStyle = ({ row, columnIndex }: any) => {
-  // 表头第一行第一列占 8
+  // 表头第一行第一列占 9
   if (columnIndex === 0) {
-    row[columnIndex].colSpan = 8
+    row[columnIndex].colSpan = 9
   } else {
     // 其余的不要
     row[columnIndex].colSpan = 0
@@ -210,7 +239,7 @@ const spanMethod = ({ row, rowIndex, columnIndex }: SpanMethodProps): spanMethod
     (order) => order.items?.findIndex((item) => item.id === row.id) !== -1
   )?.items?.length
   // 要合并的列，从零开始
-  const colIndex = [3, 4, 5, 6, 7]
+  const colIndex = [3, 4, 5, 6, 7, 8]
   if (colIndex.includes(columnIndex)) {
     // 除了第一行其余的不要
     if (rowIndex !== 0) {
@@ -227,9 +256,62 @@ const spanMethod = ({ row, rowIndex, columnIndex }: SpanMethodProps): spanMethod
   }
 }
 
-const orderTableHeadWidthList = ref([300, 150, 120, 120, 160, 120, 120, 160]) // 头部 col 宽度初始化
+const orderTableHeadWidthList = ref([300, 150, 120, 120, 160, 120, 160, 120, 160]) // 头部 col 宽度初始化
 let isFirstTable = false // 标记是否已处理第一个表格
 let firstTableInstance: TableInstance | null = null
+
+const orderAddressVerificationStatusLabel = (status?: string) => {
+  switch (status) {
+    case 'verified':
+      return '已核对'
+    case 'suggested':
+      return '有建议'
+    case 'unverified':
+      return '需复核'
+    default:
+      return '未记录'
+  }
+}
+
+const orderAddressVerificationSourceLabel = (source?: string) => {
+  switch (source) {
+    case 'google-address-validation':
+      return 'Google'
+    case 'remote-address-verification':
+      return '远程服务'
+    case 'backend-address-verification':
+      return '后端兜底'
+    case 'local-postal-region':
+      return '本地邮编'
+    default:
+      return source || '未知来源'
+  }
+}
+
+const orderAddressVerificationLowTrustWarning = (
+  addressVerification?: TradeOrderApi.AddressVerificationAudit | null
+) => {
+  if (addressVerification?.source === 'local-postal-region') {
+    return '仅完成 ZIP、城市、州的本地匹配，不代表街道地址可投递'
+  }
+  if (addressVerification?.source === 'backend-address-verification') {
+    return '仅经过后端兜底标准化，不代表街道地址可投递'
+  }
+  return ''
+}
+
+const orderAddressVerificationStatusType = (status?: string) => {
+  switch (status) {
+    case 'verified':
+      return 'success'
+    case 'suggested':
+      return 'warning'
+    case 'unverified':
+      return 'danger'
+    default:
+      return 'info'
+  }
+}
 
 /** 解决 ref 在 v-for 中的获取问题*/
 const setOrderTableRef = async (el: TableInstance) => {

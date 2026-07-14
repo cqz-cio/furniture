@@ -4,6 +4,14 @@
 
   <!-- 搜索 -->
   <ContentWrap>
+    <el-alert
+      v-if="addressVerificationServiceWarning"
+      :closable="false"
+      :title="addressVerificationServiceWarning"
+      class="mb-15px"
+      show-icon
+      type="warning"
+    />
     <el-form
       ref="queryFormRef"
       :inline="true"
@@ -74,6 +82,51 @@
             :key="dict.value"
             :label="dict.label"
             :value="dict.value"
+          />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="地址核对" prop="addressVerificationStatus">
+        <el-select
+          v-model="queryParams.addressVerificationStatus"
+          class="!w-280px"
+          clearable
+          placeholder="全部"
+        >
+          <el-option
+            v-for="item in addressVerificationStatusOptions"
+            :key="item.value"
+            :label="item.label"
+            :value="item.value"
+          />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="核对来源" prop="addressVerificationSource">
+        <el-select
+          v-model="queryParams.addressVerificationSource"
+          class="!w-280px"
+          clearable
+          placeholder="全部"
+        >
+          <el-option
+            v-for="item in addressVerificationSourceOptions"
+            :key="item.value"
+            :label="item.label"
+            :value="item.value"
+          />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="核对服务" prop="addressVerificationProviderStatus">
+        <el-select
+          v-model="queryParams.addressVerificationProviderStatus"
+          class="!w-280px"
+          clearable
+          placeholder="全部"
+        >
+          <el-option
+            v-for="item in addressVerificationProviderStatusOptions"
+            :key="item.value"
+            :label="item.label"
+            :value="item.value"
           />
         </el-select>
       </el-form-item>
@@ -244,6 +297,7 @@ const loading = ref(true) // 列表的加载中
 const total = ref(2) // 列表的总页数
 const list = ref<TradeOrderApi.OrderVO[]>([]) // 列表的数据
 const queryFormRef = ref<FormInstance>() // 搜索的表单
+const addressVerificationProviderStatus = ref<TradeOrderApi.AddressVerificationStatus | null>(null)
 // 表单搜索
 const queryParams = ref({
   pageNo: 1, // 页数
@@ -254,6 +308,9 @@ const queryParams = ref({
   terminal: undefined, // 订单来源
   type: undefined, // 订单类型
   deliveryType: undefined, // 配送方式
+  addressVerificationStatus: undefined, // 地址核对状态
+  addressVerificationSource: undefined, // 地址核对来源
+  addressVerificationProviderStatus: undefined, // 地址核对服务状态
   logisticsId: undefined, // 快递公司
   pickUpStoreId: undefined, // 自提门店
   pickUpVerifyCode: undefined // 自提核销码
@@ -267,6 +324,25 @@ const dynamicSearchList = ref([
   { value: 'userNickname', label: '用户昵称' },
   { value: 'userMobile', label: '用户电话' }
 ])
+const addressVerificationStatusOptions = [
+  { value: 'verified', label: '已核对' },
+  { value: 'suggested', label: '有建议' },
+  { value: 'unverified', label: '需复核' },
+  { value: 'missing', label: '未记录' }
+]
+const addressVerificationSourceOptions = [
+  { value: 'google-address-validation', label: 'Google 验证' },
+  { value: 'remote-address-verification', label: '远程服务' },
+  { value: 'backend-address-verification', label: '后端兜底' },
+  { value: 'local-postal-region', label: '本地邮编' }
+]
+const addressVerificationProviderStatusOptions = [{ value: 'fallback', label: '服务降级' }]
+const addressVerificationServiceWarning = computed(() => {
+  if (!addressVerificationProviderStatus.value?.fallbackActive) {
+    return ''
+  }
+  return '地址核对服务当前处于兜底模式；本地或后端标准化不能证明街道可投递，发货前请重点复核。'
+})
 /**
  * 聚合搜索切换查询对象时触发
  * @param val
@@ -294,6 +370,14 @@ const getList = async () => {
   }
 }
 
+const loadAddressVerificationStatus = async () => {
+  try {
+    addressVerificationProviderStatus.value = await TradeOrderApi.getAddressVerificationStatus()
+  } catch (error) {
+    addressVerificationProviderStatus.value = null
+  }
+}
+
 /** 搜索按钮操作 */
 const handleQuery = async () => {
   queryParams.value.pageNo = 1
@@ -312,6 +396,9 @@ const resetQuery = () => {
     terminal: undefined, // 订单来源
     type: undefined, // 订单类型
     deliveryType: undefined, // 配送方式
+    addressVerificationStatus: undefined, // 地址核对状态
+    addressVerificationSource: undefined, // 地址核对来源
+    addressVerificationProviderStatus: undefined, // 地址核对服务状态
     logisticsId: undefined, // 快递公司
     pickUpStoreId: undefined, // 自提门店
     pickUpVerifyCode: undefined // 自提核销码
@@ -350,6 +437,7 @@ const pickUpStoreList = ref<PickUpStoreApi.DeliveryPickUpStoreVO[]>([]) // 自�
 const deliveryExpressList = ref<DeliveryExpressApi.DeliveryExpressVO[]>([]) // 物流公司
 /** 初始化 **/
 onMounted(async () => {
+  await loadAddressVerificationStatus()
   await getList()
   pickUpStoreList.value = await PickUpStoreApi.getSimpleDeliveryPickUpStoreList()
   deliveryExpressList.value = await DeliveryExpressApi.getSimpleDeliveryExpressList()

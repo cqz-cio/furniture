@@ -72,31 +72,168 @@ const availability = {
   cta: "View ready-to-ship configurations",
 };
 
-const relatedLinks = {
-  bed: [
-    { label: "ALSO AVAILABLE IN LEATHER", href: "#" },
-    { label: "ALSO AVAILABLE FOR CUSTOM CONFIGURATION", href: "#" },
-    { label: "EXPLORE THE LUXE BED COLLECTION", href: "#" },
-  ],
+const membershipPrompt = {
+  title: "Member pricing available",
+  copy: "Sign in or join the Members Program to review eligible savings before checkout.",
+  href: "/membership",
+  linkLabel: "Learn More",
+};
+
+const purchaseAssurance = [
+  { title: "Delivery", copy: "Delivery windows are shown before checkout and confirmed after order review." },
+  { title: "Installation", copy: "Large furniture can be scheduled with room-of-choice placement." },
+  { title: "Returns", copy: "Review eligible returns, exchanges and custom-order terms before purchase." },
+];
+
+const companionProducts = {
   sofa: [
-    { label: "ALSO AVAILABLE IN LEATHER", href: "#" },
-    { label: "ALSO AVAILABLE FOR SECTIONAL CONFIGURATION", href: "#" },
-    { label: "EXPLORE THE CLOUD MODULAR COLLECTION", href: "#" },
+    { title: "Round Oak Table", href: "/product?id=1003", image: "/assets/generated-furniture/product-table-cover.webp" },
+    { title: "Bedroom Side Chair", href: "/product?id=1008", image: "/assets/generated-furniture/product-chair-cover.webp" },
   ],
-  diningTable: [
-    { label: "ALSO AVAILABLE WITH WOOD TOP", href: "#" },
-    { label: "ALSO AVAILABLE FOR CUSTOM LENGTH", href: "#" },
-    { label: "EXPLORE THE MARBLE DINING COLLECTION", href: "#" },
+  bed: [
+    { title: "Oak Nightstand", href: "/product?id=1002", image: "/assets/generated-furniture/product-bed-cover.webp" },
+    { title: "End-of-Bed Bench", href: "/product?id=1004", image: "/assets/generated-furniture/product-chair-cover.webp" },
+  ],
+  "dining-table": [
+    { title: "Bedroom Side Chair", href: "/product?id=1008", image: "/assets/generated-furniture/product-chair-cover.webp" },
+    { title: "Walnut Writing Desk", href: "/product?id=1007", image: "/assets/generated-furniture/teen-study.webp" },
   ],
   chair: [
-    { label: "ALSO AVAILABLE AS A DINING CHAIR", href: "#" },
-    { label: "ALSO AVAILABLE WITH CUSTOM CUSHIONS", href: "#" },
-    { label: "EXPLORE THE OUTDOOR LOUNGE COLLECTION", href: "#" },
+    { title: "Walnut Single Sofa", href: "/product?id=1001", image: "/assets/generated-furniture/product-sofa-cover.webp" },
+    { title: "Round Oak Table", href: "/product?id=1003", image: "/assets/generated-furniture/product-table-cover.webp" },
   ],
   lighting: [
-    { label: "ALSO AVAILABLE AS A SCONCE", href: "#" },
-    { label: "ALSO AVAILABLE IN CUSTOM FINISHES", href: "#" },
-    { label: "EXPLORE THE ARCHITECTURAL LIGHTING COLLECTION", href: "#" },
+    { title: "Round Oak Table", href: "/product?id=1003", image: "/assets/generated-furniture/product-table-cover.webp" },
+    { title: "Oak Nightstand", href: "/product?id=1002", image: "/assets/generated-furniture/product-bed-cover.webp" },
+  ],
+};
+
+const roomInspiration = {
+  bed: [
+    {
+      title: "Bedroom layers",
+      copy: "Pair upholstered softness with quiet oak, linen and warm bedside lighting.",
+      image: "/assets/generated-furniture/home-module-002-bedroom-desktop.webp",
+    },
+    {
+      title: "Material close-up",
+      copy: "Use woven textiles and natural wood finishes to keep the room calm.",
+      image: "/assets/generated-furniture/product-bed-gallery.webp",
+    },
+  ],
+  sofa: [
+    {
+      title: "Style the room",
+      copy: "Anchor the seating area with deep upholstery, low tables and tonal textiles.",
+      image: "/assets/generated-furniture/home-module-002-bedroom-desktop.webp",
+    },
+    {
+      title: "Living room texture",
+      copy: "Layer performance linen with warm wood and sculptural lighting.",
+      image: "/assets/generated-furniture/product-sofa-gallery.webp",
+    },
+  ],
+  "dining-table": [
+    {
+      title: "Dining composition",
+      copy: "Balance stone, oak and softened seating for a grounded dining room.",
+      image: "/assets/generated-furniture/home-module-003-dining-desktop.webp",
+    },
+    {
+      title: "Stone detail",
+      copy: "Let the table surface carry the room while surrounding UI stays quiet.",
+      image: "/assets/generated-furniture/product-table-gallery.webp",
+    },
+  ],
+  chair: [
+    {
+      title: "Outdoor room",
+      copy: "Use weathered teak, performance cushions and open-air spacing.",
+      image: "/assets/generated-furniture/outdoor-landing-hero-desktop.webp",
+    },
+    {
+      title: "Frame and cushion",
+      copy: "Keep outdoor options visual so finish and fabric decisions feel natural.",
+      image: "/assets/generated-furniture/product-chair-gallery.webp",
+    },
+  ],
+  lighting: [
+    {
+      title: "Warm dining light",
+      copy: "Use brass and linen shade details to soften architectural rooms.",
+      image: "/assets/generated-furniture/home-module-003-dining-desktop.webp",
+    },
+    {
+      title: "Fixture detail",
+      copy: "Finish, shade and bulb choices stay close to the purchase decision.",
+      image: "/assets/generated-furniture/product-pendant-gallery.webp",
+    },
+  ],
+};
+
+const relatedLinks = {
+  bed: [
+    { label: "ALSO AVAILABLE IN LEATHER", href: "/products?material=leather" },
+    { label: "ALSO AVAILABLE FOR CUSTOM CONFIGURATION", href: "/products?collection=bedroom-set" },
+    { label: "EXPLORE THE LUXE BED COLLECTION", href: "/products?room=bedroom" },
+  ],
+  sofa: [
+    { label: "ALSO AVAILABLE IN LEATHER", href: "/products?material=leather" },
+    { label: "ALSO AVAILABLE WITH CUSTOM FABRIC", href: "/products?category=single-sofa" },
+    { label: "EXPLORE THE BEDROOM LOUNGE COLLECTION", href: "/products?category=single-sofa" },
+  ],
+  diningTable: [
+    { label: "ALSO AVAILABLE WITH WOOD TOP", href: "/products?material=wood" },
+    { label: "ALSO AVAILABLE FOR CUSTOM LENGTH", href: "/products?category=desk-table" },
+    { label: "EXPLORE THE MARBLE DINING COLLECTION", href: "/products?category=round-table" },
+  ],
+  chair: [
+    { label: "ALSO AVAILABLE AS A DINING CHAIR", href: "/products?category=chair" },
+    { label: "ALSO AVAILABLE WITH CUSTOM CUSHIONS", href: "/products?category=seating" },
+    { label: "EXPLORE THE OUTDOOR LOUNGE COLLECTION", href: "/outdoor" },
+  ],
+  lighting: [
+    { label: "ALSO AVAILABLE AS A SCONCE", href: "/products?category=lighting" },
+    { label: "ALSO AVAILABLE IN CUSTOM FINISHES", href: "/products?material=metal" },
+    { label: "EXPLORE THE ARCHITECTURAL LIGHTING COLLECTION", href: "/products?category=lighting" },
+  ],
+};
+
+const companyRelatedLinks = {
+  nightstand: [
+    { label: "PAIR WITH DRESSERS", href: "/products?category=dresser" },
+    { label: "VIEW BEDROOM SETS", href: "/products?collection=bedroom-set" },
+    { label: "EXPLORE WOOD FINISHES", href: "/products?material=wood" },
+  ],
+  dresser: [
+    { label: "PAIR WITH NIGHTSTANDS", href: "/products?category=nightstand" },
+    { label: "VIEW STORAGE CABINETS", href: "/products?category=storage" },
+    { label: "EXPLORE CARVED WOOD DETAILS", href: "/products?craft=carved" },
+  ],
+  vanity: [
+    { label: "PAIR WITH VANITY CHAIRS", href: "/products?category=vanity-chair" },
+    { label: "VIEW BEDROOM SETS", href: "/products?collection=bedroom-set" },
+    { label: "EXPLORE WOOD FINISHES", href: "/products?material=wood" },
+  ],
+  desk: [
+    { label: "PAIR WITH DESK CHAIRS", href: "/products?category=desk-chair" },
+    { label: "VIEW STUDY SETS", href: "/products?collection=study-set" },
+    { label: "EXPLORE WOOD FINISHES", href: "/products?material=wood" },
+  ],
+  "bed-bench": [
+    { label: "PAIR WITH NIGHTSTANDS", href: "/products?category=nightstand" },
+    { label: "VIEW BEDROOM SETS", href: "/products?collection=bedroom-set" },
+    { label: "EXPLORE BENCHES", href: "/products?category=bench" },
+  ],
+  "round-table": [
+    { label: "PAIR WITH SIDE CHAIRS", href: "/products?category=chair" },
+    { label: "VIEW DESKS & TABLES", href: "/products?category=desk-table" },
+    { label: "EXPLORE WOOD FINISHES", href: "/products?material=wood" },
+  ],
+  "single-sofa": [
+    { label: "PAIR WITH ROUND TABLES", href: "/products?category=round-table" },
+    { label: "VIEW CHAIRS & BENCHES", href: "/products?category=seating" },
+    { label: "EXPLORE BEDROOM LOUNGE PIECES", href: "/products?collection=bedroom-set" },
   ],
 };
 
@@ -106,8 +243,9 @@ const productTypeTemplates = {
     heroNote: "Shown in the selected finish and current stocked configuration.",
     selector: { stockedCount: 6, specialOrderCount: 12, label: "SELECT FROM STOCKED AND SPECIAL ORDER FINISHES", swatches: swatches.woodStone },
     relatedLinks: [
-      { label: "EXPLORE COORDINATING FURNITURE", href: "#" },
-      { label: "VIEW AVAILABLE FINISHES", href: "#" },
+      { label: "ALSO AVAILABLE IN LEATHER", href: "/products?material=leather" },
+      { label: "EXPLORE COORDINATING FURNITURE", href: "/products" },
+      { label: "VIEW AVAILABLE FINISHES", href: "/products?filter=finish" },
     ],
     highlights: [
       "Designed for practical storage, display or everyday room use",
@@ -154,25 +292,25 @@ const productTypeTemplates = {
     ],
   },
   sofa: {
-    collection: "CLOUD MODULAR COLLECTION",
-    heroNote: "Shown in Sand Performance Linen with classic depth and down-blend cushions.",
+    collection: "BEDROOM LOUNGE COLLECTION",
+    heroNote: "Shown in Sand Performance Linen with warm wood legs.",
     selector: fabricSelector,
     relatedLinks: relatedLinks.sofa,
     highlights: [
-      "Low, deep modular profile for relaxed living rooms",
+      "Single-seat profile for bedroom reading corners",
       "Down-blend cushions with foam core support",
-      "Available in stocked fabrics, leather, sectional pieces and custom layouts",
-      "Designed for later expansion into sofa, sectional and chaise SKUs",
+      "Available in stocked fabrics, leather and custom upholstery",
+      "Sized to pair with nightstands, desks and round tables",
     ],
     optionGroups: [
-      { key: "configuration", label: "Configuration", helper: "Choose the seating layout before fabric and depth.", values: ["Sofa", "Left-arm sectional", "Right-arm sectional", "Sofa with chaise"] },
+      { key: "configuration", label: "Configuration", helper: "Choose the seating profile before fabric and depth.", values: ["Single seat", "Wide single seat", "Lounge chair", "Reading corner set"] },
       { key: "fabric", label: "Fabric", helper: "Stocked and special order upholstery options.", values: swatches.linen.slice(0, 4) },
       { key: "depth", label: "Depth", helper: "Controls seat depth and room footprint.", values: ["Classic depth", "Luxe depth", "Petite depth"] },
       { key: "fill", label: "Cushion fill", helper: "Defines the sit and maintenance level.", values: ["Down blend", "Foam core", "Performance fiber"] },
     ],
     accordions: [
-      { title: "DETAILS", rows: [["Design", "Low modular frame with broad arms and loose back cushions"], ["Frame", "Kiln-dried hardwood frame with reinforced corner blocks"], ["Comfort", "Deep seat with layered cushion support"], ["Configuration", "Single sofa template can expand into sectional pieces later"]] },
-      { title: "DIMENSIONS", rows: [["Overall width", "220 / 260 / 300 cm"], ["Overall depth", "105 / 115 cm"], ["Overall height", "78 cm"], ["Seat height", "46 cm"], ["Arm height", "62 cm"]] },
+      { title: "DETAILS", rows: [["Design", "Tailored single-seat lounge profile with broad arms"], ["Frame", "Kiln-dried hardwood frame with reinforced corner blocks"], ["Comfort", "Deep seat with layered cushion support"], ["Configuration", "Single sofa template pairs with bedroom tables and chairs"]] },
+      { title: "DIMENSIONS", rows: [["Overall width", "92 / 108 cm"], ["Overall depth", "96 / 105 cm"], ["Overall height", "78 cm"], ["Seat height", "46 cm"], ["Arm height", "62 cm"]] },
       { title: "MATERIALS", rows: [["Upholstery", "Performance linen, velvet, leather or custom textile"], ["Cushions", "Foam core wrapped in down-blend fiber"], ["Frame", "Hardwood and engineered wood support structure"], ["Feet", "Recessed wood feet in dark finish"]] },
       { title: "CARE", rows: [["Fabric care", "Vacuum with soft brush and spot clean promptly"], ["Cushions", "Rotate and fluff cushions to maintain shape"], ["Sunlight", "Avoid prolonged direct sunlight"]] },
       { title: "DELIVERY", rows: [["Stocked fabric", "Ready to ship in 3-7 days"], ["Custom order", "Ships by confirmed production window"], ["Installation", "Large modules are delivered by appointment"]] },
@@ -192,7 +330,7 @@ const productTypeTemplates = {
     optionGroups: [
       { key: "shape", label: "Shape", helper: "Select the dining room footprint.", values: ["Rectangular", "Round", "Oval", "Extension"] },
       { key: "size", label: "Size", helper: "Controls seating capacity and room clearance.", values: ["180 cm", "220 cm", "260 cm", "300 cm"] },
-      { key: "top", label: "Top material", helper: "Stone and wood top options inspired by RH dining filters.", values: swatches.woodStone.slice(0, 4) },
+      { key: "top", label: "Top material", helper: "Stone and wood top options for Oakved dining filters.", values: swatches.woodStone.slice(0, 4) },
       { key: "base", label: "Base finish", helper: "Base finish can map to SKU attributes later.", values: swatches.woodStone.slice(3, 6) },
     ],
     accordions: [
@@ -255,21 +393,75 @@ const productTypeTemplates = {
   },
 };
 
+const productTypeTemplateAliases = {
+  nightstand: "bed",
+  dresser: "bed",
+  vanity: "bed",
+  desk: "bed",
+  "bed-bench": "bed",
+  "round-table": "dining-table",
+  "single-sofa": "sofa",
+};
+
+const companyCollectionNames = {
+  nightstand: "BEDSIDE STORAGE COLLECTION",
+  dresser: "CARVED STORAGE COLLECTION",
+  vanity: "VANITY & DRESSING COLLECTION",
+  desk: "BEDROOM STUDY COLLECTION",
+  "bed-bench": "END-OF-BED BENCH COLLECTION",
+  "round-table": "ROUND WOOD TABLE COLLECTION",
+  "single-sofa": "BEDROOM LOUNGE COLLECTION",
+  chair: "BEDROOM CHAIR COLLECTION",
+};
+
+const companyHeroNotes = {
+  nightstand: "Shown in smoked oak with two-drawer bedside storage.",
+  dresser: "Shown in carved walnut with full-width bedroom storage.",
+  vanity: "Shown in natural oak with drawer storage for dressing or writing.",
+  desk: "Shown in walnut with compact proportions for bedroom study zones.",
+  "bed-bench": "Shown with timber frame and upholstered seat at the foot of the bed.",
+  "round-table": "Shown in natural oak with a compact round footprint.",
+  "single-sofa": "Shown as a single-seat bedroom lounge piece with warm wood legs.",
+  chair: "Shown as a wood-framed bedroom chair for desk, vanity or lounge pairing.",
+};
+
 const inferProductType = (product = {}) => {
   const rawType = String(product.detailConfig?.productType || product.productType || product.type || product.category || "").toLowerCase();
+  const knownCompanyTypes = new Set([
+    "nightstand",
+    "bed-bench",
+    "dresser",
+    "vanity",
+    "desk",
+    "round-table",
+    "single-sofa",
+    "chair",
+    "lighting",
+    "bed",
+    "furniture",
+  ]);
+  if (knownCompanyTypes.has(rawType)) return rawType;
   const text = `${rawType} ${product.name || ""} ${product.subtitle || ""}`.toLowerCase();
 
-  if (/\bdining-table\b|\bdining\b.*\btable\b/.test(text)) return "dining-table";
+  if (text.includes("nightstand") || text.includes("bedside")) return "nightstand";
+  if (text.includes("bed-bench") || text.includes("bed bench") || text.includes("end-of-bed") || text.includes("bench")) return "bed-bench";
+  if (text.includes("dresser") || text.includes("chest") || text.includes("cabinet")) return "dresser";
+  if (text.includes("vanity")) return "vanity";
+  if (text.includes("desk")) return "desk";
+  if (text.includes("round-table") || text.includes("round table")) return "round-table";
+  if (text.includes("single-sofa") || text.includes("single sofa")) return "single-sofa";
+  if (/\bdining-table\b|\bdining\b.*\btable\b/.test(text)) return "round-table";
   if (text.includes("chair")) return "chair";
   if (text.includes("lighting") || text.includes("lamp") || text.includes("light")) return "lighting";
-  if (text.includes("sofa") || text.includes("sectional")) return "sofa";
+  if (text.includes("sofa") || text.includes("sectional")) return "single-sofa";
   if (text.includes("bed")) return "bed";
   return "furniture";
 };
 
 export const buildProductDetailModel = (product = {}) => {
   const productType = inferProductType(product);
-  const template = productTypeTemplates[productType] || productTypeTemplates.furniture;
+  const templateKey = productTypeTemplateAliases[productType] || productType;
+  const template = productTypeTemplates[templateKey] || productTypeTemplates.furniture;
   const detailConfig = product.detailConfig || {};
   const description =
     stripHtml(product.description || product.subtitle) ||
@@ -280,10 +472,10 @@ export const buildProductDetailModel = (product = {}) => {
     skuId: product.skuId,
     source: product.source || "demo",
     productType,
-    collection: detailConfig.collection || product.collection || template.collection,
+    collection: detailConfig.collection || product.collection || companyCollectionNames[productType] || template.collection,
     name: product.name || "Luxury Furniture",
     description,
-    heroNote: detailConfig.heroNote || product.heroNote || template.heroNote,
+    heroNote: detailConfig.heroNote || product.heroNote || companyHeroNotes[productType] || template.heroNote,
     gallery: normalizeGallery(product),
     price: {
       prefix: "Starting at",
@@ -293,7 +485,7 @@ export const buildProductDetailModel = (product = {}) => {
       memberLabel: "Member",
       saleLabel: "Sale",
       regularLabel: "Regular",
-      savingsLabel: "SAVE 30% ON SELECT ITEMS",
+      savingsLabel: "ANNUAL 5% FIRST ORDER / WHOLE-ROOM 15%",
       context: "Starting at price reflects the displayed size and stocked finish.",
     },
     stock: {
@@ -304,7 +496,11 @@ export const buildProductDetailModel = (product = {}) => {
     fabricSelector: detailConfig.fabricSelector || product.fabricSelector || template.selector,
     availability: detailConfig.availability || product.availability || availability,
     highlights: detailConfig.highlights || product.highlights || template.highlights,
-    relatedLinks: detailConfig.relatedLinks || product.relatedLinks || template.relatedLinks,
+    relatedLinks: detailConfig.relatedLinks || product.relatedLinks || companyRelatedLinks[productType] || template.relatedLinks,
+    membershipPrompt: detailConfig.membershipPrompt || product.membershipPrompt || membershipPrompt,
+    roomInspiration: detailConfig.roomInspiration || product.roomInspiration || roomInspiration[productType] || roomInspiration[templateKey],
+    purchaseAssurance: detailConfig.purchaseAssurance || product.purchaseAssurance || purchaseAssurance,
+    companionProducts: detailConfig.companionProducts || product.companionProducts || companionProducts[productType] || companionProducts[templateKey],
     optionGroups: detailConfig.optionGroups || product.optionGroups || template.optionGroups,
     accordions: detailConfig.accordions || product.accordions || template.accordions,
   };

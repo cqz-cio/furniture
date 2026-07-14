@@ -18,6 +18,7 @@
     "serve:prod": "vite preview --mode prod",
     "preview": "pnpm build:local && vite preview",
     "check:furniture-lite": "node scripts/check-furniture-lite-config.mjs",
+    "check:dashboard": "node scripts/check-dashboard-contract.mjs",
     "clean": "npx rimraf node_modules",
     "clean:cache": "npx rimraf node_modules/.cache",
     "lint:eslint": "eslint --fix ./src",

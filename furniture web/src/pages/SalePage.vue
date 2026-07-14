@@ -1,67 +1,61 @@
 <script setup>
-import ImageSpecPlaceholder from "../components/ImageSpecPlaceholder.vue";
+import { computed } from "vue";
+import BrandEyebrow from "../components/BrandEyebrow.vue";
 import SaleCategoryTile from "../components/SaleCategoryTile.vue";
-import { saleCategories, saleCategoryLinkHref, saleHeroSpecs, saleMembershipSpec, saleQuickLinks } from "../data/rhLayout.js";
+import { generatedFurnitureAssets } from "../data/generatedFurnitureAssets.js";
+import { saleCategories, saleCategoryLinkHref, saleQuickLinks } from "../data/rhLayout.js";
+import { useI18n } from "../i18n.js";
+
+const { t } = useI18n();
+const saleCategoryLabel = (category) => t(`sale.categories.${category.title}`);
+const localizedSaleCategories = computed(() =>
+  saleCategories.map((category) => ({
+    ...category,
+    displayTitle: saleCategoryLabel(category),
+  }))
+);
+const localizedSaleQuickLinks = computed(() =>
+  saleQuickLinks.map((category) => ({
+    ...category,
+    displayTitle: saleCategoryLabel(category),
+  }))
+);
 </script>
 
 <template>
   <section class="sale-hero">
-    <ImageSpecPlaceholder
-      class="sale-hero-image"
-      :label="saleHeroSpecs.desktop.label"
-      :rendered="saleHeroSpecs.desktop.rendered"
-      :recommended2x="saleHeroSpecs.desktop.recommended2x"
-      :file-size="saleHeroSpecs.desktop.fileSize"
-      :fit="saleHeroSpecs.desktop.fit"
-      :ratio="saleHeroSpecs.desktop.ratio"
-      :natural="saleHeroSpecs.desktop.natural"
-      tone="dark"
-    />
-    <ImageSpecPlaceholder
-      class="sale-hero-image-mobile"
-      :label="saleHeroSpecs.mobile.label"
-      :rendered="saleHeroSpecs.mobile.rendered"
-      :recommended2x="saleHeroSpecs.mobile.recommended2x"
-      :file-size="saleHeroSpecs.mobile.fileSize"
-      :fit="saleHeroSpecs.mobile.fit"
-      :ratio="saleHeroSpecs.mobile.ratio"
-      :natural="saleHeroSpecs.mobile.natural"
-      tone="dark"
-    />
+    <picture class="sale-hero-picture">
+      <source media="(max-width: 760px)" :srcset="generatedFurnitureAssets.sale.hero.mobile" />
+      <img
+        class="sale-hero-image"
+        :src="generatedFurnitureAssets.sale.hero.desktop"
+        alt="RH Sale living room with upholstered seating and warm neutral furnishings"
+      />
+    </picture>
+    <div class="sale-hero-copy">
+      <BrandEyebrow :suffix="t('sale.hero.eyebrow')" />
+      <h1>{{ t("sale.hero.title") }}</h1>
+    </div>
   </section>
 
   <section class="sale-links" aria-label="Sale quick links">
-    <a v-for="category in saleQuickLinks" :key="category.title" :href="saleCategoryLinkHref(category)">
-      {{ category.title }}
+    <a v-for="category in localizedSaleQuickLinks" :key="category.title" :href="saleCategoryLinkHref(category)">
+      {{ category.displayTitle }}
     </a>
   </section>
 
   <section class="sale-grid" aria-label="Sale category modules">
-    <SaleCategoryTile v-for="category in saleCategories" :key="category.title" :category="category" />
+    <SaleCategoryTile v-for="category in localizedSaleCategories" :key="category.title" :category="category" />
   </section>
 
-  <section class="sale-membership-slot" aria-label="Sale 会员横幅图片区域">
-    <ImageSpecPlaceholder
-      class="desktop-sale-membership"
-      :label="saleMembershipSpec.desktop.label"
-      :rendered="saleMembershipSpec.desktop.rendered"
-      :recommended2x="saleMembershipSpec.desktop.recommended2x"
-      :file-size="saleMembershipSpec.desktop.fileSize"
-      :fit="saleMembershipSpec.desktop.fit"
-      :ratio="saleMembershipSpec.desktop.ratio"
-      :natural="saleMembershipSpec.desktop.natural"
-      tone="dark"
-    />
-    <ImageSpecPlaceholder
-      class="mobile-sale-membership"
-      :label="saleMembershipSpec.mobile.label"
-      :rendered="saleMembershipSpec.mobile.rendered"
-      :recommended2x="saleMembershipSpec.mobile.recommended2x"
-      :file-size="saleMembershipSpec.mobile.fileSize"
-      :fit="saleMembershipSpec.mobile.fit"
-      :ratio="saleMembershipSpec.mobile.ratio"
-      :natural="saleMembershipSpec.mobile.natural"
-      tone="dark"
-    />
+  <section class="sale-membership-slot" aria-label="RH Members Program sale benefits">
+    <picture class="sale-membership-picture">
+      <source media="(max-width: 760px)" :srcset="generatedFurnitureAssets.sale.membership.mobile" />
+      <img
+        class="sale-membership-image"
+        :src="generatedFurnitureAssets.sale.membership.desktop"
+        alt="RH Members Program savings invitation"
+      />
+    </picture>
   </section>
 </template>

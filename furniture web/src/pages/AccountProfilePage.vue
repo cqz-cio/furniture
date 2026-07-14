@@ -4,12 +4,12 @@ import { accountMenuItems, accountMenuLabelKeys, membershipRoutes } from "../ser
 import {
   getAreaTree,
   getMemberProfile,
-  readYudaoToken,
   requestEmailVerificationLink,
-  sendMemberSmsCode,
   updateMemberMobile,
   updateMemberProfile,
-} from "../services/yudaoClient.js";
+} from "../services/yudaoMemberApi.js";
+import { sendMemberSmsCode } from "../services/yudaoAuthApi.js";
+import { isYudaoAuthError, readYudaoToken } from "../services/yudaoRequest.js";
 import { useI18n } from "../i18n.js";
 
 const props = defineProps({
@@ -23,6 +23,7 @@ const { t } = useI18n();
 const loading = ref(true);
 const saving = ref(false);
 const error = ref("");
+const errorAction = ref("");
 const notice = ref("");
 const tokenRequired = ref(false);
 const profile = ref(null);
@@ -53,6 +54,14 @@ const emailStatusLabel = computed(() => {
   if (!form.email.trim()) return t("membership.account.profile.emailNotSet");
   return profile.value?.emailVerified ? t("membership.account.profile.emailVerified") : t("membership.account.profile.emailVerificationNeeded");
 });
+const canEditProfile = computed(() => !loading.value && !tokenRequired.value && errorAction.value !== "retryProfile");
+
+const handleProfileAuthError = (error) => {
+  if (!isYudaoAuthError(error)) return false;
+  tokenRequired.value = true;
+  profile.value = null;
+  return true;
+};
 
 const flattenAreaOptions = (nodes = [], prefix = "") =>
   nodes.flatMap((node) => {
@@ -100,6 +109,7 @@ const loadProfile = async () => {
   const requestId = ++profileRequestId;
   loading.value = true;
   error.value = "";
+  errorAction.value = "";
   notice.value = "";
   tokenRequired.value = false;
   profile.value = null;
@@ -112,9 +122,11 @@ const loadProfile = async () => {
     if (requestId !== profileRequestId) return;
     profile.value = nextProfile;
     syncForm(nextProfile);
-  } catch {
+  } catch (error) {
     if (requestId !== profileRequestId) return;
+    if (handleProfileAuthError(error)) return;
     error.value = t("membership.account.profile.error");
+    errorAction.value = "retryProfile";
   } finally {
     if (requestId === profileRequestId) loading.value = false;
   }
@@ -124,6 +136,7 @@ const submitProfile = async () => {
   if (!form.nickname.trim() || saving.value) return;
   saving.value = true;
   error.value = "";
+  errorAction.value = "";
   notice.value = "";
   try {
     await updateMemberProfile({
@@ -135,8 +148,10 @@ const submitProfile = async () => {
     });
     notice.value = t("membership.account.profile.profileUpdated");
     await loadProfile();
-  } catch {
+  } catch (error) {
+    if (handleProfileAuthError(error)) return;
     error.value = t("membership.account.profile.saveError");
+    errorAction.value = "profileForm";
   } finally {
     saving.value = false;
   }
@@ -146,12 +161,15 @@ const requestEmailVerification = async () => {
   if (!form.email.trim() || saving.value) return;
   saving.value = true;
   error.value = "";
+  errorAction.value = "";
   notice.value = "";
   try {
     await requestEmailVerificationLink(form.email.trim());
     notice.value = t("membership.account.profile.verificationSent");
-  } catch {
+  } catch (error) {
+    if (handleProfileAuthError(error)) return;
     error.value = t("membership.account.profile.verificationError");
+    errorAction.value = "profileForm";
   } finally {
     saving.value = false;
   }
@@ -161,13 +179,16 @@ const requestMobileCode = async () => {
   if (!mobileForm.mobile.trim() || saving.value || mobileCodeCountdown.value > 0) return;
   saving.value = true;
   error.value = "";
+  errorAction.value = "";
   notice.value = "";
   try {
     await sendMemberSmsCode(mobileForm.mobile.trim());
     notice.value = t("membership.account.profile.codeSent");
     startMobileCodeCountdown();
-  } catch {
+  } catch (error) {
+    if (handleProfileAuthError(error)) return;
     error.value = t("membership.account.profile.codeError");
+    errorAction.value = "mobileForm";
   } finally {
     saving.value = false;
   }
@@ -177,6 +198,7 @@ const submitMobile = async () => {
   if (!mobileForm.mobile.trim() || !mobileForm.code.trim() || saving.value) return;
   saving.value = true;
   error.value = "";
+  errorAction.value = "";
   notice.value = "";
   try {
     await updateMemberMobile({
@@ -185,8 +207,10 @@ const submitMobile = async () => {
     });
     notice.value = t("membership.account.profile.phoneUpdated");
     await loadProfile();
-  } catch {
+  } catch (error) {
+    if (handleProfileAuthError(error)) return;
     error.value = t("membership.account.profile.phoneError");
+    errorAction.value = "mobileForm";
   } finally {
     saving.value = false;
   }
@@ -214,11 +238,31 @@ watch(() => props.authVersion, loadProfile);
       <h1>{{ t("membership.account.profile.title") }}</h1>
       <p v-if="contactSummary">{{ contactSummary }}</p>
       <p v-if="loading" class="product-loading">{{ t("membership.account.profile.loading") }}</p>
-      <p v-if="tokenRequired" class="checkout-error">{{ t("membership.account.profile.signInRequired") }}</p>
-      <p v-else-if="error" class="checkout-error">{{ error }}</p>
+      <div v-if="tokenRequired" class="checkout-error">
+        <p>{{ t("membership.account.profile.signInRequired") }}</p>
+        <div class="orders-recovery-actions">
+          <a class="orders-recovery-action" :href="membershipRoutes.checkoutAuth">
+            {{ t("membership.account.profile.actions.connectAccount") }}
+          </a>
+        </div>
+      </div>
+      <div v-else-if="error" class="checkout-error">
+        <p>{{ error }}</p>
+        <div class="orders-recovery-actions">
+          <button v-if="errorAction === 'retryProfile'" class="orders-recovery-action" type="button" @click="loadProfile">
+            {{ t("membership.account.profile.actions.retry") }}
+          </button>
+          <a v-else-if="errorAction === 'profileForm'" class="orders-recovery-action" href="#account-profile-form">
+            {{ t("membership.account.profile.actions.reviewProfile") }}
+          </a>
+          <a v-else-if="errorAction === 'mobileForm'" class="orders-recovery-action" href="#account-mobile-form">
+            {{ t("membership.account.profile.actions.reviewPhone") }}
+          </a>
+        </div>
+      </div>
       <p v-if="notice" class="auth-success">{{ notice }}</p>
 
-      <section v-if="!loading && !tokenRequired" class="profile-member-identity-panel" aria-labelledby="profile-member-identity-heading">
+      <section v-if="canEditProfile" class="profile-member-identity-panel" aria-labelledby="profile-member-identity-heading">
         <header>
           <p class="eyebrow">{{ t("membership.account.profile.identityEyebrow") }}</p>
           <h2 id="profile-member-identity-heading">{{ t("membership.account.profile.identityTitle") }}</h2>
@@ -236,13 +280,17 @@ watch(() => props.authVersion, loadProfile);
               </span>
             </dd>
           </div>
+          <div v-if="profile?.tradeId">
+            <dt>{{ t("auth.fields.tradeId") }}</dt>
+            <dd>{{ profile.tradeId }}</dd>
+          </div>
         </dl>
         <p>{{ t("membership.account.profile.identityIntro") }}</p>
         <a :href="membershipRoutes.accountMembership">{{ t("membership.account.profile.reviewMembership") }}</a>
       </section>
 
       <form
-        v-if="!loading && !tokenRequired"
+        v-if="canEditProfile"
         id="account-profile-form"
         class="profile-form account-form-panel"
         @submit.prevent="submitProfile"
@@ -292,7 +340,7 @@ watch(() => props.authVersion, loadProfile);
       </form>
 
       <form
-        v-if="!loading && !tokenRequired"
+        v-if="canEditProfile"
         id="account-mobile-form"
         class="mobile-form account-form-panel"
         @submit.prevent="submitMobile"

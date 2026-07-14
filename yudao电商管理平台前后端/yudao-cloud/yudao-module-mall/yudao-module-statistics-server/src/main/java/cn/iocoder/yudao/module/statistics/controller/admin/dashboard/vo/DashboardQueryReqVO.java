@@ -1,0 +1,3 @@
+package cn.iocoder.yudao.module.statistics.controller.admin.dashboard.vo;
+import lombok.Data;import org.springframework.format.annotation.DateTimeFormat;import javax.validation.constraints.*;import java.time.LocalDate;
+@Data public class DashboardQueryReqVO { @Pattern(regexp="SITE|PRODUCT") private String scope="SITE";@DateTimeFormat(pattern="yyyy-MM-dd") private LocalDate startDate;@DateTimeFormat(pattern="yyyy-MM-dd") private LocalDate endDate;private Boolean compare=false;private Long categoryId;private Long spuId;private String riskType;@Min(1) private Integer pageNo=1;@Min(1) @Max(100) private Integer pageSize=100;private String sortField="paidRevenue";@Pattern(regexp="asc|desc") private String sortOrder="desc"; }

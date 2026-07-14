@@ -42,6 +42,10 @@ public interface ErrorCodeConstants {
     ErrorCode ORDER_PICK_UP_FAIL_COMBINATION_NOT_SUCCESS = new ErrorCode(1_011_000_037, "交易订单自提失败，原因：商品拼团记录不是【成功】状态");
     ErrorCode ORDER_CREATE_FAIL_INSUFFICIENT_USER_POINTS = new ErrorCode(1_011_000_038, "交易订单创建失败，原因：用户积分不足");
     ErrorCode ORDER_PICK_UP_FAIL_STATUS_NOT_UNDELIVERED = new ErrorCode(1_011_000_039, "交易订单自提失败，订单不是【待核销】状态");
+    ErrorCode ORDER_CREATE_FAIL_ADDRESS_VERIFICATION_MISMATCH = new ErrorCode(1_011_000_040,
+            "快递订单创建失败，原因：地址核对记录与当前收货地址不匹配");
+    ErrorCode ORDER_DELIVERY_FAIL_ADDRESS_VERIFICATION_NEEDS_REVIEW = new ErrorCode(1_011_000_041,
+            "快递订单发货失败，原因：地址核对记录需要发货前人工复核");
 
     // ========== After Sale 模块 1-011-000-100 ==========
     ErrorCode AFTER_SALE_NOT_FOUND = new ErrorCode(1_011_000_100, "售后单不存在");
@@ -114,5 +118,9 @@ public interface ErrorCodeConstants {
     ErrorCode BROKERAGE_WITHDRAW_UPDATE_STATUS_FAIL_PAY_PRICE_NOT_MATCH = new ErrorCode(1_011_008_007, "提现单更新转账状态失败，转账单金额不匹配");
     ErrorCode BROKERAGE_WITHDRAW_UPDATE_STATUS_FAIL_PAY_MERCHANT_EXISTS = new ErrorCode(1_011_008_008, "提现单更新转账状态失败，转账单的商户订单不匹配");
     ErrorCode BROKERAGE_WITHDRAW_UPDATE_STATUS_FAIL_PAY_CHANNEL_NOT_MATCH = new ErrorCode(1_011_008_009, "提现单更新转账状态失败，转账渠道不匹配");
+
+    ErrorCode ORDER_COMMENT_ITEM_LIST_MISMATCH = new ErrorCode(1_011_000_042, "创建交易订单评价失败，订单项集合不完整或不匹配");
+
+    ErrorCode ORDER_COMMENT_MIXED_MODE_NOT_ALLOWED = new ErrorCode(1_011_000_043, "创建交易订单评价失败，订单存在已评价商品，不允许再发起整单集中评价");
 
 }

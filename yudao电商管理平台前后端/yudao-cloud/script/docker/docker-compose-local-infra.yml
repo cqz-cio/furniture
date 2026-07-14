@@ -20,8 +20,12 @@ services:
       - ../../sql/mysql/quartz.sql:/docker-entrypoint-initdb.d/02-quartz.sql:ro
       - ../../sql/mysql/yudao-module-tables.sql:/docker-entrypoint-initdb.d/03-yudao-module-tables.sql:ro
       - ../../sql/mysql/member-email-auth.sql:/docker-entrypoint-initdb.d/04-member-email-auth.sql:ro
+      - ../../sql/mysql/member-trade-application.sql:/docker-entrypoint-initdb.d/05-member-trade-application.sql:ro
+      - ../../sql/mysql/member-membership.sql:/docker-entrypoint-initdb.d/06-member-membership.sql:ro
+      - ../../sql/mysql/member-gift-registry.sql:/docker-entrypoint-initdb.d/07-member-gift-registry.sql:ro
+      - ../../sql/mysql/trade-gift-registry-context.sql:/docker-entrypoint-initdb.d/08-trade-gift-registry-context.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -uroot -p$${MYSQL_ROOT_PASSWORD} --silent"]
+      test: ["CMD-SHELL", "mysql --protocol=TCP -h127.0.0.1 -P3306 -uroot -p$${MYSQL_ROOT_PASSWORD} $${MYSQL_DATABASE} -e 'SELECT 1' >/dev/null 2>&1"]
       interval: 5s
       timeout: 5s
       retries: 30
@@ -42,6 +46,18 @@ services:
       retries: 30
       start_period: 10s
 
+  libretranslate:
+    image: libretranslate/libretranslate:latest
+    container_name: yudao-libretranslate-local
+    user: root
+    command: ["--load-only", "en,zh"]
+    ports:
+      - "127.0.0.1:5000:5000"
+    volumes:
+      - yudao_libretranslate_models:/home/libretranslate/.local/share/argos-translate
+    restart: unless-stopped
+
 volumes:
   yudao_mysql_data:
   yudao_redis_data:
+  yudao_libretranslate_models:

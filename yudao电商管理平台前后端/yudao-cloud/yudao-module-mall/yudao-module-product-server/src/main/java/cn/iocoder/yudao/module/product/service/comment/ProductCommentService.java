@@ -11,10 +11,10 @@ import cn.iocoder.yudao.module.product.dal.dataobject.comment.ProductCommentDO;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
+import java.util.List;
+
 /**
  * 商品评论 Service 接口
- *
- * @author wangzhs
  */
 @Service
 @Validated
@@ -22,20 +22,29 @@ public interface ProductCommentService {
 
     /**
      * 创建商品评论
-     * 后台管理员创建评论使用
+     * 后台管理端创建评论使用
      *
-     * @param createReqVO 商品评价创建 Request VO 对象
+     * @param createReqVO 商品评论创建 Request VO
      */
     void createComment(ProductCommentCreateReqVO createReqVO);
 
     /**
-     * 创建评论
-     * 创建商品评论 APP 端创建商品评论使用
+     * 创建单条评论
+     * APP 端单商品评论使用
      *
      * @param createReqDTO 创建请求 dto
-     * @return 返回评论 id
+     * @return 评论 id
      */
     Long createComment(ProductCommentCreateReqDTO createReqDTO);
+
+    /**
+     * 批量创建评论
+     * APP 端整单集中评价使用
+     *
+     * @param createReqDTOs 批量创建请求
+     * @return 评论 id 列表
+     */
+    List<Long> createComments(List<ProductCommentCreateReqDTO> createReqDTOs);
 
     /**
      * 修改评论是否可见
@@ -47,8 +56,8 @@ public interface ProductCommentService {
     /**
      * 商家回复
      *
-     * @param replyVO     商家回复
-     * @param userId 管理后台商家登陆人 ID
+     * @param replyVO 回复内容
+     * @param userId 商家后台登录人 ID
      */
     void replyComment(ProductCommentReplyReqVO replyVO, Long userId);
 
@@ -63,7 +72,7 @@ public interface ProductCommentService {
     /**
      * 【会员】获得商品评价分页
      *
-     * @param pageVO  分页查询
+     * @param pageVO 分页查询
      * @param visible 是否可见
      * @return 商品评价分页
      */

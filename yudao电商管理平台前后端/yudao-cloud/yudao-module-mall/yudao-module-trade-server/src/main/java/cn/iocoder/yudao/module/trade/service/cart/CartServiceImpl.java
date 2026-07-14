@@ -13,6 +13,9 @@ import cn.iocoder.yudao.module.trade.dal.dataobject.cart.CartDO;
 import cn.iocoder.yudao.module.trade.dal.mysql.cart.CartMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.context.ApplicationEventPublisher;
+import cn.iocoder.yudao.module.trade.service.cart.behavior.BehaviorTrackingConsentPolicy;
+import cn.iocoder.yudao.module.trade.service.cart.event.CartAddedEvent;
 import org.springframework.validation.annotation.Validated;
 
 import javax.annotation.Resource;
@@ -24,6 +27,7 @@ import static cn.iocoder.yudao.module.product.enums.ErrorCodeConstants.SKU_NOT_E
 import static cn.iocoder.yudao.module.product.enums.ErrorCodeConstants.SKU_STOCK_NOT_ENOUGH;
 import static cn.iocoder.yudao.module.trade.enums.ErrorCodeConstants.CARD_ITEM_NOT_FOUND;
 import static java.util.Collections.emptyList;
+import static java.util.Objects.nonNull;
 
 /**
  * 购物车 Service 实现类
@@ -45,11 +49,16 @@ public class CartServiceImpl implements CartService {
     private ProductSkuApi productSkuApi;
     @Resource
     private MallErpProductApi mallErpProductApi;
+    @Resource private ApplicationEventPublisher eventPublisher;
+    @Resource private BehaviorTrackingConsentPolicy trackingConsentPolicy;
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public Long addCart(Long userId, AppCartAddReqVO addReqVO) {
         // 查询 TradeCartDO
-        CartDO cart = cartMapper.selectByUserIdAndSkuId(userId, addReqVO.getSkuId());
+        CartDO cart = nonNull(addReqVO.getRegistryItemId())
+                ? cartMapper.selectByUserIdAndSkuIdAndRegistryItemId(userId, addReqVO.getSkuId(), addReqVO.getRegistryItemId())
+                : cartMapper.selectByUserIdAndSkuId(userId, addReqVO.getSkuId());
         // 校验 SKU
         Integer count = addReqVO.getCount();
         ProductSkuRespDTO sku = checkProductSku(addReqVO.getSkuId(), count);
@@ -57,15 +66,27 @@ public class CartServiceImpl implements CartService {
         // 情况一：存在，则进行数量更新
         if (cart != null) {
             cartMapper.updateById(new CartDO().setId(cart.getId()).setSelected(true)
-                    .setCount(cart.getCount() + count));
+                    .setCount(cart.getCount() + count)
+                    .setRegistryId(addReqVO.getRegistryId())
+                    .setRegistryItemId(addReqVO.getRegistryItemId()));
+            publishCartAdded(cart.getId(),userId,cart.getSpuId(),cart.getSkuId(),count);
             return cart.getId();
             // 情况二：不存在，则进行插入
         } else {
             cart = new CartDO().setUserId(userId).setSelected(true)
-                    .setSpuId(sku.getSpuId()).setSkuId(sku.getId()).setCount(count);
+                    .setSpuId(sku.getSpuId()).setSkuId(sku.getId()).setCount(count)
+                    .setRegistryId(addReqVO.getRegistryId())
+                    .setRegistryItemId(addReqVO.getRegistryItemId());
             cartMapper.insert(cart);
         }
+        publishCartAdded(cart.getId(),userId,cart.getSpuId(),cart.getSkuId(),count);
         return cart.getId();
+    }
+
+    private void publishCartAdded(Long cartId,Long userId,Long spuId,Long skuId,Integer quantity){
+        BehaviorTrackingConsentPolicy.Decision decision=trackingConsentPolicy.currentDecision(userId);
+        if(!decision.isAllowed())return;
+        eventPublisher.publishEvent(new CartAddedEvent(java.util.UUID.randomUUID().toString(),cartId,userId,spuId,skuId,quantity,decision.getVisitorId(),decision.getSessionId(),decision.getConsentEvidence()));
     }
 
     @Override

@@ -32,6 +32,7 @@ public interface MemberUserConvert {
     @Mappings({
             @Mapping(source = "level", target = "level"),
             @Mapping(source = "bean.id", target = "id"),
+            @Mapping(source = "bean.name", target = "name"),
             @Mapping(source = "bean.experience", target = "experience")
     })
     AppMemberUserInfoRespVO convert(MemberUserDO bean, MemberLevelDO level);

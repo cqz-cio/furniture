@@ -3,6 +3,8 @@ package cn.iocoder.yudao.module.member.api.address.dto;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
+import java.util.Map;
+
 @Schema(description = "RPC 服务 - 用户收件地址 Response DTO")
 @Data
 public class MemberAddressRespDTO {
@@ -27,5 +29,8 @@ public class MemberAddressRespDTO {
 
     @Schema(description = "是否默认", requiredMode = Schema.RequiredMode.REQUIRED, example = "true")
     private Boolean defaultStatus;
+
+    @Schema(description = "Address verification audit payload from checkout confirmation")
+    private Map<String, Object> addressVerification;
 
 }

@@ -1,13 +1,14 @@
 <script setup>
 import { computed, onUnmounted, ref } from "vue";
 import { useI18n } from "../i18n.js";
+import { isEmailAddress, isPasswordInRange, isSixDigitCode } from "../services/formValidation.js";
 import {
   createEmailCaptchaChallenge,
   registerByEmail,
   sendEmailRegistrationCode,
   verifyEmailCaptchaChallenge,
   YUDAO_MEMBER_ERROR_CODES,
-} from "../services/yudaoClient.js";
+} from "../services/yudaoAuthApi.js";
 
 const emit = defineEmits(["authenticated", "sign-in", "trade"]);
 const { t } = useI18n();
@@ -24,14 +25,15 @@ const codeBusy = ref(false);
 const codeCooldown = ref(0);
 const error = ref("");
 const notice = ref("");
+const recoveryAction = ref("");
 const captchaChallenge = ref(null);
 const captchaAnswer = ref("");
 const captchaBusy = ref(false);
 const captchaError = ref("");
 let cooldownTimer = null;
 
-const isEmailValid = computed(() => email.value.length <= 255 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value));
-const isCodeValid = computed(() => /^\d{6}$/.test(verificationCode.value));
+const isEmailValid = computed(() => isEmailAddress(email.value));
+const isCodeValid = computed(() => isSixDigitCode(verificationCode.value));
 const canSendCode = computed(
   () => isEmailValid.value && !busy.value && !codeBusy.value && !captchaChallenge.value && codeCooldown.value === 0,
 );
@@ -40,8 +42,7 @@ const canSubmit = computed(
     firstName.value.trim().length > 0 &&
     lastName.value.trim().length > 0 &&
     isEmailValid.value &&
-    password.value.length >= 4 &&
-    password.value.length <= 16 &&
+    isPasswordInRange(password.value) &&
     isCodeValid.value &&
     privacyAccepted.value &&
     !busy.value,
@@ -99,6 +100,13 @@ const registerErrorMessage = (caught) => {
   }
 };
 
+const updateRecoveryAction = (caught) => {
+  recoveryAction.value = "";
+  if (Number(caught?.code) === YUDAO_MEMBER_ERROR_CODES.USER_EMAIL_USED) {
+    recoveryAction.value = "signIn";
+  }
+};
+
 const openCaptchaChallenge = async () => {
   captchaBusy.value = true;
   captchaError.value = "";
@@ -122,12 +130,14 @@ const sendCode = async () => {
   codeBusy.value = true;
   error.value = "";
   notice.value = "";
+  recoveryAction.value = "";
   try {
     await sendEmailRegistrationCode(email.value);
     notice.value = t("auth.emailCode.notice");
     startCodeCooldown();
   } catch (caught) {
     error.value = emailCodeErrorMessage(caught);
+    updateRecoveryAction(caught);
     if (
       Number(caught?.code) === YUDAO_MEMBER_ERROR_CODES.EMAIL_CAPTCHA_REQUIRED ||
       Number(caught?.code) === YUDAO_MEMBER_ERROR_CODES.EMAIL_CAPTCHA_INVALID
@@ -144,6 +154,7 @@ const handleCaptchaSubmit = async () => {
   captchaBusy.value = true;
   captchaError.value = "";
   error.value = "";
+  recoveryAction.value = "";
   try {
     const result = await verifyEmailCaptchaChallenge({
       challengeId: captchaChallenge.value.challengeId,
@@ -158,6 +169,7 @@ const handleCaptchaSubmit = async () => {
   } catch (caught) {
     captchaError.value = emailCodeErrorMessage(caught);
     error.value = captchaError.value;
+    updateRecoveryAction(caught);
     try {
       captchaChallenge.value = await createEmailCaptchaChallenge();
       captchaAnswer.value = "";
@@ -174,6 +186,7 @@ const submit = async () => {
   busy.value = true;
   error.value = "";
   notice.value = "";
+  recoveryAction.value = "";
   try {
     const session = await registerByEmail({
       firstName: firstName.value,
@@ -190,6 +203,7 @@ const submit = async () => {
     if (Number(caught?.code) === YUDAO_MEMBER_ERROR_CODES.EMAIL_CODE_VERIFY_TOO_MANY) {
       await openCaptchaChallenge();
     }
+    updateRecoveryAction(caught);
   } finally {
     busy.value = false;
   }
@@ -313,12 +327,17 @@ onUnmounted(() => {
       <input v-model="privacyAccepted" type="checkbox" />
       <span>
         {{ t("auth.create.privacyPrefix") }}
-        <a href="#">{{ t("auth.create.privacyNotice") }}</a>
+        <a href="/membership/terms">{{ t("auth.create.privacyNotice") }}</a>
       </span>
     </label>
 
     <p v-if="notice" class="auth-success">{{ notice }}</p>
     <p v-if="error" class="auth-error">{{ error }}</p>
+    <div v-if="error && recoveryAction === 'signIn'" class="auth-recovery-actions">
+      <button type="button" @click="emit('sign-in')">
+        {{ t("auth.recovery.signIn") }}
+      </button>
+    </div>
     <button class="auth-primary-button" type="submit" :disabled="!canSubmit">
       {{ busy ? t("common.working") : t("auth.create.submit") }}
     </button>

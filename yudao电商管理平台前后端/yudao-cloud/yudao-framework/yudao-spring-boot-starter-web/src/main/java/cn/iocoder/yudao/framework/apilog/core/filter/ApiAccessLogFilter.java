@@ -49,6 +49,8 @@ import static cn.iocoder.yudao.framework.common.util.json.JsonUtils.toJsonString
 @Slf4j
 public class ApiAccessLogFilter extends ApiRequestFilter {
 
+    private static final String BEHAVIOR_TRACK_PATH = "/statistics/behavior/track";
+
     private static final String[] SANITIZE_KEYS = new String[]{"password", "token", "accessToken", "refreshToken"};
 
     private final String applicationName;
@@ -68,8 +70,9 @@ public class ApiAccessLogFilter extends ApiRequestFilter {
         // 获得开始时间
         LocalDateTime beginTime = LocalDateTime.now();
         // 提前获得参数，避免 XssFilter 过滤处理
-        Map<String, String> queryString = ServletUtils.getParamMap(request);
-        String requestBody = ServletUtils.getBody(request);
+        boolean sensitiveBehaviorTrack = BEHAVIOR_TRACK_PATH.equals(request.getRequestURI());
+        Map<String, String> queryString = sensitiveBehaviorTrack ? java.util.Collections.emptyMap() : ServletUtils.getParamMap(request);
+        String requestBody = sensitiveBehaviorTrack ? null : ServletUtils.getBody(request);
 
         try {
             // 继续过滤器
@@ -99,6 +102,7 @@ public class ApiAccessLogFilter extends ApiRequestFilter {
 
     private boolean buildApiAccessLog(ApiAccessLogCreateReqDTO accessLog, HttpServletRequest request, LocalDateTime beginTime,
                                       Map<String, String> queryString, String requestBody, Exception ex) {
+        boolean sensitiveBehaviorTrack = BEHAVIOR_TRACK_PATH.equals(request.getRequestURI());
         // 判断：是否要记录操作日志
         HandlerMethod handlerMethod = (HandlerMethod) request.getAttribute(ATTRIBUTE_HANDLER_METHOD);
         ApiAccessLog accessLogAnnotation = null;
@@ -118,17 +122,19 @@ public class ApiAccessLogFilter extends ApiRequestFilter {
             accessLog.setResultCode(result.getCode()).setResultMsg(result.getMsg());
         } else if (ex != null) {
             accessLog.setResultCode(GlobalErrorCodeConstants.INTERNAL_SERVER_ERROR.getCode())
-                    .setResultMsg(ExceptionUtil.getRootCauseMessage(ex));
+                    .setResultMsg(sensitiveBehaviorTrack ? "Behavior tracking failed" : ExceptionUtil.getRootCauseMessage(ex));
         } else {
             accessLog.setResultCode(GlobalErrorCodeConstants.SUCCESS.getCode()).setResultMsg("");
         }
         // 设置请求字段
         accessLog.setTraceId(TracerUtils.getTraceId()).setApplicationName(applicationName)
-                .setRequestUrl(request.getRequestURI()).setRequestMethod(request.getMethod())
-                .setUserAgent(ServletUtils.getUserAgent(request)).setUserIp(ServletUtils.getClientIP(request));
+                .setRequestUrl(request.getRequestURI()).setRequestMethod(request.getMethod());
+        if (!sensitiveBehaviorTrack) {
+            accessLog.setUserAgent(ServletUtils.getUserAgent(request)).setUserIp(ServletUtils.getClientIP(request));
+        }
         String[] sanitizeKeys = accessLogAnnotation != null ? accessLogAnnotation.sanitizeKeys() : null;
         Boolean requestEnable = accessLogAnnotation != null ? accessLogAnnotation.requestEnable() : Boolean.TRUE;
-        if (!BooleanUtil.isFalse(requestEnable)) { // 默认记录，所以判断 !false
+        if (!sensitiveBehaviorTrack && !BooleanUtil.isFalse(requestEnable)) { // sensitive tracking never stores params
             Map<String, Object> requestParams = MapUtil.<String, Object>builder()
                     .put("query", sanitizeMap(queryString, sanitizeKeys))
                     .put("body", sanitizeJson(requestBody, sanitizeKeys)).build();

@@ -52,9 +52,13 @@ public class TradePriceCalculatorHelper {
             TradePriceCalculateRespBO.OrderItem orderItem = new TradePriceCalculateRespBO.OrderItem();
             result.getItems().add(orderItem);
             orderItem.setSpuId(sku.getSpuId()).setSkuId(sku.getId())
-                    .setCount(item.getCount()).setCartId(item.getCartId()).setSelected(item.getSelected());
+                    .setCount(item.getCount()).setCartId(item.getCartId())
+                    .setRegistryId(item.getRegistryId()).setRegistryItemId(item.getRegistryItemId())
+                    .setSelected(item.getSelected());
             // sku 价格
-            orderItem.setPrice(sku.getPrice()).setPayPrice(sku.getPrice() * item.getCount())
+            orderItem.setPrice(sku.getPrice())
+                    .setCostPrice(sku.getCostPrice() == null ? null : Long.valueOf(sku.getCostPrice()))
+                    .setPayPrice(sku.getPrice() * item.getCount())
                     .setDiscountPrice(0).setDeliveryPrice(0).setCouponPrice(0).setPointPrice(0).setVipPrice(0);
             // sku 信息
             orderItem.setPicUrl(sku.getPicUrl()).setProperties(sku.getProperties())

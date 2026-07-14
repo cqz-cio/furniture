@@ -2,19 +2,27 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { readYudaoSession, writeYudaoSession } from "../src/services/authSession.js";
 import {
   createEmailCaptchaChallenge,
-  getRemoteCartItems,
   loginByEmailPassword,
   loginByTradeAccount,
   logoutMember,
-  refreshMemberToken,
-  requestYudao,
   registerByEmail,
   requestEmailSignInLink,
   sendEmailRegistrationCode,
   sendTradeLoginCode,
   submitTradeApplication,
+  uploadTradeApplicationAttachment,
   verifyEmailCaptchaChallenge,
-} from "../src/services/yudaoClient.js";
+} from "../src/services/yudaoAuthApi.js";
+import { getRemoteCartItems } from "../src/services/yudaoCartApi.js";
+import {
+  getYudaoAppApiBase,
+  getYudaoAppTenantId,
+  isYudaoAuthError,
+  isYudaoBusinessError,
+  isYudaoNetworkError,
+  refreshMemberToken,
+  requestYudao,
+} from "../src/services/yudaoRequest.js";
 
 const API_BASE = "http://127.0.0.1:48080/app-api";
 
@@ -58,6 +66,7 @@ describe("Yudao member auth client", () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
   });
 
   it("requestEmailSignInLink posts email with no auth token", async () => {
@@ -260,6 +269,28 @@ describe("Yudao member auth client", () => {
     expect(result).toEqual({ id: 88, status: 0 });
   });
 
+  it("uploadTradeApplicationAttachment posts a public multipart file upload", async () => {
+    fetchMock.mockResolvedValueOnce(mockYudaoResponse("https://cdn.example/license.pdf"));
+    const file = new File(["fake-license"], "license.pdf", { type: "application/pdf" });
+
+    const result = await uploadTradeApplicationAttachment(file, { storage });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe(`${API_BASE}/infra/file/upload`);
+    expect(init.method).toBe("POST");
+    expect(init.headers["tenant-id"]).toBe("121");
+    expect(init.headers).not.toHaveProperty("Authorization");
+    expect(init.headers).not.toHaveProperty("Content-Type");
+    expect(init.body).toBeInstanceOf(FormData);
+    expect(init.body.get("file")).toBe(file);
+    expect(init.body.get("directory")).toBe("trade/application");
+    expect(result).toEqual({
+      name: "license.pdf",
+      url: "https://cdn.example/license.pdf",
+    });
+  });
+
   it("refreshMemberToken posts the encoded refresh token without Authorization and persists the new session", async () => {
     writeYudaoSession(oldSession, storage);
     fetchMock.mockResolvedValueOnce(mockYudaoResponse(newSession));
@@ -350,6 +381,16 @@ describe("Yudao member auth client", () => {
 
     expect(fetchMock.mock.calls[0][1].headers).not.toHaveProperty("tenant-id");
     expect(fetchMock.mock.calls[1][1].headers["tenant-id"]).toBe("9");
+  });
+
+  it("reads legacy Yudao storefront env names when canonical app env names are absent", () => {
+    vi.stubEnv("VITE_YUDAO_APP_API_BASE", "");
+    vi.stubEnv("VITE_YUDAO_APP_TENANT_ID", "");
+    vi.stubEnv("VITE_YUDAO_API_BASE_URL", "https://legacy.example/app-api/");
+    vi.stubEnv("VITE_YUDAO_TENANT_ID", "88");
+
+    expect(getYudaoAppApiBase()).toBe("https://legacy.example/app-api");
+    expect(getYudaoAppTenantId()).toBe("88");
   });
 
   it("refreshes the token and retries once when Yudao returns an auth failure result", async () => {
@@ -447,5 +488,49 @@ describe("Yudao member auth client", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(3);
     expect(readYudaoSession(storage)).toEqual(newSession);
+  });
+
+  it("classifies Yudao business, auth, and network errors", async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ code: 500, msg: "fake business failure", data: { field: "sku" } }),
+    });
+    await expect(requestYudao("/business", { storage })).rejects.toMatchObject({
+      kind: "business",
+      code: 500,
+      data: { field: "sku" },
+    });
+
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      status: 401,
+      json: async () => ({ code: 401, msg: "fake auth failure" }),
+    });
+    await expect(requestYudao("/auth", { storage })).rejects.toMatchObject({
+      kind: "auth",
+      code: 401,
+      status: 401,
+    });
+
+    fetchMock.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    await expect(requestYudao("/network", { storage })).rejects.toMatchObject({
+      kind: "network",
+    });
+  });
+
+  it("exposes Yudao error type guards", async () => {
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ code: 500, msg: "fake business failure" }),
+      })
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"));
+
+    const businessError = await requestYudao("/business", { storage }).catch((error) => error);
+    const networkError = await requestYudao("/network", { storage }).catch((error) => error);
+
+    expect(isYudaoBusinessError(businessError)).toBe(true);
+    expect(isYudaoNetworkError(networkError)).toBe(true);
+    expect(isYudaoAuthError({ kind: "auth", code: 401 })).toBe(true);
   });
 });

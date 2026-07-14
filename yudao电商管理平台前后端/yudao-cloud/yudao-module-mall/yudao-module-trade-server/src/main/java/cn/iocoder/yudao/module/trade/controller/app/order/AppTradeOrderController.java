@@ -1,5 +1,6 @@
 package cn.iocoder.yudao.module.trade.controller.app.order;
 
+import cn.hutool.core.util.StrUtil;
 import cn.iocoder.yudao.framework.common.pojo.CommonResult;
 import cn.iocoder.yudao.framework.common.pojo.PageResult;
 import cn.iocoder.yudao.module.pay.api.notify.dto.PayOrderNotifyReqDTO;
@@ -32,9 +33,11 @@ import javax.validation.Valid;
 import java.util.List;
 import java.util.Map;
 
+import static cn.iocoder.yudao.framework.common.exception.util.ServiceExceptionUtil.exception;
 import static cn.iocoder.yudao.framework.common.pojo.CommonResult.success;
 import static cn.iocoder.yudao.framework.common.util.collection.CollectionUtils.convertSet;
 import static cn.iocoder.yudao.framework.security.core.util.SecurityFrameworkUtils.getLoginUserId;
+import static cn.iocoder.yudao.module.trade.enums.ErrorCodeConstants.ORDER_UPDATE_PAID_FAIL_PAY_ORDER_ID_ERROR;
 
 @Tag(name = "用户 App - 交易订单")
 @RestController
@@ -81,7 +84,10 @@ public class AppTradeOrderController {
     @PostMapping("/update-paid")
     @Operation(summary = "更新订单为已支付") // 由 pay-module 支付服务，进行回调，可见 PayNotifyJob
     @PermitAll
-    public CommonResult<Boolean> updateOrderPaid(@RequestBody PayOrderNotifyReqDTO notifyReqDTO) {
+    public CommonResult<Boolean> updateOrderPaid(@Valid @RequestBody PayOrderNotifyReqDTO notifyReqDTO) {
+        if (notifyReqDTO == null || !StrUtil.isNumeric(notifyReqDTO.getMerchantOrderId())) {
+            throw exception(ORDER_UPDATE_PAID_FAIL_PAY_ORDER_ID_ERROR);
+        }
         tradeOrderUpdateService.updateOrderPaid(Long.valueOf(notifyReqDTO.getMerchantOrderId()),
                 notifyReqDTO.getPayOrderId());
         return success(true);
@@ -196,8 +202,17 @@ public class AppTradeOrderController {
 
     @PostMapping("/item/create-comment")
     @Operation(summary = "创建交易订单项的评价")
-    public CommonResult<Long> createOrderItemComment(@RequestBody AppTradeOrderItemCommentCreateReqVO createReqVO) {
+    public CommonResult<Long> createOrderItemComment(@Valid @RequestBody AppTradeOrderItemCommentCreateReqVO createReqVO) {
         return success(tradeOrderUpdateService.createOrderItemCommentByMember(getLoginUserId(), createReqVO));
+    }
+
+    @PostMapping("/create-comments")
+    @Operation(summary = "创建整单商品评价")
+    public CommonResult<AppTradeOrderCommentCreateRespVO> createOrderComments(
+            @Valid @RequestBody AppTradeOrderCommentCreateReqVO createReqVO) {
+        // 整单集中评价和单订单项评价并行保留，供不同前端链路使用；
+        // 新整单评价页应只调用当前接口，不与 /item/create-comment 混用。
+        return success(tradeOrderUpdateService.createOrderCommentsByMember(getLoginUserId(), createReqVO));
     }
 
 }

@@ -8,7 +8,7 @@ import {
   redactSecret,
   writeYudaoSession,
 } from "../src/services/authSession.js";
-import { readYudaoToken, writeYudaoToken } from "../src/services/yudaoClient.js";
+import { readYudaoToken, writeYudaoToken } from "../src/services/yudaoRequest.js";
 
 const createStorage = () => {
   const store = new Map();

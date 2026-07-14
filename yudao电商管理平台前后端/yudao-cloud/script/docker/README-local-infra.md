@@ -32,6 +32,21 @@ MySQL imports these files on first container volume creation:
 
 - `sql/mysql/ruoyi-vue-pro.sql`
 - `sql/mysql/quartz.sql`
+- `sql/mysql/yudao-module-tables.sql`
+- `sql/mysql/member-email-auth.sql`
+- `sql/mysql/member-trade-application.sql`
+- `sql/mysql/member-membership.sql`
+- `sql/mysql/member-gift-registry.sql`
+- `sql/mysql/trade-gift-registry-context.sql`
+
+The startup script also reapplies local feature migrations after MySQL is ready:
+
+- `sql/mysql/yudao-module-tables.sql`
+- `sql/mysql/member-email-auth.sql`
+- `sql/mysql/member-trade-application.sql`
+- `sql/mysql/member-membership.sql`
+- `sql/mysql/member-gift-registry.sql`
+- `sql/mysql/trade-gift-registry-context.sql`
 
 If you need to reimport SQL from scratch, this removes the local MySQL and Redis volumes:
 

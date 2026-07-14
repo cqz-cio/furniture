@@ -2,7 +2,7 @@
 import { computed, ref } from "vue";
 import { isYudaoSessionAuthenticated, readYudaoSession, redactSecret } from "../services/authSession.js";
 import { useI18n } from "../i18n.js";
-import { readYudaoToken, writeYudaoToken } from "../services/yudaoClient.js";
+import { readYudaoToken, writeYudaoToken } from "../services/yudaoRequest.js";
 
 const emit = defineEmits(["token-change"]);
 const { t } = useI18n();

@@ -25,6 +25,12 @@ import static cn.iocoder.yudao.framework.mybatis.core.util.MyBatisUtils.toUnderl
 @Mapper
 public interface ProductStatisticsMapper extends BaseMapperX<ProductStatisticsDO> {
 
+    @org.apache.ibatis.annotations.Delete("DELETE FROM product_statistics WHERE tenant_id=#{tenantId} AND time=#{day}")
+    int physicalDeleteByTenantAndDay(@org.apache.ibatis.annotations.Param("tenantId") long tenantId,
+                                     @org.apache.ibatis.annotations.Param("day") java.time.LocalDate day);
+
+    default java.util.List<ProductStatisticsDO> selectBetween(java.time.LocalDate start,java.time.LocalDate end){return selectList(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<ProductStatisticsDO>().between(ProductStatisticsDO::getTime,start,end).orderByDesc(ProductStatisticsDO::getOrderPayPrice));}
+
     default PageResult<ProductStatisticsDO> selectPageGroupBySpuId(ProductStatisticsReqVO reqVO, SortablePageParam pageParam) {
         return selectPage(pageParam, buildWrapper(reqVO)
                 .groupBy(ProductStatisticsDO::getSpuId)

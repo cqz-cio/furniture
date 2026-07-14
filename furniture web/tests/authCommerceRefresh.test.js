@@ -22,8 +22,11 @@ describe("auth commerce refresh wiring", () => {
     expect(source).toContain("cartItems.value = readLocalCart()");
     expect(source).toContain("cartMode.value = \"local\"");
     expect(source).toContain("if (cartMode.value !== \"yudao\") writeLocalCart(items)");
-    expect(source).toContain("const switchToLocalCart = () =>");
-    expect(source).toContain("switchToLocalCart()");
+    expect(source).toContain("const switchToLocalCart = ({ noticeKey = \"\", noticeDetail = \"\" } = {}) =>");
+    expect(source).toContain("cartNoticeKey.value = noticeKey");
+    expect(source).toContain("cartNoticeDetail.value = noticeDetail");
+    expect(source).toContain('noticeKey: "cart.remoteUnavailable"');
+    expect(source).toContain("noticeDetail: getYudaoCartErrorDetail(caught)");
   });
 
   it("reloads and clears checkout data when authVersion changes", () => {
@@ -56,13 +59,21 @@ describe("auth commerce refresh wiring", () => {
     const modalSource = readSource("../src/components/AuthModal.vue");
     const stylesSource = readSource("../src/styles.css");
     const layerStyles = stylesSource.match(/\.account-modal-layer \{[\s\S]*?\n\}/)?.[0] || "";
+    const modalStyles = stylesSource.match(/^\.account-modal \{[\s\S]*?\n\}/m)?.[0] || "";
 
     expect(modalSource).toContain("<Teleport to=\"body\">");
+    expect(modalSource).toContain('<Transition name="account-drawer-slide">');
+    expect(modalSource).toContain("account-modal-scrim");
     expect(modalSource).toContain("document.body.classList.toggle(\"auth-modal-open\", isOpen)");
     expect(stylesSource).toContain("body.auth-modal-open");
     expect(layerStyles).toContain("position: fixed;");
     expect(layerStyles).toContain("inset: 0;");
     expect(layerStyles).toContain("z-index: 200;");
+    expect(modalStyles).toContain("position: absolute;");
+    expect(modalStyles).toContain("right: 0;");
+    expect(modalStyles).toContain("height: 100%;");
+    expect(stylesSource).toContain(".account-drawer-slide-enter-active");
+    expect(stylesSource).toContain("transform: translateX(100%)");
     expect(layerStyles).not.toContain("top: 136px");
   });
 });

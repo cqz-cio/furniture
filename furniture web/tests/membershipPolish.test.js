@@ -7,6 +7,7 @@ describe("membership and registry polish", () => {
   it("uses the shared service page shell on public service pages", () => {
     [
       "../src/pages/MembershipPage.vue",
+      "../src/pages/MembershipEnrollmentPage.vue",
       "../src/pages/MembershipFaqPage.vue",
       "../src/pages/MembershipTermsPage.vue",
       "../src/pages/GiftRegistryPage.vue",
@@ -33,11 +34,14 @@ describe("membership and registry polish", () => {
     expect(source).not.toContain('href="/gift-registry/manage"');
   });
 
-  it("styles tighter RH-aligned service surfaces", () => {
+  it("styles tighter Oakved service surfaces", () => {
     const source = readSource("../src/styles.css");
 
     expect(source).toContain(".service-page-shell");
     expect(source).toContain(".account-service-shell");
+    expect(source).toContain(".membership-flow-panel");
+    expect(source).toContain(".membership-rule-matrix");
+    expect(source).toContain(".membership-faq-layout");
     expect(source).toContain(".registry-owner-action-grid");
     expect(source).toContain(".service-link-row");
   });

@@ -189,6 +189,72 @@
       </div>
     </el-descriptions>
 
+    <el-descriptions v-if="formData.addressVerification" :column="2" title="地址核对记录">
+      <el-descriptions-item label="核对来源: ">
+        {{ addressVerificationSourceLabel }}
+      </el-descriptions-item>
+      <el-descriptions-item label="地址来源: ">
+        {{ addressVerificationAddressSourceLabel }}
+      </el-descriptions-item>
+      <el-descriptions-item label="核对状态: ">
+        <el-tag :type="addressVerificationStatusType">
+          {{ addressVerificationStatusLabel }}
+        </el-tag>
+      </el-descriptions-item>
+      <el-descriptions-item label="用户选择: ">
+        {{ addressVerificationChoiceLabel }}
+      </el-descriptions-item>
+      <el-descriptions-item v-if="addressVerification?.reason" label="核对原因: ">
+        {{ addressVerification.reason }}
+      </el-descriptions-item>
+      <el-descriptions-item v-if="addressVerification?.confirmedAt" label="确认时间: ">
+        {{ addressVerification.confirmedAt }}
+      </el-descriptions-item>
+      <el-descriptions-item v-if="addressVerification?.providerResponseId" label="服务响应编号: ">
+        {{ addressVerification.providerResponseId }}
+      </el-descriptions-item>
+      <el-descriptions-item v-if="addressVerification?.providerStatus" label="服务状态: ">
+        {{ addressVerificationProviderStatusLabel }}
+      </el-descriptions-item>
+      <el-descriptions-item v-if="addressVerification?.originalAddress" label="用户填写地址: ">
+        {{ addressVerificationAddressLine(addressVerification.originalAddress) }}
+      </el-descriptions-item>
+      <el-descriptions-item v-if="addressVerification?.suggestedAddress" label="系统建议地址: ">
+        {{ addressVerificationAddressLine(addressVerification.suggestedAddress) }}
+      </el-descriptions-item>
+      <el-descriptions-item v-if="addressVerification?.selectedAddress" label="最终确认地址: ">
+        {{ addressVerificationAddressLine(addressVerification.selectedAddress) }}
+      </el-descriptions-item>
+      <el-descriptions-item
+        v-if="addressVerification && addressVerification.providerStatus === 'fallback'"
+        label-class-name="no-colon"
+      >
+        <el-alert
+          :closable="false"
+          show-icon
+          title="远程地址核对服务不可用，本订单仅记录本地 ZIP 核对结果，请发货前再次人工确认。"
+          type="warning"
+        />
+      </el-descriptions-item>
+      <el-descriptions-item v-if="addressVerificationLowTrustWarning" label-class-name="no-colon">
+        <el-alert
+          :closable="false"
+          show-icon
+          :title="addressVerificationLowTrustWarning"
+          type="warning"
+        />
+      </el-descriptions-item>
+    </el-descriptions>
+
+    <el-alert
+      v-if="addressVerificationMissingWarning"
+      class="mb-16px"
+      :closable="false"
+      show-icon
+      :title="addressVerificationMissingWarning"
+      type="warning"
+    />
+
     <!-- 订单日志 -->
     <el-descriptions title="订单操作日志">
       <el-descriptions-item labelClassName="no-colon">
@@ -260,6 +326,86 @@ const getUserTypeColor = (type: number) => {
 // 订单详情
 const formData = ref<TradeOrderApi.OrderVO>({
   logs: []
+})
+const addressVerification = computed(() => formData.value.addressVerification)
+const labelFromMap = (value: unknown, labels: Record<string, string>) => {
+  const key = String(value || '').trim()
+  return key ? labels[key] || key : '-'
+}
+const addressVerificationAddressLine = (
+  address?: TradeOrderApi.AddressVerificationAddress | null
+) => {
+  if (!address) {
+    return '-'
+  }
+  return [
+    address.street,
+    address.apartment,
+    address.city,
+    [address.state, address.postalCode].filter(Boolean).join(' ')
+  ]
+    .map((part) => String(part || '').trim())
+    .filter(Boolean)
+    .join(', ')
+}
+const addressVerificationSourceLabel = computed(() =>
+  labelFromMap(addressVerification.value?.source, {
+    'google-address-validation': 'Google 地址验证',
+    'remote-address-verification': '远程地址服务',
+    'backend-address-verification': '后端兜底核对',
+    'local-postal-region': '本地邮编核对'
+  })
+)
+const addressVerificationAddressSourceLabel = computed(() =>
+  labelFromMap(addressVerification.value?.addressSource, {
+    manual: '用户新填地址',
+    saved: '用户保存地址'
+  })
+)
+const addressVerificationStatusLabel = computed(() =>
+  labelFromMap(addressVerification.value?.status, {
+    verified: '已核对',
+    suggested: '有建议',
+    unverified: '需复核'
+  })
+)
+const addressVerificationChoiceLabel = computed(() =>
+  labelFromMap(addressVerification.value?.choice, {
+    original: '使用用户填写地址',
+    suggested: '使用系统建议地址'
+  })
+)
+const addressVerificationProviderStatusLabel = computed(() =>
+  labelFromMap(addressVerification.value?.providerStatus, {
+    fallback: '服务降级'
+  })
+)
+const addressVerificationStatusType = computed(() => {
+  switch (addressVerification.value?.status) {
+    case 'verified':
+      return 'success'
+    case 'suggested':
+      return 'warning'
+    case 'unverified':
+      return 'danger'
+    default:
+      return 'info'
+  }
+})
+const addressVerificationLowTrustWarning = computed(() => {
+  if (addressVerification.value?.source === 'local-postal-region') {
+    return '本订单仅完成 ZIP、城市、州的本地匹配，不代表街道地址可投递，发货前请人工确认。'
+  }
+  if (addressVerification.value?.source === 'backend-address-verification') {
+    return '本订单仅经过后端兜底标准化，不代表街道地址可投递，发货前请人工确认。'
+  }
+  return ''
+})
+const addressVerificationMissingWarning = computed(() => {
+  if (formData.value.deliveryType === DeliveryTypeEnum.EXPRESS.type && !addressVerification.value) {
+    return '该快递订单暂无有效地址核对记录；发货前请人工确认收货地址。'
+  }
+  return ''
 })
 
 /** 各种操作 */

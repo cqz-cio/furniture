@@ -9,7 +9,7 @@ import cn.iocoder.yudao.framework.common.exception.ErrorCode;
  */
 public interface ErrorCodeConstants {
 
-    // ========== 商品分类相关 1-008-001-000 ============
+    // ========== 商品分类相关 1-008-001-000 ==========
     ErrorCode CATEGORY_NOT_EXISTS = new ErrorCode(1_008_001_000, "商品分类不存在");
     ErrorCode CATEGORY_PARENT_NOT_EXISTS = new ErrorCode(1_008_001_001, "父分类不存在");
     ErrorCode CATEGORY_PARENT_NOT_FIRST_LEVEL = new ErrorCode(1_008_001_002, "父分类不能是二级分类");
@@ -17,7 +17,7 @@ public interface ErrorCodeConstants {
     ErrorCode CATEGORY_DISABLED = new ErrorCode(1_008_001_004, "商品分类({})已禁用，无法使用");
     ErrorCode CATEGORY_HAVE_BIND_SPU = new ErrorCode(1_008_001_005, "类别下存在商品，无法删除");
 
-    // ========== 商品品牌相关编号 1-008-002-000 ==========
+    // ========== 商品品牌相关 1-008-002-000 ==========
     ErrorCode BRAND_NOT_EXISTS = new ErrorCode(1_008_002_000, "品牌不存在");
     ErrorCode BRAND_DISABLED = new ErrorCode(1_008_002_001, "品牌已禁用");
     ErrorCode BRAND_NAME_EXISTS = new ErrorCode(1_008_002_002, "品牌名称已存在");
@@ -45,12 +45,16 @@ public interface ErrorCodeConstants {
     ErrorCode SPU_SKU_NOT_DUPLICATE = new ErrorCode(1_008_006_003, "一个 SPU 下的每个 SKU，必须不重复");
     ErrorCode SKU_STOCK_NOT_ENOUGH = new ErrorCode(1_008_006_004, "商品 SKU 库存不足");
 
-    // ========== 商品 评价 1-008-007-000 ==========
-    ErrorCode COMMENT_NOT_EXISTS = new ErrorCode(1_008_007_000, "商品评价不存在");
+    // ========== 商品评论 1-008-007-000 ==========
+    ErrorCode COMMENT_NOT_EXISTS = new ErrorCode(1_008_007_000, "商品评论不存在");
     ErrorCode COMMENT_ORDER_EXISTS = new ErrorCode(1_008_007_001, "订单的商品评价已存在");
+    ErrorCode COMMENT_BATCH_CREATE_INVALID = new ErrorCode(1_008_007_002, "批量创建商品评价失败，请求数据不合法");
+    ErrorCode COMMENT_BATCH_CREATE_PARTIAL_EXISTS = new ErrorCode(1_008_007_003, "批量创建商品评价失败，存在部分商品已评价");
 
-    // ========== 商品 收藏 1-008-008-000 ==========
+    // ========== 商品收藏 1-008-008-000 ==========
     ErrorCode FAVORITE_EXISTS = new ErrorCode(1_008_008_000, "该商品已经被收藏");
     ErrorCode FAVORITE_NOT_EXISTS = new ErrorCode(1_008_008_001, "商品收藏不存在");
+
+    ErrorCode COMMENT_BATCH_CREATE_IDEMPOTENT_CONFLICT = new ErrorCode(1_008_007_004, "批量创建商品评价失败，重复提交内容与已存在评价不一致");
 
 }

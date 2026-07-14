@@ -1,100 +1,177 @@
 <script setup>
-import ImageSpecPlaceholder from "../components/ImageSpecPlaceholder.vue";
-import { homeFullPageModules, homeHeroAssets } from "../data/rhLayout.js";
+import BrandEyebrow from "../components/BrandEyebrow.vue";
+import { generatedFurnitureAssets } from "../data/generatedFurnitureAssets.js";
 import { useI18n } from "../i18n.js";
 
 const { t } = useI18n();
 
-const specHeight = (rendered) => {
-  const match = rendered.match(/x\s*([0-9.]+)/);
-  return match ? `${match[1]}px` : undefined;
-};
+const heroSlides = [
+  {
+    desktop: generatedFurnitureAssets.home.hero.desktop,
+    mobile: generatedFurnitureAssets.home.hero.mobile,
+    alt: "Oakved living room with layered neutral furniture and architectural lighting",
+  },
+  {
+    desktop: generatedFurnitureAssets.home.modules["003"].desktop,
+    mobile: generatedFurnitureAssets.home.modules["003"].mobile,
+    alt: "Oakved dining room with stone, wood and warm lighting",
+  },
+  {
+    desktop: generatedFurnitureAssets.home.modules["004"].desktop,
+    mobile: generatedFurnitureAssets.home.modules["004"].mobile,
+    alt: "Oakved outdoor room with teak and performance cushions",
+  },
+  {
+    desktop: generatedFurnitureAssets.home.modules["002"].desktop,
+    mobile: generatedFurnitureAssets.home.modules["002"].mobile,
+    alt: "Oakved bedroom with calm upholstery and wood finishes",
+  },
+];
 
-const homeModuleHref = (title) => {
-  if (title.includes("Outdoor")) return "/outdoor";
-  if (title.includes("RH Members Program")) return "/membership";
-  return "";
-};
+const editorialModules = [
+  {
+    id: "bedroomFurniture",
+    href: "/products?room=bedroom",
+    desktop: generatedFurnitureAssets.home.modules["002"].desktop,
+    mobile: generatedFurnitureAssets.home.modules["002"].mobile,
+    alt: "Oakved wood bedroom with bed bench, nightstand and soft neutral textiles",
+  },
+  {
+    id: "storageCabinets",
+    href: "/products?category=storage",
+    desktop: generatedFurnitureAssets.home.modules["003"].desktop,
+    mobile: generatedFurnitureAssets.home.modules["003"].mobile,
+    alt: "Oakved storage and cabinet edit in a calm wood interior",
+  },
+  {
+    id: "desksTables",
+    href: "/products?category=desk-table",
+    desktop: generatedFurnitureAssets.home.modules["004"].desktop,
+    mobile: generatedFurnitureAssets.home.modules["004"].mobile,
+    alt: "Oakved desk and table arrangement with warm lighting",
+  },
+  {
+    id: "seatingBenches",
+    href: "/products?category=seating",
+    desktop: generatedFurnitureAssets.home.modules["005"].desktop,
+    mobile: generatedFurnitureAssets.home.modules["005"].mobile,
+    alt: "Oakved seating and bench arrangement for a complete bedroom",
+  },
+];
+
+const homeModuleCopy = (item, field) => t(`home.editorial.${item.id}.${field}`);
+
+const homeModuleEyebrowSuffix = (item) => homeModuleCopy(item, "eyebrow");
+const generatedHomeModuleAsset = (index) => editorialModules[index] || editorialModules[0];
+
+const categoryEdits = [
+  {
+    id: "bedroom",
+    altLabel: "Bedroom",
+    href: "/products",
+    image: generatedFurnitureAssets.home.modules["002"].desktop,
+    ambientImage: generatedFurnitureAssets.home.modules["003"].desktop,
+  },
+  {
+    id: "storage",
+    altLabel: "Storage",
+    href: "/products?category=storage",
+    image: generatedFurnitureAssets.home.modules["003"].desktop,
+    ambientImage: generatedFurnitureAssets.home.modules["005"].desktop,
+  },
+  {
+    id: "study",
+    altLabel: "Study",
+    href: "/products?category=desk-table",
+    image: generatedFurnitureAssets.home.modules["004"].desktop,
+    ambientImage: generatedFurnitureAssets.home.hero.desktop,
+  },
+];
+
+const categoryEditCopy = (item, field) => t(`home.categoryEdits.${item.id}.${field}`);
+
+const trustSignals = [
+  { id: "memberPricing" },
+  { id: "deliveryClarity" },
+  { id: "materialLedChoices" },
+];
+
+const trustSignalCopy = (item, field) => t(`home.trust.${item.id}.${field}`);
 </script>
 
 <template>
   <section class="home-hero">
-    <div class="home-hero-media">
-      <ImageSpecPlaceholder
-        class="desktop-home-image"
-        :label="homeHeroAssets.desktop.label"
-        :rendered="homeHeroAssets.desktop.rendered"
-        recommended2x="2700 x 1816"
-        file-size="WebP 320-620KB"
-        :fit="homeHeroAssets.desktop.fit"
-        ratio="1.49:1"
-        :natural="homeHeroAssets.desktop.natural"
-        tone="dark"
-      />
-      <ImageSpecPlaceholder
-        class="mobile-home-image"
-        :label="homeHeroAssets.mobile.label"
-        :rendered="homeHeroAssets.mobile.rendered"
-        recommended2x="780 x 1200"
-        file-size="WebP 220-420KB"
-        :fit="homeHeroAssets.mobile.fit"
-        ratio="0.65:1"
-        :natural="homeHeroAssets.mobile.natural"
-        tone="dark"
-      />
-    </div>
+    <picture
+      v-for="(slide, index) in heroSlides"
+      :key="slide.desktop"
+      class="home-hero-picture"
+      :class="`home-hero-slide-${index + 1}`"
+    >
+      <source media="(max-width: 760px)" :srcset="slide.mobile" />
+      <img class="home-hero-image" :src="slide.desktop" :alt="slide.alt" :loading="index === 0 ? 'eager' : 'lazy'" />
+    </picture>
     <div class="home-hero-copy">
       <p class="eyebrow">{{ t("home.heroEyebrow") }}</p>
-      <h1>RH</h1>
+      <h1 class="sr-only">Oakved</h1>
+      <img class="home-hero-logo" src="/assets/brand/oakved-logo-white.png" alt="Oakved" />
       <p>{{ t("home.heroSubtitle") }}</p>
     </div>
   </section>
 
   <section class="home-grid" :aria-label="t('home.gridAria')">
-    <component
-      :is="homeModuleHref(item.title) ? 'a' : 'article'"
-      v-for="item in homeFullPageModules"
-      :key="item.title"
-      :href="homeModuleHref(item.title) || undefined"
-      class="home-entry"
-      :class="{ 'is-screenshot-inferred': item.sourceLevel.includes('截图推断') }"
-    >
-      <div class="home-media-frame" :class="{ 'has-overlays': item.overlays }">
-        <ImageSpecPlaceholder
-          class="desktop-home-slot"
-          :style="{ minHeight: specHeight(item.desktopRendered) }"
-          :label="item.label"
-          :rendered="item.desktopRendered"
-          :recommended2x="item.recommended2x"
-          :file-size="item.fileSize"
-          :fit="item.fit"
-          :ratio="item.ratio"
-          :natural="item.desktopNatural"
-        />
-        <ImageSpecPlaceholder
-          class="mobile-home-slot"
-          :style="{ minHeight: specHeight(item.mobileRendered) }"
-          :label="item.label"
-          :rendered="item.mobileRendered"
-          :recommended2x="item.mobileRecommended2x"
-          :file-size="item.fileSize"
-          :fit="item.fit"
-          :ratio="item.ratio"
-          :natural="item.mobileNatural"
-        />
-        <div v-if="item.overlays" class="sourcebook-overlay-slots" aria-label="Sourcebook layered cover slots">
-          <div v-for="overlay in item.overlays" :key="overlay.label" class="sourcebook-cover-slot">
-            <strong>{{ overlay.label }}</strong>
-            <span>PC: {{ overlay.desktopRendered }}</span>
-            <span>Mobile: {{ overlay.mobileRendered }}</span>
-            <small>{{ overlay.sourceLevel }}</small>
-          </div>
-        </div>
-      </div>
-      <div>
-        <h2>{{ item.title }}</h2>
-        <small>{{ item.sourceLevel }}</small>
-      </div>
-    </component>
+    <a v-for="(item, index) in editorialModules" :key="item.id" :href="item.href" class="home-entry">
+      <picture class="home-entry-picture">
+         <source media="(max-width: 760px)" :srcset="generatedHomeModuleAsset(index).mobile" />
+         <img class="home-entry-image" :src="generatedHomeModuleAsset(index).desktop" :alt="item.alt" />
+         <span class="home-entry-shade" aria-hidden="true"></span>
+       </picture>
+       <div class="home-entry-copy">
+         <BrandEyebrow :suffix="homeModuleEyebrowSuffix(item)" />
+         <h2>{{ homeModuleCopy(item, "title") }}</h2>
+         <p>{{ homeModuleCopy(item, "subtitle") }}</p>
+         <span>{{ homeModuleCopy(item, "cta") }}</span>
+       </div>
+     </a>
+  </section>
+
+  <section class="home-commerce-section" aria-label="Shop by room">
+    <header class="home-commerce-head">
+      <p class="eyebrow">{{ t("home.commerce.eyebrow") }}</p>
+      <h2>{{ t("home.commerce.title") }}</h2>
+      <p>{{ t("home.commerce.description") }}</p>
+    </header>
+    <div class="home-category-edit">
+      <a v-for="item in categoryEdits" :key="item.id" :href="item.href">
+        <figure class="home-category-image-stack">
+          <img :src="item.image" :alt="`${item.altLabel} furniture edit`" loading="lazy" />
+          <img :src="item.ambientImage" :alt="`${item.altLabel} room inspiration`" loading="lazy" />
+        </figure>
+        <span>
+          <strong>{{ categoryEditCopy(item, "title") }}</strong>
+          <small>{{ categoryEditCopy(item, "copy") }}</small>
+        </span>
+      </a>
+    </div>
+  </section>
+
+  <section class="home-featured-collection" aria-label="Featured collection">
+    <img
+      :src="generatedFurnitureAssets.home.modules['005'].desktop"
+      alt="Layered Oakved interior with upholstery, wood and lighting"
+      loading="lazy"
+    />
+    <div>
+      <p class="eyebrow">{{ t("home.featured.eyebrow") }}</p>
+      <h2>{{ t("home.featured.title") }}</h2>
+      <p>{{ t("home.featured.description") }}</p>
+      <a href="/products?room=bedroom">{{ t("home.featured.cta") }}</a>
+    </div>
+  </section>
+
+  <section class="home-trust-strip" aria-label="Shopping confidence">
+    <article v-for="item in trustSignals" :key="item.id">
+      <h2>{{ trustSignalCopy(item, "title") }}</h2>
+      <p>{{ trustSignalCopy(item, "copy") }}</p>
+    </article>
   </section>
 </template>

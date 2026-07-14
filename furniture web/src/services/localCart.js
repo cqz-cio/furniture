@@ -1,10 +1,20 @@
 export const CART_STORAGE_KEY = "furniture-web-cart";
 
-const toPositiveQuantity = (quantity) => Math.max(1, Number(quantity) || 1);
+export const normalizeCartQuantity = (quantity) => {
+  const nextQuantity = Math.floor(Number(quantity));
+  return Number.isFinite(nextQuantity) && nextQuantity >= 1 ? nextQuantity : 1;
+};
+
+const formatMaterialLabel = (value = "") => {
+  const material = String(value || "").trim();
+  if (!material) return "";
+  if (material.toLowerCase() === "wood") return "Wood finish";
+  return material;
+};
 
 export const addLocalCartItem = (items, product, quantity = 1) => {
   const skuId = product.skuId || product.id;
-  const nextQuantity = toPositiveQuantity(quantity);
+  const nextQuantity = normalizeCartQuantity(quantity);
   const existing = items.find((item) => item.skuId === skuId);
 
   if (existing) {
@@ -17,23 +27,26 @@ export const addLocalCartItem = (items, product, quantity = 1) => {
     ...items,
     {
       id: product.id,
+      spuId: product.spuId || product.id,
       skuId,
       cartId: product.cartId,
       name: product.name,
       subtitle: product.subtitle || product.introduction || "",
       price: Number(product.price) || 0,
       cover: product.cover || product.picUrl || "",
+      delivery: product.delivery || product.detailConfig?.delivery || "",
+      dimensions: product.dimensions || product.detailConfig?.dimensions || "",
+      material: formatMaterialLabel(product.material || product.detailConfig?.material || ""),
+      productType: product.productType || product.detailConfig?.productType || "",
       quantity: nextQuantity,
       source: product.source || "local",
+      registryContext: product.registryContext,
     },
   ];
 };
 
 export const updateLocalCartItemQuantity = (items, skuId, quantity) => {
-  const nextQuantity = Number(quantity);
-  if (!Number.isFinite(nextQuantity) || nextQuantity < 1) {
-    return items;
-  }
+  const nextQuantity = normalizeCartQuantity(quantity);
   return items.map((item) => (item.skuId === skuId ? { ...item, quantity: nextQuantity } : item));
 };
 

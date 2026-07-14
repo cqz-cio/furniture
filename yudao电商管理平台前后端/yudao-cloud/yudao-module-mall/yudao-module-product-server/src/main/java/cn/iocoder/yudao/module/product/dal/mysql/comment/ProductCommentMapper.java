@@ -9,6 +9,9 @@ import cn.iocoder.yudao.module.product.controller.app.comment.vo.AppCommentPageR
 import cn.iocoder.yudao.module.product.dal.dataobject.comment.ProductCommentDO;
 import org.apache.ibatis.annotations.Mapper;
 
+import java.util.Collection;
+import java.util.List;
+
 @Mapper
 public interface ProductCommentMapper extends BaseMapperX<ProductCommentDO> {
 
@@ -55,6 +58,12 @@ public interface ProductCommentMapper extends BaseMapperX<ProductCommentDO> {
         return selectOne(new LambdaQueryWrapperX<ProductCommentDO>()
                 .eq(ProductCommentDO::getUserId, userId)
                 .eq(ProductCommentDO::getOrderItemId, orderItemId));
+    }
+
+    default List<ProductCommentDO> selectListByUserIdAndOrderItemIds(Long userId, Collection<Long> orderItemIds) {
+        return selectList(new LambdaQueryWrapperX<ProductCommentDO>()
+                .eq(ProductCommentDO::getUserId, userId)
+                .in(ProductCommentDO::getOrderItemId, orderItemIds));
     }
 
 }

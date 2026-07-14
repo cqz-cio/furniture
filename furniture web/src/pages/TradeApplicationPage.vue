@@ -2,6 +2,7 @@
 import { computed, reactive, ref } from "vue";
 import TradeProgramNav from "../components/TradeProgramNav.vue";
 import { useI18n } from "../i18n.js";
+import { isEmailAddress } from "../services/formValidation.js";
 import {
   businessDescriptionOptions,
   businessInfoFields,
@@ -10,7 +11,7 @@ import {
   stateOptions,
   tradeRoutes,
 } from "../services/tradeProgram.js";
-import { submitTradeApplication } from "../services/yudaoClient.js";
+import { submitTradeApplication, uploadTradeApplicationAttachment } from "../services/yudaoTradeApi.js";
 
 const { t } = useI18n();
 
@@ -45,17 +46,19 @@ const authorizedUsers = ref([
 ]);
 const businessDocuments = ref([]);
 const taxDocuments = ref([]);
+const businessDocumentInput = ref(null);
+const taxDocumentInput = ref(null);
 const busy = ref(false);
+const uploadBusy = ref(false);
 const successNotice = ref("");
 const error = ref("");
+const errorAction = ref("");
 
 const optionMap = {
   country: countryOptions,
   state: stateOptions,
   businessDescription: businessDescriptionOptions,
 };
-
-const isEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
 const canSubmit = computed(() => {
   const requiredBusinessFields = businessInfoFields
@@ -67,10 +70,10 @@ const canSubmit = computed(() => {
       user.lastName.trim() &&
       user.title.trim() &&
       user.phone.trim() &&
-      isEmail(user.email) &&
+      isEmailAddress(user.email) &&
       user.email === user.confirmEmail,
   );
-  return requiredBusinessFields && hasAuthorizedUser && businessDocuments.value.length > 0 && form.privacyAccepted && !busy.value;
+  return requiredBusinessFields && hasAuthorizedUser && businessDocuments.value.length > 0 && form.privacyAccepted && !busy.value && !uploadBusy.value;
 });
 
 const addAuthorizedUser = () => {
@@ -89,20 +92,75 @@ const removeAuthorizedUser = (index) => {
   authorizedUsers.value.splice(index, 1);
 };
 
-const setDocuments = (target, files) => {
-  const nextFiles = Array.from(files || []).map((file) => ({
+const uploadDocumentFiles = (target, files) => {
+  const selectedFiles = Array.from(files || []);
+  if (selectedFiles.length === 0) return;
+  error.value = "";
+  errorAction.value = "";
+  target.value = selectedFiles.map((file) => ({
     name: file.name,
-    url: `local:${file.name}`,
+    file,
+    url: "",
   }));
-  target.value = nextFiles;
+};
+
+const openDocumentPicker = (inputRef) => {
+  inputRef.value?.click();
+};
+
+const handleDocumentFileChange = (target, event) => {
+  uploadDocumentFiles(target, event.target.files);
+  event.target.value = "";
+};
+
+const openBusinessDocumentPicker = () => {
+  openDocumentPicker(businessDocumentInput);
+};
+
+const openTaxDocumentPicker = () => {
+  openDocumentPicker(taxDocumentInput);
+};
+
+const handleBusinessDocumentFileChange = (event) => {
+  handleDocumentFileChange(businessDocuments, event);
+};
+
+const handleTaxDocumentFileChange = (event) => {
+  handleDocumentFileChange(taxDocuments, event);
+};
+
+const uploadSelectedDocuments = async (target) => {
+  const uploadedDocuments = [];
+  for (const document of target.value) {
+    if (document.url) {
+      uploadedDocuments.push({ name: document.name, url: document.url });
+      continue;
+    }
+    uploadedDocuments.push(await uploadTradeApplicationAttachment(document.file));
+  }
+  target.value = uploadedDocuments;
+  return uploadedDocuments;
+};
+
+const uploadAllDocuments = async () => {
+  uploadBusy.value = true;
+  try {
+    await Promise.all([uploadSelectedDocuments(businessDocuments), uploadSelectedDocuments(taxDocuments)]);
+  } catch (caught) {
+    const uploadError = caught instanceof Error ? caught : new Error("Trade document upload failed");
+    uploadError.stage = "upload";
+    throw uploadError;
+  } finally {
+    uploadBusy.value = false;
+  }
 };
 
 const buildPayload = () => ({
   ...form,
   primaryEmail: authorizedUsers.value[0]?.email || "",
   authorizedUsers: authorizedUsers.value.map((user) => ({ ...user })),
-  businessDocuments: businessDocuments.value,
-  taxDocuments: taxDocuments.value,
+  businessDocuments: businessDocuments.value.map(({ name, url }) => ({ name, url })),
+  taxDocuments: taxDocuments.value.map(({ name, url }) => ({ name, url })),
 });
 
 const submit = async () => {
@@ -110,11 +168,19 @@ const submit = async () => {
   busy.value = true;
   successNotice.value = "";
   error.value = "";
+  errorAction.value = "";
   try {
-    await submitTradeApplication(buildPayload());
-    successNotice.value = t("tradeProgram.application.successNotice");
-  } catch {
-    error.value = t("tradeProgram.application.submitError");
+    await uploadAllDocuments();
+    const result = await submitTradeApplication(buildPayload());
+    successNotice.value = t("tradeProgram.application.successNotice", { id: result?.id ?? "-" });
+  } catch (caught) {
+    error.value =
+      caught?.stage === "upload" ? t("tradeProgram.application.uploadError") : t("tradeProgram.application.submitError");
+    if (caught?.stage === "upload") {
+      errorAction.value = "attachments";
+    } else {
+      errorAction.value = "retry";
+    }
   } finally {
     busy.value = false;
   }
@@ -190,24 +256,28 @@ const submit = async () => {
         </button>
       </section>
 
-      <section class="trade-form-section">
+      <section id="trade-application-documents" class="trade-form-section">
         <h2>{{ t("tradeProgram.application.businessDocuments") }}</h2>
         <p>{{ t("tradeProgram.application.businessDocumentsHelp") }}</p>
-        <label class="trade-file-field">
+        <div class="trade-file-field">
           <span>{{ businessDocuments.length ? businessDocuments.map((file) => file.name).join(", ") : t("tradeProgram.application.addAttachment") }}</span>
-          <input type="file" multiple @change="setDocuments(businessDocuments, $event.target.files)" />
-          <strong>{{ t("tradeProgram.application.chooseFile") }}</strong>
-        </label>
+          <input ref="businessDocumentInput" class="trade-file-input" type="file" multiple @change="handleBusinessDocumentFileChange" />
+          <button class="trade-file-button" type="button" :disabled="busy || uploadBusy" @click="openBusinessDocumentPicker">
+            {{ uploadBusy ? t("tradeProgram.application.uploading") : t("tradeProgram.application.chooseFile") }}
+          </button>
+        </div>
       </section>
 
       <section class="trade-form-section">
         <h2>{{ t("tradeProgram.application.taxDocuments") }}</h2>
         <p>{{ t("tradeProgram.application.taxDocumentsHelp") }}</p>
-        <label class="trade-file-field">
+        <div class="trade-file-field">
           <span>{{ taxDocuments.length ? taxDocuments.map((file) => file.name).join(", ") : t("tradeProgram.application.addAttachment") }}</span>
-          <input type="file" multiple @change="setDocuments(taxDocuments, $event.target.files)" />
-          <strong>{{ t("tradeProgram.application.chooseFile") }}</strong>
-        </label>
+          <input ref="taxDocumentInput" class="trade-file-input" type="file" multiple @change="handleTaxDocumentFileChange" />
+          <button class="trade-file-button" type="button" :disabled="busy || uploadBusy" @click="openTaxDocumentPicker">
+            {{ uploadBusy ? t("tradeProgram.application.uploading") : t("tradeProgram.application.chooseFile") }}
+          </button>
+        </div>
       </section>
 
       <section class="trade-form-section trade-consent-section">
@@ -224,6 +294,14 @@ const submit = async () => {
 
       <p v-if="successNotice" class="auth-success">{{ successNotice }}</p>
       <p v-if="error" class="auth-error">{{ error }}</p>
+      <div v-if="errorAction" class="trade-application-recovery">
+        <a v-if="errorAction === 'attachments'" href="#trade-application-documents">
+          {{ t("tradeProgram.application.fixAttachments") }}
+        </a>
+        <button v-else type="button" :disabled="!canSubmit" @click="submit">
+          {{ t("tradeProgram.application.retrySubmit") }}
+        </button>
+      </div>
       <button class="trade-submit-button" type="submit" :disabled="!canSubmit">
         {{ busy ? t("common.working") : t("tradeProgram.application.submit") }}
       </button>

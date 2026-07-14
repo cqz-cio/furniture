@@ -52,6 +52,11 @@ public interface PayOrderMapper extends BaseMapperX<PayOrderDO> {
         return selectOne(PayOrderDO::getNo, no);
     }
 
+    default PayOrderDO selectByChannelIdAndChannelOrderNo(Long channelId, String channelOrderNo) {
+        return selectOne(PayOrderDO::getChannelId, channelId,
+                PayOrderDO::getChannelOrderNo, channelOrderNo);
+    }
+
     default int updateByIdAndStatus(Long id, Integer status, PayOrderDO update) {
         return update(update, new LambdaQueryWrapper<PayOrderDO>()
                 .eq(PayOrderDO::getId, id).eq(PayOrderDO::getStatus, status));

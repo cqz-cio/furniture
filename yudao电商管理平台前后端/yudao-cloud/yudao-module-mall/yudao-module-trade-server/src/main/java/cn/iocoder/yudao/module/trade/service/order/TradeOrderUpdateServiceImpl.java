@@ -24,6 +24,7 @@ import cn.iocoder.yudao.module.pay.api.refund.dto.PayRefundRespDTO;
 import cn.iocoder.yudao.module.pay.enums.order.PayOrderStatusEnum;
 import cn.iocoder.yudao.module.pay.enums.refund.PayRefundStatusEnum;
 import cn.iocoder.yudao.module.product.api.comment.ProductCommentApi;
+import cn.iocoder.yudao.module.product.api.comment.dto.ProductCommentBatchCreateReqDTO;
 import cn.iocoder.yudao.module.product.api.comment.dto.ProductCommentCreateReqDTO;
 import cn.iocoder.yudao.module.promotion.api.combination.CombinationRecordApi;
 import cn.iocoder.yudao.module.promotion.api.combination.dto.CombinationRecordRespDTO;
@@ -34,12 +35,15 @@ import cn.iocoder.yudao.module.trade.controller.admin.order.vo.TradeOrderDeliver
 import cn.iocoder.yudao.module.trade.controller.admin.order.vo.TradeOrderRemarkReqVO;
 import cn.iocoder.yudao.module.trade.controller.admin.order.vo.TradeOrderUpdateAddressReqVO;
 import cn.iocoder.yudao.module.trade.controller.admin.order.vo.TradeOrderUpdatePriceReqVO;
+import cn.iocoder.yudao.module.trade.controller.app.order.vo.AppTradeOrderCommentCreateReqVO;
+import cn.iocoder.yudao.module.trade.controller.app.order.vo.AppTradeOrderCommentCreateRespVO;
 import cn.iocoder.yudao.module.trade.controller.app.order.vo.AppTradeOrderCreateReqVO;
 import cn.iocoder.yudao.module.trade.controller.app.order.vo.AppTradeOrderSettlementReqVO;
 import cn.iocoder.yudao.module.trade.controller.app.order.vo.AppTradeOrderSettlementRespVO;
 import cn.iocoder.yudao.module.trade.controller.app.order.vo.item.AppTradeOrderItemCommentCreateReqVO;
 import cn.iocoder.yudao.module.trade.convert.order.TradeOrderConvert;
 import cn.iocoder.yudao.module.trade.dal.dataobject.cart.CartDO;
+import cn.iocoder.yudao.module.trade.dal.dataobject.aftersale.AfterSaleDO;
 import cn.iocoder.yudao.module.trade.dal.dataobject.delivery.DeliveryExpressDO;
 import cn.iocoder.yudao.module.trade.dal.dataobject.delivery.DeliveryPickUpStoreDO;
 import cn.iocoder.yudao.module.trade.dal.dataobject.order.TradeOrderDO;
@@ -71,7 +75,9 @@ import javax.annotation.Resource;
 import javax.validation.constraints.NotNull;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
@@ -92,6 +98,16 @@ import static cn.iocoder.yudao.module.trade.enums.MessageTemplateConstants.WXA_O
 @Service
 @Slf4j
 public class TradeOrderUpdateServiceImpl implements TradeOrderUpdateService {
+
+    private static final String SYSTEM_DEFAULT_COMMENT_CONTENT = "系统默认好评";
+    private static final Set<String> SUPPORTED_ADDRESS_VERIFICATION_SOURCES = CollUtil.newHashSet(
+            "google-address-validation", "remote-address-verification", "local-postal-region",
+            "backend-address-verification");
+    private static final Set<String> SUPPORTED_ADDRESS_SOURCES = CollUtil.newHashSet("new", "saved");
+    private static final Set<String> SUPPORTED_ADDRESS_VERIFICATION_STATUSES = CollUtil.newHashSet(
+            "verified", "suggested", "unverified");
+    private static final Set<String> SUPPORTED_ADDRESS_VERIFICATION_CHOICES = CollUtil.newHashSet(
+            "original", "suggested");
 
     @Resource
     private TradeOrderMapper tradeOrderMapper;
@@ -222,6 +238,7 @@ public class TradeOrderUpdateServiceImpl implements TradeOrderUpdateService {
         if (Objects.equals(createReqVO.getDeliveryType(), DeliveryTypeEnum.EXPRESS.getType())) {
             MemberAddressRespDTO address = addressApi.getAddress(createReqVO.getAddressId(), userId).getCheckedData();
             Assert.notNull(address, "地址({}) 不能为空", createReqVO.getAddressId()); // 价格计算时，已经计算
+            validateAddressVerificationMatchesAddress(createReqVO.getAddressVerification(), address);
             order.setReceiverName(address.getName()).setReceiverMobile(address.getMobile())
                     .setReceiverAreaId(address.getAreaId()).setReceiverDetailAddress(address.getDetailAddress());
         } else if (Objects.equals(createReqVO.getDeliveryType(), DeliveryTypeEnum.PICK_UP.getType())) {
@@ -229,6 +246,85 @@ public class TradeOrderUpdateServiceImpl implements TradeOrderUpdateService {
             order.setPickUpVerifyCode(RandomUtil.randomNumbers(8)); // 随机一个核销码，长度为 8 位
         }
         return order;
+    }
+
+    private void validateAddressVerificationMatchesAddress(Map<String, Object> addressVerification,
+                                                           MemberAddressRespDTO address) {
+        if (addressVerification == null || !(addressVerification.get("selectedAddress") instanceof Map)) {
+            throw exception(ORDER_CREATE_FAIL_ADDRESS_VERIFICATION_MISMATCH);
+        }
+        validateSupportedAddressVerificationValues(addressVerification);
+        Map<?, ?> selectedAddress = (Map<?, ?>) addressVerification.get("selectedAddress");
+        String selectedText = normalizeAddressText(buildSelectedAddressText(selectedAddress));
+        String actualText = normalizeAddressText(address.getDetailAddress());
+        if (StrUtil.isBlank(selectedText) || StrUtil.isBlank(actualText)) {
+            throw exception(ORDER_CREATE_FAIL_ADDRESS_VERIFICATION_MISMATCH);
+        }
+        validateSelectedAddressComponentMatchesActual(selectedAddress, actualText, "street", true);
+        validateSelectedAddressComponentMatchesActual(selectedAddress, actualText, "apartment", false);
+        validateSelectedAddressComponentMatchesActual(selectedAddress, actualText, "city", true);
+        validateSelectedAddressComponentMatchesActual(selectedAddress, actualText, "state", true);
+        validateSelectedAddressComponentMatchesActual(selectedAddress, actualText, "postalCode", true);
+        if (!Objects.equals(selectedText, actualText)
+                && !StrUtil.contains(selectedText, actualText)
+                && !StrUtil.contains(actualText, selectedText)) {
+            throw exception(ORDER_CREATE_FAIL_ADDRESS_VERIFICATION_MISMATCH);
+        }
+    }
+
+    private void validateSupportedAddressVerificationValues(Map<String, Object> addressVerification) {
+        if (!hasSupportedAddressVerificationValue(addressVerification, "source", SUPPORTED_ADDRESS_VERIFICATION_SOURCES)
+                || !hasSupportedAddressVerificationValue(addressVerification, "addressSource", SUPPORTED_ADDRESS_SOURCES)
+                || !hasSupportedAddressVerificationValue(addressVerification, "status", SUPPORTED_ADDRESS_VERIFICATION_STATUSES)
+                || !hasSupportedAddressVerificationValue(addressVerification, "choice", SUPPORTED_ADDRESS_VERIFICATION_CHOICES)) {
+            throw exception(ORDER_CREATE_FAIL_ADDRESS_VERIFICATION_MISMATCH);
+        }
+    }
+
+    private boolean hasSupportedAddressVerificationValue(Map<?, ?> addressVerification, String key, Set<String> supportedValues) {
+        String value = getAddressVerificationText(addressVerification, key).toLowerCase();
+        return supportedValues.contains(value);
+    }
+
+    private void validateSelectedAddressComponentMatchesActual(Map<?, ?> selectedAddress, String actualText,
+                                                               String key, boolean required) {
+        String selectedComponent = normalizeAddressText(getAddressVerificationText(selectedAddress, key));
+        if (StrUtil.isBlank(selectedComponent)) {
+            if (required) {
+                throw exception(ORDER_CREATE_FAIL_ADDRESS_VERIFICATION_MISMATCH);
+            }
+            return;
+        }
+        if (!StrUtil.contains(actualText, selectedComponent)) {
+            throw exception(ORDER_CREATE_FAIL_ADDRESS_VERIFICATION_MISMATCH);
+        }
+    }
+
+    private String buildSelectedAddressText(Map<?, ?> selectedAddress) {
+        List<String> addressParts = new ArrayList<>();
+        addressParts.add(getAddressVerificationText(selectedAddress, "street"));
+        addressParts.add(getAddressVerificationText(selectedAddress, "apartment"));
+        addressParts.add(getAddressVerificationText(selectedAddress, "city"));
+        String stateAndPostalCode = StrUtil.trim(StrUtil.join(" ",
+                getAddressVerificationText(selectedAddress, "state"),
+                getAddressVerificationText(selectedAddress, "postalCode")));
+        addressParts.add(stateAndPostalCode);
+        return StrUtil.join(" ", CollUtil.filterNew(addressParts, StrUtil::isNotBlank));
+    }
+
+    private String getAddressVerificationText(Map<?, ?> address, String key) {
+        Object value = address.get(key);
+        return value == null ? "" : String.valueOf(value).trim();
+    }
+
+    private String normalizeAddressText(String value) {
+        if (StrUtil.isBlank(value)) {
+            return "";
+        }
+        return value.toUpperCase()
+                .replaceAll("[^A-Z0-9]+", " ")
+                .trim()
+                .replaceAll("\\s+", " ");
     }
 
     private List<TradeOrderItemDO> buildTradeOrderItems(TradeOrderDO tradeOrderDO,
@@ -260,12 +356,27 @@ public class TradeOrderUpdateServiceImpl implements TradeOrderUpdateService {
         // 特殊情况：积分兑换时，可能支付金额为零
         if (order.getPayPrice() > 0) {
             createPayOrder(order, orderItems);
+        } else {
+            markZeroPayOrderPaid(order, orderItems);
         }
 
         // 4. 插入订单日志
         TradeOrderLogUtils.setOrderInfo(order.getId(), null, order.getStatus());
 
         // TODO @LeeYan9: 是可以思考下, 订单的营销优惠记录, 应该记录在哪里, 微信讨论起来!
+    }
+
+    private void markZeroPayOrderPaid(TradeOrderDO order, List<TradeOrderItemDO> orderItems) {
+        LocalDateTime payTime = LocalDateTime.now();
+        TradeOrderDO updateOrder = new TradeOrderDO().setId(order.getId())
+                .setStatus(TradeOrderStatusEnum.UNDELIVERED.getStatus())
+                .setPayStatus(true)
+                .setPayTime(payTime);
+        tradeOrderMapper.updateById(updateOrder);
+        order.setStatus(TradeOrderStatusEnum.UNDELIVERED.getStatus())
+                .setPayStatus(true)
+                .setPayTime(payTime);
+        tradeOrderHandlers.forEach(handler -> handler.afterPayOrder(order, orderItems));
     }
 
     private void createPayOrder(TradeOrderDO order, List<TradeOrderItemDO> orderItems) {
@@ -303,7 +414,8 @@ public class TradeOrderUpdateServiceImpl implements TradeOrderUpdateService {
         // 3. 更新 TradeOrderDO 状态为已支付，等待发货
         int updateCount = tradeOrderMapper.updateByIdAndStatus(id, order.getStatus(),
                 new TradeOrderDO().setStatus(TradeOrderStatusEnum.UNDELIVERED.getStatus()).setPayStatus(true)
-                        .setPayTime(LocalDateTime.now()).setPayChannelCode(payOrder.getChannelCode()));
+                        .setPayTime(payOrder.getSuccessTime() != null ? payOrder.getSuccessTime() : LocalDateTime.now())
+                        .setPayChannelCode(payOrder.getChannelCode()));
         if (updateCount == 0) {
             throw exception(ORDER_UPDATE_PAID_STATUS_NOT_UNPAID);
         }
@@ -379,6 +491,7 @@ public class TradeOrderUpdateServiceImpl implements TradeOrderUpdateService {
         if (ObjectUtil.notEqual(order.getDeliveryType(), DeliveryTypeEnum.EXPRESS.getType())) {
             throw exception(ORDER_DELIVERY_FAIL_DELIVERY_TYPE_NOT_EXPRESS);
         }
+        validateAddressVerificationDeliveryReview(order, deliveryReqVO);
 
         // 2. 更新订单为已发货
         TradeOrderDO updateOrderObj = new TradeOrderDO();
@@ -401,7 +514,10 @@ public class TradeOrderUpdateServiceImpl implements TradeOrderUpdateService {
         // 3. 记录订单日志
         TradeOrderLogUtils.setOrderInfo(order.getId(), order.getStatus(), TradeOrderStatusEnum.DELIVERED.getStatus(),
                 MapUtil.<String, Object>builder().put("expressName", express != null ? express.getName() : "")
-                        .put("logisticsNo", express != null ? deliveryReqVO.getLogisticsNo() : "").build());
+                        .put("logisticsNo", express != null ? deliveryReqVO.getLogisticsNo() : "")
+                        .put("addressVerificationReviewNote",
+                                buildAddressVerificationReviewNote(order, deliveryReqVO))
+                        .build());
 
         // 4.1 发送站内信
         tradeMessageService.sendMessageWhenDeliveryOrder(new TradeOrderMessageWhenDeliveryOrderReqBO()
@@ -448,6 +564,48 @@ public class TradeOrderUpdateServiceImpl implements TradeOrderUpdateService {
         // 2. 执行 TradeOrderHandler 前置处理
         tradeOrderHandlers.forEach(handler -> handler.beforeDeliveryOrder(order));
         return order;
+    }
+
+    private void validateAddressVerificationDeliveryReview(TradeOrderDO order, TradeOrderDeliveryReqVO deliveryReqVO) {
+        if (ObjectUtil.equal(deliveryReqVO.getLogisticsId(), TradeOrderDO.LOGISTICS_ID_NULL)) {
+            return;
+        }
+        if (!isAddressVerificationDeliveryReviewRequired(order.getAddressVerification())) {
+            return;
+        }
+        if (Boolean.TRUE.equals(deliveryReqVO.getAddressVerificationAcknowledged())) {
+            return;
+        }
+        throw exception(ORDER_DELIVERY_FAIL_ADDRESS_VERIFICATION_NEEDS_REVIEW);
+    }
+
+    private boolean isAddressVerificationDeliveryReviewRequired(Map<String, Object> addressVerification) {
+        if (addressVerification == null) {
+            return true;
+        }
+        String providerStatus = getAddressVerificationText(addressVerification, "providerStatus");
+        if (StrUtil.equals(providerStatus, "fallback")) {
+            return true;
+        }
+        String source = getAddressVerificationText(addressVerification, "source");
+        if (StrUtil.equalsAny(source, "local-postal-region", "backend-address-verification")) {
+            return true;
+        }
+        String status = getAddressVerificationText(addressVerification, "status");
+        return StrUtil.equals(status, "unverified");
+    }
+
+    private String buildAddressVerificationReviewNote(TradeOrderDO order, TradeOrderDeliveryReqVO deliveryReqVO) {
+        if (ObjectUtil.equal(deliveryReqVO.getLogisticsId(), TradeOrderDO.LOGISTICS_ID_NULL)) {
+            return "";
+        }
+        if (!Boolean.TRUE.equals(deliveryReqVO.getAddressVerificationAcknowledged())) {
+            return "";
+        }
+        if (!isAddressVerificationDeliveryReviewRequired(order.getAddressVerification())) {
+            return "";
+        }
+        return "，地址风险已人工复核";
     }
 
     @NotNull
@@ -811,17 +969,18 @@ public class TradeOrderUpdateServiceImpl implements TradeOrderUpdateService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void updateOrderItemWhenAfterSaleSuccess(Long id, Integer refundPrice) {
+    public void updateOrderItemWhenAfterSaleSuccess(AfterSaleDO afterSale) {
+        Long id = afterSale.getOrderItemId();
         // 1.1 更新订单项
         updateOrderItemAfterSaleStatus(id, TradeOrderItemAfterSaleStatusEnum.APPLY.getStatus(),
                 TradeOrderItemAfterSaleStatusEnum.SUCCESS.getStatus(), null);
         // 1.2 执行 TradeOrderHandler 的后置处理
         TradeOrderItemDO orderItem = tradeOrderItemMapper.selectById(id);
         TradeOrderDO order = tradeOrderMapper.selectById(orderItem.getOrderId());
-        tradeOrderHandlers.forEach(handler -> handler.afterCancelOrderItem(order, orderItem));
+        tradeOrderHandlers.forEach(handler -> handler.afterAfterSaleSuccess(order, orderItem, afterSale));
 
         // 2.1 更新订单的退款金额、积分
-        Integer orderRefundPrice = order.getRefundPrice() + refundPrice;
+        Integer orderRefundPrice = order.getRefundPrice() + afterSale.getRefundPrice();
         Integer orderRefundPoint = order.getRefundPoint() + orderItem.getUsePoint();
         Integer refundStatus = isAllOrderItemAfterSaleSuccess(order.getId()) ?
                 TradeOrderRefundStatusEnum.ALL.getStatus() // 如果都售后成功，则需要取消订单
@@ -860,6 +1019,46 @@ public class TradeOrderUpdateServiceImpl implements TradeOrderUpdateService {
         List<TradeOrderItemDO> orderItems = tradeOrderItemMapper.selectListByOrderId(id);
         return orderItems.stream().allMatch(orderItem -> Objects.equals(orderItem.getAfterSaleStatus(),
                 TradeOrderItemAfterSaleStatusEnum.SUCCESS.getStatus()));
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    @TradeOrderLog(operateType = TradeOrderOperateTypeEnum.MEMBER_COMMENT)
+    public AppTradeOrderCommentCreateRespVO createOrderCommentsByMember(Long userId,
+                                                                        AppTradeOrderCommentCreateReqVO createReqVO) {
+        TradeOrderDO order = tradeOrderMapper.selectOrderByIdAndUserId(createReqVO.getOrderId(), userId);
+        if (order == null) {
+            throw exception(ORDER_NOT_FOUND);
+        }
+        if (ObjectUtil.notEqual(order.getStatus(), TradeOrderStatusEnum.COMPLETED.getStatus())) {
+            throw exception(ORDER_COMMENT_FAIL_STATUS_NOT_COMPLETED);
+        }
+        if (ObjectUtil.notEqual(order.getCommentStatus(), Boolean.FALSE)) {
+            throw exception(ORDER_COMMENT_STATUS_NOT_FALSE);
+        }
+
+        List<TradeOrderItemDO> orderItems = tradeOrderItemMapper.selectListByOrderId(order.getId());
+        validateBatchCommentItems(orderItems, createReqVO.getItems());
+
+        List<ProductCommentCreateReqDTO> productCommentCreateReqDTOs = new ArrayList<>(createReqVO.getItems().size());
+        for (AppTradeOrderCommentCreateReqVO.Item item : createReqVO.getItems()) {
+            TradeOrderItemDO orderItem = findOrderItem(orderItems, item.getOrderItemId());
+            productCommentCreateReqDTOs.add(TradeOrderConvert.INSTANCE.convert05(item, createReqVO.getAnonymous(), orderItem));
+        }
+        List<Long> commentIds = productCommentApi.createComments(new ProductCommentBatchCreateReqDTO()
+                .setComments(productCommentCreateReqDTOs)).getCheckedData();
+        if (CollUtil.size(commentIds) != createReqVO.getItems().size()) {
+            throw exception(ORDER_COMMENT_ITEM_LIST_MISMATCH);
+        }
+        for (TradeOrderItemDO orderItem : orderItems) {
+            tradeOrderItemMapper.updateById(new TradeOrderItemDO().setId(orderItem.getId()).setCommentStatus(Boolean.TRUE));
+        }
+
+        tradeOrderMapper.updateById(new TradeOrderDO().setId(order.getId()).setCommentStatus(Boolean.TRUE)
+                .setFinishTime(LocalDateTime.now()));
+        TradeOrderLogUtils.setOrderInfo(order.getId(), order.getStatus(), order.getStatus());
+        return new AppTradeOrderCommentCreateRespVO().setOrderId(order.getId())
+                .setCommentedItemCount(commentIds.size()).setCommentIds(commentIds);
     }
 
     @Override
@@ -1006,7 +1205,7 @@ public class TradeOrderUpdateServiceImpl implements TradeOrderUpdateService {
         for (TradeOrderItemDO orderItem : orderItems) {
             // 2.1 创建评价
             AppTradeOrderItemCommentCreateReqVO commentCreateReqVO = new AppTradeOrderItemCommentCreateReqVO()
-                    .setOrderItemId(orderItem.getId()).setAnonymous(false).setContent("")
+                    .setOrderItemId(orderItem.getId()).setAnonymous(false).setContent(SYSTEM_DEFAULT_COMMENT_CONTENT)
                     .setBenefitScores(5).setDescriptionScores(5);
             createOrderItemComment0(orderItem, commentCreateReqVO);
 
@@ -1045,6 +1244,38 @@ public class TradeOrderUpdateServiceImpl implements TradeOrderUpdateService {
      *
      * @return 自己
      */
+    private void validateBatchCommentItems(List<TradeOrderItemDO> orderItems,
+                                           List<AppTradeOrderCommentCreateReqVO.Item> items) {
+        if (CollUtil.isEmpty(orderItems) || CollUtil.isEmpty(items) || orderItems.size() != items.size()) {
+            throw exception(ORDER_COMMENT_ITEM_LIST_MISMATCH);
+        }
+        if (anyMatch(orderItems, orderItem -> Boolean.TRUE.equals(orderItem.getCommentStatus()))) {
+            throw exception(ORDER_COMMENT_MIXED_MODE_NOT_ALLOWED);
+        }
+
+        HashSet<Long> orderItemIds = new HashSet<>(orderItems.size());
+        for (TradeOrderItemDO orderItem : orderItems) {
+            orderItemIds.add(orderItem.getId());
+        }
+        HashSet<Long> requestItemIds = new HashSet<>(items.size());
+        for (AppTradeOrderCommentCreateReqVO.Item item : items) {
+            requestItemIds.add(item.getOrderItemId());
+        }
+        if (orderItemIds.size() != orderItems.size() || requestItemIds.size() != items.size()
+                || !Objects.equals(orderItemIds, requestItemIds)) {
+            throw exception(ORDER_COMMENT_ITEM_LIST_MISMATCH);
+        }
+    }
+
+    private TradeOrderItemDO findOrderItem(List<TradeOrderItemDO> orderItems, Long orderItemId) {
+        for (TradeOrderItemDO orderItem : orderItems) {
+            if (Objects.equals(orderItem.getId(), orderItemId)) {
+                return orderItem;
+            }
+        }
+        throw exception(ORDER_COMMENT_ITEM_LIST_MISMATCH);
+    }
+
     private TradeOrderUpdateServiceImpl getSelf() {
         return SpringUtil.getBean(getClass());
     }

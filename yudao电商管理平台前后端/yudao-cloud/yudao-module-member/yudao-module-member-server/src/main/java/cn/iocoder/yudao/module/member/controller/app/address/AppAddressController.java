@@ -4,9 +4,13 @@ import cn.iocoder.yudao.framework.common.pojo.CommonResult;
 import cn.iocoder.yudao.module.member.controller.app.address.vo.AppAddressCreateReqVO;
 import cn.iocoder.yudao.module.member.controller.app.address.vo.AppAddressRespVO;
 import cn.iocoder.yudao.module.member.controller.app.address.vo.AppAddressUpdateReqVO;
+import cn.iocoder.yudao.module.member.controller.app.address.vo.AppAddressVerifyReqVO;
+import cn.iocoder.yudao.module.member.controller.app.address.vo.AppAddressVerifyRespVO;
+import cn.iocoder.yudao.module.member.controller.app.address.vo.AppAddressVerificationStatusRespVO;
 import cn.iocoder.yudao.module.member.convert.address.AddressConvert;
 import cn.iocoder.yudao.module.member.dal.dataobject.address.MemberAddressDO;
 import cn.iocoder.yudao.module.member.service.address.AddressService;
+import cn.iocoder.yudao.module.member.service.address.AddressVerificationService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.Operation;
@@ -28,6 +32,8 @@ public class AppAddressController {
 
     @Resource
     private AddressService addressService;
+    @Resource
+    private AddressVerificationService addressVerificationService;
 
     @PostMapping("/create")
     @Operation(summary = "创建用户收件地址")
@@ -70,6 +76,18 @@ public class AppAddressController {
     public CommonResult<List<AppAddressRespVO>> getAddressList() {
         List<MemberAddressDO> list = addressService.getAddressList(getLoginUserId());
         return success(AddressConvert.INSTANCE.convertList(list));
+    }
+
+    @PostMapping("/verify")
+    @Operation(summary = "Verify user shipping address")
+    public CommonResult<AppAddressVerifyRespVO> verifyAddress(@Valid @RequestBody AppAddressVerifyReqVO reqVO) {
+        return success(addressVerificationService.verifyAddress(reqVO));
+    }
+
+    @GetMapping("/verification-status")
+    @Operation(summary = "Get address verification provider status")
+    public CommonResult<AppAddressVerificationStatusRespVO> getAddressVerificationStatus() {
+        return success(addressVerificationService.getStatus());
     }
 
 }

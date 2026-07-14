@@ -136,5 +136,14 @@ yudao:
     tag: ${HOSTNAME}
   security:
     mock-enable: true
+  member:
+    address-verification:
+      google:
+        # Set YUDAO_GOOGLE_ADDRESS_VALIDATION_API_KEY in the runtime environment.
+        api-key: ${YUDAO_GOOGLE_ADDRESS_VALIDATION_API_KEY:}
+        endpoint: https://addressvalidation.googleapis.com/v1:validateAddress
+        enable-usps-cass: true
+        connect-timeout-millis: 3000
+        read-timeout-millis: 5000
   access-log: # 访问日志的配置项
     enable: false

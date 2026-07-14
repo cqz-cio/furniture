@@ -19,4 +19,10 @@ public class AppCartAddReqVO {
     @Min(value = 1, message = "商品数量必须大于等于 1")
     private Integer count;
 
+    @Schema(description = "Gift Registry 编号", example = "1001")
+    private Long registryId;
+
+    @Schema(description = "Gift Registry 商品编号", example = "2001")
+    private Long registryItemId;
+
 }

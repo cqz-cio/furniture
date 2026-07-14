@@ -1,60 +1,80 @@
 <script setup>
-import ImageSpecPlaceholder from "../components/ImageSpecPlaceholder.vue";
-import { babyChildPageSpecs } from "../data/rhLayout.js";
+import BrandEyebrow from "../components/BrandEyebrow.vue";
+import { generatedFurnitureAssets } from "../data/generatedFurnitureAssets.js";
+import { useI18n } from "../i18n.js";
 
-const moduleByKey = Object.fromEntries(babyChildPageSpecs.desktop.modules.map((module) => [module.key, module]));
-const groups = babyChildPageSpecs.groups;
+const { t } = useI18n();
 
-const specOf = (key) => moduleByKey[key];
-const groupClasses = (group) => [
-  "baby-spec-module",
-  `baby-spec-${group.key}`,
-  ...group.layout.split(" ").map((layout) => `baby-layout-${layout}`),
+const heroImage = generatedFurnitureAssets.babyChild.hero;
+
+const collections = [
+  {
+    id: "nursery",
+    altLabel: "Nursery",
+    image: generatedFurnitureAssets.babyChild.collections.nursery,
+    href: "/sofas-plp",
+  },
+  {
+    id: "playroom",
+    altLabel: "Playroom",
+    image: generatedFurnitureAssets.babyChild.collections.playroom,
+    href: "/sofas-plp",
+  },
+  {
+    id: "study",
+    altLabel: "Study",
+    image: generatedFurnitureAssets.babyChild.collections.study,
+    href: "/sofas-plp",
+  },
+  {
+    id: "lighting",
+    altLabel: "Lighting",
+    image: generatedFurnitureAssets.babyChild.collections.lighting,
+    href: "/sofas-plp",
+  },
 ];
+
+const services = ["consultation", "registryGuidance", "memberSavings", "deliveryCoordination"];
+
+const collectionCopy = (collection, field) => t(`babyChild.collections.${collection.id}.${field}`);
 </script>
 
 <template>
-  <section class="baby-spec-page">
-    <header class="spec-page-head baby-spec-head">
-      <p class="eyebrow">Baby &amp; Child 首页</p>
-      <h1>图片 / 视频投放区域抽取</h1>
-      <p>
-        PC：{{ babyChildPageSpecs.desktop.viewport }}，页面总高度：{{ babyChildPageSpecs.desktop.documentHeight }}，
-        {{ babyChildPageSpecs.desktop.summary }}。
-      </p>
-      <p>
-        Mobile：{{ babyChildPageSpecs.mobile.viewport }}，页面总高度：{{ babyChildPageSpecs.mobile.documentHeight }}，
-        {{ babyChildPageSpecs.mobile.summary }}。
-      </p>
-    </header>
-
-    <article v-for="group in groups" :key="group.key" :class="groupClasses(group)">
-      <ImageSpecPlaceholder
-        v-if="group.layout === 'single'"
-        v-bind="specOf(group.parts[0])"
-        :tone="specOf(group.parts[0]).type === 'background' ? 'light' : 'dark'"
-      />
-
-      <div v-else-if="group.layout === 'sourcebook'" class="baby-sourcebook-layout">
-        <ImageSpecPlaceholder class="baby-sourcebook-bg" v-bind="specOf(group.parts[0])" />
-        <ImageSpecPlaceholder class="baby-sourcebook-cover" v-bind="specOf(group.parts[1])" />
-        <ImageSpecPlaceholder class="baby-sourcebook-logo" v-bind="specOf(group.parts[2])" />
+  <section class="child-landing-page">
+    <section class="child-landing-hero" aria-labelledby="child-landing-title">
+      <picture>
+        <source media="(max-width: 760px)" :srcset="heroImage.mobile" />
+        <img :src="heroImage.desktop" alt="Layered child bedroom with upholstered bed and warm neutral furnishings" />
+      </picture>
+      <div class="landing-hero-copy child-landing-copy">
+        <BrandEyebrow :suffix="t('babyChild.hero.eyebrow')" />
+        <h1 id="child-landing-title">{{ t("babyChild.hero.title") }}</h1>
+        <p>{{ t("babyChild.hero.description") }}</p>
+        <div class="landing-actions">
+          <a href="/sofas-plp">{{ t("babyChild.hero.shopCta") }}</a>
+          <a href="/membership">{{ t("landing.common.joinMembers") }}</a>
+        </div>
       </div>
+    </section>
 
-      <div v-else-if="group.layout.includes('collection')" class="baby-collection-layout" :class="{ 'baby-wide-logo': group.layout.includes('wideLogo') }">
-        <ImageSpecPlaceholder class="baby-collection-main" v-bind="specOf(group.parts[0])" tone="dark" />
-        <ImageSpecPlaceholder class="baby-collection-logo" v-bind="specOf(group.parts[1])" />
-      </div>
+    <section class="landing-feature-grid child-feature-grid" aria-label="Baby and child collections">
+      <a v-for="collection in collections" :key="collection.id" :href="collection.href" class="landing-feature-card">
+        <img :src="collection.image" :alt="`${collection.altLabel} furniture collection`" />
+        <span class="eyebrow">{{ t("landing.common.collection") }}</span>
+        <h2>{{ collectionCopy(collection, "title") }}</h2>
+        <p>{{ collectionCopy(collection, "description") }}</p>
+      </a>
+    </section>
 
-      <div v-else-if="group.layout === 'halfGrid'" class="baby-half-grid">
-        <ImageSpecPlaceholder
-          v-for="part in group.parts"
-          :key="part"
-          :class="`baby-grid-${part}`"
-          v-bind="specOf(part)"
-          :tone="specOf(part).type === 'background' ? 'light' : 'dark'"
-        />
+    <section class="landing-service-band child-service-band" aria-label="Baby and child services">
+      <div>
+        <BrandEyebrow :suffix="t('landing.common.designServices')" tone="dark" />
+        <h2>{{ t("babyChild.services.title") }}</h2>
       </div>
-    </article>
+      <ul>
+        <li v-for="service in services" :key="service">{{ t(`babyChild.services.${service}`) }}</li>
+      </ul>
+      <a href="/membership">{{ t("babyChild.services.cta") }}</a>
+    </section>
   </section>
 </template>

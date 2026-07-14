@@ -99,7 +99,7 @@ public class PayAppController {
 
     @GetMapping("/list")
     @Operation(summary = "获得应用列表")
-    @PreAuthorize("@ss.hasPermission('pay:merchant:query')")
+    @PreAuthorize("@ss.hasPermission('pay:app:query')")
     public CommonResult<List<PayAppRespVO>> getAppList() {
         List<PayAppDO> appListDO = appService.getAppList();
         return success(PayAppConvert.INSTANCE.convertList(appListDO));

@@ -2,15 +2,17 @@ import { describe, expect, it } from "vitest";
 import { addLocalCartItem, removeLocalCartItem, updateLocalCartItemQuantity } from "../src/services/localCart.js";
 import {
   AUTH_TOKEN_STORAGE_KEY,
+  readYudaoToken,
+  unwrapYudaoResult,
+  writeYudaoToken,
+} from "../src/services/yudaoRequest.js";
+import {
   mapAddressResponse,
   mapOrderDetail,
   mapOrderPage,
   mapSettlementResponse,
   mapSpuToProduct,
-  readYudaoToken,
-  unwrapYudaoResult,
-  writeYudaoToken,
-} from "../src/services/yudaoClient.js";
+} from "../src/services/yudaoMappers.js";
 
 describe("yudao integration models", () => {
   it("unwraps successful yudao CommonResult responses", () => {
@@ -71,7 +73,16 @@ describe("yudao integration models", () => {
   });
 
   it("keeps local cart quantities stable and removes items", () => {
-    const sofa = { id: 12, skuId: 99, name: "Cloud Sofa", price: 2599, cover: "cover.jpg" };
+    const sofa = {
+      id: 12,
+      skuId: 99,
+      name: "Cloud Sofa",
+      price: 2599,
+      cover: "cover.jpg",
+      delivery: "White-glove delivery",
+      dimensions: "92W x 96D x 78H cm",
+      material: "wood",
+    };
     const cart = addLocalCartItem([], sofa, 2);
     const merged = addLocalCartItem(cart, sofa, 3);
     const updated = updateLocalCartItemQuantity(merged, 99, 1);
@@ -79,6 +90,11 @@ describe("yudao integration models", () => {
 
     expect(merged).toHaveLength(1);
     expect(merged[0].quantity).toBe(5);
+    expect(merged[0]).toMatchObject({
+      delivery: "White-glove delivery",
+      dimensions: "92W x 96D x 78H cm",
+      material: "Wood finish",
+    });
     expect(updated[0].quantity).toBe(1);
     expect(removed).toEqual([]);
   });
@@ -99,6 +115,22 @@ describe("yudao integration models", () => {
       areaName: "Shanghai",
       detailAddress: "Road 1",
       label: "Ada - 15500000000 - Shanghai Road 1",
+      addressVerification: null,
+      addressVerificationSummary: {
+        source: "",
+        status: "missing",
+        statusLabelKey: "membership.account.addressBook.verification.statuses.missing",
+        choice: "unknown",
+        choiceLabelKey: "membership.account.addressBook.verification.choices.unknown",
+        reason: "unknown",
+        reasonLabelKey: "membership.account.addressBook.verification.reasons.unknown",
+        confirmedAt: "",
+        providerStatus: "",
+        providerStatusLabelKey: "",
+        warningKey: "membership.account.addressBook.verification.missingWarning",
+        sourceWarningKey: "",
+        providerWarningKey: "",
+      },
       raw: expect.any(Object),
     });
   });

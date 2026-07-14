@@ -2,6 +2,7 @@ package cn.iocoder.yudao.gateway.handler;
 
 import cn.iocoder.yudao.framework.common.pojo.CommonResult;
 import cn.iocoder.yudao.gateway.util.WebFrameworkUtils;
+import cn.iocoder.yudao.gateway.filter.statistics.BehaviorTrackingGatewayFilter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.web.reactive.error.ErrorWebExceptionHandler;
 import org.springframework.core.annotation.Order;
@@ -54,8 +55,13 @@ public class GlobalExceptionHandler implements ErrorWebExceptionHandler {
                                                            ResponseStatusException ex) {
         // TODO 芋艿：这里要精细化翻译，默认返回用户是看不懂的
         ServerHttpRequest request = exchange.getRequest();
-        log.error("[responseStatusExceptionHandler][uri({}/{}) 发生异常]", request.getURI(), request.getMethod(), ex);
-        return CommonResult.error(ex.getRawStatusCode(), ex.getReason());
+        if (BehaviorTrackingGatewayFilter.TRACK_PATH.equals(request.getURI().getPath())) {
+            log.error("[trackingGatewayError][path({}) method({}) status({}) type({})]",
+                    request.getURI().getPath(), request.getMethod(), ex.getRawStatusCode(), ex.getClass().getSimpleName());
+        } else {
+            log.error("[responseStatusExceptionHandler][uri({}/{}) 发生异常]", request.getURI(), request.getMethod(), ex);
+        }
+        return CommonResult.error(ex.getRawStatusCode(), "Gateway request rejected");
     }
 
     /**
@@ -65,7 +71,12 @@ public class GlobalExceptionHandler implements ErrorWebExceptionHandler {
     public CommonResult<?> defaultExceptionHandler(ServerWebExchange exchange,
                                                    Throwable ex) {
         ServerHttpRequest request = exchange.getRequest();
-        log.error("[defaultExceptionHandler][uri({}/{}) 发生异常]", request.getURI(), request.getMethod(), ex);
+        if (BehaviorTrackingGatewayFilter.TRACK_PATH.equals(request.getURI().getPath())) {
+            log.error("[trackingGatewayError][path({}) method({}) status(500) type({})]",
+                    request.getURI().getPath(), request.getMethod(), ex.getClass().getSimpleName());
+        } else {
+            log.error("[defaultExceptionHandler][uri({}/{}) 发生异常]", request.getURI(), request.getMethod(), ex);
+        }
         // TODO 芋艿：是否要插入异常日志呢？
         // 返回 ERROR CommonResult
         return CommonResult.error(INTERNAL_SERVER_ERROR.getCode(), INTERNAL_SERVER_ERROR.getMsg());

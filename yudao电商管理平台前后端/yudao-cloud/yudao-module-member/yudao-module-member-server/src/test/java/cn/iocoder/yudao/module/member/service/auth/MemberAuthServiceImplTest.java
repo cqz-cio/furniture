@@ -174,6 +174,36 @@ public class MemberAuthServiceImplTest extends BaseMockitoUnitTest {
     }
 
     @Test
+    public void testTradeLogin_matchesTradeIdCaseInsensitively() {
+        String storedTradeId = "RH-TRADE-10086";
+        String email = "trade@example.com";
+        String code = "123456";
+        MemberUserDO user = new MemberUserDO().setId(12L).setEmail(email)
+                .setStatus(CommonStatusEnum.ENABLE.getStatus()).setTradeId(storedTradeId);
+        when(userService.getUserByEmail(eq(email))).thenReturn(user);
+        when(loginLogApi.createLoginLog(argThat(log -> {
+            assertEquals(user.getId(), log.getUserId());
+            assertEquals(email, log.getUsername());
+            assertEquals(LoginLogTypeEnum.LOGIN_USERNAME.getType(), log.getLogType());
+            assertEquals(LoginResultEnum.SUCCESS.getResult(), log.getResult());
+            return true;
+        }))).thenReturn(success(null));
+        when(oauth2TokenApi.createAccessToken(argThat(reqDTO -> reqDTO.getUserId().equals(user.getId()))))
+                .thenReturn(success(buildToken(user.getId())));
+
+        AppAuthLoginRespVO respVO = authService.tradeLogin(new AppAuthTradeLoginReqVO(
+                " rh-trade-10086 ", email, code));
+
+        assertEquals(user.getId(), respVO.getUserId());
+        verify(memberEmailAuthService).validateCode(eq(user.getId()), argThat(validateReq -> {
+            assertEquals(MemberEmailAuthSceneEnum.TRADE_LOGIN_CODE.getScene(), validateReq.getScene());
+            assertEquals(email, validateReq.getEmail());
+            assertEquals(code, validateReq.getCode());
+            return true;
+        }));
+    }
+
+    @Test
     public void testSendTradeLoginCode_success() {
         String tradeId = "RH-TRADE-10086";
         String email = "trade@example.com";

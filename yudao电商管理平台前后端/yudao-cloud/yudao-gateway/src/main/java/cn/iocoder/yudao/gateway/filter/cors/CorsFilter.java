@@ -1,5 +1,6 @@
 package cn.iocoder.yudao.gateway.filter.cors;
 
+import cn.iocoder.yudao.gateway.filter.statistics.BehaviorTrackingGatewayFilter;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
@@ -27,6 +28,9 @@ public class CorsFilter implements WebFilter {
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
         // 非跨域请求，直接放行
         ServerHttpRequest request = exchange.getRequest();
+        if (BehaviorTrackingGatewayFilter.TRACK_PATH.equals(request.getURI().getPath())) {
+            return chain.filter(exchange);
+        }
         if (!CorsUtils.isCorsRequest(request)) {
             return chain.filter(exchange);
         }

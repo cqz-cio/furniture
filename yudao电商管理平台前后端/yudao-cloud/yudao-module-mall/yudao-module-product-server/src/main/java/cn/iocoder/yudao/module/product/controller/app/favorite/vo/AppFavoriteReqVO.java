@@ -12,5 +12,16 @@ public class AppFavoriteReqVO {
     @Schema(description = "商品 SPU 编号", requiredMode = Schema.RequiredMode.REQUIRED, example = "29502")
     @NotNull(message = "商品 SPU 编号不能为空")
     private Long spuId;
+    private Long skuId;
+    private Integer count;
+    private String spuName;
+    private String picUrl;
+    private Integer price;
+    private Integer marketPrice;
+    private String color;
+    private String fabric;
+    private String width;
+    private String delivery;
+    private String dimensions;
 
 }

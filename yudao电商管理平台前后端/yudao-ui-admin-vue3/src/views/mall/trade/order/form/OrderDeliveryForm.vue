@@ -8,6 +8,19 @@
         </el-radio-group>
       </el-form-item>
       <template v-if="expressType === 'express'">
+        <el-alert
+          v-if="addressVerificationDeliveryWarning"
+          :title="addressVerificationDeliveryWarning"
+          type="warning"
+          show-icon
+          :closable="false"
+          class="mb-12px"
+        />
+        <el-form-item v-if="addressVerificationDeliveryWarning" label="地址确认">
+          <el-checkbox v-model="addressVerificationDeliveryAcknowledged">
+            发货前请人工复核收货地址，并确认可继续发货
+          </el-checkbox>
+        </el-form-item>
         <el-form-item label="物流公司">
           <el-select v-model="formData.logisticsId" placeholder="请选择" style="width: 100%">
             <el-option
@@ -45,15 +58,43 @@ const expressType = ref('express') // 如果值是 express，则是快递；none
 const formData = ref<TradeOrderApi.DeliveryVO>({
   id: undefined, // 订单编号
   logisticsId: null, // 物流公司编号
-  logisticsNo: '' // 物流编号
+  logisticsNo: '', // 物流编号
+  addressVerificationAcknowledged: false // 是否已人工复核地址核对风险
 })
 const formRef = ref() // 表单 Ref
+const currentOrderAddressVerification = ref<TradeOrderApi.AddressVerificationAudit | null>(null)
+const addressVerificationDeliveryAcknowledged = ref(false)
+const addressVerificationDeliveryWarning = computed(() => {
+  if (expressType.value !== 'express') {
+    return ''
+  }
+  const addressVerification = currentOrderAddressVerification.value
+  if (!addressVerification) {
+    return '该快递订单暂无有效地址核对记录，发货前请人工复核收货地址'
+  }
+  if (addressVerification.providerStatus === 'fallback') {
+    return '地址核对服务当时处于兜底状态，发货前请人工复核收货地址'
+  }
+  const { source, status } = addressVerification
+  if (source === 'local-postal-region') {
+    return '地址仅通过本地邮编/州匹配，发货前请人工复核收货地址'
+  }
+  if (source === 'backend-address-verification') {
+    return '地址仅通过后台简化核对，发货前请人工复核收货地址'
+  }
+  if (status === 'unverified') {
+    return '地址未通过有效核对，发货前请人工复核收货地址'
+  }
+  return ''
+})
 
 /** 打开弹窗 */
 const open = async (row: TradeOrderApi.OrderVO) => {
   resetForm()
   // 设置数据
   copyValueToTarget(formData.value, row)
+  currentOrderAddressVerification.value = row.addressVerification ?? null
+  addressVerificationDeliveryAcknowledged.value = false
   if (row.logisticsId === 0) {
     expressType.value = 'none'
   }
@@ -64,10 +105,17 @@ defineExpose({ open }) // 提供 open 方法，用于打开弹窗
 /** 提交表单 */
 const emit = defineEmits(['success']) // 定义 success 事件，用于操作成功后的回调
 const submitForm = async () => {
+  if (addressVerificationDeliveryWarning.value && !addressVerificationDeliveryAcknowledged.value) {
+    message.warning('请先确认已人工复核收货地址')
+    return
+  }
   // 提交请求
   formLoading.value = true
   try {
-    const data = unref(formData)
+    const data = {
+      ...unref(formData),
+      addressVerificationAcknowledged: addressVerificationDeliveryAcknowledged.value
+    }
     if (expressType.value === 'none') {
       // 无需发货的情况
       data.logisticsId = 0
@@ -88,8 +136,11 @@ const resetForm = () => {
   formData.value = {
     id: undefined, // 订单编号
     logisticsId: null, // 物流公司编号
-    logisticsNo: '' // 物流编号
+    logisticsNo: '', // 物流编号
+    addressVerificationAcknowledged: false // 是否已人工复核地址核对风险
   }
+  currentOrderAddressVerification.value = null
+  addressVerificationDeliveryAcknowledged.value = false
   formRef.value?.resetFields()
 }
 const deliveryExpressList = ref([])

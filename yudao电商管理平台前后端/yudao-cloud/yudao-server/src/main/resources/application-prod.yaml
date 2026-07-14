@@ -1,0 +1,136 @@
+server:
+  port: ${SERVER_PORT:48080}
+
+spring:
+  autoconfigure:
+    exclude:
+      - com.alibaba.druid.spring.boot.autoconfigure.DruidDataSourceAutoConfigure
+      - org.springframework.ai.vectorstore.qdrant.autoconfigure.QdrantVectorStoreAutoConfiguration
+      - org.springframework.ai.vectorstore.milvus.autoconfigure.MilvusVectorStoreAutoConfiguration
+  datasource:
+    druid:
+      web-stat-filter:
+        enabled: false
+      stat-view-servlet:
+        enabled: false
+      filter:
+        stat:
+          enabled: true
+          log-slow-sql: true
+          slow-sql-millis: ${YUDAO_DB_SLOW_SQL_MILLIS:500}
+          merge-sql: true
+        wall:
+          config:
+            multi-statement-allow: false
+    dynamic:
+      druid:
+        initial-size: ${YUDAO_DB_POOL_INITIAL_SIZE:5}
+        min-idle: ${YUDAO_DB_POOL_MIN_IDLE:5}
+        max-active: ${YUDAO_DB_POOL_MAX_ACTIVE:50}
+        max-wait: ${YUDAO_DB_POOL_MAX_WAIT_MILLIS:60000}
+        time-between-eviction-runs-millis: 60000
+        min-evictable-idle-time-millis: 600000
+        max-evictable-idle-time-millis: 1800000
+        validation-query: SELECT 1
+        test-while-idle: true
+        test-on-borrow: false
+        test-on-return: false
+        pool-prepared-statements: true
+        max-pool-prepared-statement-per-connection-size: 20
+      primary: master
+      datasource:
+        master:
+          url: ${YUDAO_DB_URL}
+          username: ${YUDAO_DB_USERNAME}
+          password: ${YUDAO_DB_PASSWORD}
+  data:
+    redis:
+      repositories:
+        enabled: false
+  redis:
+    host: ${YUDAO_REDIS_HOST}
+    port: ${YUDAO_REDIS_PORT:6379}
+    database: ${YUDAO_REDIS_DATABASE:0}
+    password: ${YUDAO_REDIS_PASSWORD:}
+  rabbitmq:
+    host: ${YUDAO_RABBITMQ_HOST:}
+    port: ${YUDAO_RABBITMQ_PORT:5672}
+    username: ${YUDAO_RABBITMQ_USERNAME:}
+    password: ${YUDAO_RABBITMQ_PASSWORD:}
+  kafka:
+    bootstrap-servers: ${YUDAO_KAFKA_BOOTSTRAP_SERVERS:}
+  boot:
+    admin:
+      client:
+        enabled: ${YUDAO_BOOT_ADMIN_CLIENT_ENABLED:false}
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+knife4j:
+  enable: false
+
+management:
+  endpoints:
+    web:
+      base-path: /actuator
+      exposure:
+        include: 'health,info'
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+logging:
+  file:
+    name: ${YUDAO_LOG_FILE:${user.home}/logs/${spring.application.name}.log}
+  level:
+    root: INFO
+    cn.iocoder.yudao.module.pay.dal.mysql.notify.PayNotifyTaskMapper: INFO
+    cn.iocoder.yudao.module.infra.dal.mysql.logger.ApiErrorLogMapper: INFO
+    cn.iocoder.yudao.module.infra.dal.mysql.job.JobLogMapper: INFO
+
+yudao:
+  captcha:
+    enable: true
+  security:
+    mock-enable: false
+  web:
+    admin-ui:
+      url: ${YUDAO_ADMIN_UI_URL}
+    app-ui:
+      url: ${YUDAO_APP_UI_URL}
+  pay:
+    order-notify-url: ${YUDAO_PAY_ORDER_NOTIFY_URL}
+    refund-notify-url: ${YUDAO_PAY_REFUND_NOTIFY_URL}
+    transfer-notify-url: ${YUDAO_PAY_TRANSFER_NOTIFY_URL}
+  member:
+    address-verification:
+      google:
+        api-key: ${YUDAO_GOOGLE_ADDRESS_VALIDATION_API_KEY}
+        endpoint: ${YUDAO_GOOGLE_ADDRESS_VALIDATION_ENDPOINT:https://addressvalidation.googleapis.com/v1:validateAddress}
+        enable-usps-cass: ${YUDAO_GOOGLE_ADDRESS_VALIDATION_ENABLE_USPS_CASS:true}
+        connect-timeout-millis: ${YUDAO_ADDRESS_VALIDATION_CONNECT_TIMEOUT_MILLIS:3000}
+        read-timeout-millis: ${YUDAO_ADDRESS_VALIDATION_READ_TIMEOUT_MILLIS:5000}
+  trade:
+    express:
+      kd-niao:
+        api-key: ${YUDAO_KD_NIAO_API_KEY:}
+        business-id: ${YUDAO_KD_NIAO_BUSINESS_ID:}
+      kd100:
+        key: ${YUDAO_KD100_KEY:}
+        customer: ${YUDAO_KD100_CUSTOMER:}
+
+xxl:
+  job:
+    enabled: ${YUDAO_XXL_JOB_ENABLED:false}
+    admin:
+      addresses: ${YUDAO_XXL_JOB_ADMIN_ADDRESSES:}
+
+rocketmq:
+  name-server: ${YUDAO_ROCKETMQ_NAME_SERVER:}
+
+debug: false

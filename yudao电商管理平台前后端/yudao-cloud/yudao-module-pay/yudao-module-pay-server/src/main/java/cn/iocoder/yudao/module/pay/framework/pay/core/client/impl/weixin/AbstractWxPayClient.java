@@ -178,7 +178,7 @@ public abstract class AbstractWxPayClient extends AbstractPayClient<WxPayClientC
         Integer status = Objects.equals(response.getResultCode(), "SUCCESS") ?
                 PayOrderStatusEnum.SUCCESS.getStatus() : PayOrderStatusEnum.CLOSED.getStatus();
         return PayOrderRespDTO.of(status, response.getTransactionId(), response.getOpenid(), parseDateV2(response.getTimeEnd()),
-                response.getOutTradeNo(), body);
+                response.getOutTradeNo(), body, response.getTotalFee());
     }
 
     private PayOrderRespDTO doParseOrderNotifyV3(String body, Map<String, String> headers) throws WxPayException {
@@ -190,7 +190,7 @@ public abstract class AbstractWxPayClient extends AbstractPayClient<WxPayClientC
         Integer status = parseStatus(result.getTradeState());
         String openid = result.getPayer() != null ? result.getPayer().getOpenid() : null;
         return PayOrderRespDTO.of(status, result.getTransactionId(), openid, parseDateV3(result.getSuccessTime()),
-                result.getOutTradeNo(), body);
+                result.getOutTradeNo(), body, result.getAmount() != null ? result.getAmount().getTotal() : null);
     }
 
     @Override
@@ -225,7 +225,7 @@ public abstract class AbstractWxPayClient extends AbstractPayClient<WxPayClientC
         // 转换结果
         Integer status = parseStatus(response.getTradeState());
         return PayOrderRespDTO.of(status, response.getTransactionId(), response.getOpenid(), parseDateV2(response.getTimeEnd()),
-                outTradeNo, response);
+                outTradeNo, response, response.getTotalFee());
     }
 
     private PayOrderRespDTO doGetOrderV3(String outTradeNo) throws WxPayException {
@@ -239,7 +239,7 @@ public abstract class AbstractWxPayClient extends AbstractPayClient<WxPayClientC
         Integer status = parseStatus(response.getTradeState());
         String openid = response.getPayer() != null ? response.getPayer().getOpenid() : null;
         return PayOrderRespDTO.of(status, response.getTransactionId(), openid, parseDateV3(response.getSuccessTime()),
-                outTradeNo, response);
+                outTradeNo, response, response.getAmount() != null ? response.getAmount().getTotal() : null);
     }
 
     private static Integer parseStatus(String tradeState) {

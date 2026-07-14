@@ -26,6 +26,7 @@ describe("auth UI structure", () => {
     expect(source).toContain('@authenticated="handleAuthenticated"');
     expect(source).toContain('<AuthCreateAccountForm');
     expect(source).toContain('<AuthTradeSignInForm');
+    expect(source).toContain('@close="emit(\'close\')"');
     expect(source).toContain('mode.value = "secureLink"');
     expect(source).toContain('mode.value = "create"');
     expect(source).toContain('mode.value = "trade"');
@@ -105,15 +106,17 @@ describe("auth UI structure", () => {
     expect(createSource).toContain('t("auth.create.privacyNotice")');
     expect(createSource).toContain("emailOptIn");
     expect(createSource).toContain('maxlength="255"');
-    expect(createSource).toContain("password.value.length >= 4");
-    expect(createSource).toContain("password.value.length <= 16");
+    expect(createSource).toContain("isPasswordInRange(password.value)");
     expect(createSource).toContain('maxlength="16"');
     expect(createSource).toContain('minlength="4"');
 
     expect(tradeSource).toContain("loginByTradeAccount");
+    expect(tradeSource).toContain('defineEmits(["authenticated", "sign-in", "close"])');
     expect(tradeSource).toContain('t("auth.fields.tradeId")');
     expect(tradeSource).toContain('t("auth.fields.emailAddress")');
     expect(tradeSource).toContain('t("auth.trade.apply")');
+    expect(tradeSource).toContain(`:href="tradeRoutes.apply" @click="emit('close')"`);
+    expect(tradeSource).toContain(`:href="tradeRoutes.faq" @click="emit('close')"`);
   });
 
   it("opens the image captcha recovery flow when registration code attempts are exhausted", () => {
@@ -127,12 +130,12 @@ describe("auth UI structure", () => {
 
   it("shows specific email code errors instead of the generic account creation error", () => {
     const createSource = readSource("../src/components/AuthCreateAccountForm.vue");
-    const clientSource = readSource("../src/services/yudaoClient.js");
+    const authApiSource = readSource("../src/services/yudaoAuthApi.js");
     const i18nSource = readSource("../src/i18n.js");
 
-    expect(clientSource).toContain("EMAIL_CREDENTIAL_NOT_FOUND: 1004003010");
-    expect(clientSource).toContain("EMAIL_CREDENTIAL_EXPIRED: 1004003011");
-    expect(clientSource).toContain("EMAIL_CREDENTIAL_USED: 1004003012");
+    expect(authApiSource).toContain("EMAIL_CREDENTIAL_NOT_FOUND: 1004003010");
+    expect(authApiSource).toContain("EMAIL_CREDENTIAL_EXPIRED: 1004003011");
+    expect(authApiSource).toContain("EMAIL_CREDENTIAL_USED: 1004003012");
     expect(createSource).toContain("case YUDAO_MEMBER_ERROR_CODES.EMAIL_CREDENTIAL_NOT_FOUND:");
     expect(createSource).toContain("case YUDAO_MEMBER_ERROR_CODES.EMAIL_CREDENTIAL_EXPIRED:");
     expect(createSource).toContain("case YUDAO_MEMBER_ERROR_CODES.EMAIL_CREDENTIAL_USED:");

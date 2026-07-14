@@ -3,7 +3,7 @@ spring:
     name: yudao-server
 
   profiles:
-    active: local
+    active: ${SPRING_PROFILES_ACTIVE:}
 
   main:
     allow-circular-references: true # 允许循环依赖，因为项目是三层架构，无法避免这个情况。
@@ -189,32 +189,32 @@ spring:
           host: 127.0.0.1
           port: 19530
     qianfan: # 文心一言
-      api-key: ${QIANFAN_API_KEY:}
-      secret-key: ${QIANFAN_SECRET_KEY:}
+      api-key: x0cuLZ7XsaTCU08vuJWO87Lg
+      secret-key: R9mYF9dl9KASgi5RUq0FQt3wRisSnOcK
     zhipuai: # 智谱 AI
-      api-key: ${ZHIPUAI_API_KEY:}
+      api-key: 32f84543e54eee31f8d56b2bd6020573.3vh9idLJZ2ZhxDEs
     openai: # OpenAI 官方
-      api-key: ${OPENAI_API_KEY:}
+      api-key: sk-aN6nWn3fILjrgLFT0fC4Aa60B72e4253826c77B29dC94f17
       base-url: https://api.gptsapi.net
     azure: # OpenAI 微软
       openai:
         endpoint: https://eastusprejade.openai.azure.com
     anthropic: # Anthropic Claude
-      api-key: ${ANTHROPIC_API_KEY:}
+      api-key: sk-muubv7cXeLw0Etgs743f365cD5Ea44429946Fa7e672d8942
     ollama:
       base-url: http://127.0.0.1:11434
       chat:
         model: llama3
     stabilityai:
-      api-key: ${STABILITYAI_API_KEY:}
+      api-key: sk-e53UqbboF8QJCscYvzJscJxJXoFcFg4iJjl1oqgE7baJETmx
     dashscope: # 通义千问
-      api-key: ${DASHSCOPE_API_KEY:}
+      api-key: sk-47aa124781be4bfb95244cc62f6xxxx
     minimax: # Minimax：https://www.minimaxi.com/
-      api-key: ${MINIMAX_API_KEY:}
+      api-key: xxxx
     moonshot: # 月之暗面（KIMI）
-      api-key: ${MOONSHOT_API_KEY:}
+      api-key: sk-abc
     deepseek: # DeepSeek
-      api-key: ${DEEPSEEK_API_KEY:}
+      api-key: sk-e94db327cc7d457d99a8de8810fc6b12
       chat:
         options:
           model: deepseek-chat
@@ -242,34 +242,34 @@ yudao:
   ai:
     gemini: # 谷歌 Gemini
       enable: true
-      api-key: ${GEMINI_API_KEY:}
+      api-key: AIzaSyAVoBxgoFvvte820vEQMma2LKBnC98bqMQ
       model: gemini-2.5-flash
     doubao: # 字节豆包
       enable: true
-      api-key: ${DOUBAO_API_KEY:}
+      api-key: 5c1b5747-26d2-4ebd-a4e0-dd0e8d8b4272
       model: doubao-1-5-lite-32k-250115
     hunyuan: # 腾讯混元
       enable: true
-      api-key: ${HUNYUAN_API_KEY:}
+      api-key: sk-abc
       model: hunyuan-turbo
     siliconflow: # 硅基流动
       enable: true
-      api-key: ${SILICONFLOW_API_KEY:}
+      api-key: sk-epsakfenqnyzoxhmbucsxlhkdqlcbnimslqoivkshalvdozz
       model: deepseek-ai/DeepSeek-R1-Distill-Qwen-7B
     xinghuo: # 讯飞星火
       enable: true
-      appKey: ${XINGHUO_APP_KEY:}
-      secretKey: ${XINGHUO_SECRET_KEY:}
+      appKey: 75b161ed2aef4719b275d6e7f2a4d4cd
+      secretKey: YWYxYWI2MTA4ODI2NGZlYTQyNjAzZTcz
       model: x1
     baichuan: # 百川智能
       enable: true
-      api-key: ${BAICHUAN_API_KEY:}
+      api-key: sk-abc
       model: Baichuan4-Turbo
     midjourney:
       enable: true
   #    base-url: https://api.holdai.top/mj-relax/mj
       base-url: https://api.holdai.top/mj
-      api-key: ${MIDJOURNEY_API_KEY:}
+      api-key: sk-dZEPiVaNcT3FHhef51996bAa0bC74806BeAb620dA5Da10Bf
       notify-url: http://java.nat300.top/admin-api/ai/image/midjourney/notify
     suno:
       enable: true
@@ -277,7 +277,7 @@ yudao:
       base-url: http://127.0.0.1:3001
     web-search:
       enable: true
-      api-key: ${WEB_SEARCH_API_KEY:}
+      api-key: sk-40500e52840f4d24b956d0b1d80d9abe
 
 --- #################### 芋道相关配置 ####################
 

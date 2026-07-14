@@ -42,6 +42,10 @@ public class PayOrderRespDTO {
      * 支付成功时间
      */
     private LocalDateTime successTime;
+    /**
+     * 支付金额，单位：分。部分渠道的历史实现可能为空，服务层仅在非空时做金额一致性校验。
+     */
+    private Integer price;
 
     /**
      * 原始的同步/异步通知结果
@@ -96,11 +100,17 @@ public class PayOrderRespDTO {
      */
     public static PayOrderRespDTO successOf(String channelOrderNo, String channelUserId, LocalDateTime successTime,
                                             String outTradeNo, Object rawData) {
+        return successOf(channelOrderNo, channelUserId, successTime, outTradeNo, rawData, null);
+    }
+
+    public static PayOrderRespDTO successOf(String channelOrderNo, String channelUserId, LocalDateTime successTime,
+                                            String outTradeNo, Object rawData, Integer price) {
         PayOrderRespDTO respDTO = new PayOrderRespDTO();
         respDTO.status = PayOrderStatusEnum.SUCCESS.getStatus();
         respDTO.channelOrderNo = channelOrderNo;
         respDTO.channelUserId = channelUserId;
         respDTO.successTime = successTime;
+        respDTO.price = price;
         // 相对通用的字段
         respDTO.outTradeNo = outTradeNo;
         respDTO.rawData = rawData;
@@ -112,11 +122,17 @@ public class PayOrderRespDTO {
      */
     public static PayOrderRespDTO of(Integer status, String channelOrderNo, String channelUserId, LocalDateTime successTime,
                                      String outTradeNo, Object rawData) {
+        return of(status, channelOrderNo, channelUserId, successTime, outTradeNo, rawData, null);
+    }
+
+    public static PayOrderRespDTO of(Integer status, String channelOrderNo, String channelUserId, LocalDateTime successTime,
+                                     String outTradeNo, Object rawData, Integer price) {
         PayOrderRespDTO respDTO = new PayOrderRespDTO();
         respDTO.status = status;
         respDTO.channelOrderNo = channelOrderNo;
         respDTO.channelUserId = channelUserId;
         respDTO.successTime = successTime;
+        respDTO.price = price;
         // 相对通用的字段
         respDTO.outTradeNo = outTradeNo;
         respDTO.rawData = rawData;

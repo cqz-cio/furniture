@@ -34,10 +34,135 @@ const messages = {
       secureLink: "Secure Sign In",
       tradeSignIn: "Trade Sign In",
     },
+    navigation: {
+      primary: {
+        bedroomFurniture: "Bedroom Furniture",
+        storageCabinets: "Storage Cabinets",
+        desksTables: "Desks & Tables",
+        seatingBenches: "Seating & Benches",
+        roomSets: "Room Sets",
+        woodcraft: "Woodcraft",
+        newSale: "New & Sale",
+        living: "Living",
+        dining: "Dining",
+        bed: "Bed",
+        bath: "Bath",
+        outdoor: "Outdoor",
+        lighting: "Lighting",
+        textiles: "Textiles",
+        rugs: "Rugs",
+        decor: "Decor",
+        babyChild: "Baby & Child",
+        teen: "Teen",
+        sale: "Sale",
+        interiorDesign: "Interior Design",
+      },
+      babyChild: {
+        furniture: "Furniture",
+        bedding: "Bedding",
+        nursery: "Nursery",
+        decor: "Decor",
+        lighting: "Lighting",
+        rugs: "Rugs",
+        windows: "Windows",
+        storage: "Storage",
+        playroom: "Playroom",
+        gifts: "Gifts",
+        teen: "Teen",
+        sale: "Sale",
+        registry: "Registry",
+      },
+    },
     home: {
-      heroEyebrow: "Welcome to the World of RH",
+      heroEyebrow: "Welcome to Oakved",
       heroSubtitle: "Discover furnishings, lighting, textiles, and objects of enduring design.",
       gridAria: "RH home feature collections",
+      modules: {
+        bedroom: {
+          eyebrow: "RH Bedrooms",
+          title: "Create A Private Retreat",
+          subtitle: "Layered bedding, sculptural beds, and warm oak pieces for a quieter room.",
+          cta: "Explore Bedroom",
+        },
+        dining: {
+          eyebrow: "RH Dining",
+          title: "Gather Around Enduring Design",
+          subtitle: "Marble, oak, and tailored seating composed for everyday rituals and larger occasions.",
+          cta: "Explore Dining",
+        },
+        outdoorLiving: {
+          eyebrow: "RH Outdoor",
+          title: "Live Beautifully Outside",
+          subtitle: "Weather-ready silhouettes, relaxed cushions, and resort-inspired materials.",
+          cta: "Explore Outdoor",
+        },
+        sourcebooks: {
+          eyebrow: "RH Sourcebooks",
+          title: "The New Design Library",
+          subtitle: "A curated world of rooms, collections, materials, and inspiration.",
+          cta: "Request A Sourcebook",
+        },
+        milan: {
+          eyebrow: "RH Milan",
+          title: "A Gallery Of Modern Grandeur",
+          subtitle: "Architecture, interiors, and hospitality expressed through the RH lens.",
+          cta: "Discover The Gallery",
+        },
+        interiors: {
+          eyebrow: "RH Interiors",
+          title: "Rooms Of Quiet Luxury",
+          subtitle: "Complete spaces shaped by proportion, texture, and timeless materials.",
+          cta: "Explore Interiors",
+        },
+        members: {
+          eyebrow: "RH Members",
+          title: "Save More Across The Collection",
+          subtitle: "Members receive preferred pricing on furniture, lighting, textiles, and decor.",
+          cta: "Join The Program",
+        },
+        founder: {
+          eyebrow: "Our Point Of View",
+          title: "Design That Endures",
+          subtitle: "A commitment to taste, quality, and spaces that grow more beautiful over time.",
+          cta: "Read The Story",
+        },
+        architecture: {
+          eyebrow: "RH Architecture",
+          title: "A Sense Of Place",
+          subtitle: "Landmark settings that frame the world of RH through scale and light.",
+          cta: "Explore Places",
+        },
+        hospitality: {
+          eyebrow: "RH Hospitality",
+          title: "Dining, Wine & Conversation",
+          subtitle: "Hospitality spaces designed with the same refinement as our galleries.",
+          cta: "Discover Hospitality",
+        },
+        guesthouse: {
+          eyebrow: "RH Guesthouse",
+          title: "A New Expression Of Stay",
+          subtitle: "Residential comfort, gallery-level design, and a more private kind of luxury.",
+          cta: "Explore Guesthouse",
+        },
+        aviation: {
+          eyebrow: "RH Aviation",
+          title: "Design Above The Clouds",
+          subtitle: "Private travel environments composed with proportion, comfort, and restraint.",
+          cta: "Discover Aviation",
+        },
+        yachting: {
+          eyebrow: "RH Yachting",
+          title: "Life On The Water",
+          subtitle: "A considered world of outdoor living, hospitality, and escape.",
+          cta: "Explore Yachting",
+        },
+        services: {
+          eyebrow: "RH Services",
+          title: "Design Help For Every Room",
+          subtitle: "From selection to installation, our teams help bring the whole vision together.",
+          cta: "Start A Project",
+        },
+      },
     },
     cart: {
       title: "Shopping bag",
@@ -49,7 +174,44 @@ const messages = {
       itemCount: "{count} ITEMS",
       remoteBag: "Live Yudao bag",
       localBag: "Local preview bag",
+      remoteUnavailable: "We could not sync your Yudao bag. Local preview mode is being used for now.",
+      remoteAuthRequired: "Your Yudao member session expired. Sign in again, then retry syncing your bag.",
+      remoteMutationUnavailable: "That Yudao bag update could not be saved remotely. Review the local preview before checkout.",
+      retrySync: "Retry sync",
+      itemUnavailable: "This item needs review before checkout.",
       deliveryNote: "Delivery and tax are calculated at checkout.",
+      wishlistAdded: "Added to your wishlist.",
+      wishlistAlreadyAdded: "This item is already in your wishlist.",
+    },
+    wishlist: {
+      eyebrow: "My Account",
+      title: "Wishlist",
+      itemCount: "{count} ITEMS",
+      save: "Save to wishlist",
+      saved: "Saved",
+      addToCart: "Add to cart",
+      remove: "Remove",
+      emptyEyebrow: "Saved items",
+      emptyTitle: "Your wishlist is empty.",
+      emptyHelp: "Save favorite pieces while you browse, then return here to review them.",
+      continueShopping: "Continue shopping",
+      addedToCart: "Added to your cart.",
+      removed: "Removed from your wishlist.",
+      loading: "Loading your wishlist...",
+      remoteUnavailable: "We could not sync your Yudao wishlist. Local saved items are shown for now.",
+      partialSync: "Some saved items could not sync yet. They will stay local until you retry.",
+      signInRequired: "Sign in to sync your wishlist across devices. Local saved items stay on this browser.",
+      retrySync: "Retry sync",
+      itemNumber: "Item#",
+      color: "Color",
+      fabric: "Fabric",
+      width: "Width",
+      member: "Member",
+      regular: "Regular",
+      availability: "This item will be ready for delivery: {value}",
+      defaultAvailability: "delivery window confirmed at checkout",
+      decreaseQuantity: "Decrease quantity",
+      increaseQuantity: "Increase quantity",
     },
     auth: {
       aria: "Yudao account access",
@@ -63,6 +225,12 @@ const messages = {
       clear: "Clear",
       developerToken: "Developer token",
       returnToSignIn: "Return to Sign In",
+      recovery: {
+        useSecureLink: "Use secure link",
+        createAccount: "Create account",
+        passwordSignIn: "Return to password sign in",
+        signIn: "Sign in instead",
+      },
       fields: {
         firstName: "First Name",
         lastName: "Last Name",
@@ -159,6 +327,177 @@ const messages = {
       settlementIncluded: "Yudao settlement is included.",
       settlementPending: "Final delivery and settlement appear after account checkout.",
       noAddress: "No Yudao address is available for this user.",
+      itemKickerMembership: "Membership",
+      membership: "Membership",
+      memberSavings: "Member Savings",
+      addressBookCta: "Add a delivery address",
+      steps: {
+        details: "Checkout Details",
+        customCheck: "Custom Item Check",
+        shippingAddress: "Shipping Address",
+        addressVerification: "Address Verification",
+        payment: "Payment",
+        review: "Terms & Agreements",
+        placeOrder: "Place Order",
+        deliveryNotes: "Delivery & Assembly Notes",
+      },
+      shipping: {
+        title: "Shipping Address",
+        firstName: "First Name",
+        lastName: "Last Name",
+        country: "Country",
+        street: "Street Address",
+        apartment: "Apt., Floor, Suite, etc. (optional)",
+        city: "City",
+        state: "State",
+        postalCode: "Postal Code",
+        phone: "Phone",
+        savedAddresses: "Saved Addresses",
+        enterNewAddress: "Enter a new address",
+        savedAddressVerification: "Saved address verification",
+        savedAddressVerificationRecheck: "Review this address again before payment.",
+        addressVerificationFallbackWarning:
+          "Remote address verification is not fully configured right now. We will still review this address, but please confirm the street details carefully before payment.",
+      },
+      customNotice: {
+        requiredTitle: "Custom Order Notice",
+        requiredMessage: "Custom merchandise requires review of final sale, production and delivery timing before payment.",
+        clearTitle: "Custom Item Check",
+        clearMessage: "No custom merchandise requires additional acknowledgement.",
+      },
+      confirm: {
+        customNotice: "I understand custom merchandise timing, production and final sale terms.",
+        useSuggestedAddress: "Use this verified address for payment and order review.",
+        paymentReady: "Payment details are ready for secure order submission.",
+        termsAccepted: "I agree to the checkout terms and order review requirements.",
+      },
+      address: {
+        required: "Shipping address is required before payment.",
+        needsVerification: "Address needs verification before payment.",
+        verified: "Shipping address is verified for payment.",
+        suggested: "Suggested Address",
+      },
+      addressReview: {
+        titleVerified: "Confirm Your Verified Address",
+        titleReview: "Review Your Shipping Address",
+        suggestedMessage: "We found a standardized address suggestion for the ZIP code you entered.",
+        unverifiedMessage: "We could not verify this address. Using an unverified address may delay delivery or cause additional delivery fees.",
+        confirmMessage: "Please confirm the standardized delivery address before payment.",
+        verifiedLabel: "Verified Address",
+        enteredLabel: "You Entered",
+        suggestedLabel: "Suggested Address",
+        useSuggested: "Use Suggested Address",
+        useVerified: "Use Verified Address",
+        useEntered: "Use Address As Entered",
+        editOriginal: "Edit Original Address",
+        confirmationNotice:
+          "By continuing, you confirm the address you select will be used as the shipping address for this order and recorded with the address review.",
+        providerFallbackWarning:
+          "Remote address verification was unavailable, so this review is based on the local ZIP database. Please confirm the address carefully.",
+        localPostalRegionWarning:
+          "This review only matched the ZIP code to a city and state. It does not confirm the street address is deliverable.",
+        localOnlyVerificationWarning:
+          "This review only standardized the address format. It does not confirm the street address is deliverable.",
+      },
+      addressConfirmation: {
+        title: "Confirmed shipping address",
+        status: "Address status",
+        choice: "Address choice",
+        addressSource: "Address source",
+        reason: "Review reason",
+        providerStatus: "Verifier status",
+        edit: "Edit address",
+        warning: "You chose to use an address that could not be fully verified. Delivery may be delayed if the carrier cannot deliver to it.",
+        providerFallbackWarning: "Remote address verification was unavailable, so this address was checked with the local ZIP database. Please review it carefully before payment.",
+        localPostalRegionWarning: "This address was checked only against ZIP, city, and state data. Please confirm the street address before payment.",
+        localOnlyVerificationWarning: "This address was standardized by the backend fallback verifier only. Please confirm the street address before payment.",
+        addressSources: {
+          saved: "Saved address",
+          new: "New address",
+          unknown: "Unknown source",
+        },
+        statuses: {
+          verified: "Verified address confirmed",
+          suggested: "Suggested address confirmed",
+          unverified: "Unverified address confirmed",
+          unknown: "Address confirmation recorded",
+        },
+        choices: {
+          original: "Using address as entered",
+          suggested: "Using suggested address",
+          unknown: "Choice unavailable",
+        },
+        providerStatuses: {
+          fallback: "Remote verifier fallback",
+          unknown: "Unknown verifier status",
+        },
+        reasons: {
+          "postal-region-mismatch": "ZIP code city or state was corrected",
+          "missing-required-fields": "Required address fields were missing",
+          "unknown-postal-code": "Postal code could not be matched",
+          "google-address-complete": "Google confirmed the address is complete",
+          "google-review-required": "Google returned a standardized address for review",
+          "google-unverified": "Google could not verify the address",
+          "backend-standardized": "The backend standardized the entered address",
+          "remote-standardized": "The remote verifier standardized the address",
+          "cass-standardized": "CASS standardized the address",
+          unknown: "No issue reason recorded",
+        },
+      },
+      payment: {
+        title: "Payment Method",
+        intro: "Card payment, member credit and gift card rules are reviewed before order placement.",
+        method: "Method",
+        cardDetails: "Card Details",
+        card: "Credit Card",
+        methods: {
+          card: {
+            label: "Credit Card",
+            description: "Use a card payment placeholder before a real payment gateway is connected.",
+          },
+          giftCard: {
+            label: "Gift Card",
+            description: "Reserve a gift card review path for future stored-value checkout.",
+          },
+          memberCredit: {
+            label: "Member Credit",
+            description: "Mark the order for member credit review before final capture.",
+          },
+        },
+        channelUnavailable: "Payment channel is not configured. Configure VITE_YUDAO_PAY_CHANNEL_CODE before accepting payment.",
+        ready: "Ready for secure entry",
+        required: "Required before placing order",
+      },
+      terms: {
+        title: "Terms & Agreements",
+        intro: "Custom order notices, membership renewal language and checkout terms stay visible before submission.",
+      },
+      deliveryNotes: {
+        title: "Delivery & Assembly Notes",
+        intro: "Large furniture, lighting installation and final delivery notes are collected after order placement.",
+      },
+      errors: {
+        loadUnavailable: "Checkout service is unavailable. Please try again later.",
+        orderUnavailable: "Order service is unavailable. Please try again later.",
+        paymentUnavailable: "Payment service is not ready. Check the payment channel and try again.",
+        paymentChannelUnavailable: "Payment channel is not configured. Configure the Yudao payment channel before submitting the order.",
+        paymentRequired: "Complete payment details and required agreements before submitting the order.",
+        previewOnlyOrderUnavailable: "This bag contains preview-only items. Demo, local, or membership preview items are not persisted to Yudao and cannot create a live Yudao order.",
+        addressConfirmationRequired: "Review and confirm the shipping address before placing the order.",
+        noAddress: "No Yudao address is available for this user.",
+        stockUnavailable: "Some items are no longer available in the requested quantity. Review your bag before placing the order.",
+        addressUnavailable: "This address cannot be used for the current delivery. Update your address before continuing.",
+        priceChanged: "Pricing or delivery totals changed. Review the latest settlement before placing the order.",
+        sessionExpired: "Your Yudao session expired. Sign in again before continuing checkout.",
+      },
+      actions: {
+        manageAddresses: "Manage addresses",
+        reviewBag: "Review bag",
+        signIn: "Sign in again",
+        refreshSettlement: "Refresh checkout",
+        viewOrder: "View order",
+        reviewAddress: "Review address",
+      },
       mode: {
         yudao: {
           title: "Review Your Order",
@@ -174,9 +513,9 @@ const messages = {
         },
         "local-preview": {
           title: "Review Your Selections",
-          message: "Demo products can be reviewed locally. Add Yudao products to create a live order.",
-          cta: "Preview Only",
-          status: "This bag contains local preview items.",
+          message: "This bag contains preview-only items. Demo, local, or membership preview items are not persisted to Yudao and cannot create a live Yudao order.",
+          cta: "Review Only",
+          status: "This bag cannot create a live Yudao order.",
         },
         empty: {
           title: "Your Bag Is Empty",
@@ -193,13 +532,112 @@ const messages = {
       intro: "Review live Yudao orders created from the furniture storefront.",
       loading: "Loading orders...",
       tokenRequired: "Add a Yudao App token to view orders.",
+      error: "Order service is unavailable. Please try again later.",
       selectedOrder: "Selected Order",
       orderLabel: "Order",
       memberSavings: "Member Savings",
       memberSavingsUnavailable: "-",
+      paymentStatus: "Payment status {status}",
+      paymentStatusUnavailable: "Payment status is still being confirmed. Refresh this page to check again.",
+      paymentResumeUnavailable: "Payment could not be resumed. Refresh payment status and try again.",
+      paymentChannelUnavailable: "This order is awaiting payment, but the Yudao payment channel is not configured.",
+      paymentReturn: {
+        cancelled: {
+          title: "Payment was cancelled",
+          message: "Your order was created, but payment was not completed. You can continue payment or refresh the payment status.",
+        },
+        failed: {
+          title: "Payment did not complete",
+          message: "The payment channel returned an unsuccessful result. Try continuing payment or refresh the status before contacting support.",
+        },
+        paid: {
+          title: "Payment completed",
+          message: "The payment channel returned a successful result. We are refreshing the order status below.",
+        },
+        waiting: {
+          title: "Payment is still pending",
+          message: "The payment channel has not confirmed completion yet. Continue payment or refresh the status.",
+        },
+        unknown: {
+          title: "Payment result needs review",
+          message: "The payment channel returned a result we could not classify. Refresh the status before trying again.",
+        },
+      },
+      paymentStatuses: {
+        waiting: "Awaiting payment",
+        paid: "Paid",
+        closed: "Closed",
+        refunded: "Refunded",
+        unknown: "Unknown",
+      },
+      payOrderLabel: "Pay order {id}",
       view: "View",
       empty: "No remote orders are available yet. Create a Yudao order from checkout to see it here.",
       status: "Status {status}",
+      addressVerification: {
+        title: "Address verification",
+        source: "Verification source",
+        addressSource: "Address source",
+        verificationSources: {
+          "google-address-validation": "Google address validation",
+          "local-postal-region": "Local ZIP check",
+          "remote-address-verification": "Address verification service",
+          "backend-address-verification": "Backend fallback verification",
+          unknown: "Unknown verifier",
+        },
+        addressSources: {
+          saved: "Saved address",
+          new: "New address",
+          unknown: "Unknown source",
+        },
+        statuses: {
+          verified: "Verified",
+          suggested: "Suggested correction",
+          unverified: "Needs confirmation",
+          unknown: "Unknown status",
+        },
+        choices: {
+          original: "Used entered address",
+          suggested: "Used suggested address",
+          unknown: "Unknown choice",
+        },
+        reasons: {
+          "postal-region-mismatch": "ZIP code city or state was corrected",
+          "missing-required-fields": "Required address fields were missing",
+          "unknown-postal-code": "Postal code could not be matched",
+          "google-address-complete": "Google confirmed the address is complete",
+          "google-review-required": "Google returned a standardized address for review",
+          "google-unverified": "Google could not verify the address",
+          "backend-standardized": "The backend standardized the entered address",
+          "remote-standardized": "The remote verifier standardized the address",
+          "cass-standardized": "CASS standardized the address",
+          unknown: "No issue reason recorded",
+        },
+        providerStatuses: {
+          fallback: "Remote verifier fell back to local ZIP check",
+          unknown: "Unknown verifier status",
+        },
+        status: "Verification status",
+        choice: "Confirmed choice",
+        reason: "Review reason",
+        confirmedAt: "Buyer confirmed at",
+        original: "Original address",
+        suggested: "Suggested address",
+        selected: "Selected address",
+        providerResponseId: "Verifier response",
+        providerStatus: "Verifier status",
+        warning: "The buyer confirmed an address that could not be fully verified. Review delivery risk before fulfillment.",
+        providerFallbackWarning: "Remote address verification was unavailable for this order, so only the local ZIP check was recorded.",
+        localPostalRegionWarning: "Only the local ZIP, city, and state match was recorded for this order. It is not a carrier deliverability confirmation.",
+        localOnlyVerificationWarning: "Only backend fallback address normalization was recorded for this order. It is not a carrier deliverability confirmation.",
+      },
+      actions: {
+        connectAccount: "Connect account",
+        retry: "Retry orders",
+        refreshPaymentStatus: "Refresh payment status",
+        resumePayment: "Continue payment",
+        shop: "Continue shopping",
+      },
     },
     membership: {
       landing: {
@@ -214,6 +652,33 @@ const messages = {
         benefit2: "Annual membership benefits and renewal management",
         benefit3: "Whole-room membership planning for larger furnishing projects",
         benefit4: "Account-based access to rules, member status and growth progress",
+        flowAria: "How membership works",
+        flowEyebrow: "How It Works",
+        flowTitle: "A membership service connected across the purchase path.",
+        flowIntro:
+          "The membership experience should stay visible before checkout, during price review and after the order is placed.",
+        flow: {
+          join: {
+            step: "01",
+            title: "Join with an account",
+            description: "Membership enrollment routes through sign-in so benefits can attach to a durable customer profile.",
+          },
+          bind: {
+            step: "02",
+            title: "Bind email and status",
+            description: "Existing offline memberships are linked by email match or verification before online benefits appear.",
+          },
+          price: {
+            step: "03",
+            title: "Review eligible pricing",
+            description: "Cart, checkout and order detail surfaces explain which items receive member pricing and which are excluded.",
+          },
+          manage: {
+            step: "04",
+            title: "Manage after purchase",
+            description: "My Account keeps renewal, billing, member status, growth progress and rule access in one service area.",
+          },
+        },
         growthEyebrow: "Member Growth",
         growthTitle: "Growth belongs inside My Account.",
         growthIntro:
@@ -233,8 +698,14 @@ const messages = {
         wholeRoomDescription: "For room-level furnishing projects that need whole-room benefits and service visibility.",
         agreement: "I agree to the Members Program Terms & Conditions.",
         readTerms: "Read Terms",
-        addToBag: "Add Membership to Bag",
+        addToBag: "Start Membership Checkout",
         continueCheckout: "Continue to Checkout",
+        signInRequired: "Sign in before starting a membership checkout. Preview membership items are not added to the bag.",
+        previewAdded: "Membership preview was added to the local bag. Sign in to open a persistent Yudao membership.",
+        activated: "Annual Membership is active and saved to your Yudao account.",
+        activationFailed: "Membership could not be opened. Please check your Yudao account connection and try again.",
+        checkoutReady: "Membership checkout is ready. Continue to checkout to complete payment before benefits activate.",
+        checkoutFailed: "Membership checkout could not be started. Please check your Yudao account connection and try again.",
       },
       terms: {
         eyebrow: "Members Program Terms",
@@ -252,22 +723,95 @@ const messages = {
           "Offline memberships can be linked online when the registration email is matched or verified.",
         checkoutRulesTitle: "Checkout Rules",
         checkoutRulesDescription: "Membership purchases require account sign-in and cannot continue through guest checkout.",
+        ruleMatrixAria: "Membership rule matrix",
+        ruleMatrixEyebrow: "Rule Matrix",
+        ruleMatrixTitle: "How membership rules are applied.",
+        ruleMatrixIntro:
+          "Use this table to understand which account, item and checkout conditions affect member pricing.",
+        rules: {
+          merchandise: {
+            label: "Eligible",
+            title: "Furniture and decor merchandise",
+            description:
+              "Eligible merchandise can receive member pricing when the account has an active membership and the item carries a member price.",
+          },
+          services: {
+            label: "Excluded",
+            title: "Delivery, protection and service fees",
+            description:
+              "Service charges remain visible in checkout, but they do not create member price savings unless a specific service benefit is listed.",
+          },
+          giftCards: {
+            label: "Excluded",
+            title: "Gift cards and stored-value products",
+            description:
+              "Gift cards are tracked as tender or stored value and are not counted as eligible merchandise spend.",
+          },
+          renewal: {
+            label: "Account",
+            title: "Renewal and cancellation controls",
+            description:
+              "Renewal timing, auto-renew status, reminders and cancellation actions stay in My Account so the rule is visible after purchase.",
+          },
+          wholeRoom: {
+            label: "Project",
+            title: "Whole-room membership benefits",
+            description:
+              "Room-level benefits can add planning visibility, but excluded services and gift cards still remain outside member price savings.",
+          },
+        },
       },
       faq: {
         eyebrow: "Membership FAQs",
         title: "Common membership questions.",
         intro: "Short explanations for joining, binding an existing membership, renewal and how member pricing appears.",
         aria: "Membership frequently asked questions",
+        topicsAria: "Membership FAQ topics",
+        topicsEyebrow: "Topics",
+        topicsTitle: "Where to look first.",
+        topics: {
+          account: {
+            label: "Account",
+            description: "Sign-in, email binding, status and renewal questions belong in My Account.",
+          },
+          pricing: {
+            label: "Pricing",
+            description: "Member price questions are answered by item eligibility and order-level savings.",
+          },
+          support: {
+            label: "Rules",
+            description: "Full terms explain exclusions, guest checkout limits and whole-room project rules.",
+          },
+        },
+        listAria: "Membership FAQ answers",
+        joinBadge: "Join",
         joinQuestion: "Where do I join?",
         joinAnswer: "Start from the Membership page, then sign in or create an account before enrollment.",
+        bindBadge: "Bind",
+        bindQuestion: "How do I link an existing membership?",
+        bindAnswer:
+          "Use the same email when possible. If the membership email differs from the account email, My Account should request verification before benefits appear online.",
+        pricingBadge: "Price",
+        pricingQuestion: "Why does one item show a member price and another does not?",
+        pricingAnswer:
+          "Member prices depend on item eligibility, category exclusions and active account status. Services, gift cards and unreduced items can show no member savings.",
+        renewalBadge: "Renewal",
+        renewalQuestion: "Where are renewal and cancellation controls?",
+        renewalAnswer:
+          "Renewal timing, auto-renew status, reminders and cancellation actions stay in My Account so the rules remain visible after purchase.",
+        growthBadge: "Growth",
         growthQuestion: "Where do I see growth progress?",
         growthAnswer: "Growth level, points and next actions belong in My Account under Membership.",
+        rulesBadge: "Rules",
         rulesQuestion: "Where are rules shown?",
         rulesAnswer: "Brief rules appear near prices and CTAs. Full rules live on the Members Program Terms page.",
       },
       account: {
         myAccount: "My Account",
         menuAria: "My Account navigation",
+        dashboardEyebrow: "Account Dashboard",
+        dashboardTitle: "Manage orders, addresses, payment methods and membership.",
+        dashboardDescription: "The account dashboard is your destination for membership status, rules, renewal and gift registry access.",
         menuMembership: "Membership",
         menuPaymentMethods: "Payment Methods",
         menuOrderHistory: "Order History",
@@ -280,6 +824,7 @@ const messages = {
         title: "Membership status and rules live here.",
         intro:
           "This area manages member status, email matching, renewal controls, benefit snapshots and the member growth system after sign in.",
+        signInRequired: "Sign in to load the persistent membership record for this account.",
         overviewAria: "Membership account overview",
         overview: {
           savings: "Member savings this year",
@@ -327,6 +872,11 @@ const messages = {
           },
         },
         emptyStates: {
+          loggedOut: {
+            eyebrow: "Sign in required",
+            title: "Connect your Yudao account to view membership.",
+            description: "Membership status is stored in Yudao and appears here after the account token is connected.",
+          },
           notMember: {
             eyebrow: "No membership",
             title: "Create the membership record before showing benefits.",
@@ -411,7 +961,13 @@ const messages = {
           },
         },
         currentStatus: "Current Status",
+        loadingEyebrow: "Membership",
+        loadingTitle: "Loading membership status.",
+        loadingDescription: "Checking the persistent Yudao membership record for this account.",
+        errorEyebrow: "Membership",
+        errorTitle: "Membership status could not be loaded.",
         statusIntro: "Plan details, renewal controls and terms remain visible from this account destination.",
+        statusLoggedOut: "Sign In Required",
         statusNotMember: "Not a Member",
         statusActiveAnnual: "Active Annual Member",
         statusActiveWholeRoom: "Active Whole-Room Member",
@@ -447,6 +1003,16 @@ const messages = {
           regular: "Regular",
           member: "Member",
           lineSavings: "Line savings",
+          summary: {
+            eligible: "Eligible",
+            ineligible: "Excluded",
+            savings: "Savings",
+          },
+          line: {
+            regular: "Regular",
+            member: "Member",
+            savings: "Line savings",
+          },
           reasons: {
             eligible: {
               label: "Member price applied",
@@ -469,6 +1035,7 @@ const messages = {
         ordersAria: "Recent member pricing orders",
         orderMeta: "{id} - {date}",
         orderSavings: "{amount} saved",
+        ordersUnavailable: "Recent order savings are temporarily unavailable. Membership status is still connected.",
         orders: {
           livingRoom: "Living Room Refresh",
           dining: "Dining Update",
@@ -495,6 +1062,7 @@ const messages = {
         verifyEmail: "Verify Email",
         actionsAria: "Membership account actions",
         actions: {
+          connectAccount: "Sign in",
           shopEligible: {
             title: "Shop eligible merchandise",
             description: "Browse products where member pricing may appear before checkout.",
@@ -552,6 +1120,11 @@ const messages = {
           },
           membershipService: "Membership Service",
           viewOrder: "View Order",
+          actions: {
+            connectAccount: "Connect account",
+            retry: "Retry billing",
+            createOrder: "Create an order",
+          },
         },
         addressBook: {
           eyebrow: "Address Book",
@@ -578,6 +1151,42 @@ const messages = {
           chooseRegion: "Choose a region",
           defaultAddress: "Use as default delivery address",
           defaultBadge: "Default address",
+            verification: {
+              lastChecked: "Last checkout review",
+              missingWarning: "This saved address has not been reviewed during checkout yet.",
+              warning: "This address was previously confirmed even though it could not be fully verified.",
+              providerFallbackWarning: "Remote verification was unavailable during the last review; only the local ZIP check was recorded.",
+              localPostalRegionWarning: "The last review only matched ZIP, city, and state data; it did not confirm street-level deliverability.",
+              localOnlyVerificationWarning: "The last review only standardized the address through backend fallback verification; it did not confirm street-level deliverability.",
+              statuses: {
+                verified: "Reviewed and verified",
+                suggested: "Reviewed with suggested correction",
+                unverified: "Reviewed but unverified",
+                missing: "Not reviewed yet",
+                unknown: "Review status recorded",
+              },
+            choices: {
+              original: "Entered address kept",
+              suggested: "Suggested address used",
+              unknown: "Choice recorded",
+            },
+            reasons: {
+              "postal-region-mismatch": "ZIP code city or state was corrected",
+              "missing-required-fields": "Required address fields were missing",
+              "unknown-postal-code": "Postal code could not be matched",
+              "google-address-complete": "Google confirmed the address is complete",
+              "google-review-required": "Google returned a standardized address for review",
+              "google-unverified": "Google could not verify the address",
+              "backend-standardized": "The backend standardized the entered address",
+              "remote-standardized": "The remote verifier standardized the address",
+              "cass-standardized": "CASS standardized the address",
+              unknown: "No issue reason recorded",
+            },
+            providerStatuses: {
+              fallback: "Remote verifier fallback",
+              unknown: "Unknown verifier status",
+            },
+          },
           saving: "Saving...",
           addAddress: "Add Address",
           updateAddress: "Update Address",
@@ -585,6 +1194,11 @@ const messages = {
           edit: "Edit",
           setDefault: "Set Default",
           delete: "Delete",
+          actions: {
+            connectAccount: "Connect account",
+            retry: "Retry addresses",
+            addFirstAddress: "Add first address",
+          },
         },
         profile: {
           eyebrow: "Account Profile",
@@ -636,6 +1250,12 @@ const messages = {
           sendVerificationEmail: "Send Verification Email",
           sendCode: "Send Code",
           updatePhone: "Update Phone",
+          actions: {
+            connectAccount: "Connect account",
+            retry: "Retry profile",
+            reviewProfile: "Review profile form",
+            reviewPhone: "Review phone form",
+          },
         },
       },
       checkoutAuth: {
@@ -669,6 +1289,35 @@ const messages = {
     quantity: "Quantity",
     remove: "Remove",
     addToCart: "Add to Cart",
+    product: {
+      unavailable: "Unavailable",
+      unavailableHint: "This item is currently unavailable for purchase.",
+    },
+    productList: {
+      controlsAria: "Product browsing controls",
+      search: "Search",
+      searchPlaceholder: "Search sofas, beds, lighting...",
+      type: "Type",
+      allTypes: "All Types",
+      resultSummary: "{visible} of {total} shown",
+      sort: {
+        label: "Sort",
+        featured: "Featured",
+        priceAsc: "Price Low to High",
+        priceDesc: "Price High to Low",
+      },
+      empty: {
+        eyebrow: "No Results",
+        title: "No products match those filters.",
+        description: "Clear the current search and filters to return to the full collection.",
+        action: "Clear Filters",
+      },
+      backendUnavailable: {
+        eyebrow: "Catalog Unavailable",
+        title: "The live product catalog is unavailable.",
+        description: "Production catalog pages require Yudao product data. Please retry after the backend connection is restored.",
+      },
+    },
     viewDetails: "View Details",
     productsTitle: "Furniture Collection",
     productsSubtitle: "Products synchronized between the Mall catalog and ERP.",
@@ -708,9 +1357,95 @@ const messages = {
       tradeSignIn: "设计师账户登录",
     },
     home: {
-      heroEyebrow: "欢迎来到 RH 的世界",
+      heroEyebrow: "欢迎来到 Oakved",
       heroSubtitle: "探索经久设计的家具、灯具、织物与家居饰品。",
       gridAria: "RH 首页精选系列",
+      modules: {
+        bedroom: {
+          eyebrow: "RH 卧室",
+          title: "打造私享休憩空间",
+          subtitle: "以层叠床品、雕塑感床架和温润橡木，营造更安静的房间。",
+          cta: "探索卧室",
+        },
+        dining: {
+          eyebrow: "RH 餐厅",
+          title: "围绕恒久设计相聚",
+          subtitle: "大理石、橡木与考究座椅，为日常仪式和重要聚会而组合。",
+          cta: "探索餐厅",
+        },
+        outdoorLiving: {
+          eyebrow: "RH 户外",
+          title: "在户外优雅生活",
+          subtitle: "耐候轮廓、舒适坐垫与度假感材质，服务露台与花园空间。",
+          cta: "探索户外",
+        },
+        sourcebooks: {
+          eyebrow: "RH 灵感书",
+          title: "新的设计资料库",
+          subtitle: "关于房间、系列、材质与灵感的精选世界。",
+          cta: "索取灵感书",
+        },
+        milan: {
+          eyebrow: "RH 米兰",
+          title: "现代宏伟的艺廊",
+          subtitle: "以 RH 视角呈现建筑、室内与待客体验。",
+          cta: "探索艺廊",
+        },
+        interiors: {
+          eyebrow: "RH 室内",
+          title: "静奢感的完整房间",
+          subtitle: "由比例、肌理与恒久材质塑造完整空间。",
+          cta: "探索室内",
+        },
+        members: {
+          eyebrow: "RH 会员",
+          title: "全系列享更多优惠",
+          subtitle: "会员可在家具、灯具、织物与装饰品中享受优先价格。",
+          cta: "加入会员",
+        },
+        founder: {
+          eyebrow: "我们的观点",
+          title: "经得起时间的设计",
+          subtitle: "关于品味、品质，以及会随时间更美的空间承诺。",
+          cta: "阅读故事",
+        },
+        architecture: {
+          eyebrow: "RH 建筑",
+          title: "场所感",
+          subtitle: "以尺度与光线呈现 RH 世界的地标空间。",
+          cta: "探索空间",
+        },
+        hospitality: {
+          eyebrow: "RH 待客",
+          title: "餐饮、葡萄酒与交谈",
+          subtitle: "以艺廊同等的精致度设计待客空间。",
+          cta: "探索待客体验",
+        },
+        guesthouse: {
+          eyebrow: "RH Guesthouse",
+          title: "住宿的新表达",
+          subtitle: "住宅般舒适、艺廊级设计，以及更私密的奢华方式。",
+          cta: "探索 Guesthouse",
+        },
+        aviation: {
+          eyebrow: "RH Aviation",
+          title: "云端之上的设计",
+          subtitle: "以比例、舒适与克制构成私人旅行环境。",
+          cta: "探索 Aviation",
+        },
+        yachting: {
+          eyebrow: "RH Yachting",
+          title: "水上生活",
+          subtitle: "关于户外生活、待客与逃离日常的考究世界。",
+          cta: "探索 Yachting",
+        },
+        services: {
+          eyebrow: "RH 服务",
+          title: "每个房间的设计支持",
+          subtitle: "从选品到安装，我们的团队帮助完整愿景落地。",
+          cta: "开始项目",
+        },
+      },
     },
     cart: {
       title: "购物袋",
@@ -722,6 +1457,11 @@ const messages = {
       itemCount: "{count} 件商品",
       remoteBag: "Yudao 实时购物袋",
       localBag: "本地预览购物袋",
+      remoteUnavailable: "暂时无法同步 Yudao 购物袋，当前使用本地预览模式。",
+      remoteAuthRequired: "Yudao 会员登录态已失效。请重新登录会员账号，然后再重新同步购物袋。",
+      remoteMutationUnavailable: "本次 Yudao 购物袋更新未能远程保存，请在结账前检查本地预览。",
+      retrySync: "重新同步",
+      itemUnavailable: "该商品需要在结账前检查。",
       deliveryNote: "配送费和税费将在结账时计算。",
     },
     auth: {
@@ -736,6 +1476,12 @@ const messages = {
       clear: "清除",
       developerToken: "开发者令牌",
       returnToSignIn: "返回登录",
+      recovery: {
+        useSecureLink: "使用安全链接",
+        createAccount: "创建账户",
+        passwordSignIn: "返回密码登录",
+        signIn: "改为登录",
+      },
       fields: {
         firstName: "名字",
         lastName: "姓氏",
@@ -830,6 +1576,106 @@ const messages = {
       settlementIncluded: "已包含 Yudao 结算信息。",
       settlementPending: "最终配送和结算信息会在账户结账后显示。",
       noAddress: "该用户没有可用的 Yudao 地址。",
+      itemKickerMembership: "会员",
+      membership: "会员",
+      memberSavings: "会员优惠",
+      addressBookCta: "添加配送地址",
+      steps: {
+        details: "结账详情",
+        customCheck: "定制商品确认",
+        shippingAddress: "配送地址",
+        addressVerification: "地址验证",
+        payment: "支付",
+        review: "条款确认",
+        placeOrder: "提交订单",
+        deliveryNotes: "配送与安装备注",
+      },
+      customNotice: {
+        requiredTitle: "定制订单提示",
+        requiredMessage: "定制商品付款前需要确认最终销售、生产周期和配送时间。",
+        clearTitle: "定制商品检查",
+        clearMessage: "当前没有需要额外确认的定制商品。",
+      },
+      confirm: {
+        customNotice: "我已了解定制商品的周期、生产和最终销售条款。",
+        useSuggestedAddress: "使用该已验证地址进行支付和订单核对。",
+        paymentReady: "支付信息已准备好用于安全提交订单。",
+        termsAccepted: "我同意结账条款和订单核对要求。",
+      },
+      address: {
+        required: "付款前需要配送地址。",
+        needsVerification: "付款前需要验证地址。",
+        verified: "配送地址已验证，可用于支付。",
+        suggested: "建议地址",
+      },
+      addressReview: {
+        titleVerified: "确认已验证地址",
+        titleReview: "核对收货地址",
+        suggestedMessage: "我们根据你填写的 ZIP 找到了标准化地址建议。",
+        unverifiedMessage: "我们暂时无法验证此地址。使用未验证地址可能导致配送延迟或产生额外配送费用。",
+        confirmMessage: "付款前请确认标准化配送地址。",
+        verifiedLabel: "已验证地址",
+        enteredLabel: "你填写的地址",
+        suggestedLabel: "建议地址",
+        useSuggested: "使用建议地址",
+        useVerified: "使用已验证地址",
+        useEntered: "仍使用原地址",
+        editOriginal: "编辑原地址",
+        confirmationNotice: "继续后，你选择的地址将作为本订单的收货地址，并随地址核对记录一起保存。",
+      },
+      payment: {
+        title: "支付方式",
+        intro: "提交订单前会核对银行卡支付、会员额度和礼品卡规则。",
+        method: "方式",
+        cardDetails: "银行卡信息",
+        card: "信用卡",
+        methods: {
+          card: {
+            label: "信用卡",
+            description: "在接入真实支付网关前，使用银行卡支付占位流程。",
+          },
+          giftCard: {
+            label: "礼品卡",
+            description: "预留礼品卡核对路径，后续可接入储值支付。",
+          },
+          memberCredit: {
+            label: "会员额度",
+            description: "将订单标记为会员额度核对，最终扣款前继续确认。",
+          },
+        },
+        channelUnavailable: "支付渠道尚未配置。请先配置 VITE_YUDAO_PAY_CHANNEL_CODE 后再开放支付。",
+        ready: "已准备安全录入",
+        required: "提交订单前必填",
+      },
+      terms: {
+        title: "条款与协议",
+        intro: "提交前会展示定制订单提示、会员续费说明和结账条款。",
+      },
+      deliveryNotes: {
+        title: "配送与安装备注",
+        intro: "大件家具、灯具安装和最终配送备注会在下单后继续收集。",
+      },
+      errors: {
+        loadUnavailable: "结账服务暂时不可用，请稍后再试。",
+        orderUnavailable: "订单服务暂时不可用，请稍后再试。",
+        paymentUnavailable: "支付服务尚未准备好，请检查支付渠道后重试。",
+        paymentChannelUnavailable: "支付渠道尚未配置。请先配置 Yudao 支付渠道，然后再提交订单。",
+        paymentRequired: "请先填写支付信息并勾选必要协议，然后再提交订单。",
+        addressConfirmationRequired: "请先核对并确认收货地址，然后再提交订单。",
+        noAddress: "该用户没有可用的 Yudao 地址。",
+        stockUnavailable: "部分商品库存或购买数量已变化，请先检查购物袋后再下单。",
+        addressUnavailable: "当前配送地址无法用于本次配送，请更新地址后继续。",
+        priceChanged: "价格或配送合计已变化，请核对最新结算信息后再下单。",
+        sessionExpired: "Yudao 登录状态已过期，请重新登录后继续结账。",
+      },
+      actions: {
+        manageAddresses: "管理配送地址",
+        reviewBag: "检查购物袋",
+        signIn: "重新登录",
+        refreshSettlement: "刷新结算",
+        viewOrder: "查看订单",
+        reviewAddress: "重新核对地址",
+      },
       mode: {
         yudao: {
           title: "核对订单",
@@ -864,13 +1710,55 @@ const messages = {
       intro: "查看从家具 storefront 创建的实时 Yudao 订单。",
       loading: "正在加载订单...",
       tokenRequired: "添加 Yudao App token 以查看订单。",
+      error: "订单服务暂时不可用，请稍后再试。",
       selectedOrder: "已选订单",
       orderLabel: "订单",
       memberSavings: "会员节省",
       memberSavingsUnavailable: "-",
+      paymentStatus: "支付状态 {status}",
+      paymentStatusUnavailable: "支付状态仍在确认中。请刷新此页面后再查看。",
+      paymentResumeUnavailable: "暂时无法继续支付。请刷新支付状态后再试。",
+      paymentChannelUnavailable: "该订单仍待支付，但 Yudao 支付渠道尚未配置。",
+      paymentReturn: {
+        cancelled: {
+          title: "支付已取消",
+          message: "订单已创建，但支付尚未完成。你可以继续支付，或刷新支付状态。",
+        },
+        failed: {
+          title: "支付未完成",
+          message: "支付渠道返回了失败结果。请尝试继续支付，或先刷新状态再联系客服。",
+        },
+        paid: {
+          title: "支付已完成",
+          message: "支付渠道返回成功结果。我们会在下方刷新订单状态。",
+        },
+        waiting: {
+          title: "支付仍在处理中",
+          message: "支付渠道尚未确认完成。你可以继续支付，或刷新支付状态。",
+        },
+        unknown: {
+          title: "支付结果需要确认",
+          message: "支付渠道返回了无法分类的结果。请先刷新状态，再决定是否重试。",
+        },
+      },
+      paymentStatuses: {
+        waiting: "待支付",
+        paid: "已支付",
+        closed: "已关闭",
+        refunded: "已退款",
+        unknown: "未知",
+      },
+      payOrderLabel: "支付单 {id}",
       view: "查看",
       empty: "暂无远程订单。请从结账页创建 Yudao 订单后在此查看。",
       status: "状态 {status}",
+      actions: {
+        connectAccount: "连接账户",
+        retry: "重试订单",
+        refreshPaymentStatus: "刷新支付状态",
+        resumePayment: "继续支付",
+        shop: "继续购物",
+      },
     },
     bag: "购物袋",
     cartTitle: "购物袋",
@@ -879,6 +1767,30 @@ const messages = {
     quantity: "数量",
     remove: "移除",
     addToCart: "加入购物袋",
+    product: {
+      unavailable: "暂时缺货",
+      unavailableHint: "该商品暂时无法加入购物袋。",
+    },
+    productList: {
+      controlsAria: "商品浏览控件",
+      search: "搜索",
+      searchPlaceholder: "搜索沙发、床、灯具...",
+      type: "类型",
+      allTypes: "全部类型",
+      resultSummary: "已显示 {visible} / {total} 件",
+      sort: {
+        label: "排序",
+        featured: "推荐排序",
+        priceAsc: "价格从低到高",
+        priceDesc: "价格从高到低",
+      },
+      empty: {
+        eyebrow: "暂无结果",
+        title: "没有商品符合当前筛选。",
+        description: "清除当前搜索和筛选后，可返回完整系列。",
+        action: "清除筛选",
+      },
+    },
     viewDetails: "查看详情",
     productsTitle: "家具系列",
     productsSubtitle: "仅展示商城目录与 ERP 已完成同步的商品。",
@@ -904,6 +1816,32 @@ const messages = {
         benefit2: "年费会员权益与续费管理",
         benefit3: "面向大型家居项目的整屋会员规划",
         benefit4: "通过账户查看规则、会员状态和成长进度",
+        flowAria: "会员如何运转",
+        flowEyebrow: "如何运转",
+        flowTitle: "贯穿购买路径的会员服务。",
+        flowIntro: "会员体验应在结账前、价格核对中和下单后持续可见。",
+        flow: {
+          join: {
+            step: "01",
+            title: "通过账户加入",
+            description: "加入会员会先进入登录流程，确保权益绑定到稳定的客户账户。",
+          },
+          bind: {
+            step: "02",
+            title: "绑定邮箱和状态",
+            description: "已有线下会员需通过邮箱匹配或验证后，线上权益才会显示。",
+          },
+          price: {
+            step: "03",
+            title: "核对适用会员价",
+            description: "购物车、结账和订单详情会解释哪些商品享会员价，哪些按规则排除。",
+          },
+          manage: {
+            step: "04",
+            title: "购买后管理",
+            description: "我的账户集中保留续费、账单、会员状态、成长进度和规则入口。",
+          },
+        },
         growthEyebrow: "会员成长",
         growthTitle: "成长体系放在我的账户中管理。",
         growthIntro: "公开页面负责介绍会员计划。详细等级、积分、续费状态和绑定规则会在登录后的账户会员页管理。",
@@ -922,8 +1860,11 @@ const messages = {
         wholeRoomDescription: "适合需要整屋权益和服务进度可视化的房间级家居项目。",
         agreement: "我同意会员计划条款与条件。",
         readTerms: "阅读条款",
-        addToBag: "加入购物袋",
+        addToBag: "开始会员结账",
         continueCheckout: "继续结账",
+        signInRequired: "请先登录再开始会员结账，本地预览会员不会加入购物袋。",
+        checkoutReady: "会员结账已准备好。请继续结账并完成支付后再开通权益。",
+        checkoutFailed: "暂时无法开始会员结账，请检查 Yudao 账户连接后重试。",
       },
       terms: {
         eyebrow: "会员计划条款",
@@ -938,22 +1879,86 @@ const messages = {
         emailBindingDescription: "线下会员可在注册邮箱匹配或验证后绑定到线上账户。",
         checkoutRulesTitle: "结账规则",
         checkoutRulesDescription: "购买会员服务必须先登录账户，不能使用游客结账。",
+        ruleMatrixAria: "会员规则矩阵",
+        ruleMatrixEyebrow: "规则矩阵",
+        ruleMatrixTitle: "会员规则如何生效。",
+        ruleMatrixIntro: "通过这张表查看账户、商品和结账条件如何影响会员价。",
+        rules: {
+          merchandise: {
+            label: "适用",
+            title: "家具与家居商品",
+            description: "账户会员状态有效，且商品带有会员价时，符合条件的商品可享会员价。",
+          },
+          services: {
+            label: "不适用",
+            title: "配送、保护计划与服务费",
+            description: "服务费用会在结账中清楚显示，但除非有单独列明的服务权益，否则不计入会员价节省。",
+          },
+          giftCards: {
+            label: "不适用",
+            title: "礼品卡与储值类商品",
+            description: "礼品卡按支付或储值工具管理，不计入符合条件的商品消费。",
+          },
+          renewal: {
+            label: "账户",
+            title: "续费与取消控制",
+            description: "续费时间、自动续费状态、提醒和取消操作保留在我的账户中，购买后仍可查看。",
+          },
+          wholeRoom: {
+            label: "项目",
+            title: "整屋会员权益",
+            description: "整屋级权益可提供项目规划可见性，但服务费用和礼品卡仍不计入会员价节省。",
+          },
+        },
       },
       faq: {
         eyebrow: "会员常见问题",
         title: "常见会员问题。",
         intro: "这里用简短说明解释如何加入、如何绑定已有会员、如何续费，以及会员价如何显示。",
         aria: "会员常见问题",
+        topicsAria: "会员常见问题主题",
+        topicsEyebrow: "主题",
+        topicsTitle: "先从哪里查看。",
+        topics: {
+          account: {
+            label: "账户",
+            description: "登录、邮箱绑定、会员状态和续费问题都应回到我的账户查看。",
+          },
+          pricing: {
+            label: "价格",
+            description: "会员价问题通过商品适用性和订单级节省金额解释。",
+          },
+          support: {
+            label: "规则",
+            description: "完整条款说明不适用范围、游客结账限制和整屋项目规则。",
+          },
+        },
+        listAria: "会员常见问题答案",
+        joinBadge: "加入",
         joinQuestion: "在哪里加入会员？",
         joinAnswer: "从会员页面开始，先登录或创建账户，然后进入入会页面。",
+        bindBadge: "绑定",
+        bindQuestion: "如何绑定已有会员？",
+        bindAnswer: "尽量使用同一个邮箱。如果会员邮箱与账户邮箱不同，我的账户应先完成验证后再显示线上权益。",
+        pricingBadge: "价格",
+        pricingQuestion: "为什么有些商品显示会员价，有些没有？",
+        pricingAnswer: "会员价取决于商品适用性、品类排除规则和账户会员状态。服务、礼品卡和未降价商品可能没有会员节省。",
+        renewalBadge: "续费",
+        renewalQuestion: "续费和取消在哪里管理？",
+        renewalAnswer: "续费时间、自动续费状态、提醒和取消操作保留在我的账户中，购买后仍可查看。",
+        growthBadge: "成长",
         growthQuestion: "在哪里查看成长进度？",
         growthAnswer: "成长等级、积分和下一步操作会显示在我的账户的会员页面中。",
+        rulesBadge: "规则",
         rulesQuestion: "规则在哪里查看？",
         rulesAnswer: "简要规则会出现在价格和按钮附近，完整规则在会员计划条款页查看。",
       },
       account: {
         myAccount: "我的账户",
         menuAria: "我的账户导航",
+        dashboardEyebrow: "账户概览",
+        dashboardTitle: "管理订单、地址、付款方式和会员资格。",
+        dashboardDescription: "在账户概览中管理会员状态、规则、续订和礼品清单。",
         menuMembership: "会员",
         menuPaymentMethods: "付款方式",
         menuOrderHistory: "订单历史",
@@ -965,6 +1970,7 @@ const messages = {
         eyebrow: "会员",
         title: "会员状态和规则在这里管理。",
         intro: "登录后可在这里管理会员状态、邮箱匹配、续费控制、权益快照和会员成长体系。",
+        signInRequired: "请登录后加载该账户的真实会员记录。",
         overviewAria: "会员账户概览",
         overview: {
           savings: "今年会员已节省",
@@ -1132,6 +2138,16 @@ const messages = {
           regular: "常规价",
           member: "会员价",
           lineSavings: "本项节省",
+          summary: {
+            eligible: "适用",
+            ineligible: "排除",
+            savings: "节省",
+          },
+          line: {
+            regular: "常规价",
+            member: "会员价",
+            savings: "本项节省",
+          },
           reasons: {
             eligible: {
               label: "已应用会员价",
@@ -1154,6 +2170,7 @@ const messages = {
         ordersAria: "近期会员价订单",
         orderMeta: "{id} - {date}",
         orderSavings: "已省 {amount}",
+        ordersUnavailable: "Recent order savings are temporarily unavailable. Membership status is still connected.",
         orders: {
           livingRoom: "客厅更新",
           dining: "餐厅更新",
@@ -1180,6 +2197,7 @@ const messages = {
         verifyEmail: "验证邮箱",
         actionsAria: "会员账户操作",
         actions: {
+          connectAccount: "登录",
           shopEligible: {
             title: "购买适用商品",
             description: "浏览结账前可能显示会员价的商品。",
@@ -1237,6 +2255,11 @@ const messages = {
           },
           membershipService: "会员服务",
           viewOrder: "查看订单",
+          actions: {
+            connectAccount: "连接账户",
+            retry: "重试账单",
+            createOrder: "创建订单",
+          },
         },
         addressBook: {
           eyebrow: "地址簿",
@@ -1270,6 +2293,11 @@ const messages = {
           edit: "编辑",
           setDefault: "设为默认",
           delete: "删除",
+          actions: {
+            connectAccount: "连接账户",
+            retry: "重试地址",
+            addFirstAddress: "添加第一个地址",
+          },
         },
         profile: {
           eyebrow: "账户资料",
@@ -1320,6 +2348,12 @@ const messages = {
           sendVerificationEmail: "发送验证邮件",
           sendCode: "发送验证码",
           updatePhone: "更新手机号",
+          actions: {
+            connectAccount: "连接账户",
+            retry: "重试资料",
+            reviewProfile: "检查资料表单",
+            reviewPhone: "检查手机表单",
+          },
         },
       },
       checkoutAuth: {
@@ -1372,9 +2406,95 @@ const messages = {
       tradeSignIn: "Connexion Trade",
     },
     home: {
-      heroEyebrow: "Bienvenue dans l'univers RH",
+      heroEyebrow: "Bienvenue chez Oakved",
       heroSubtitle: "Découvrez du mobilier, des luminaires, des textiles et des objets au design durable.",
       gridAria: "Collections en vedette RH",
+      modules: {
+        bedroom: {
+          eyebrow: "RH Chambres",
+          title: "Creer un refuge prive",
+          subtitle: "Linge superpose, lits sculpturaux et chene chaleureux pour une piece plus calme.",
+          cta: "Explorer la chambre",
+        },
+        dining: {
+          eyebrow: "RH Salle a manger",
+          title: "Se reunir autour d'un design durable",
+          subtitle: "Marbre, chene et assises soignees pour les rituels quotidiens et les grandes occasions.",
+          cta: "Explorer la salle a manger",
+        },
+        outdoorLiving: {
+          eyebrow: "RH Outdoor",
+          title: "Vivre dehors avec elegance",
+          subtitle: "Silhouettes resistantes, coussins detendus et matieres inspirees des resorts.",
+          cta: "Explorer l'exterieur",
+        },
+        sourcebooks: {
+          eyebrow: "RH Sourcebooks",
+          title: "La nouvelle bibliotheque design",
+          subtitle: "Un monde choisi de pieces, collections, matieres et inspirations.",
+          cta: "Demander un sourcebook",
+        },
+        milan: {
+          eyebrow: "RH Milan",
+          title: "Une galerie de grandeur moderne",
+          subtitle: "Architecture, interieurs et hospitalite exprimes par le regard RH.",
+          cta: "Decouvrir la galerie",
+        },
+        interiors: {
+          eyebrow: "RH Interieurs",
+          title: "Des pieces de luxe silencieux",
+          subtitle: "Des espaces complets faconnes par les proportions, la texture et les matieres intemporelles.",
+          cta: "Explorer les interieurs",
+        },
+        members: {
+          eyebrow: "RH Membres",
+          title: "Economiser davantage sur la collection",
+          subtitle: "Les membres profitent de prix preferentiels sur mobilier, luminaires, textiles et decor.",
+          cta: "Adherer au programme",
+        },
+        founder: {
+          eyebrow: "Notre point de vue",
+          title: "Un design qui dure",
+          subtitle: "Un engagement envers le gout, la qualite et les espaces qui embellissent avec le temps.",
+          cta: "Lire l'histoire",
+        },
+        architecture: {
+          eyebrow: "RH Architecture",
+          title: "Un sens du lieu",
+          subtitle: "Des lieux reperes qui cadrent le monde RH par l'echelle et la lumiere.",
+          cta: "Explorer les lieux",
+        },
+        hospitality: {
+          eyebrow: "RH Hospitalite",
+          title: "Dining, vin et conversation",
+          subtitle: "Des espaces d'hospitalite concus avec le meme raffinement que nos galeries.",
+          cta: "Decouvrir l'hospitalite",
+        },
+        guesthouse: {
+          eyebrow: "RH Guesthouse",
+          title: "Une nouvelle expression du sejour",
+          subtitle: "Confort residentiel, design de galerie et luxe plus prive.",
+          cta: "Explorer Guesthouse",
+        },
+        aviation: {
+          eyebrow: "RH Aviation",
+          title: "Le design au-dessus des nuages",
+          subtitle: "Des environnements de voyage prives composes avec proportion, confort et retenue.",
+          cta: "Decouvrir Aviation",
+        },
+        yachting: {
+          eyebrow: "RH Yachting",
+          title: "La vie sur l'eau",
+          subtitle: "Un monde pense pour la vie exterieure, l'hospitalite et l'evasion.",
+          cta: "Explorer Yachting",
+        },
+        services: {
+          eyebrow: "RH Services",
+          title: "Aide design pour chaque piece",
+          subtitle: "De la selection a l'installation, nos equipes aident a realiser toute la vision.",
+          cta: "Commencer un projet",
+        },
+      },
     },
     cart: {
       title: "Panier",
@@ -1386,7 +2506,42 @@ const messages = {
       itemCount: "{count} ARTICLES",
       remoteBag: "Panier Yudao en direct",
       localBag: "Panier de prévisualisation local",
+      remoteUnavailable: "Impossible de synchroniser le panier Yudao. Le mode apercu local est utilise pour le moment.",
+      remoteAuthRequired: "Votre session membre Yudao a expire. Connectez-vous a nouveau, puis resynchronisez votre panier.",
+      remoteMutationUnavailable: "Cette mise a jour du panier Yudao n'a pas pu etre enregistree a distance. Verifiez l'apercu local avant le paiement.",
+      retrySync: "Resynchroniser",
+      itemUnavailable: "Cet article doit etre verifie avant le paiement.",
       deliveryNote: "La livraison et les taxes sont calculées au paiement.",
+    },
+    wishlist: {
+      eyebrow: "Mon compte",
+      title: "Liste d'envies",
+      itemCount: "{count} ARTICLES",
+      save: "Enregistrer",
+      saved: "Enregistre",
+      addToCart: "Ajouter au panier",
+      remove: "Retirer",
+      emptyEyebrow: "Articles enregistrés",
+      emptyTitle: "Votre liste d'envies est vide.",
+      emptyHelp: "Enregistrez vos pièces préférées pendant votre navigation, puis revenez ici pour les revoir.",
+      continueShopping: "Continuer les achats",
+      addedToCart: "Ajouté au panier.",
+      removed: "Retiré de votre liste d'envies.",
+      loading: "Chargement de votre liste d'envies...",
+      remoteUnavailable: "Impossible de synchroniser votre liste d'envies Yudao. Les articles locaux sont affiches pour le moment.",
+      partialSync: "Certains articles enregistres n'ont pas encore ete synchronises. Ils restent locaux jusqu'a votre nouvel essai.",
+      signInRequired: "Connectez-vous pour synchroniser votre liste d'envies entre appareils. Les articles locaux restent dans ce navigateur.",
+      retrySync: "Resynchroniser",
+      itemNumber: "Article n°",
+      color: "Couleur",
+      fabric: "Tissu",
+      width: "Largeur",
+      member: "Membre",
+      regular: "Regular",
+      availability: "Cet article sera prêt pour la livraison : {value}",
+      defaultAvailability: "fenêtre de livraison confirmée au paiement",
+      decreaseQuantity: "Diminuer la quantité",
+      increaseQuantity: "Augmenter la quantité",
     },
     auth: {
       aria: "Accès au compte Yudao",
@@ -1400,6 +2555,12 @@ const messages = {
       clear: "Effacer",
       developerToken: "Token développeur",
       returnToSignIn: "Retour à la connexion",
+      recovery: {
+        useSecureLink: "Utiliser le lien securise",
+        createAccount: "Creer un compte",
+        passwordSignIn: "Retour a la connexion par mot de passe",
+        signIn: "Se connecter plutot",
+      },
       fields: {
         firstName: "Prénom",
         lastName: "Nom",
@@ -1497,6 +2658,176 @@ const messages = {
       settlementIncluded: "Le règlement Yudao est inclus.",
       settlementPending: "La livraison et le règlement définitifs apparaîtront après le paiement du compte.",
       noAddress: "Aucune adresse Yudao n'est disponible pour cet utilisateur.",
+      itemKickerMembership: "Adhesion",
+      membership: "Adhesion",
+      memberSavings: "Economies membre",
+      addressBookCta: "Ajouter une adresse de livraison",
+      steps: {
+        details: "Details du paiement",
+        customCheck: "Verification article personnalise",
+        shippingAddress: "Adresse de livraison",
+        addressVerification: "Verification d'adresse",
+        payment: "Paiement",
+        review: "Conditions",
+        placeOrder: "Passer commande",
+        deliveryNotes: "Notes livraison et installation",
+      },
+      shipping: {
+        title: "Adresse de livraison",
+        firstName: "Prenom",
+        lastName: "Nom",
+        country: "Pays",
+        street: "Adresse",
+        apartment: "Appartement, etage, suite, etc. (facultatif)",
+        city: "Ville",
+        state: "Etat",
+        postalCode: "Code postal",
+        phone: "Telephone",
+        savedAddresses: "Adresses enregistrees",
+        enterNewAddress: "Saisir une nouvelle adresse",
+        savedAddressVerification: "Verification de l'adresse enregistree",
+        savedAddressVerificationRecheck: "Verifiez de nouveau cette adresse avant le paiement.",
+        addressVerificationFallbackWarning:
+          "La verification d'adresse distante n'est pas entierement configuree pour le moment. Nous verifierons quand meme cette adresse, mais confirmez la rue avec attention avant le paiement.",
+      },
+      customNotice: {
+        requiredTitle: "Avis commande personnalisee",
+        requiredMessage: "Les articles personnalises exigent la verification de la vente finale, de la production et des delais avant paiement.",
+        clearTitle: "Verification article personnalise",
+        clearMessage: "Aucun article personnalise ne demande de confirmation supplementaire.",
+      },
+      confirm: {
+        customNotice: "Je comprends les delais, la production et les conditions de vente finale des articles personnalises.",
+        useSuggestedAddress: "Utiliser cette adresse verifiee pour le paiement et la revision de commande.",
+        paymentReady: "Les informations de paiement sont pretes pour un envoi securise.",
+        termsAccepted: "J'accepte les conditions de paiement et les exigences de verification de commande.",
+      },
+      address: {
+        required: "Une adresse de livraison est requise avant le paiement.",
+        needsVerification: "L'adresse doit etre verifiee avant le paiement.",
+        verified: "L'adresse de livraison est verifiee pour le paiement.",
+        suggested: "Adresse suggeree",
+      },
+      addressReview: {
+        titleVerified: "Confirmer l'adresse verifiee",
+        titleReview: "Verifier l'adresse de livraison",
+        suggestedMessage: "Nous avons trouve une adresse normalisee pour le code postal saisi.",
+        unverifiedMessage: "Nous n'avons pas pu verifier cette adresse. Une adresse non verifiee peut retarder la livraison ou ajouter des frais.",
+        confirmMessage: "Confirmez l'adresse de livraison normalisee avant le paiement.",
+        verifiedLabel: "Adresse verifiee",
+        enteredLabel: "Adresse saisie",
+        suggestedLabel: "Adresse suggeree",
+        useSuggested: "Utiliser l'adresse suggeree",
+        useVerified: "Utiliser l'adresse verifiee",
+        useEntered: "Utiliser l'adresse saisie",
+        editOriginal: "Modifier l'adresse d'origine",
+        confirmationNotice:
+          "En continuant, vous confirmez que l'adresse choisie sera utilisee comme adresse de livraison de cette commande et enregistree avec la verification.",
+        providerFallbackWarning:
+          "La verification d'adresse distante etait indisponible ; cet examen utilise donc la base locale de codes postaux. Confirmez l'adresse avec attention.",
+        localPostalRegionWarning:
+          "Cette verification rapproche seulement le code postal, la ville et l'etat. Elle ne confirme pas que la rue est desservie.",
+        localOnlyVerificationWarning:
+          "Cette verification a seulement standardise le format de l'adresse. Elle ne confirme pas que la rue est desservie.",
+      },
+      addressConfirmation: {
+        title: "Adresse de livraison confirmee",
+        status: "Statut de l'adresse",
+        choice: "Choix d'adresse",
+        addressSource: "Source de l'adresse",
+        reason: "Motif de verification",
+        providerStatus: "Statut du verificateur",
+        edit: "Modifier l'adresse",
+        warning: "Vous avez choisi une adresse qui n'a pas pu etre entierement verifiee. La livraison peut etre retardee si le transporteur ne peut pas la desservir.",
+        providerFallbackWarning: "La verification d'adresse distante etait indisponible ; cette adresse a donc ete controlee avec la base locale de codes postaux. Verifiez-la attentivement avant le paiement.",
+        localPostalRegionWarning: "Cette adresse a seulement ete comparee aux donnees de code postal, ville et etat. Confirmez la rue avant le paiement.",
+        localOnlyVerificationWarning: "Cette adresse a seulement ete standardisee par le verificateur de repli du serveur. Confirmez la rue avant le paiement.",
+        addressSources: {
+          saved: "Adresse enregistree",
+          new: "Nouvelle adresse",
+          unknown: "Source inconnue",
+        },
+        statuses: {
+          verified: "Adresse verifiee confirmee",
+          suggested: "Adresse proposee confirmee",
+          unverified: "Adresse non verifiee confirmee",
+          unknown: "Confirmation d'adresse enregistree",
+        },
+        choices: {
+          original: "Adresse saisie conservee",
+          suggested: "Adresse proposee utilisee",
+          unknown: "Choix indisponible",
+        },
+        providerStatuses: {
+          fallback: "Repli du verificateur distant",
+          unknown: "Statut du verificateur inconnu",
+        },
+        reasons: {
+          "postal-region-mismatch": "La ville ou l'etat du code postal a ete corrige",
+          "missing-required-fields": "Des champs d'adresse requis etaient manquants",
+          "unknown-postal-code": "Le code postal n'a pas pu etre rapproche",
+          "google-address-complete": "Google a confirme que l'adresse est complete",
+          "google-review-required": "Google a renvoye une adresse standardisee a verifier",
+          "google-unverified": "Google n'a pas pu verifier l'adresse",
+          "backend-standardized": "Le serveur a standardise l'adresse saisie",
+          "remote-standardized": "Le verificateur distant a standardise l'adresse",
+          "cass-standardized": "CASS a standardise l'adresse",
+          unknown: "Aucun motif enregistre",
+        },
+      },
+      payment: {
+        title: "Mode de paiement",
+        intro: "Le paiement par carte, le credit membre et les cartes cadeau sont verifies avant la commande.",
+        method: "Methode",
+        cardDetails: "Details de carte",
+        card: "Carte bancaire",
+        methods: {
+          card: {
+            label: "Carte bancaire",
+            description: "Utiliser un paiement carte fictif avant la connexion d'une passerelle reelle.",
+          },
+          giftCard: {
+            label: "Carte cadeau",
+            description: "Prevoir une verification de carte cadeau pour un futur paiement en valeur stockee.",
+          },
+          memberCredit: {
+            label: "Credit membre",
+            description: "Marquer la commande pour verification du credit membre avant capture finale.",
+          },
+        },
+        channelUnavailable: "Le canal de paiement n'est pas configure. Configurez VITE_YUDAO_PAY_CHANNEL_CODE avant d'accepter le paiement.",
+        ready: "Pret pour une saisie securisee",
+        required: "Requis avant la commande",
+      },
+      terms: {
+        title: "Conditions et accords",
+        intro: "Les avis de commande personnalisee, le renouvellement membre et les conditions restent visibles avant l'envoi.",
+      },
+      deliveryNotes: {
+        title: "Notes livraison et installation",
+        intro: "Les meubles volumineux, l'installation d'eclairage et les notes finales sont collectes apres commande.",
+      },
+      errors: {
+        loadUnavailable: "Le service de paiement est indisponible. Veuillez reessayer plus tard.",
+        orderUnavailable: "Le service de commande est indisponible. Veuillez reessayer plus tard.",
+        paymentUnavailable: "Le service de paiement n'est pas pret. Verifiez le canal de paiement puis reessayez.",
+        paymentChannelUnavailable: "Le canal de paiement n'est pas configure. Configurez le canal de paiement Yudao avant de commander.",
+        paymentRequired: "Completez les informations de paiement et acceptez les accords requis avant de commander.",
+        addressConfirmationRequired: "Verifiez et confirmez l'adresse de livraison avant de commander.",
+        noAddress: "Aucune adresse Yudao n'est disponible pour cet utilisateur.",
+        stockUnavailable: "Certains articles ne sont plus disponibles dans la quantite demandee. Verifiez votre panier avant de commander.",
+        addressUnavailable: "Cette adresse ne peut pas etre utilisee pour la livraison actuelle. Modifiez l'adresse avant de continuer.",
+        priceChanged: "Les prix ou les frais de livraison ont change. Verifiez le dernier reglement avant de commander.",
+        sessionExpired: "Votre session Yudao a expire. Connectez-vous de nouveau avant de continuer.",
+      },
+      actions: {
+        manageAddresses: "Gerer les adresses",
+        reviewBag: "Verifier le panier",
+        signIn: "Se reconnecter",
+        refreshSettlement: "Actualiser le paiement",
+        viewOrder: "Voir la commande",
+        reviewAddress: "Verifier l'adresse",
+      },
       mode: {
         yudao: {
           title: "Vérifier votre commande",
@@ -1531,13 +2862,112 @@ const messages = {
       intro: "Consultez les commandes Yudao en direct créées depuis la boutique de mobilier.",
       loading: "Chargement des commandes...",
       tokenRequired: "Ajoutez un token Yudao App pour consulter les commandes.",
+      error: "Le service de commande est indisponible. Veuillez reessayer plus tard.",
       selectedOrder: "Commande sélectionnée",
       orderLabel: "Commande",
       memberSavings: "Économies membre",
       memberSavingsUnavailable: "-",
+      paymentStatus: "Statut du paiement {status}",
+      paymentStatusUnavailable: "Le statut du paiement est encore en confirmation. Actualisez cette page pour verifier a nouveau.",
+      paymentResumeUnavailable: "Impossible de reprendre le paiement. Actualisez le statut du paiement puis reessayez.",
+      paymentChannelUnavailable: "Cette commande attend le paiement, mais le canal de paiement Yudao n'est pas configure.",
+      paymentReturn: {
+        cancelled: {
+          title: "Paiement annule",
+          message: "La commande a ete creee, mais le paiement n'est pas termine. Vous pouvez continuer le paiement ou actualiser le statut.",
+        },
+        failed: {
+          title: "Paiement non termine",
+          message: "Le canal de paiement a retourne un resultat negatif. Continuez le paiement ou actualisez le statut avant de contacter le support.",
+        },
+        paid: {
+          title: "Paiement termine",
+          message: "Le canal de paiement a retourne un resultat reussi. Nous actualisons le statut de commande ci-dessous.",
+        },
+        waiting: {
+          title: "Paiement en attente",
+          message: "Le canal de paiement n'a pas encore confirme la fin du paiement. Continuez le paiement ou actualisez le statut.",
+        },
+        unknown: {
+          title: "Resultat de paiement a verifier",
+          message: "Le canal de paiement a retourne un resultat non classe. Actualisez le statut avant de reessayer.",
+        },
+      },
+      paymentStatuses: {
+        waiting: "En attente de paiement",
+        paid: "Paye",
+        closed: "Ferme",
+        refunded: "Rembourse",
+        unknown: "Inconnu",
+      },
+      payOrderLabel: "Ordre de paiement {id}",
       view: "Voir",
       empty: "Aucune commande distante n'est encore disponible. Créez une commande Yudao depuis le paiement pour la voir ici.",
       status: "Statut {status}",
+      addressVerification: {
+        title: "Verification de l'adresse",
+        source: "Source de verification",
+        addressSource: "Source de l'adresse",
+        verificationSources: {
+          "google-address-validation": "Validation d'adresse Google",
+          "local-postal-region": "Verification locale du code postal",
+          "remote-address-verification": "Service de verification d'adresse",
+          "backend-address-verification": "Verification de repli du serveur",
+          unknown: "Verificateur inconnu",
+        },
+        addressSources: {
+          saved: "Adresse enregistree",
+          new: "Nouvelle adresse",
+          unknown: "Source inconnue",
+        },
+        statuses: {
+          verified: "Verifiee",
+          suggested: "Correction proposee",
+          unverified: "Confirmation requise",
+          unknown: "Statut inconnu",
+        },
+        choices: {
+          original: "Adresse saisie conservee",
+          suggested: "Adresse proposee utilisee",
+          unknown: "Choix inconnu",
+        },
+        reasons: {
+          "postal-region-mismatch": "La ville ou l'etat du code postal a ete corrige",
+          "missing-required-fields": "Des champs d'adresse requis etaient manquants",
+          "unknown-postal-code": "Le code postal n'a pas pu etre rapproche",
+          "google-address-complete": "Google a confirme que l'adresse est complete",
+          "google-review-required": "Google a renvoye une adresse standardisee a verifier",
+          "google-unverified": "Google n'a pas pu verifier l'adresse",
+          "backend-standardized": "Le serveur a standardise l'adresse saisie",
+          "remote-standardized": "Le verificateur distant a standardise l'adresse",
+          "cass-standardized": "CASS a standardise l'adresse",
+          unknown: "Aucun motif enregistre",
+        },
+        providerStatuses: {
+          fallback: "Le verificateur distant a bascule vers le controle local du code postal",
+          unknown: "Statut du verificateur inconnu",
+        },
+        status: "Statut de verification",
+        choice: "Choix confirme",
+        reason: "Motif de verification",
+        confirmedAt: "Confirme par l'acheteur le",
+        original: "Adresse originale",
+        suggested: "Adresse proposee",
+        selected: "Adresse selectionnee",
+        providerResponseId: "Reponse du verificateur",
+        providerStatus: "Statut du verificateur",
+        warning: "L'acheteur a confirme une adresse qui n'a pas pu etre entierement verifiee. Verifiez le risque de livraison avant l'expedition.",
+        providerFallbackWarning: "La verification d'adresse distante etait indisponible pour cette commande ; seul le controle local du code postal a ete enregistre.",
+        localPostalRegionWarning: "Seul le rapprochement local code postal, ville et etat a ete enregistre pour cette commande. Ce n'est pas une confirmation de livraison par transporteur.",
+        localOnlyVerificationWarning: "Seule la normalisation de repli du serveur a ete enregistree pour cette commande. Ce n'est pas une confirmation de livraison par transporteur.",
+      },
+      actions: {
+        connectAccount: "Connecter le compte",
+        retry: "Reessayer",
+        refreshPaymentStatus: "Actualiser le paiement",
+        resumePayment: "Continuer le paiement",
+        shop: "Continuer les achats",
+      },
     },
     bag: "Panier",
     cartTitle: "Panier",
@@ -1546,6 +2976,30 @@ const messages = {
     quantity: "Quantité",
     remove: "Retirer",
     addToCart: "Ajouter au panier",
+    product: {
+      unavailable: "Indisponible",
+      unavailableHint: "Cet article n'est pas disponible a l'achat pour le moment.",
+    },
+    productList: {
+      controlsAria: "Commandes de navigation produit",
+      search: "Rechercher",
+      searchPlaceholder: "Rechercher canapes, lits, luminaires...",
+      type: "Type",
+      allTypes: "Tous les types",
+      resultSummary: "{visible} sur {total} affiches",
+      sort: {
+        label: "Trier",
+        featured: "Selection",
+        priceAsc: "Prix croissant",
+        priceDesc: "Prix decroissant",
+      },
+      empty: {
+        eyebrow: "Aucun resultat",
+        title: "Aucun produit ne correspond a ces filtres.",
+        description: "Effacez la recherche et les filtres pour revenir a toute la collection.",
+        action: "Effacer les filtres",
+      },
+    },
     viewDetails: "Voir les détails",
     productsTitle: "Collection de mobilier",
     productsSubtitle: "Produits synchronisés entre le catalogue Mall et l’ERP.",
@@ -1572,6 +3026,37 @@ const messages = {
         benefit2: "Avantages de l'adhésion annuelle et gestion du renouvellement",
         benefit3: "Planification d'adhésion pièce complète pour les grands projets d'ameublement",
         benefit4: "Accès via le compte aux règles, au statut membre et à la progression",
+        flowAria: "Fonctionnement de l'adhésion",
+        flowEyebrow: "Fonctionnement",
+        flowTitle: "Un service membre relié à tout le parcours d'achat.",
+        flowIntro:
+          "L'expérience membre doit rester visible avant le paiement, pendant la vérification des prix et après la commande.",
+        flow: {
+          join: {
+            step: "01",
+            title: "Adhérer avec un compte",
+            description:
+              "L'inscription passe par la connexion afin que les avantages soient liés à un profil client durable.",
+          },
+          bind: {
+            step: "02",
+            title: "Lier e-mail et statut",
+            description:
+              "Les adhésions existantes sont reliées par correspondance ou vérification e-mail avant l'affichage des avantages.",
+          },
+          price: {
+            step: "03",
+            title: "Vérifier les prix éligibles",
+            description:
+              "Panier, paiement et détail de commande expliquent quels articles reçoivent le prix membre et lesquels sont exclus.",
+          },
+          manage: {
+            step: "04",
+            title: "Gérer après achat",
+            description:
+              "Mon compte rassemble renouvellement, facturation, statut membre, progression et accès aux règles.",
+          },
+        },
         growthEyebrow: "Progression membre",
         growthTitle: "La progression se gère dans Mon compte.",
         growthIntro:
@@ -1593,8 +3078,11 @@ const messages = {
           "Pour les projets d'ameublement à l'échelle d'une pièce qui nécessitent des avantages et une visibilité de service.",
         agreement: "J'accepte les conditions du Programme membres.",
         readTerms: "Lire les conditions",
-        addToBag: "Ajouter l'adhésion au panier",
+        addToBag: "Démarrer le paiement adhésion",
         continueCheckout: "Continuer vers le paiement",
+        signInRequired: "Connectez-vous avant de démarrer le paiement d'adhésion. Les aperçus d'adhésion ne sont pas ajoutés au panier.",
+        checkoutReady: "Le paiement de l'adhésion est prêt. Finalisez le paiement avant l'activation des avantages.",
+        checkoutFailed: "Impossible de démarrer le paiement de l'adhésion. Vérifiez votre compte Yudao puis réessayez.",
       },
       terms: {
         eyebrow: "Conditions du Programme membres",
@@ -1612,6 +3100,43 @@ const messages = {
           "Les adhésions hors ligne peuvent être liées en ligne lorsque l'e-mail d'inscription correspond ou est vérifié.",
         checkoutRulesTitle: "Règles de paiement",
         checkoutRulesDescription: "L'achat d'une adhésion exige une connexion au compte et ne peut pas passer par le paiement invité.",
+        ruleMatrixAria: "Matrice des règles d'adhésion",
+        ruleMatrixEyebrow: "Matrice des règles",
+        ruleMatrixTitle: "Application des règles d'adhésion.",
+        ruleMatrixIntro:
+          "Ce tableau explique quelles conditions de compte, d'article et de paiement influencent le prix membre.",
+        rules: {
+          merchandise: {
+            label: "Éligible",
+            title: "Mobilier et décoration",
+            description:
+              "Les articles éligibles peuvent recevoir le prix membre lorsque le compte est actif et que l'article porte un prix membre.",
+          },
+          services: {
+            label: "Exclu",
+            title: "Livraison, protection et frais de service",
+            description:
+              "Les frais de service restent visibles au paiement, mais ne créent pas d'économies membre sauf avantage de service indiqué.",
+          },
+          giftCards: {
+            label: "Exclu",
+            title: "Cartes cadeaux et valeur stockée",
+            description:
+              "Les cartes cadeaux sont suivies comme moyen de paiement ou valeur stockée et ne comptent pas comme dépense éligible.",
+          },
+          renewal: {
+            label: "Compte",
+            title: "Renouvellement et annulation",
+            description:
+              "Le calendrier, le renouvellement automatique, les rappels et l'annulation restent dans Mon compte après l'achat.",
+          },
+          wholeRoom: {
+            label: "Projet",
+            title: "Avantages whole-room",
+            description:
+              "Les avantages par pièce peuvent ajouter de la visibilité de planification, mais services et cartes cadeaux restent exclus.",
+          },
+        },
       },
       faq: {
         eyebrow: "FAQ adhésion",
@@ -1619,10 +3144,44 @@ const messages = {
         intro:
           "Des réponses courtes sur l'inscription, la liaison d'une adhésion existante, le renouvellement et l'affichage des prix membres.",
         aria: "Questions fréquentes sur l'adhésion",
+        topicsAria: "Thèmes de FAQ adhésion",
+        topicsEyebrow: "Thèmes",
+        topicsTitle: "Où commencer.",
+        topics: {
+          account: {
+            label: "Compte",
+            description: "Connexion, liaison e-mail, statut et renouvellement se consultent dans Mon compte.",
+          },
+          pricing: {
+            label: "Prix",
+            description: "Les questions de prix membre se lisent via l'éligibilité des articles et les économies de commande.",
+          },
+          support: {
+            label: "Règles",
+            description:
+              "Les conditions complètes expliquent les exclusions, les limites du paiement invité et les règles whole-room.",
+          },
+        },
+        listAria: "Réponses FAQ adhésion",
+        joinBadge: "Adhérer",
         joinQuestion: "Où puis-je adhérer ?",
         joinAnswer: "Commencez depuis la page Membership, puis connectez-vous ou créez un compte avant l'inscription.",
+        bindBadge: "Lier",
+        bindQuestion: "Comment lier une adhésion existante ?",
+        bindAnswer:
+          "Utilisez le même e-mail si possible. Si l'e-mail membre diffère de l'e-mail du compte, Mon compte doit demander une vérification avant d'afficher les avantages.",
+        pricingBadge: "Prix",
+        pricingQuestion: "Pourquoi certains articles affichent-ils un prix membre et d'autres non ?",
+        pricingAnswer:
+          "Les prix membres dépendent de l'éligibilité de l'article, des exclusions de catégorie et du statut du compte. Services, cartes cadeaux et articles non réduits peuvent ne générer aucune économie.",
+        renewalBadge: "Renouv.",
+        renewalQuestion: "Où gérer le renouvellement et l'annulation ?",
+        renewalAnswer:
+          "Le calendrier, le renouvellement automatique, les rappels et l'annulation restent dans Mon compte après l'achat.",
+        growthBadge: "Progression",
         growthQuestion: "Où voir ma progression ?",
         growthAnswer: "Le niveau, les points et les prochaines actions se trouvent dans Mon compte, sous Adhésion.",
+        rulesBadge: "Règles",
         rulesQuestion: "Où les règles sont-elles affichées ?",
         rulesAnswer:
           "Les règles courtes apparaissent près des prix et des appels à l'action. Les règles complètes sont sur la page des conditions du Programme membres.",
@@ -1630,6 +3189,9 @@ const messages = {
       account: {
         myAccount: "Mon compte",
         menuAria: "Navigation Mon compte",
+        dashboardEyebrow: "Tableau de bord du compte",
+        dashboardTitle: "Gérez les commandes, adresses, moyens de paiement et adhésion.",
+        dashboardDescription: "Le tableau de bord centralise le statut d’adhésion, les règles, le renouvellement et les listes de cadeaux.",
         menuMembership: "Adhésion",
         menuPaymentMethods: "Moyens de paiement",
         menuOrderHistory: "Historique des commandes",
@@ -1642,6 +3204,7 @@ const messages = {
         title: "Le statut et les règles d'adhésion se trouvent ici.",
         intro:
           "Cet espace gère le statut membre, la correspondance e-mail, les renouvellements, les avantages et la progression après connexion.",
+        signInRequired: "Connectez-vous pour charger le dossier membre persistant de ce compte.",
         overviewAria: "Aperçu du compte membre",
         overview: {
           savings: "Économies membres cette année",
@@ -1809,6 +3372,16 @@ const messages = {
           regular: "Standard",
           member: "Membre",
           lineSavings: "Économie ligne",
+          summary: {
+            eligible: "Éligible",
+            ineligible: "Exclu",
+            savings: "Économies",
+          },
+          line: {
+            regular: "Standard",
+            member: "Membre",
+            savings: "Économie ligne",
+          },
           reasons: {
             eligible: {
               label: "Prix membre appliqué",
@@ -1831,6 +3404,7 @@ const messages = {
         ordersAria: "Commandes récentes avec prix membres",
         orderMeta: "{id} - {date}",
         orderSavings: "{amount} économisés",
+        ordersUnavailable: "Recent order savings are temporarily unavailable. Membership status is still connected.",
         orders: {
           livingRoom: "Rafraîchissement du salon",
           dining: "Mise à jour salle à manger",
@@ -1857,6 +3431,7 @@ const messages = {
         verifyEmail: "Vérifier l'e-mail",
         actionsAria: "Actions du compte membre",
         actions: {
+          connectAccount: "Se connecter",
           shopEligible: {
             title: "Acheter des articles éligibles",
             description: "Parcourez les produits où les prix membres peuvent apparaître avant le paiement.",
@@ -1914,6 +3489,11 @@ const messages = {
           },
           membershipService: "Service membre",
           viewOrder: "Voir la commande",
+          actions: {
+            connectAccount: "Connecter le compte",
+            retry: "Reessayer la facturation",
+            createOrder: "Creer une commande",
+          },
         },
         addressBook: {
           eyebrow: "Carnet d'adresses",
@@ -1940,6 +3520,38 @@ const messages = {
           chooseRegion: "Choisir une région",
           defaultAddress: "Utiliser comme adresse de livraison par défaut",
           defaultBadge: "Adresse par défaut",
+          verification: {
+            lastChecked: "Dernière vérification au paiement",
+            warning: "Cette adresse a déjà été confirmée alors qu'elle n'a pas pu être entièrement vérifiée.",
+            providerFallbackWarning: "La vérification distante était indisponible lors du dernier contrôle ; seul le contrôle local du code postal a été enregistré.",
+            statuses: {
+              verified: "Vérifiée lors du paiement",
+              suggested: "Vérifiée avec correction proposée",
+              unverified: "Vérifiée mais non confirmée",
+              unknown: "Statut de vérification enregistré",
+            },
+            choices: {
+              original: "Adresse saisie conservée",
+              suggested: "Adresse proposée utilisée",
+              unknown: "Choix enregistré",
+            },
+            reasons: {
+              "postal-region-mismatch": "La ville ou l'état du code postal a été corrigé",
+              "missing-required-fields": "Des champs d'adresse requis étaient manquants",
+              "unknown-postal-code": "Le code postal n'a pas pu être rapproché",
+              "google-address-complete": "Google a confirmé que l'adresse est complète",
+              "google-review-required": "Google a renvoyé une adresse standardisée à vérifier",
+              "google-unverified": "Google n'a pas pu vérifier l'adresse",
+              "backend-standardized": "Le serveur a standardisé l'adresse saisie",
+              "remote-standardized": "Le vérificateur distant a standardisé l'adresse",
+              "cass-standardized": "CASS a standardisé l'adresse",
+              unknown: "Aucun motif enregistré",
+            },
+            providerStatuses: {
+              fallback: "Repli du vérificateur distant",
+              unknown: "Statut du vérificateur inconnu",
+            },
+          },
           saving: "Enregistrement...",
           addAddress: "Ajouter l'adresse",
           updateAddress: "Mettre à jour l'adresse",
@@ -1947,6 +3559,11 @@ const messages = {
           edit: "Modifier",
           setDefault: "Définir par défaut",
           delete: "Supprimer",
+          actions: {
+            connectAccount: "Connecter le compte",
+            retry: "Reessayer les adresses",
+            addFirstAddress: "Ajouter une premiere adresse",
+          },
         },
         profile: {
           eyebrow: "Profil du compte",
@@ -1998,6 +3615,12 @@ const messages = {
           sendVerificationEmail: "Envoyer l'e-mail de vérification",
           sendCode: "Envoyer le code",
           updatePhone: "Mettre à jour le téléphone",
+          actions: {
+            connectAccount: "Connecter le compte",
+            retry: "Reessayer le profil",
+            reviewProfile: "Verifier le formulaire profil",
+            reviewPhone: "Verifier le formulaire telephone",
+          },
         },
       },
       checkoutAuth: {
@@ -2159,6 +3782,136 @@ const frTradeFaq = {
   cancel: ["COMMENT ANNULER MON COMPTE RH TRADE OU QUITTER LE PROGRAMME ?", "Contactez le support Trade pour demander la fermeture du compte ou le retrait des communications Trade."],
 };
 
+const navigationMessages = {
+  en: {
+    navigation: {
+      primary: {
+        bedroomFurniture: "Bedroom Furniture",
+        storageCabinets: "Storage Cabinets",
+        desksTables: "Desks & Tables",
+        seatingBenches: "Seating & Benches",
+        roomSets: "Room Sets",
+        woodcraft: "Woodcraft",
+        newSale: "New & Sale",
+        living: "Living",
+        dining: "Dining",
+        bed: "Bed",
+        bath: "Bath",
+        outdoor: "Outdoor",
+        lighting: "Lighting",
+        textiles: "Textiles",
+        rugs: "Rugs",
+        decor: "Decor",
+        babyChild: "Baby & Child",
+        teen: "Teen",
+        sale: "Sale",
+        interiorDesign: "Interior Design",
+      },
+      babyChild: {
+        furniture: "Furniture",
+        bedding: "Bedding",
+        nursery: "Nursery",
+        decor: "Decor",
+        lighting: "Lighting",
+        rugs: "Rugs",
+        windows: "Windows",
+        storage: "Storage",
+        playroom: "Playroom",
+        gifts: "Gifts",
+        teen: "Teen",
+        sale: "Sale",
+        registry: "Registry",
+      },
+    },
+  },
+  "zh-CN": {
+    navigation: {
+      primary: {
+        bedroomFurniture: "\u5367\u5ba4\u5bb6\u5177",
+        storageCabinets: "\u67dc\u7c7b\u6536\u7eb3",
+        desksTables: "\u684c\u6905\u4e66\u623f",
+        seatingBenches: "\u6905\u51f3\u6c99\u53d1",
+        roomSets: "\u6574\u5c4b\u642d\u914d",
+        woodcraft: "\u6728\u6750\u5de5\u827a",
+        newSale: "\u65b0\u54c1\u7279\u60e0",
+        living: "客厅",
+        dining: "餐厅",
+        bed: "卧室",
+        bath: "浴室",
+        outdoor: "户外",
+        lighting: "灯具",
+        textiles: "织物",
+        rugs: "地毯",
+        decor: "装饰",
+        babyChild: "婴童",
+        teen: "青少年",
+        sale: "特卖",
+        interiorDesign: "室内设计",
+      },
+      babyChild: {
+        furniture: "家具",
+        bedding: "床品",
+        nursery: "婴儿房",
+        decor: "装饰",
+        lighting: "灯具",
+        rugs: "地毯",
+        windows: "窗饰",
+        storage: "收纳",
+        playroom: "游戏室",
+        gifts: "礼品",
+        teen: "青少年",
+        sale: "特卖",
+        registry: "礼品登记",
+      },
+    },
+  },
+  fr: {
+    navigation: {
+      primary: {
+        bedroomFurniture: "Mobilier de chambre",
+        storageCabinets: "Rangements",
+        desksTables: "Bureaux et tables",
+        seatingBenches: "Si\u00e8ges et bancs",
+        roomSets: "Pi\u00e8ces compl\u00e8tes",
+        woodcraft: "Travail du bois",
+        newSale: "Nouveaut\u00e9s et soldes",
+        living: "Séjour",
+        dining: "Salle à manger",
+        bed: "Chambre",
+        bath: "Bain",
+        outdoor: "Extérieur",
+        lighting: "Luminaires",
+        textiles: "Textiles",
+        rugs: "Tapis",
+        decor: "Décor",
+        babyChild: "Bébé et enfant",
+        teen: "Ados",
+        sale: "Soldes",
+        interiorDesign: "Architecture d'intérieur",
+      },
+      babyChild: {
+        furniture: "Mobilier",
+        bedding: "Literie",
+        nursery: "Chambre bébé",
+        decor: "Décor",
+        lighting: "Luminaires",
+        rugs: "Tapis",
+        windows: "Fenêtres",
+        storage: "Rangement",
+        playroom: "Salle de jeux",
+        gifts: "Cadeaux",
+        teen: "Ados",
+        sale: "Soldes",
+        registry: "Liste de naissance",
+      },
+    },
+  },
+};
+
+Object.entries(navigationMessages).forEach(([lang, value]) => {
+  Object.assign(messages[lang], value);
+});
+
 const tradeProgramMessages = {
   en: {
     tradeProgram: {
@@ -2188,12 +3941,16 @@ const tradeProgramMessages = {
           "If you intend to purchase merchandise for resale, provide tax exemption documentation for review.",
         addAttachment: "Add Attachment",
         chooseFile: "CHOOSE FILE",
+        uploading: "UPLOADING",
         reviewTiming: "After submitting your RH Trade application, please allow two business days to receive notification.",
         emailOptIn: "I agree to receive email updates from RH.",
         privacy: "I have read and acknowledge the RH Privacy Notice.",
         submit: "SUBMIT",
-        successNotice: "Your Trade application has been submitted for review.",
+        successNotice: "Your Trade application #{id} has been submitted for review.",
         submitError: "Trade application submission is unavailable. Please try again later.",
+        uploadError: "Attachment upload failed. Please choose the file again.",
+        fixAttachments: "Review attachments",
+        retrySubmit: "Try submitting again",
         fields: {
           businessName: "Business Name*",
           country: "Country*",
@@ -2268,12 +4025,16 @@ const tradeProgramMessages = {
         taxDocumentsHelp: "如果你计划为转售采购商品，请提供免税证明文件以供审核。",
         addAttachment: "添加附件",
         chooseFile: "选择文件",
+        uploading: "上传中",
         reviewTiming: "提交 RH Trade 申请后，请预留两个工作日接收审核通知。",
         emailOptIn: "我同意接收 RH 的邮件更新。",
         privacy: "我已阅读并确认 RH 隐私声明。",
         submit: "提交",
-        successNotice: "你的 Trade 申请已提交审核。",
+        successNotice: "你的 Trade 申请 #{id} 已提交审核。",
         submitError: "暂时无法提交 Trade 申请，请稍后重试。",
+        uploadError: "附件上传失败，请重新选择文件。",
+        fixAttachments: "检查附件",
+        retrySubmit: "重新提交",
         fields: {
           businessName: "企业名称*",
           country: "国家/地区*",
@@ -2352,12 +4113,16 @@ const tradeProgramMessages = {
           "Si vous achetez pour revente, fournissez les documents d'exonération fiscale pour examen.",
         addAttachment: "Ajouter une pièce jointe",
         chooseFile: "CHOISIR UN FICHIER",
+        uploading: "ENVOI",
         reviewTiming: "Après l'envoi de votre demande RH Trade, prévoyez deux jours ouvrés pour la notification.",
         emailOptIn: "J'accepte de recevoir les actualités RH par e-mail.",
         privacy: "J'ai lu et j'accepte l'avis de confidentialité RH.",
         submit: "ENVOYER",
-        successNotice: "Votre demande Trade a été envoyée pour examen.",
+        successNotice: "Votre demande Trade #{id} a été envoyée pour examen.",
         submitError: "L'envoi de la demande Trade est indisponible. Réessayez plus tard.",
+        uploadError: "L'envoi de la pièce jointe a échoué. Choisissez à nouveau le fichier.",
+        fixAttachments: "Verifier les pieces jointes",
+        retrySubmit: "Reessayer l'envoi",
         fields: {
           businessName: "Nom de l'entreprise*",
           country: "Pays*",
@@ -2394,7 +4159,6 @@ tradeProgramMessages.fr.tradeProgram.application.options = tradeProgramMessages.
 Object.entries(tradeProgramMessages).forEach(([lang, value]) => {
   Object.assign(messages[lang], value);
 });
-
 const assistantMessages = {
   en: {
     assistant: {
@@ -2520,6 +4284,3223 @@ const persistLocale = (lang) => {
     // Locale changes should still work if browser storage is disabled.
   }
 };
+
+messages["zh-CN"].orders.addressVerification = {
+  title: "地址核对",
+  source: "核对来源",
+  addressSource: "地址来源",
+  verificationSources: {
+    "google-address-validation": "Google 地址验证",
+    "local-postal-region": "本地邮编核对",
+    "remote-address-verification": "地址核对服务",
+    unknown: "未知核对来源",
+  },
+  addressSources: {
+    saved: "已保存地址",
+    new: "新增地址",
+    unknown: "未知来源",
+  },
+  statuses: {
+    verified: "已核对",
+    suggested: "有建议修改",
+    unverified: "需要确认",
+    unknown: "未知状态",
+  },
+  choices: {
+    original: "使用原填写地址",
+    suggested: "使用建议地址",
+    unknown: "未知选择",
+  },
+  reasons: {
+    "postal-region-mismatch": "邮编对应的城市或州已被修正",
+    "missing-required-fields": "缺少必要地址字段",
+    "unknown-postal-code": "无法匹配邮政编码",
+    unknown: "未记录原因",
+  },
+  status: "核对状态",
+  choice: "用户选择",
+  reason: "核对原因",
+  confirmedAt: "用户确认时间",
+  original: "原始地址",
+  suggested: "建议地址",
+  selected: "确认地址",
+  providerResponseId: "核对响应编号",
+};
+
+Object.assign(messages["zh-CN"].orders.addressVerification.reasons, {
+  "google-address-complete": "Google 已确认地址完整",
+  "google-review-required": "Google 返回了需要用户复核的标准化地址",
+  "google-unverified": "Google 无法验证该地址",
+  "backend-standardized": "后端已标准化用户填写的地址",
+  "remote-standardized": "远程核对服务已标准化该地址",
+  "cass-standardized": "CASS 已标准化该地址",
+});
+
+messages["zh-CN"].orders.addressVerification.providerStatuses = {
+  fallback: "远程核对已回退到本地邮编核对",
+  unknown: "未知核对服务状态",
+};
+messages["zh-CN"].orders.addressVerification.providerStatus = "核对服务状态";
+messages["zh-CN"].orders.addressVerification.warning =
+  "买家确认了未完全验证的地址。履约发货前请再次评估配送风险。";
+messages["zh-CN"].orders.addressVerification.providerFallbackWarning =
+  "该订单远程地址核对不可用，仅记录了本地邮编核对结果。";
+
+messages["zh-CN"].checkout.shipping = {
+  title: "收货地址",
+  firstName: "名",
+  lastName: "姓",
+  country: "国家",
+  street: "街道地址",
+  apartment: "公寓、楼层、套房等（可选）",
+  city: "城市",
+  state: "州",
+  postalCode: "邮政编码",
+  phone: "电话",
+  savedAddresses: "已保存地址",
+  enterNewAddress: "填写新地址",
+  savedAddressVerification: "已保存地址核对记录",
+  savedAddressVerificationRecheck: "支付前仍需要再次核对并确认该地址。",
+};
+
+messages["zh-CN"].checkout.shipping.addressVerificationFallbackWarning =
+  "\u5f53\u524d\u8fdc\u7a0b\u5730\u5740\u6838\u5bf9\u5c1a\u672a\u5b8c\u5168\u914d\u7f6e\u3002\u6211\u4eec\u4ecd\u4f1a\u8fdb\u884c\u5730\u5740\u590d\u6838\uff0c\u4f46\u652f\u4ed8\u524d\u8bf7\u4ed4\u7ec6\u786e\u8ba4\u8857\u9053\u5730\u5740\u3002";
+
+messages["zh-CN"].checkout.addressConfirmation = {
+  title: "已确认收货地址",
+  status: "地址状态",
+  choice: "地址选择",
+  addressSource: "地址来源",
+  reason: "核对原因",
+  edit: "编辑地址",
+  warning: "你选择使用未完全验证的地址。如果承运商无法投递，配送可能会延迟。",
+  addressSources: {
+    saved: "已保存地址",
+    new: "新增地址",
+    unknown: "未知来源",
+  },
+  statuses: {
+    verified: "已确认验证地址",
+    suggested: "已确认建议地址",
+    unverified: "已确认未验证地址",
+    unknown: "已记录地址确认",
+  },
+  choices: {
+    original: "使用原填写地址",
+    suggested: "使用建议地址",
+    unknown: "未知选择",
+  },
+  reasons: {
+    "postal-region-mismatch": "邮编对应的城市或州已被修正",
+    "missing-required-fields": "缺少必要地址字段",
+    "unknown-postal-code": "无法匹配邮政编码",
+    unknown: "未记录原因",
+  },
+};
+
+Object.assign(messages["zh-CN"].checkout.addressConfirmation.reasons, {
+  "google-address-complete": "Google 已确认地址完整",
+  "google-review-required": "Google 返回了需要用户复核的标准化地址",
+  "google-unverified": "Google 无法验证该地址",
+  "backend-standardized": "后端已标准化用户填写的地址",
+  "remote-standardized": "远程核对服务已标准化该地址",
+  "cass-standardized": "CASS 已标准化该地址",
+});
+
+messages["zh-CN"].checkout.addressReview.providerFallbackWarning =
+  "远程地址核对不可用，本次使用本地邮编数据库核对。请仔细确认地址后再继续。";
+messages["zh-CN"].checkout.addressConfirmation.providerStatus = "核对服务状态";
+messages["zh-CN"].checkout.addressConfirmation.providerFallbackWarning =
+  "远程地址核对不可用，本次使用本地邮编数据库核对。付款前请再次确认地址准确。";
+messages["zh-CN"].checkout.addressConfirmation.providerStatuses = {
+  fallback: "远程核对回退",
+  unknown: "未知核对服务状态",
+};
+
+messages["zh-CN"].membership.account.addressBook.verification = {
+  lastChecked: "上次结账核对",
+  warning: "该地址曾在无法完全验证的情况下由用户确认。",
+  providerFallbackWarning: "上次核对时远程地址核对不可用，仅记录了本地邮编核对结果。",
+  statuses: {
+    verified: "结账时已核对验证",
+    suggested: "结账时按建议地址核对",
+    unverified: "结账时已确认但未完全验证",
+    unknown: "已记录核对状态",
+  },
+  choices: {
+    original: "保留原填写地址",
+    suggested: "使用建议地址",
+    unknown: "已记录选择",
+  },
+  reasons: {
+    "postal-region-mismatch": "邮编对应的城市或州已被修正",
+    "missing-required-fields": "缺少必要地址字段",
+    "unknown-postal-code": "无法匹配邮政编码",
+    "google-address-complete": "Google 已确认地址完整",
+    "google-review-required": "Google 返回了需要用户复核的标准化地址",
+    "google-unverified": "Google 无法验证该地址",
+    "backend-standardized": "后端已标准化用户填写的地址",
+    "remote-standardized": "远程核对服务已标准化该地址",
+    "cass-standardized": "CASS 已标准化该地址",
+    unknown: "未记录原因",
+  },
+  providerStatuses: {
+    fallback: "远程核对回退",
+    unknown: "未知核对服务状态",
+  },
+};
+
+messages.fr.membership.account.addressBook.verification.missingWarning =
+  "Cette adresse enregistree n'a pas encore ete verifiee lors du paiement.";
+messages.fr.membership.account.addressBook.verification.statuses.missing = "Pas encore verifiee";
+messages.fr.membership.account.addressBook.verification.localPostalRegionWarning =
+  "Le dernier controle a seulement rapproche le code postal, la ville et l'etat ; il ne confirme pas la livraison au niveau de la rue.";
+messages.fr.membership.account.addressBook.verification.localOnlyVerificationWarning =
+  "Le dernier controle a seulement standardise l'adresse avec le verificateur de repli du serveur ; il ne confirme pas la livraison au niveau de la rue.";
+messages["zh-CN"].orders.addressVerification.verificationSources["backend-address-verification"] =
+  "后端兜底地址核对";
+messages["zh-CN"].orders.addressVerification.localPostalRegionWarning =
+  "本订单仅记录了本地邮编、城市和州的匹配结果，不代表承运商确认该街道地址可投递。";
+messages["zh-CN"].orders.addressVerification.localOnlyVerificationWarning =
+  "本订单仅记录了后端兜底地址标准化结果，不代表承运商确认该街道地址可投递。";
+messages["zh-CN"].checkout.addressReview.localPostalRegionWarning =
+  "本次仅按本地邮编、城市和州数据进行核对，不能证明街道地址一定可投递。请仔细确认。";
+messages["zh-CN"].checkout.addressReview.localOnlyVerificationWarning =
+  "本次仅由后端兜底服务标准化地址格式，不能证明街道地址一定可投递。请仔细确认。";
+messages["zh-CN"].checkout.addressConfirmation.localPostalRegionWarning =
+  "该地址仅通过本地邮编、城市和州数据核对。付款前请再次确认街道地址。";
+messages["zh-CN"].checkout.addressConfirmation.localOnlyVerificationWarning =
+  "该地址仅通过后端兜底服务完成格式标准化。付款前请再次确认街道地址。";
+messages["zh-CN"].membership.account.addressBook.verification.localPostalRegionWarning =
+  "上次核对仅匹配了邮编、城市和州，不代表街道级投递地址已被确认。";
+messages["zh-CN"].membership.account.addressBook.verification.localOnlyVerificationWarning =
+  "上次核对仅通过后端兜底服务标准化地址，不代表街道级投递地址已被确认。";
+messages["zh-CN"].membership.account.addressBook.verification.missingWarning =
+  "该保存地址尚未在结账时完成地址核对。";
+messages["zh-CN"].membership.account.addressBook.verification.statuses.missing = "尚未核对";
+
+messages["zh-CN"].wishlist = {
+  eyebrow: "我的账户",
+  title: "愿望清单",
+  itemCount: "{count} 件商品",
+  save: "保存到心愿单",
+  saved: "已保存",
+  addToCart: "加入购物车",
+  remove: "移除",
+  emptyEyebrow: "已收藏商品",
+  emptyTitle: "你的愿望清单暂无商品。",
+  emptyHelp: "浏览商品时收藏喜欢的单品，之后可以回到这里统一查看。",
+  continueShopping: "继续购物",
+  addedToCart: "已加入购物车。",
+  removed: "已从愿望清单移除。",
+  itemNumber: "商品编号",
+  color: "颜色",
+  fabric: "面料",
+  width: "宽度",
+  member: "会员价",
+  regular: "原价",
+  availability: "该商品预计配送时间：{value}",
+  defaultAvailability: "结账时确认配送窗口",
+  decreaseQuantity: "减少数量",
+  increaseQuantity: "增加数量",
+};
+
+Object.assign(messages["zh-CN"].wishlist, {
+  loading: "正在加载心愿单...",
+  remoteUnavailable: "暂时无法同步 Yudao 心愿单，先显示本地已保存商品。",
+  partialSync: "部分心愿单商品暂时未能同步，将保留在本地等待重试。",
+  signInRequired: "登录后可在多设备同步心愿单，本地商品仍保留在此浏览器。",
+  retrySync: "重新同步",
+});
+
+const mergeLocaleMessages = (target, source) => {
+  Object.entries(source).forEach(([key, value]) => {
+    if (
+      value &&
+      typeof value === "object" &&
+      !Array.isArray(value) &&
+      target[key] &&
+      typeof target[key] === "object" &&
+      !Array.isArray(target[key])
+    ) {
+      mergeLocaleMessages(target[key], value);
+      return;
+    }
+
+    target[key] = value;
+  });
+};
+
+const coreVisibleMessages = {
+  en: {
+    home: {
+      commerce: {
+        eyebrow: "Shop the edit",
+        title: "Rooms built around proportion, material and calm.",
+        description: "Start with the room, then refine by fabric, finish, delivery window and member pricing.",
+      },
+      featured: {
+        eyebrow: "Featured collection",
+        title: "A bedroom collection built from warm wood, storage and quiet proportion.",
+        description: "Explore nightstands, dressers, benches, desks and lounge chairs before moving into checkout.",
+        cta: "Shop bedroom furniture",
+      },
+      trust: {
+        memberPricing: {
+          title: "Member pricing",
+          copy: "Clear member and regular pricing before checkout.",
+        },
+        deliveryClarity: {
+          title: "Delivery clarity",
+          copy: "Ready-to-ship and special-order windows shown early.",
+        },
+        materialLedChoices: {
+          title: "Material-led choices",
+          copy: "Fabric, stone, wood and metal options stay visual.",
+        },
+      },
+      editorial: {
+        bedroomFurniture: {
+          eyebrow: "Bedroom furniture",
+          title: "Build the bedroom around warm wood and quiet proportion.",
+          subtitle:
+            "Start with a nightstand, dresser and bench, then layer upholstery and lighting around the same material language.",
+          cta: "Shop bedroom furniture",
+        },
+        storageCabinets: {
+          eyebrow: "Storage cabinets",
+          title: "Storage that reads as furniture, not utility.",
+          subtitle:
+            "Carved dressers, bedside drawers and cabinets keep the room composed while giving daily pieces a clear place.",
+          cta: "Explore storage",
+        },
+        desksTables: {
+          eyebrow: "Desks & tables",
+          title: "Small work zones with the same finished-room feeling.",
+          subtitle:
+            "Pair writing desks, vanity tables and round tables with chairs that feel residential rather than office-like.",
+          cta: "Shop desks and tables",
+        },
+        seatingBenches: {
+          eyebrow: "Seating & benches",
+          title: "Complete the room with lounge seating and end-of-bed pieces.",
+          subtitle:
+            "Single sofas, bedroom side chairs and bed benches add the final layer of comfort without crowding the room.",
+          cta: "Shop seating",
+        },
+      },
+      categoryEdits: {
+        bedroom: {
+          title: "Bedroom",
+          copy: "Nightstands, dressers and benches for a complete wood bedroom.",
+        },
+        storage: {
+          title: "Storage",
+          copy: "Carved dressers, cabinets and bedside storage in warm finishes.",
+        },
+        study: {
+          title: "Study",
+          copy: "Desks, vanity tables and chairs for quiet bedroom work zones.",
+        },
+      },
+    },
+    landing: {
+      common: {
+        collection: "Collection",
+        designServices: "Design Services",
+        joinMembers: "Join RH Members",
+        exploreServices: "Explore Services",
+      },
+    },
+    outdoor: {
+      hero: {
+        eyebrow: "Outdoor",
+        title: "Open-air rooms, fully composed.",
+        description: "Furniture, lighting, and materials for terraces, gardens, pool decks, and dining under the sky.",
+        shopCta: "Shop Outdoor",
+      },
+      edits: {
+        lounge: "Lounge",
+        dining: "Dining",
+        poolside: "Poolside",
+        lighting: "Lighting",
+      },
+      collections: {
+        lounge: {
+          title: "Outdoor Lounge",
+          description: "Deep seating, low tables, and weather-ready silhouettes for open-air rooms.",
+        },
+        dining: {
+          title: "Dining",
+          description: "Tables and chairs scaled for long meals, easy hosting, and everyday use outside.",
+        },
+        shade: {
+          title: "Shade & Texture",
+          description: "Layered materials, woven accents, and soft neutrals that bring depth to the patio.",
+        },
+        lighting: {
+          title: "Lighting",
+          description: "Pendants and ambient pieces that keep outdoor spaces warm after sunset.",
+        },
+      },
+      services: {
+        title: "Outdoor furniture planning",
+        heading: "Plan an exterior room with the same care as the interior.",
+        materialGuidance: "Material and finish guidance",
+        memberSavings: "Member savings",
+      },
+    },
+    teen: {
+      hero: {
+        eyebrow: "Teen",
+        title: "Personal rooms, fully considered.",
+        description:
+          "Furniture, lighting, and storage for bedrooms, lounges, and study spaces with an elevated point of view.",
+        shopCta: "Shop Teen",
+      },
+      edits: {
+        sleep: "Sleep",
+        study: "Study",
+        lounge: "Lounge",
+        storage: "Storage",
+      },
+      collections: {
+        bedroom: {
+          title: "Bedroom",
+          description: "Tailored beds, layered textiles, and storage that keeps a personal room composed.",
+        },
+        lounge: {
+          title: "Lounge",
+          description: "Deep seating and relaxed tables for movie nights, gaming, and time with friends.",
+        },
+        study: {
+          title: "Study",
+          description: "Desks, chairs, and lighting that make focus feel natural from afternoon to late night.",
+        },
+        lighting: {
+          title: "Lighting",
+          description: "Sculptural pendants and task lamps that give every zone a finished point of view.",
+        },
+      },
+      services: {
+        title: "Build a room around sleep, study, and everything after.",
+        cta: "Shop Teen",
+      },
+    },
+    babyChild: {
+      hero: {
+        eyebrow: "Baby & Child",
+        title: "Rooms for first chapters.",
+        description: "Timeless nursery, bedroom, and playroom pieces designed to grow with the routines of family life.",
+        shopCta: "Shop Baby & Child",
+      },
+      collections: {
+        nursery: {
+          title: "Nursery",
+          description: "Soft upholstered beds, quiet storage, and layered lighting for the earliest routines.",
+        },
+        playroom: {
+          title: "Playroom",
+          description: "Durable silhouettes and warm wood tones arranged for reading, play, and reset.",
+        },
+        study: {
+          title: "Study",
+          description: "Scaled desks, shelves, and seating that make homework corners feel considered.",
+        },
+        lighting: {
+          title: "Lighting",
+          description: "A softer glow for bedtime stories, morning routines, and every little pause between.",
+        },
+      },
+      services: {
+        title: "From nursery plans to growing bedrooms.",
+        consultation: "Complimentary design consultation",
+        registryGuidance: "Registry guidance",
+        memberSavings: "Member savings",
+        deliveryCoordination: "Delivery coordination",
+        cta: "Explore services",
+      },
+      category: {
+        placeholderTitle: "Product page placeholder",
+        placeholderEyebrow: "Product page placeholder",
+        placeholderDescription:
+          "Placeholder module. Later work will connect real products, filters, and image assets for this category.",
+        categories: {
+          furniture: {
+            title: "Furniture",
+            summary: "Cribs, beds, dressers, changing tables and storage for growing rooms.",
+          },
+          bedding: {
+            title: "Bedding",
+            summary: "Sheets, quilts, blankets and layered nursery textiles.",
+          },
+          nursery: {
+            title: "Nursery",
+            summary: "Foundational pieces for first rooms, quiet routines and early storage.",
+          },
+          decor: {
+            title: "Decor",
+            summary: "Wall art, mirrors, accents and finishing pieces for child spaces.",
+          },
+          lighting: {
+            title: "Lighting",
+            summary: "Table lamps, floor lamps, sconces and soft overhead lighting.",
+          },
+          rugs: {
+            title: "Rugs",
+            summary: "Soft, durable foundations for nursery, bedroom and playroom layouts.",
+          },
+          windows: {
+            title: "Windows",
+            summary: "Drapery, shades and window layers for calmer child rooms.",
+          },
+          storage: {
+            title: "Storage",
+            summary: "Dressers, bookcases, bins and cabinets for everyday organization.",
+          },
+          playroom: {
+            title: "Playroom",
+            summary: "Tables, seating and storage scaled for reading, play and reset.",
+          },
+          gifts: {
+            title: "Gifts",
+            summary: "Considered keepsakes, nursery essentials and family-ready pieces.",
+          },
+          teen: {
+            title: "Teen",
+            summary: "A bridge to RH Teen with more mature room and study pieces.",
+          },
+          sale: {
+            title: "Sale",
+            summary: "Promotional Baby & Child categories and seasonal savings.",
+          },
+          registry: {
+            title: "Registry",
+            summary: "Registry services, gift guidance and nursery planning entry points.",
+          },
+        },
+        modules: {
+          hero: "Hero / category campaign image",
+          filters: "Category filters and sort controls",
+          grid: "Product grid cards",
+          banner: "Featured collection banner",
+        },
+      },
+    },
+    sale: {
+      hero: {
+        eyebrow: "Sale",
+        title: "New savings across the collection.",
+      },
+    },
+    productList: {
+      filters: {
+        title: "Filter",
+        clearAll: "Clear all",
+      },
+      edit: {
+        title: "Oakved Edit",
+      },
+    },
+    productDetail: {
+      gallery: {
+        previous: "Previous image",
+        next: "Next image",
+        instructions: "Click, scroll or use arrow keys to switch views",
+      },
+      registry: {
+        add: "Add to Gift Registry",
+      },
+      inspiration: {
+        eyebrow: "Room Inspiration",
+        title: "Build the room around bedside storage",
+        description: "Images, sizes and stock stay visible while browsing.",
+      },
+      shopRoom: {
+        eyebrow: "Shop The Room",
+        title: "Style the full Oakved room",
+        description: "Build a coordinated wood furniture setting.",
+      },
+      completeRoom: {
+        eyebrow: "Complete The Room",
+        title: "Complete The Room",
+        description: "Material and finish guidance for a composed setting.",
+      },
+    },
+    cart: {
+      promoLine: "The summer sale. RH members save up to 70% on hundreds of new items.",
+      drawerTitle: "Cart",
+      shop: "Shop",
+      fabric: "Fabric",
+      color: "Color",
+      defaultFabric: "Perennials Performance Textured Linen Weave",
+      defaultColor: "Wheat",
+      width: "Width",
+      depth: "Depth",
+      itemNumber: "Item#",
+      member: "Member",
+      regular: "Regular",
+      addToWishlist: "Add To Wishlist",
+      promoCode: "Promo code",
+      apply: "Apply",
+      itemSource: {
+        membership: "Membership",
+        yudao: "Yudao",
+        preview: "Preview",
+      },
+      summary: {
+        title: "Order Summary",
+        shippingTo: "Shipping to",
+        memberSavings: "Member Savings",
+        orderSubtotal: "Order Subtotal",
+        membersProgram: "RH Members Program",
+        unlimitedDelivery: "Unlimited Furniture Delivery",
+        totalExcludingTax: "Total (excluding sales tax)",
+      },
+      membership: {
+        programLine1: "Members",
+        programLine2: "Program",
+        description: "Annual members save 5% on their first eligible order.",
+        checkoutNotice:
+          "Whole-room members save 15% on eligible orders. CAD $200 annual membership checkout requires an Oakved account.",
+        add: "ADD MEMBERSHIP",
+        added: "ADDED",
+        fineprint: "*Compared to regular price. Limited exclusions apply. See RH Members Program Terms & Conditions for details.",
+      },
+    },
+    checkout: {
+      header: {
+        title: "Checkout",
+        shipping: "Shipping",
+        payment: "Payment",
+        confirmation: "Confirmation",
+        shipToUnitedStates: "Ship to United States",
+      },
+      summaryTitle: "Order Summary",
+      agreements: {
+        membersTerms: "I agree to the RH Members Program Terms and Conditions, which includes the RH Privacy Notice.",
+        membershipRenewal:
+          "I agree to enroll in the RH Membership Program. I authorize RH to automatically renew my membership on an annual basis and charge my credit card for my membership fee of $200 plus applicable taxes.",
+      },
+      address: {
+        countryUnitedStates: "United States",
+      },
+      payment: {
+        title: "Payment",
+        intro: "Select a payment method to use.",
+        cardNumber: "Card number",
+        cardNumberPlaceholder: "1234 5678 9012 3456",
+        expiryDate: "Expiry date",
+        expiryPlaceholder: "MM/YY",
+        cvv: "CVC / CVV",
+        cvvPlaceholder: "3 digits",
+        splitPayment: "Split Payment with Additional Method",
+        saveCard: "Save this credit card to my account",
+        billingSameAsShipping: "Billing address same as shipping",
+        billingAddress: "Billing Address",
+        edit: "Edit",
+        giftMessage: "Gift Message",
+        orderDescription: "Order Description",
+        viewCart: "View Cart",
+        submitOrder: "Submit Order",
+        continueToPayment: "Continue To Payment",
+      },
+      summary: {
+        memberSavings: "Member Savings",
+        orderTitle: "My Order ({count})",
+        shippingTo: "Shipping to {postalCode}",
+        subtotalWithMemberSavings: "Subtotal with member savings",
+        membersProgram: "RH Members Program",
+        unlimitedDelivery: "Unlimited Furniture Delivery",
+        estimatedSalesTax: "Estimated Sales Tax for {postalCode}",
+        total: "Total",
+        totalExcludingTax: "Total (excluding sales tax)",
+        customItemDeposit: "Custom Item Non-Refundable Amount",
+      },
+      footer: {
+        privacy: "Privacy Notice",
+        shippingDelivery: "Shipping & Delivery",
+        returnsExchanges: "Returns & Exchanges",
+        accessibility: "Accessibility Statement",
+        contact: "Contact Us",
+        copyright: "© 2026 RH",
+      },
+    },
+    giftRegistry: {
+      eyebrow: "Gift Registry",
+      nav: {
+        home: "Gift Registry",
+        create: "Create a Registry",
+        find: "Find a Registry",
+        manage: "Manage Registry",
+        account: "Account",
+      },
+      home: {
+        title: "Gift Registry",
+        description: "Create, find or manage an Oakved gift registry.",
+      },
+      find: {
+        title: "Find a Registry",
+        search: "Search",
+        create: "Create a Registry",
+        manage: "Manage Registry",
+        view: "View Registry",
+      },
+      create: {
+        title: "Create a Registry",
+        find: "Find a Registry",
+        manage: "Manage Registry",
+        flow: "Create Flow",
+        steps: {
+          event: "Event",
+          registrant: "Registrant",
+          delivery: "Delivery",
+          privacy: "Privacy",
+          share: "Share",
+        },
+        purchaseCallbackNote: "Purchase updates are recorded after checkout.",
+      },
+      manage: {
+        eyebrow: "Manage Registry",
+        title: "Manage Your Registry",
+        signInEyebrow: "Sign In Required",
+        signInTitle: "Sign In Required",
+        signIn: "Sign In",
+        viewPublic: "View Registry",
+        giftsEyebrow: "Registry Gifts",
+        addProductTitle: "Add Gift",
+        addGift: "Add Gift",
+        viewProduct: "View Product",
+      },
+      public: {
+        titleFallback: "Gift Registry",
+        eventFallback: "Celebration",
+        unavailable: "This registry is unavailable.",
+        requestedPurchased: "{purchased} of {requested} purchased",
+        itemFallbackNote: "Gift Message",
+        viewProduct: "View Product",
+        addGiftToBag: "Add Gift To Bag",
+        noGiftsEyebrow: "No Gifts Yet",
+        noGiftsTitle: "This registry does not have public gift items yet.",
+        noGiftsDescription: "Check back after the owner adds items.",
+      },
+    },
+    account: {
+      dashboard: {
+        title: "Account Dashboard",
+      },
+    },
+    placeholder: {
+      missing: {
+        eyebrow: "Product page placeholder",
+        title: "These pages remain in development preview.",
+        description:
+          "Current product images, homepage assets, and navigation behavior are still being finalized, so this area stays as a structural placeholder until real content is confirmed.",
+      },
+    },
+  },
+  "zh-CN": {
+    home: {
+      commerce: {
+        eyebrow: "Oakved 商店",
+        title: "以比例、材质与安静氛围打造完整房间。",
+      },
+      featured: {
+        title: "精选系列",
+      },
+      trust: {
+        memberPricing: {
+          title: "会员优惠",
+        },
+      },
+    },
+    landing: {
+      common: {
+        collection: "系列",
+        designServices: "设计服务",
+        joinMembers: "加入 RH 会员",
+        exploreServices: "探索服务",
+      },
+    },
+    outdoor: {
+      hero: {
+        title: "完整呈现的户外空间。",
+      },
+      services: {
+        title: "户外家具规划",
+      },
+    },
+    teen: {
+      hero: {
+        title: "细致构思的个性房间。",
+      },
+      services: {
+        cta: "选购青少年系列",
+      },
+    },
+    babyChild: {
+      hero: {
+        title: "为成长开篇打造房间。",
+      },
+      category: {
+        placeholderTitle: "商品页面占位",
+      },
+    },
+    sale: {
+      hero: {
+        title: "全系列新品优惠。",
+      },
+    },
+    productList: {
+      filters: {
+        title: "筛选",
+        clearAll: "全部清除",
+      },
+      edit: {
+        title: "Oakved 精选",
+      },
+    },
+    productDetail: {
+      gallery: {
+        previous: "上一张图片",
+        next: "下一张图片",
+        instructions: "点击、滚动或使用方向键切换视图",
+      },
+      registry: {
+        add: "加入礼品登记",
+      },
+      inspiration: {
+        eyebrow: "房间灵感",
+        title: "围绕床边收纳打造房间",
+        description: "浏览时图片、尺寸和库存保持可见。",
+      },
+      shopRoom: {
+        eyebrow: "选购整间搭配",
+        title: "搭配完整 Oakved 房间",
+        description: "打造协调的木质家具空间。",
+      },
+      completeRoom: {
+        eyebrow: "完善房间",
+        title: "完善房间",
+        description: "提供材质和饰面建议，组成协调空间。",
+      },
+    },
+    cart: {
+      promoLine: "夏季大促进行中，RH 会员可在数百款新品上最高节省 70%。",
+      drawerTitle: "购物车",
+      shop: "选购",
+      fabric: "面料",
+      color: "颜色",
+      defaultFabric: "Perennials Performance Textured Linen Weave",
+      defaultColor: "麦穗色",
+      width: "宽度",
+      depth: "深度",
+      itemNumber: "货号",
+      member: "会员价",
+      regular: "常规价",
+      addToWishlist: "加入心愿单",
+      promoCode: "优惠码",
+      apply: "应用",
+      itemSource: {
+        membership: "会员服务",
+        yudao: "Yudao",
+        preview: "预览",
+      },
+      summary: {
+        title: "订单摘要",
+        shippingTo: "配送至",
+        memberSavings: "会员优惠",
+        orderSubtotal: "订单小计",
+        membersProgram: "RH 会员计划",
+        unlimitedDelivery: "不限次数家具配送",
+        totalExcludingTax: "总计（未含销售税）",
+      },
+      membership: {
+        programLine1: "会员",
+        programLine2: "计划",
+        description: "年度会员首笔符合条件的订单可节省 5%。",
+        checkoutNotice: "整屋会员在符合条件的订单上可节省 15%。加币 200 元的年度会员结账需要 Oakved 账户。",
+        add: "加入会员",
+        added: "已加入",
+        fineprint: "*与常规价格相比。部分商品不适用。详情请参阅 RH 会员计划条款与条件。",
+      },
+    },
+    checkout: {
+      header: {
+        title: "结账",
+        shipping: "配送",
+        payment: "付款",
+        confirmation: "确认",
+        shipToUnitedStates: "配送至美国",
+      },
+      summaryTitle: "订单摘要",
+      agreements: {
+        membersTerms: "我同意 RH 会员计划条款与条件，其中包括 RH 隐私声明。",
+        membershipRenewal:
+          "我同意加入 RH 会员计划。我授权 RH 按年自动续费，并从我的信用卡中扣除 200 美元会员费及适用税费。",
+      },
+      address: {
+        countryUnitedStates: "美国",
+      },
+      payment: {
+        title: "付款",
+        intro: "请选择要使用的付款方式。",
+        cardNumber: "卡号",
+        cardNumberPlaceholder: "1234 5678 9012 3456",
+        expiryDate: "到期日期",
+        expiryPlaceholder: "MM/YY",
+        cvv: "CVC / CVV",
+        cvvPlaceholder: "3 位数字",
+        splitPayment: "使用其他方式分拆付款",
+        saveCard: "将此信用卡保存到账户",
+        billingSameAsShipping: "账单地址与配送地址相同",
+        billingAddress: "账单地址",
+        edit: "编辑",
+        giftMessage: "礼品留言",
+        orderDescription: "订单说明",
+        viewCart: "查看购物车",
+        submitOrder: "提交订单",
+        continueToPayment: "继续付款",
+      },
+      summary: {
+        memberSavings: "会员优惠",
+        orderTitle: "我的订单（{count}）",
+        shippingTo: "配送至 {postalCode}",
+        subtotalWithMemberSavings: "会员优惠后小计",
+        membersProgram: "RH 会员计划",
+        unlimitedDelivery: "不限次数家具配送",
+        estimatedSalesTax: "{postalCode} 预估销售税",
+        total: "总计",
+        totalExcludingTax: "总计（未含销售税）",
+        customItemDeposit: "定制商品不可退款金额",
+      },
+      footer: {
+        privacy: "隐私声明",
+        shippingDelivery: "配送与交付",
+        returnsExchanges: "退换货",
+        accessibility: "无障碍声明",
+        contact: "联系我们",
+        copyright: "© 2026 RH",
+      },
+    },
+    giftRegistry: {
+      eyebrow: "礼品登记",
+      nav: {
+        home: "礼品登记",
+        create: "创建礼品登记",
+        find: "查找礼品登记",
+        manage: "管理礼品登记",
+        account: "账户",
+      },
+      home: {
+        title: "礼品登记",
+        description: "创建、查找或管理 Oakved 礼品登记。",
+      },
+      find: {
+        title: "查找礼品登记",
+        search: "搜索",
+        create: "创建礼品登记",
+        manage: "管理礼品登记",
+        view: "查看礼品登记",
+      },
+      create: {
+        title: "创建礼品登记",
+        find: "查找礼品登记",
+        manage: "管理礼品登记",
+        flow: "创建流程",
+        steps: {
+          event: "活动",
+          registrant: "登记人",
+          delivery: "配送",
+          privacy: "隐私",
+          share: "分享",
+        },
+        purchaseCallbackNote: "购买更新会在结账后记录。",
+      },
+      manage: {
+        eyebrow: "管理礼品登记",
+        title: "管理你的礼品登记",
+        signInEyebrow: "需要登录",
+        signInTitle: "需要登录",
+        signIn: "登录",
+        viewPublic: "查看礼品登记",
+        giftsEyebrow: "登记礼品",
+        addProductTitle: "添加礼品",
+        addGift: "添加礼品",
+        viewProduct: "查看商品",
+      },
+      public: {
+        titleFallback: "礼品登记",
+        eventFallback: "庆祝活动",
+        unavailable: "此礼品登记不可用。",
+        requestedPurchased: "已购买 {purchased} / 需要 {requested}",
+        itemFallbackNote: "礼品留言",
+        viewProduct: "查看商品",
+        addGiftToBag: "加入购物车",
+        noGiftsEyebrow: "暂无礼品",
+        noGiftsTitle: "这个礼品登记暂时没有公开礼品。",
+        noGiftsDescription: "登记人添加商品后请再查看。",
+      },
+    },
+    account: {
+      dashboard: {
+        title: "账户中心",
+      },
+    },
+    placeholder: {
+      missing: {
+        eyebrow: "商品页面占位",
+        title: "这些页面暂时保留为开发预览。",
+      },
+    },
+  },
+  fr: {
+    home: {
+      commerce: {
+        eyebrow: "Boutique Oakved",
+        title: "Des pièces pensées autour des proportions, des matières et du calme.",
+      },
+      featured: {
+        title: "Collection en vedette",
+      },
+      trust: {
+        memberPricing: {
+          title: "Économies membre",
+        },
+      },
+    },
+    landing: {
+      common: {
+        collection: "Collection",
+        designServices: "Services de design",
+        joinMembers: "Rejoindre RH Members",
+        exploreServices: "Découvrir les services",
+      },
+    },
+    outdoor: {
+      hero: {
+        title: "Des pièces extérieures entièrement composées.",
+      },
+      services: {
+        title: "Planification du mobilier extérieur",
+      },
+    },
+    teen: {
+      hero: {
+        title: "Des chambres personnelles, pleinement pensées.",
+      },
+      services: {
+        cta: "Acheter Teen",
+      },
+    },
+    babyChild: {
+      hero: {
+        title: "Des chambres pour les premiers chapitres.",
+      },
+      category: {
+        placeholderTitle: "Page produit temporaire",
+      },
+    },
+    sale: {
+      hero: {
+        title: "Nouvelles offres dans toute la collection.",
+      },
+    },
+    productList: {
+      filters: {
+        title: "Filtrer",
+        clearAll: "Tout effacer",
+      },
+      edit: {
+        title: "Sélection Oakved",
+      },
+    },
+    productDetail: {
+      gallery: {
+        previous: "Image précédente",
+        next: "Image suivante",
+        instructions: "Cliquez, faites défiler ou utilisez les flèches pour changer de vue",
+      },
+      registry: {
+        add: "Ajouter à la liste cadeaux",
+      },
+      inspiration: {
+        eyebrow: "Inspiration de pièce",
+        title: "Composer la pièce autour du rangement de chevet",
+        description: "Les images, dimensions et stocks restent visibles pendant la navigation.",
+      },
+      shopRoom: {
+        eyebrow: "Acheter la pièce",
+        title: "Composer toute la pièce Oakved",
+        description: "Créer un ensemble coordonné de mobilier en bois.",
+      },
+      completeRoom: {
+        eyebrow: "Compléter la pièce",
+        title: "Compléter la pièce",
+        description: "Conseils sur les matières et les finitions pour un ensemble cohérent.",
+      },
+    },
+    cart: {
+      promoLine: "Soldes d'été en cours. Les membres RH économisent jusqu'à 70 % sur des centaines de nouveautés.",
+      drawerTitle: "Panier",
+      shop: "Acheter",
+      fabric: "Tissu",
+      color: "Couleur",
+      defaultFabric: "Perennials Performance Textured Linen Weave",
+      defaultColor: "Blé",
+      width: "Largeur",
+      depth: "Profondeur",
+      itemNumber: "Réf. article",
+      member: "Membre",
+      regular: "Standard",
+      addToWishlist: "Ajouter à la liste d'envies",
+      promoCode: "Code promo",
+      apply: "Appliquer",
+      itemSource: {
+        membership: "Adhésion",
+        yudao: "Yudao",
+        preview: "Aperçu",
+      },
+      summary: {
+        title: "Récapitulatif de commande",
+        shippingTo: "Livraison vers",
+        memberSavings: "Économies membre",
+        orderSubtotal: "Sous-total de la commande",
+        membersProgram: "Programme RH Members",
+        unlimitedDelivery: "Livraison illimitée de meubles",
+        totalExcludingTax: "Total (hors taxe)",
+      },
+      membership: {
+        programLine1: "Programme",
+        programLine2: "Members",
+        description: "Les membres annuels économisent 5 % sur leur première commande admissible.",
+        checkoutNotice:
+          "Les membres Whole-Room économisent 15 % sur les commandes admissibles. L'adhésion annuelle à 200 $ CA au paiement nécessite un compte Oakved.",
+        add: "AJOUTER L'ADHÉSION",
+        added: "AJOUTÉ",
+        fineprint:
+          "*Comparé au prix standard. Certaines exclusions s'appliquent. Consultez les conditions du programme RH Members pour plus de détails.",
+      },
+    },
+    checkout: {
+      header: {
+        title: "Paiement",
+        shipping: "Livraison",
+        payment: "Paiement",
+        confirmation: "Confirmation",
+        shipToUnitedStates: "Livrer aux États-Unis",
+      },
+      summaryTitle: "Récapitulatif de commande",
+      agreements: {
+        membersTerms:
+          "J'accepte les conditions du programme RH Members, qui incluent l'avis de confidentialité RH.",
+        membershipRenewal:
+          "J'accepte de m'inscrire au programme d'adhésion RH. J'autorise RH à renouveler automatiquement mon adhésion chaque année et à facturer ma carte bancaire des frais d'adhésion de 200 $ plus les taxes applicables.",
+      },
+      address: {
+        countryUnitedStates: "États-Unis",
+      },
+      payment: {
+        title: "Paiement",
+        intro: "Sélectionnez un moyen de paiement à utiliser.",
+        cardNumber: "Numéro de carte",
+        cardNumberPlaceholder: "1234 5678 9012 3456",
+        expiryDate: "Date d'expiration",
+        expiryPlaceholder: "MM/AA",
+        cvv: "CVC / CVV",
+        cvvPlaceholder: "3 chiffres",
+        splitPayment: "Fractionner le paiement avec un autre moyen",
+        saveCard: "Enregistrer cette carte dans mon compte",
+        billingSameAsShipping: "Adresse de facturation identique à la livraison",
+        billingAddress: "Adresse de facturation",
+        edit: "Modifier",
+        giftMessage: "Message cadeau",
+        orderDescription: "Description de commande",
+        viewCart: "Voir le panier",
+        submitOrder: "Valider la commande",
+        continueToPayment: "Continuer vers le paiement",
+      },
+      summary: {
+        memberSavings: "Économies membre",
+        orderTitle: "Ma commande ({count})",
+        shippingTo: "Livraison vers {postalCode}",
+        subtotalWithMemberSavings: "Sous-total avec économies membre",
+        membersProgram: "Programme RH Members",
+        unlimitedDelivery: "Livraison illimitée de meubles",
+        estimatedSalesTax: "Taxe estimée pour {postalCode}",
+        total: "Total",
+        totalExcludingTax: "Total (hors taxe)",
+        customItemDeposit: "Montant non remboursable pour article personnalisé",
+      },
+      footer: {
+        privacy: "Avis de confidentialité",
+        shippingDelivery: "Expédition et livraison",
+        returnsExchanges: "Retours et échanges",
+        accessibility: "Déclaration d'accessibilité",
+        contact: "Nous contacter",
+        copyright: "© 2026 RH",
+      },
+    },
+    giftRegistry: {
+      eyebrow: "Liste cadeaux",
+      nav: {
+        home: "Liste cadeaux",
+        create: "Créer une liste",
+        find: "Trouver une liste",
+        manage: "Gérer la liste",
+        account: "Compte",
+      },
+      home: {
+        title: "Liste cadeaux",
+        description: "Créez, trouvez ou gérez une liste cadeaux Oakved.",
+      },
+      find: {
+        title: "Trouver une liste",
+        search: "Rechercher",
+        create: "Créer une liste",
+        manage: "Gérer la liste",
+        view: "Voir la liste",
+      },
+      create: {
+        title: "Créer une liste",
+        find: "Trouver une liste",
+        manage: "Gérer la liste",
+        flow: "Parcours de création",
+        steps: {
+          event: "Événement",
+          registrant: "Titulaire",
+          delivery: "Livraison",
+          privacy: "Confidentialité",
+          share: "Partager",
+        },
+        purchaseCallbackNote: "Les achats sont enregistrés après le paiement.",
+      },
+      manage: {
+        eyebrow: "Gérer la liste",
+        title: "Gérer votre liste",
+        signInEyebrow: "Connexion requise",
+        signInTitle: "Connexion requise",
+        signIn: "Se connecter",
+        viewPublic: "Voir la liste",
+        giftsEyebrow: "Cadeaux de la liste",
+        addProductTitle: "Ajouter un cadeau",
+        addGift: "Ajouter un cadeau",
+        viewProduct: "Voir le produit",
+      },
+      public: {
+        titleFallback: "Liste cadeaux",
+        eventFallback: "Célébration",
+        unavailable: "Cette liste est indisponible.",
+        requestedPurchased: "{purchased} sur {requested} achetés",
+        itemFallbackNote: "Message cadeau",
+        viewProduct: "Voir le produit",
+        addGiftToBag: "Ajouter le cadeau au panier",
+        noGiftsEyebrow: "Aucun cadeau pour le moment",
+        noGiftsTitle: "Cette liste ne contient pas encore de cadeaux publics.",
+        noGiftsDescription: "Revenez après l'ajout d'articles par le titulaire.",
+      },
+    },
+    account: {
+      dashboard: {
+        title: "Tableau de bord du compte",
+      },
+    },
+    placeholder: {
+      missing: {
+        eyebrow: "Page produit temporaire",
+        title: "Ces pages restent en aperçu de développement.",
+      },
+    },
+  },
+};
+
+Object.entries(coreVisibleMessages).forEach(([lang, localeMessages]) => {
+  mergeLocaleMessages(messages[lang], localeMessages);
+});
+
+const taskFiveGiftRegistryMessages = {
+  en: {
+    giftRegistry: {
+      common: {
+        complete: "Complete",
+        open: "Open",
+      },
+      home: {
+        title: "Find, create and manage furniture gift registries.",
+        description:
+          "Registry planning includes event details, registrant information, delivery addresses and privacy controls.",
+      },
+      find: {
+        description:
+          "Guests can search public registries by registrant name, event date or email, then enter the registry shopping path.",
+        empty: "No public registries matched that search.",
+        preview: "Local preview is shown because the backend is unavailable.",
+        unavailable: "Public registry search is unavailable.",
+        locationPrivate: "Location private",
+        previewCard: {
+          eventType: "Preview",
+          location: "Local preview",
+          primaryName: "Local Preview",
+          coRegistrantName: "Registry",
+        },
+        fields: {
+          keywordLabel: "Registrant Name or Email",
+          keywordPlaceholder: "Search by name or email",
+          eventMonthLabel: "Event Month",
+          eventMonthPlaceholder: "YYYY-MM",
+        },
+      },
+      create: {
+        title: "Create a registry with event, delivery and privacy planning.",
+        description:
+          "The create flow captures the event, registrants, delivery addresses, subscription preferences and sharing state before the registry becomes visible.",
+        sections: {
+          event: "1. Event Details",
+          registrant: "2. Registrant Information",
+          delivery: "3. Gift Delivery Addresses",
+          privacy: "4. Privacy & Subscription",
+          share: "5. Share Registry",
+        },
+        fields: {
+          eventTypeLabel: "Event Type",
+          eventTypePlaceholder: "Wedding",
+          eventDateLabel: "Event Date",
+          eventLocationLabel: "Event Location",
+          eventLocationPlaceholder: "City, venue or destination",
+          primaryNameLabel: "Primary Name",
+          primaryNamePlaceholder: "Primary registrant name",
+          coRegistrantLabel: "Co-Registrant",
+          emailLabel: "Email",
+          emailPlaceholder: "name@example.com",
+          phoneLabel: "Phone",
+          phonePlaceholder: "Phone number",
+          addressLabel: "Address",
+          cityLabel: "City",
+          regionLabel: "Region",
+          postalCodeLabel: "Postal Code",
+          giftCardPreference: "Accept gift card preference",
+          emailSubscription: "Registry email messages",
+        },
+        addresses: {
+          beforeEvent: "Before Event",
+          afterEvent: "After Event",
+        },
+        visibility: {
+          public: "Public",
+          searchableByEmail: "Searchable by Email",
+          inviteOnly: "Invite Only",
+        },
+        share: {
+          ready: "Ready to share",
+          completeRequired: "Complete required sections",
+          publicPage: "Public page",
+          unavailable: "Unavailable until saved",
+        },
+        actions: {
+          saving: "Saving",
+          create: "Create Registry",
+        },
+        messages: {
+          signInRequired: "Sign in before creating a persistent gift registry.",
+          saved: "Registry saved to your Oakved account.",
+          error: "Gift registry could not be saved.",
+        },
+        purchaseCallbackNote: "Purchased item updates are reserved for the later order callback phase.",
+      },
+      manage: {
+        description:
+          "Signed-in registry owners manage visibility, delivery addresses, preferences, sharing and gift item status from this account destination.",
+        signInTitle: "Registry management is connected to your Oakved account.",
+        viewPublic: "View Public Registry",
+        addProductTitle: "Add a Yudao product by SPU and SKU",
+        itemIds: "SPU {spuId} / SKU {skuId}",
+        summary: {
+          noOwner: "No registry owner yet",
+          noEventDate: "No event date",
+          noPublicUrl: "No public URL yet",
+        },
+        fields: {
+          spuIdLabel: "SPU ID",
+          spuIdPlaceholder: "Enter SPU ID",
+          skuIdLabel: "SKU ID",
+          skuIdPlaceholder: "Enter SKU ID",
+          productNameLabel: "Product Name",
+          productNamePlaceholder: "Gift item name",
+          quantityLabel: "Quantity",
+          quantityPlaceholder: "1",
+        },
+        messages: {
+          signInRequired: "Sign in to manage a persistent gift registry.",
+          empty: "No registry has been created for this account yet.",
+          preview: "Local registry preview is shown because the backend is unavailable.",
+          loadError: "Gift registry could not be loaded.",
+          createBeforeAdd: "Create a registry before adding gifts.",
+          itemSaved: "Gift item saved to the registry.",
+          itemError: "Gift item could not be saved.",
+        },
+        actions: {
+          visibility: {
+            title: "Registry Visibility",
+            description: "Current access is {value}.",
+            cta: "Edit Visibility",
+            notSet: "not set",
+          },
+          preferences: {
+            title: "Gift Card & Email Preferences",
+            description: "Control gift card acceptance and registry communication preferences.",
+            cta: "Edit Preferences",
+          },
+          addresses: {
+            title: "Delivery Addresses",
+            description: "Maintain before-event and after-event delivery destinations.",
+            cta: "Edit Addresses",
+          },
+          items: {
+            title: "Registry Gifts",
+            description: "Gift items are persisted with real SPU and SKU identifiers.",
+            cta: "View Gifts",
+          },
+        },
+      },
+      public: {
+        titleFallback: "Public Registry",
+        eventFallback: "Registry",
+        unavailable: "This public gift registry is unavailable.",
+        requestedPurchased: "Requested {requested} - Purchased {purchased}",
+        itemFallbackNote: "Gift item linked to Oakved product inventory.",
+      },
+    },
+  },
+  "zh-CN": {
+    giftRegistry: {
+      common: {
+        complete: "已完成",
+        open: "待完成",
+      },
+      home: {
+        title: "查找、创建并管理家具礼品登记。",
+        description: "礼品登记规划包括活动信息、登记人资料、配送地址和隐私设置。",
+      },
+      find: {
+        description: "宾客可按登记人姓名、活动日期或邮箱搜索公开礼品登记，然后进入礼品选购流程。",
+        empty: "没有找到符合条件的公开礼品登记。",
+        preview: "由于后端暂不可用，当前显示本地预览数据。",
+        unavailable: "公开礼品登记搜索暂不可用。",
+        locationPrivate: "地点未公开",
+        previewCard: {
+          eventType: "预览",
+          location: "本地预览",
+          primaryName: "本地预览",
+          coRegistrantName: "礼品登记",
+        },
+        fields: {
+          keywordLabel: "登记人姓名或邮箱",
+          keywordPlaceholder: "按姓名或邮箱搜索",
+          eventMonthLabel: "活动月份",
+          eventMonthPlaceholder: "YYYY-MM",
+        },
+      },
+      create: {
+        title: "创建包含活动、配送与隐私规划的礼品登记。",
+        description: "创建流程会在礼品登记公开前收集活动信息、登记人资料、配送地址、订阅偏好和分享状态。",
+        sections: {
+          event: "1. 活动信息",
+          registrant: "2. 登记人信息",
+          delivery: "3. 礼品配送地址",
+          privacy: "4. 隐私与订阅",
+          share: "5. 分享礼品登记",
+        },
+        fields: {
+          eventTypeLabel: "活动类型",
+          eventTypePlaceholder: "婚礼",
+          eventDateLabel: "活动日期",
+          eventLocationLabel: "活动地点",
+          eventLocationPlaceholder: "城市、场地或目的地",
+          primaryNameLabel: "主登记人姓名",
+          primaryNamePlaceholder: "请输入主登记人姓名",
+          coRegistrantLabel: "共同登记人",
+          emailLabel: "邮箱",
+          emailPlaceholder: "name@example.com",
+          phoneLabel: "电话",
+          phonePlaceholder: "电话号码",
+          addressLabel: "地址",
+          cityLabel: "城市",
+          regionLabel: "省/州/地区",
+          postalCodeLabel: "邮政编码",
+          giftCardPreference: "接受礼品卡偏好",
+          emailSubscription: "接收礼品登记邮件",
+        },
+        addresses: {
+          beforeEvent: "活动前",
+          afterEvent: "活动后",
+        },
+        visibility: {
+          public: "公开",
+          searchableByEmail: "可通过邮箱搜索",
+          inviteOnly: "仅限邀请",
+        },
+        share: {
+          ready: "可以分享了",
+          completeRequired: "请先完成必填部分",
+          publicPage: "公开页面",
+          unavailable: "保存后可用",
+        },
+        actions: {
+          saving: "保存中",
+          create: "创建礼品登记",
+        },
+        messages: {
+          signInRequired: "请先登录，再创建可长期保存的礼品登记。",
+          saved: "礼品登记已保存到你的 Oakved 账户。",
+          error: "礼品登记暂时无法保存。",
+        },
+        purchaseCallbackNote: "已购礼品的更新会在后续订单回调阶段记录。",
+      },
+      manage: {
+        description: "已登录的登记人可在此管理可见性、配送地址、偏好设置、分享状态和礼品条目状态。",
+        signInTitle: "礼品登记管理与你的 Oakved 账户绑定。",
+        viewPublic: "查看公开礼品登记",
+        addProductTitle: "通过 SPU 和 SKU 添加 Yudao 商品",
+        itemIds: "SPU {spuId} / SKU {skuId}",
+        summary: {
+          noOwner: "暂无登记人",
+          noEventDate: "暂无活动日期",
+          noPublicUrl: "暂无公开链接",
+        },
+        fields: {
+          spuIdLabel: "SPU ID",
+          spuIdPlaceholder: "输入 SPU ID",
+          skuIdLabel: "SKU ID",
+          skuIdPlaceholder: "输入 SKU ID",
+          productNameLabel: "商品名称",
+          productNamePlaceholder: "礼品名称",
+          quantityLabel: "数量",
+          quantityPlaceholder: "1",
+        },
+        messages: {
+          signInRequired: "请登录后管理可长期保存的礼品登记。",
+          empty: "当前账户还没有创建礼品登记。",
+          preview: "由于后端暂不可用，当前显示本地礼品登记预览。",
+          loadError: "礼品登记暂时无法加载。",
+          createBeforeAdd: "请先创建礼品登记，再添加礼品。",
+          itemSaved: "礼品条目已保存到礼品登记中。",
+          itemError: "礼品条目暂时无法保存。",
+        },
+        actions: {
+          visibility: {
+            title: "礼品登记可见性",
+            description: "当前访问权限为 {value}。",
+            cta: "编辑可见性",
+            notSet: "未设置",
+          },
+          preferences: {
+            title: "礼品卡与邮件偏好",
+            description: "管理是否接受礼品卡以及礼品登记沟通偏好。",
+            cta: "编辑偏好",
+          },
+          addresses: {
+            title: "配送地址",
+            description: "维护活动前后两个阶段的礼品配送地址。",
+            cta: "编辑地址",
+          },
+          items: {
+            title: "礼品条目",
+            description: "礼品条目会使用真实的 SPU 与 SKU 标识保存。",
+            cta: "查看礼品",
+          },
+        },
+      },
+      public: {
+        titleFallback: "公开礼品登记",
+        eventFallback: "礼品登记",
+        unavailable: "此公开礼品登记暂不可用。",
+        requestedPurchased: "需要 {requested} 件 - 已购买 {purchased} 件",
+        itemFallbackNote: "礼品条目已关联到 Oakved 商品库存。",
+        addGiftToBag: "加入购物袋",
+      },
+    },
+  },
+  fr: {
+    giftRegistry: {
+      common: {
+        complete: "Terminée",
+        open: "À compléter",
+      },
+      home: {
+        title: "Trouvez, créez et gérez des listes cadeaux pour le mobilier.",
+        description:
+          "La planification de la liste inclut l'événement, les titulaires, les adresses de livraison et les réglages de confidentialité.",
+      },
+      find: {
+        description:
+          "Les invités peuvent rechercher des listes publiques par nom, date d'événement ou e-mail, puis commencer les achats.",
+        empty: "Aucune liste publique ne correspond à cette recherche.",
+        preview: "Un aperçu local est affiché parce que le backend est indisponible.",
+        unavailable: "La recherche de listes publiques est indisponible.",
+        locationPrivate: "Lieu privé",
+        previewCard: {
+          eventType: "Aperçu",
+          location: "Aperçu local",
+          primaryName: "Aperçu local",
+          coRegistrantName: "Liste",
+        },
+        fields: {
+          keywordLabel: "Nom du titulaire ou e-mail",
+          keywordPlaceholder: "Rechercher par nom ou e-mail",
+          eventMonthLabel: "Mois de l'événement",
+          eventMonthPlaceholder: "YYYY-MM",
+        },
+      },
+      create: {
+        title: "Créez une liste avec planification de l'événement, de la livraison et de la confidentialité.",
+        description:
+          "Le parcours de création recueille l'événement, les titulaires, les adresses de livraison, les préférences d'abonnement et l'état de partage avant la mise en ligne.",
+        sections: {
+          event: "1. Détails de l'événement",
+          registrant: "2. Informations des titulaires",
+          delivery: "3. Adresses de livraison des cadeaux",
+          privacy: "4. Confidentialité et abonnement",
+          share: "5. Partager la liste",
+        },
+        fields: {
+          eventTypeLabel: "Type d'événement",
+          eventTypePlaceholder: "Mariage",
+          eventDateLabel: "Date de l'événement",
+          eventLocationLabel: "Lieu de l'événement",
+          eventLocationPlaceholder: "Ville, lieu ou destination",
+          primaryNameLabel: "Nom principal",
+          primaryNamePlaceholder: "Nom du titulaire principal",
+          coRegistrantLabel: "Co-titulaire",
+          emailLabel: "E-mail",
+          emailPlaceholder: "name@example.com",
+          phoneLabel: "Téléphone",
+          phonePlaceholder: "Numéro de téléphone",
+          addressLabel: "Adresse",
+          cityLabel: "Ville",
+          regionLabel: "Région",
+          postalCodeLabel: "Code postal",
+          giftCardPreference: "Accepter la préférence carte cadeau",
+          emailSubscription: "Messages e-mail de la liste",
+        },
+        addresses: {
+          beforeEvent: "Avant l'événement",
+          afterEvent: "Après l'événement",
+        },
+        visibility: {
+          public: "Publique",
+          searchableByEmail: "Recherchable par e-mail",
+          inviteOnly: "Sur invitation uniquement",
+        },
+        share: {
+          ready: "Prête à être partagée",
+          completeRequired: "Complétez les sections requises",
+          publicPage: "Page publique",
+          unavailable: "Indisponible avant l'enregistrement",
+        },
+        actions: {
+          saving: "Enregistrement",
+          create: "Créer la liste",
+        },
+        messages: {
+          signInRequired: "Connectez-vous avant de créer une liste cadeaux persistante.",
+          saved: "La liste a été enregistrée dans votre compte Oakved.",
+          error: "La liste cadeaux n'a pas pu être enregistrée.",
+        },
+        purchaseCallbackNote: "Les mises à jour des articles achetés sont réservées à l'étape ultérieure de retour de commande.",
+      },
+      manage: {
+        description:
+          "Les titulaires connectés gèrent ici la visibilité, les adresses de livraison, les préférences, le partage et l'état des cadeaux.",
+        signInTitle: "La gestion de la liste est liée à votre compte Oakved.",
+        viewPublic: "Voir la liste publique",
+        addProductTitle: "Ajouter un produit Yudao par SPU et SKU",
+        itemIds: "SPU {spuId} / SKU {skuId}",
+        summary: {
+          noOwner: "Aucun titulaire pour le moment",
+          noEventDate: "Aucune date d'événement",
+          noPublicUrl: "Aucune URL publique pour le moment",
+        },
+        fields: {
+          spuIdLabel: "ID SPU",
+          spuIdPlaceholder: "Saisir l'ID SPU",
+          skuIdLabel: "ID SKU",
+          skuIdPlaceholder: "Saisir l'ID SKU",
+          productNameLabel: "Nom du produit",
+          productNamePlaceholder: "Nom du cadeau",
+          quantityLabel: "Quantité",
+          quantityPlaceholder: "1",
+        },
+        messages: {
+          signInRequired: "Connectez-vous pour gérer une liste cadeaux persistante.",
+          empty: "Aucune liste n'a encore été créée pour ce compte.",
+          preview: "Un aperçu local de la liste est affiché parce que le backend est indisponible.",
+          loadError: "La liste cadeaux n'a pas pu être chargée.",
+          createBeforeAdd: "Créez d'abord une liste avant d'ajouter des cadeaux.",
+          itemSaved: "L'article cadeau a été enregistré dans la liste.",
+          itemError: "L'article cadeau n'a pas pu être enregistré.",
+        },
+        actions: {
+          visibility: {
+            title: "Visibilité de la liste",
+            description: "L'accès actuel est {value}.",
+            cta: "Modifier la visibilité",
+            notSet: "non défini",
+          },
+          preferences: {
+            title: "Préférences carte cadeau et e-mail",
+            description: "Gérez l'acceptation des cartes cadeaux et les préférences de communication.",
+            cta: "Modifier les préférences",
+          },
+          addresses: {
+            title: "Adresses de livraison",
+            description: "Mettez à jour les destinations avant et après l'événement.",
+            cta: "Modifier les adresses",
+          },
+          items: {
+            title: "Cadeaux de la liste",
+            description: "Les articles cadeaux sont enregistrés avec de vrais identifiants SPU et SKU.",
+            cta: "Voir les cadeaux",
+          },
+        },
+      },
+      public: {
+        titleFallback: "Liste publique",
+        eventFallback: "Liste cadeaux",
+        unavailable: "Cette liste cadeaux publique est indisponible.",
+        requestedPurchased: "Demandé {requested} - Acheté {purchased}",
+        itemFallbackNote: "Cet article cadeau est lié à l'inventaire produit Oakved.",
+      },
+    },
+  },
+};
+
+Object.entries(taskFiveGiftRegistryMessages).forEach(([lang, localeMessages]) => {
+  mergeLocaleMessages(messages[lang], localeMessages);
+});
+
+const taskThreeLandingMessages = {
+  "zh-CN": {
+    home: {
+      commerce: {
+        eyebrow: "选购空间搭配",
+        title: "以比例、材质与宁静感构成的房间。",
+        description: "从房间出发，再按面料、饰面、配送时间和会员价格细化选择。",
+      },
+      featured: {
+        eyebrow: "精选系列",
+        title: "以温润木材、收纳与安静比例构成的卧室系列。",
+        description: "在进入结账前，先浏览床头柜、斗柜、长凳、书桌与休闲椅。",
+        cta: "选购卧室家具",
+      },
+      trust: {
+        memberPricing: {
+          title: "会员价格",
+          copy: "结账前即可清楚查看会员价与原价。",
+        },
+        deliveryClarity: {
+          title: "配送清晰",
+          copy: "提前显示现货与特殊订单的预计配送窗口。",
+        },
+        materialLedChoices: {
+          title: "材质导向选择",
+          copy: "面料、石材、木材与金属选项保持可视化。",
+        },
+      },
+      editorial: {
+        bedroomFurniture: {
+          eyebrow: "卧室家具",
+          title: "围绕温润木材与安静比例打造卧室。",
+          subtitle: "从床头柜、斗柜与床尾凳开始，再以同一材质语言叠加软包与灯光。",
+          cta: "选购卧室家具",
+        },
+        storageCabinets: {
+          eyebrow: "收纳柜",
+          title: "像家具一样呈现的收纳，而非单纯工具。",
+          subtitle: "雕刻斗柜、床边抽屉与柜体让房间保持秩序，也让日常物品各有其位。",
+          cta: "探索收纳",
+        },
+        desksTables: {
+          eyebrow: "书桌与桌几",
+          title: "小型工作区也拥有完整房间的完成感。",
+          subtitle: "将写字桌、梳妆台与圆桌搭配更具居家感而非办公感的椅子。",
+          cta: "选购书桌与桌几",
+        },
+        seatingBenches: {
+          eyebrow: "座椅与长凳",
+          title: "以休闲座椅与床尾件完善整个房间。",
+          subtitle: "单人沙发、卧室边椅与床尾凳带来最后一层舒适，而不会让空间拥挤。",
+          cta: "选购座椅",
+        },
+      },
+      categoryEdits: {
+        bedroom: {
+          title: "卧室",
+          copy: "床头柜、斗柜与长凳，构成完整木质卧室。",
+        },
+        storage: {
+          title: "收纳",
+          copy: "温润饰面的雕刻斗柜、柜体与床边收纳。",
+        },
+        study: {
+          title: "书房角",
+          copy: "书桌、梳妆台与椅子，打造安静的卧室工作区。",
+        },
+      },
+    },
+    landing: {
+      common: {
+        collection: "系列",
+        designServices: "设计服务",
+        joinMembers: "加入 RH Members",
+        exploreServices: "探索服务",
+      },
+    },
+    outdoor: {
+      hero: {
+        eyebrow: "户外",
+        title: "完整呈现的露天房间。",
+        description: "适用于露台、花园、泳池平台与户外餐区的家具、灯光与材质。",
+        shopCta: "选购户外系列",
+      },
+      edits: {
+        lounge: "休闲",
+        dining: "餐饮",
+        poolside: "泳池旁",
+        lighting: "灯具",
+      },
+      collections: {
+        lounge: {
+          title: "户外休闲",
+          description: "深座沙发、低矮桌几与耐候轮廓，适合开放式户外房间。",
+        },
+        dining: {
+          title: "户外餐饮",
+          description: "餐桌与餐椅比例适合长时间用餐、轻松待客与日常户外使用。",
+        },
+        shade: {
+          title: "遮荫与纹理",
+          description: "层叠材质、编织细节与柔和中性色，为露台带来深度。",
+        },
+        lighting: {
+          title: "灯具",
+          description: "吊灯与氛围灯具，让户外空间在日落后依然温暖。",
+        },
+      },
+      services: {
+        title: "户外家具规划",
+        heading: "像规划室内一样细致地规划户外房间。",
+        materialGuidance: "材质与饰面指导",
+        memberSavings: "会员优惠",
+      },
+    },
+    teen: {
+      hero: {
+        eyebrow: "Teen",
+        title: "被充分考量的个性房间。",
+        description: "适用于卧室、休闲区与学习空间的家具、灯具与收纳，呈现更高级的视角。",
+        shopCta: "选购 Teen",
+      },
+      edits: {
+        sleep: "睡眠",
+        study: "学习",
+        lounge: "休闲",
+        storage: "收纳",
+      },
+      collections: {
+        bedroom: {
+          title: "卧室",
+          description: "剪裁利落的床、层叠纺织品与收纳，让个性房间保持秩序。",
+        },
+        lounge: {
+          title: "休闲",
+          description: "深座椅与轻松桌几，适合电影夜、游戏和与朋友相处的时间。",
+        },
+        study: {
+          title: "学习",
+          description: "书桌、椅子与灯具，让从下午到深夜的专注都更自然。",
+        },
+        lighting: {
+          title: "灯具",
+          description: "雕塑感吊灯与工作灯，为每个区域带来完整视角。",
+        },
+      },
+      services: {
+        title: "围绕睡眠、学习与之后的一切打造房间。",
+        cta: "选购 Teen",
+      },
+    },
+    babyChild: {
+      hero: {
+        eyebrow: "Baby & Child",
+        title: "为最初篇章打造的房间。",
+        description: "经得起时间考验的婴儿房、卧室与游戏室单品，伴随家庭日常成长。",
+        shopCta: "选购 Baby & Child",
+      },
+      collections: {
+        nursery: {
+          title: "婴儿房",
+          description: "柔和软包床、安静收纳与层次灯光，适合最初的日常。",
+        },
+        playroom: {
+          title: "游戏室",
+          description: "耐用轮廓与温润木色，为阅读、玩耍与整理而布置。",
+        },
+        study: {
+          title: "学习",
+          description: "合适尺度的书桌、书架与座椅，让作业角也被认真对待。",
+        },
+        lighting: {
+          title: "灯具",
+          description: "更柔和的光线，陪伴睡前故事、清晨日常与每个小小停顿。",
+        },
+      },
+      services: {
+        title: "从婴儿房规划到成长中的卧室。",
+        consultation: "免费设计咨询",
+        registryGuidance: "礼品登记指导",
+        memberSavings: "会员优惠",
+        deliveryCoordination: "配送协调",
+        cta: "探索服务",
+      },
+      category: {
+        placeholderTitle: "商品页占位",
+        placeholderEyebrow: "商品页占位",
+        placeholderDescription: "占位模块。后续将接入该分类的真实商品、筛选和图片素材。",
+        categories: {
+          furniture: {
+            title: "家具",
+            summary: "适合成长房间的婴儿床、床、斗柜、换尿布台与收纳。",
+          },
+          bedding: {
+            title: "床品",
+            summary: "床单、被子、毯子与层叠婴儿房纺织品。",
+          },
+          nursery: {
+            title: "婴儿房",
+            summary: "适合最初房间、安静日常与早期收纳的基础单品。",
+          },
+          decor: {
+            title: "装饰",
+            summary: "墙面艺术、镜子、摆件与儿童空间的收尾单品。",
+          },
+          lighting: {
+            title: "灯具",
+            summary: "台灯、落地灯、壁灯与柔和顶灯。",
+          },
+          rugs: {
+            title: "地毯",
+            summary: "适合婴儿房、卧室与游戏室布局的柔软耐用基础。",
+          },
+          windows: {
+            title: "窗饰",
+            summary: "窗帘、帘幕与窗边层次，让儿童房更安静。",
+          },
+          storage: {
+            title: "收纳",
+            summary: "斗柜、书柜、收纳箱与日常整理柜体。",
+          },
+          playroom: {
+            title: "游戏室",
+            summary: "适合阅读、玩耍与整理的儿童尺度桌子、座椅与收纳。",
+          },
+          gifts: {
+            title: "礼品",
+            summary: "周到的纪念品、婴儿房必需品与适合家庭的单品。",
+          },
+          teen: {
+            title: "Teen",
+            summary: "连接 RH Teen，提供更成熟的房间与学习空间单品。",
+          },
+          sale: {
+            title: "促销",
+            summary: "Baby & Child 促销分类与季节优惠。",
+          },
+          registry: {
+            title: "礼品登记",
+            summary: "礼品登记服务、送礼指导与婴儿房规划入口。",
+          },
+        },
+        modules: {
+          hero: "主视觉 / 分类活动图片",
+          filters: "分类筛选与排序控件",
+          grid: "商品网格卡片",
+          banner: "精选系列横幅",
+        },
+      },
+    },
+    sale: {
+      hero: {
+        eyebrow: "促销",
+        title: "全系列新优惠。",
+      },
+    },
+    placeholder: {
+      missing: {
+        eyebrow: "素材与页面方案待定",
+        title: "这些页面暂时保留为开发预览。",
+        description: "当前产品图片、首页素材与导航功能仍在最终确认中，因此这里先作为结构占位，等待真实内容接入。",
+      },
+    },
+  },
+  fr: {
+    home: {
+      commerce: {
+        eyebrow: "Acheter la sélection",
+        title: "Des pièces composées autour des proportions, des matières et du calme.",
+        description:
+          "Commencez par la pièce, puis affinez par tissu, finition, fenêtre de livraison et prix membre.",
+      },
+      featured: {
+        eyebrow: "Collection en vedette",
+        title: "Une collection chambre en bois chaleureux, rangement et proportions calmes.",
+        description:
+          "Explorez tables de chevet, commodes, bancs, bureaux et fauteuils avant de passer au paiement.",
+        cta: "Acheter le mobilier de chambre",
+      },
+      trust: {
+        memberPricing: {
+          title: "Prix membre",
+          copy: "Prix membre et prix régulier clairs avant le paiement.",
+        },
+        deliveryClarity: {
+          title: "Livraison lisible",
+          copy: "Délais en stock et commandes spéciales visibles dès le départ.",
+        },
+        materialLedChoices: {
+          title: "Choix guidés par la matière",
+          copy: "Les options tissu, pierre, bois et métal restent visuelles.",
+        },
+      },
+      editorial: {
+        bedroomFurniture: {
+          eyebrow: "Mobilier de chambre",
+          title: "Composer la chambre autour du bois chaleureux et de proportions calmes.",
+          subtitle:
+            "Commencez par une table de chevet, une commode et un banc, puis ajoutez assises et éclairage dans le même langage de matières.",
+          cta: "Acheter le mobilier de chambre",
+        },
+        storageCabinets: {
+          eyebrow: "Rangements et cabinets",
+          title: "Un rangement qui se lit comme du mobilier, pas comme de l'utilitaire.",
+          subtitle:
+            "Commodes sculptées, tiroirs de chevet et cabinets gardent la pièce composée tout en donnant une place claire aux objets du quotidien.",
+          cta: "Explorer le rangement",
+        },
+        desksTables: {
+          eyebrow: "Bureaux et tables",
+          title: "De petits espaces de travail avec la même sensation de pièce aboutie.",
+          subtitle:
+            "Associez bureaux, coiffeuses et tables rondes à des chaises au caractère résidentiel plutôt que bureautique.",
+          cta: "Acheter bureaux et tables",
+        },
+        seatingBenches: {
+          eyebrow: "Assises et bancs",
+          title: "Achever la pièce avec des assises lounge et des pièces de bout de lit.",
+          subtitle:
+            "Canapés individuels, fauteuils de chambre et bancs de lit ajoutent la dernière couche de confort sans encombrer la pièce.",
+          cta: "Acheter les assises",
+        },
+      },
+      categoryEdits: {
+        bedroom: {
+          title: "Chambre",
+          copy: "Tables de chevet, commodes et bancs pour une chambre en bois complète.",
+        },
+        storage: {
+          title: "Rangement",
+          copy: "Commodes sculptées, cabinets et rangements de chevet aux finitions chaleureuses.",
+        },
+        study: {
+          title: "Bureau",
+          copy: "Bureaux, coiffeuses et chaises pour des zones de travail calmes dans la chambre.",
+        },
+      },
+    },
+    landing: {
+      common: {
+        collection: "Collection",
+        designServices: "Services de design",
+        joinMembers: "Rejoindre RH Members",
+        exploreServices: "Découvrir les services",
+      },
+    },
+    outdoor: {
+      hero: {
+        eyebrow: "Outdoor",
+        title: "Des pièces à ciel ouvert, entièrement composées.",
+        description:
+          "Mobilier, éclairage et matières pour terrasses, jardins, plages de piscine et repas sous le ciel.",
+        shopCta: "Acheter Outdoor",
+      },
+      edits: {
+        lounge: "Lounge",
+        dining: "Repas",
+        poolside: "Piscine",
+        lighting: "Éclairage",
+      },
+      collections: {
+        lounge: {
+          title: "Lounge outdoor",
+          description: "Assises profondes, tables basses et silhouettes résistantes pour pièces à ciel ouvert.",
+        },
+        dining: {
+          title: "Repas",
+          description: "Tables et chaises dimensionnées pour longs repas, réception facile et usage quotidien dehors.",
+        },
+        shade: {
+          title: "Ombre et texture",
+          description: "Matières superposées, accents tressés et neutres doux qui donnent de la profondeur au patio.",
+        },
+        lighting: {
+          title: "Éclairage",
+          description: "Suspensions et pièces d'ambiance qui gardent les espaces extérieurs chaleureux après le coucher du soleil.",
+        },
+      },
+      services: {
+        title: "Planification du mobilier extérieur",
+        heading: "Planifier une pièce extérieure avec le même soin que l'intérieur.",
+        materialGuidance: "Conseil matières et finitions",
+        memberSavings: "Économies membre",
+      },
+    },
+    teen: {
+      hero: {
+        eyebrow: "Teen",
+        title: "Des chambres personnelles, pleinement considérées.",
+        description:
+          "Mobilier, éclairage et rangement pour chambres, lounges et espaces d'étude avec un point de vue élevé.",
+        shopCta: "Acheter Teen",
+      },
+      edits: {
+        sleep: "Dormir",
+        study: "Étudier",
+        lounge: "Lounge",
+        storage: "Rangement",
+      },
+      collections: {
+        bedroom: {
+          title: "Chambre",
+          description: "Lits ajustés, textiles superposés et rangement pour garder une pièce personnelle composée.",
+        },
+        lounge: {
+          title: "Lounge",
+          description: "Assises profondes et tables décontractées pour soirées film, jeux et moments entre amis.",
+        },
+        study: {
+          title: "Étude",
+          description: "Bureaux, chaises et éclairage qui rendent la concentration naturelle de l'après-midi à tard le soir.",
+        },
+        lighting: {
+          title: "Éclairage",
+          description: "Suspensions sculpturales et lampes de travail qui donnent à chaque zone un point de vue abouti.",
+        },
+      },
+      services: {
+        title: "Construire une chambre autour du sommeil, de l'étude et de tout ce qui suit.",
+        cta: "Acheter Teen",
+      },
+    },
+    babyChild: {
+      hero: {
+        eyebrow: "Baby & Child",
+        title: "Des chambres pour les premiers chapitres.",
+        description:
+          "Pièces intemporelles pour nursery, chambre et salle de jeu, pensées pour grandir avec les routines familiales.",
+        shopCta: "Acheter Baby & Child",
+      },
+      collections: {
+        nursery: {
+          title: "Nursery",
+          description: "Lits capitonnés doux, rangements calmes et éclairage superposé pour les premiers rituels.",
+        },
+        playroom: {
+          title: "Salle de jeu",
+          description: "Silhouettes durables et tons de bois chaleureux pour lire, jouer et remettre en ordre.",
+        },
+        study: {
+          title: "Étude",
+          description: "Bureaux, étagères et assises à l'échelle juste pour rendre les coins devoirs considérés.",
+        },
+        lighting: {
+          title: "Éclairage",
+          description: "Une lueur plus douce pour les histoires du soir, les routines du matin et chaque petite pause.",
+        },
+      },
+      services: {
+        title: "Des plans de nursery aux chambres qui grandissent.",
+        consultation: "Consultation design offerte",
+        registryGuidance: "Conseil liste cadeaux",
+        memberSavings: "Économies membre",
+        deliveryCoordination: "Coordination de livraison",
+        cta: "Découvrir les services",
+      },
+      category: {
+        placeholderTitle: "Page produit temporaire",
+        placeholderEyebrow: "Page produit temporaire",
+        placeholderDescription:
+          "Module temporaire. Les produits réels, filtres et images de cette catégorie seront connectés ensuite.",
+        categories: {
+          furniture: {
+            title: "Mobilier",
+            summary: "Lits bébé, lits, commodes, tables à langer et rangements pour chambres en croissance.",
+          },
+          bedding: {
+            title: "Linge de lit",
+            summary: "Draps, courtepointes, couvertures et textiles superposés pour nursery.",
+          },
+          nursery: {
+            title: "Nursery",
+            summary: "Pièces fondatrices pour premières chambres, routines calmes et premiers rangements.",
+          },
+          decor: {
+            title: "Décor",
+            summary: "Art mural, miroirs, accents et pièces de finition pour espaces enfant.",
+          },
+          lighting: {
+            title: "Éclairage",
+            summary: "Lampes de table, lampadaires, appliques et éclairage doux au plafond.",
+          },
+          rugs: {
+            title: "Tapis",
+            summary: "Bases douces et durables pour nursery, chambre et salle de jeu.",
+          },
+          windows: {
+            title: "Fenêtres",
+            summary: "Draperies, stores et couches de fenêtre pour des chambres enfant plus calmes.",
+          },
+          storage: {
+            title: "Rangement",
+            summary: "Commodes, bibliothèques, bacs et cabinets pour l'organisation quotidienne.",
+          },
+          playroom: {
+            title: "Salle de jeu",
+            summary: "Tables, assises et rangements à l'échelle des enfants pour lire, jouer et ranger.",
+          },
+          gifts: {
+            title: "Cadeaux",
+            summary: "Souvenirs choisis, essentiels de nursery et pièces prêtes pour la famille.",
+          },
+          teen: {
+            title: "Teen",
+            summary: "Un pont vers RH Teen avec des pièces plus matures pour chambres et espaces d'étude.",
+          },
+          sale: {
+            title: "Sale",
+            summary: "Catégories promotionnelles Baby & Child et économies saisonnières.",
+          },
+          registry: {
+            title: "Liste cadeaux",
+            summary: "Services de liste cadeaux, conseil cadeau et points d'entrée pour planifier la nursery.",
+          },
+        },
+        modules: {
+          hero: "Image campagne / catégorie",
+          filters: "Filtres et contrôles de tri",
+          grid: "Cartes de grille produit",
+          banner: "Bannière collection en vedette",
+        },
+      },
+    },
+    sale: {
+      hero: {
+        eyebrow: "Sale",
+        title: "Nouvelles économies dans toute la collection.",
+      },
+    },
+    placeholder: {
+      missing: {
+        eyebrow: "Matériaux et pages à confirmer",
+        title: "Ces pages restent temporairement en aperçu de développement.",
+        description:
+          "Les images produit, les visuels d'accueil et le comportement de navigation sont encore en cours de finalisation; cette zone reste donc un placeholder structurel jusqu'à confirmation du contenu réel.",
+      },
+    },
+  },
+};
+
+Object.entries(taskThreeLandingMessages).forEach(([lang, localeMessages]) => {
+  mergeLocaleMessages(messages[lang], localeMessages);
+});
+
+const taskFourProductMessages = {
+  en: {
+    productList: {
+      filters: {
+        title: "Filter",
+        close: "Close",
+        clearAll: "Clear all",
+      },
+      allFurniture: "All furniture",
+      activeSearch: "Search: {query}",
+      browseStatus: "Images, sizes and stock stay visible while browsing",
+      matchedPieces: "{count} matched pieces",
+      productGroups: "{count} product groups",
+      stock: {
+        madeToOrder: "Made to order",
+        onlyLeft: "Only {count} left",
+        ready: "{count} ready",
+      },
+      quickAdd: "{name} added to bag",
+      card: {
+        member: "Member",
+        regular: "Regular",
+        size: "Size",
+      },
+      edit: {
+        eyebrow: "Oakved Edit",
+        title: "Wood furniture for the finished bedroom",
+        description:
+          "Build the room around bedside storage, bench seating, dressing tables and compact lounge pieces instead of browsing isolated SKUs.",
+        cta: "View bedroom sets",
+      },
+    },
+    productDetail: {
+      gallery: {
+        instructions: "Click, scroll or use arrow keys to switch views",
+        view: "{label} view",
+      },
+      registry: {
+        add: "Add to Gift Registry",
+        connectedOnly: "Only connected Yudao products can be added to a gift registry.",
+        signInRequired: "Sign in before adding this item to your gift registry.",
+        createFirst: "Create a gift registry before adding products.",
+        added: "Added to your gift registry.",
+        addFailed: "This item could not be added to your gift registry.",
+      },
+      inspiration: {
+        eyebrow: "Room Inspiration",
+        title: "Style the full Oakved room",
+        description: "Use material, scale and surrounding pieces to help customers picture the product before purchase.",
+      },
+      shopRoom: {
+        eyebrow: "Shop The Room",
+        title: "Build a coordinated wood furniture setting",
+        description:
+          "Each hotspot links the primary item with complementary tables, storage and seating so the page feels closer to a finished showroom.",
+      },
+      completeRoom: {
+        eyebrow: "Complete The Room",
+        title: "Pieces that sit well together",
+        description: "Keep the next step visual and product-led instead of sending customers back to a blank catalog search.",
+      },
+    },
+  },
+  "zh-CN": {
+    productList: {
+      filters: {
+        title: "\u7b5b\u9009",
+        close: "\u5173\u95ed",
+        clearAll: "\u5168\u90e8\u6e05\u9664",
+      },
+      allFurniture: "\u5168\u90e8\u5bb6\u5177",
+      activeSearch: "\u641c\u7d22\uff1a{query}",
+      browseStatus: "\u6d4f\u89c8\u65f6\u56fe\u7247\u3001\u5c3a\u5bf8\u548c\u5e93\u5b58\u4fdd\u6301\u53ef\u89c1",
+      matchedPieces: "{count} \u4ef6\u5339\u914d\u5355\u54c1",
+      productGroups: "{count} \u4e2a\u5546\u54c1\u7ec4",
+      stock: {
+        madeToOrder: "\u6309\u9700\u5b9a\u5236",
+        onlyLeft: "\u4ec5\u5269 {count} \u4ef6",
+        ready: "{count} \u4ef6\u53ef\u53d1\u8d27",
+      },
+      quickAdd: "{name} \u5df2\u52a0\u5165\u8d2d\u7269\u888b",
+      card: {
+        member: "\u4f1a\u5458\u4ef7",
+        regular: "\u6b63\u4ef7",
+        size: "\u5c3a\u5bf8",
+      },
+      edit: {
+        eyebrow: "Oakved \u7cbe\u9009",
+        title: "\u4e3a\u5b8c\u6574\u5367\u5ba4\u6253\u9020\u7684\u6728\u8d28\u5bb6\u5177",
+        description:
+          "\u56f4\u7ed5\u5e8a\u8fb9\u6536\u7eb3\u3001\u957f\u51f3\u5ea7\u6905\u3001\u68b3\u5986\u53f0\u548c\u5c0f\u578b\u4f11\u95f2\u5355\u54c1\u6765\u5e03\u7f6e\u623f\u95f4\uff0c\u800c\u4e0d\u662f\u6d4f\u89c8\u5b64\u7acb\u7684 SKU\u3002",
+        cta: "\u67e5\u770b\u5367\u5ba4\u5957\u7ec4",
+      },
+    },
+    productDetail: {
+      gallery: {
+        instructions: "\u70b9\u51fb\u3001\u6eda\u52a8\u6216\u4f7f\u7528\u65b9\u5411\u952e\u5207\u6362\u89c6\u56fe",
+        view: "{label} \u89c6\u56fe",
+      },
+      registry: {
+        add: "\u52a0\u5165\u793c\u54c1\u767b\u8bb0",
+        connectedOnly: "\u53ea\u6709\u5df2\u8fde\u63a5\u7684 Yudao \u5546\u54c1\u624d\u80fd\u52a0\u5165\u793c\u54c1\u767b\u8bb0\u3002",
+        signInRequired: "\u8bf7\u5148\u767b\u5f55\uff0c\u518d\u5c06\u6b64\u5546\u54c1\u52a0\u5165\u793c\u54c1\u767b\u8bb0\u3002",
+        createFirst: "\u8bf7\u5148\u521b\u5efa\u793c\u54c1\u767b\u8bb0\uff0c\u518d\u6dfb\u52a0\u5546\u54c1\u3002",
+        added: "\u5df2\u52a0\u5165\u60a8\u7684\u793c\u54c1\u767b\u8bb0\u3002",
+        addFailed: "\u6b64\u5546\u54c1\u65e0\u6cd5\u52a0\u5165\u60a8\u7684\u793c\u54c1\u767b\u8bb0\u3002",
+      },
+      inspiration: {
+        eyebrow: "\u623f\u95f4\u7075\u611f",
+        title: "\u642d\u914d\u5b8c\u6574\u7684 Oakved \u623f\u95f4",
+        description: "\u5229\u7528\u6750\u8d28\u3001\u5c3a\u5ea6\u548c\u5468\u8fb9\u5355\u54c1\uff0c\u5e2e\u52a9\u987e\u5ba2\u5728\u8d2d\u4e70\u524d\u60f3\u8c61\u4ea7\u54c1\u3002",
+      },
+      shopRoom: {
+        eyebrow: "\u9009\u8d2d\u6574\u95f4\u642d\u914d",
+        title: "\u6253\u9020\u534f\u8c03\u7684\u6728\u8d28\u5bb6\u5177\u7a7a\u95f4",
+        description:
+          "\u6bcf\u4e2a\u70ed\u70b9\u90fd\u5c06\u4e3b\u5546\u54c1\u4e0e\u642d\u914d\u684c\u51e0\u3001\u6536\u7eb3\u548c\u5ea7\u6905\u76f8\u8fde\uff0c\u8ba9\u9875\u9762\u66f4\u50cf\u5b8c\u6574\u5c55\u5385\u3002",
+      },
+      completeRoom: {
+        eyebrow: "\u5b8c\u5584\u623f\u95f4",
+        title: "\u9002\u5408\u4e00\u8d77\u642d\u914d\u7684\u5355\u54c1",
+        description:
+          "\u8ba9\u4e0b\u4e00\u6b65\u4fdd\u6301\u89c6\u89c9\u5316\u5e76\u4ee5\u4ea7\u54c1\u4e3a\u4e3b\uff0c\u800c\u4e0d\u662f\u628a\u987e\u5ba2\u5e26\u56de\u7a7a\u767d\u76ee\u5f55\u641c\u7d22\u3002",
+      },
+    },
+  },
+  fr: {
+    productList: {
+      filters: {
+        title: "Filtrer",
+        close: "Fermer",
+        clearAll: "Tout effacer",
+      },
+      allFurniture: "Tout le mobilier",
+      activeSearch: "Recherche : {query}",
+      browseStatus: "Les images, dimensions et stocks restent visibles pendant la navigation",
+      matchedPieces: "{count} pieces correspondantes",
+      productGroups: "{count} groupes de produits",
+      stock: {
+        madeToOrder: "Fabrique sur commande",
+        onlyLeft: "Plus que {count}",
+        ready: "{count} prets",
+      },
+      quickAdd: "{name} ajoute au panier",
+      card: {
+        member: "Prix membre",
+        regular: "Prix standard",
+        size: "Taille",
+      },
+      edit: {
+        eyebrow: "Selection Oakved",
+        title: "Mobilier en bois pour une chambre achevee",
+        description:
+          "Composez la piece autour du rangement de chevet, des bancs, des coiffeuses et des pieces lounge compactes plutot que de parcourir des SKU isoles.",
+        cta: "Voir les ensembles chambre",
+      },
+    },
+    productDetail: {
+      gallery: {
+        instructions: "Cliquez, faites defiler ou utilisez les fleches pour changer de vue",
+        view: "Vue {label}",
+      },
+      registry: {
+        add: "Ajouter a la liste cadeaux",
+        connectedOnly: "Seuls les produits Yudao connectes peuvent etre ajoutes a une liste cadeaux.",
+        signInRequired: "Connectez-vous avant d'ajouter cet article a votre liste cadeaux.",
+        createFirst: "Creez une liste cadeaux avant d'ajouter des produits.",
+        added: "Ajoute a votre liste cadeaux.",
+        addFailed: "Cet article n'a pas pu etre ajoute a votre liste cadeaux.",
+      },
+      inspiration: {
+        eyebrow: "Inspiration de piece",
+        title: "Composer toute la piece Oakved",
+        description: "Aidez les clients a imaginer le produit avant l'achat grace aux matieres, aux proportions et aux pieces autour.",
+      },
+      shopRoom: {
+        eyebrow: "Acheter la piece",
+        title: "Composer un ensemble coordonne de mobilier en bois",
+        description:
+          "Chaque point relie l'article principal a des tables, rangements et assises complementaires pour rapprocher la page d'un showroom acheve.",
+      },
+      completeRoom: {
+        eyebrow: "Completer la piece",
+        title: "Des pieces qui vont bien ensemble",
+        description:
+          "Gardez l'etape suivante visuelle et guidee par les produits au lieu de renvoyer les clients vers une recherche catalogue vide.",
+      },
+    },
+  },
+};
+
+const taskFourModelUiMessages = {
+  "en": {
+    "productList": {
+      "typeOptions": {
+        "nightstand": "Nightstands",
+        "bedBench": "Benches",
+        "dresser": "Dressers",
+        "vanity": "Vanities",
+        "desk": "Desks",
+        "roundTable": "Round Tables",
+        "singleSofa": "Single Sofas",
+        "chair": "Chairs",
+        "storage": "Storage Cabinets",
+        "deskTable": "Desks & Tables",
+        "seating": "Seating & Benches",
+        "bedroomSet": "Bedroom Sets",
+        "storageSet": "Bedroom Storage",
+        "studySet": "Study Sets",
+        "bedroomRoom": "Bedroom Furniture",
+        "masterBedroom": "Master Bedroom",
+        "guestBedroom": "Guest Bedroom",
+        "room": "Complete Rooms",
+        "study": "Study Rooms",
+        "living": "Living Corners"
+      },
+      "facetGroups": {
+        "material": "Material",
+        "color": "Color",
+        "availability": "Availability",
+        "price": "Price"
+      },
+      "facetOptions": {
+        "material": {
+          "all": "All materials",
+          "fabric": "Fabric",
+          "wood": "Wood",
+          "stone": "Stone",
+          "metal": "Metal"
+        },
+        "color": {
+          "all": "All colors",
+          "natural": "Natural",
+          "brown": "Brown",
+          "light": "Light"
+        },
+        "availability": {
+          "all": "All availability",
+          "inStock": "In stock",
+          "lowStock": "Low stock"
+        },
+        "price": {
+          "all": "All prices",
+          "under1500": "Under $1,500",
+          "between1500And3500": "$1,500-$3,500",
+          "over3500": "Over $3,500"
+        }
+      }
+    },
+    "productDetail": {
+      "price": {
+        "prefix": "Starting at",
+        "member": "Member",
+        "sale": "Sale",
+        "regular": "Regular",
+        "savings": "ANNUAL 5% FIRST ORDER / WHOLE-ROOM 15%",
+        "context": "Starting at price reflects the displayed size and stocked finish."
+      },
+      "stock": {
+        "label": "Inventory",
+        "inStock": "In stock",
+        "madeToOrder": "Made to order"
+      },
+      "membershipPrompt": {
+        "title": "Member pricing available",
+        "copy": "Sign in or join the Members Program to review eligible savings before checkout.",
+        "linkLabel": "Learn More"
+      },
+      "fabricSelector": {
+        "stockedFabrics": "SELECT FROM {stocked} STOCKED AND {special} SPECIAL ORDER FABRICS",
+        "stoneWood": "SELECT FROM {stocked} STONE TOPS AND {special} WOOD FINISHES",
+        "outdoorFabrics": "SELECT FROM {stocked} STOCKED AND {special} SPECIAL ORDER OUTDOOR FABRICS",
+        "metalShade": "SELECT FROM {stocked} METAL FINISHES AND {special} SHADE OPTIONS",
+        "generic": "SELECT FROM {stocked} STOCKED AND {special} SPECIAL ORDER OPTIONS",
+        "count": "{stocked} stocked / {special} special order"
+      },
+      "availability": {
+        "title": "VIEW IN STOCK ITEMS",
+        "readyToShip": "Ready to ship in 3-7 days",
+        "specialOrder": "Special order options ship by confirmed production window"
+      },
+      "optionGroups": {
+        "labels": {
+          "size": "Size",
+          "fabric": "Fabric",
+          "finish": "Finish",
+          "configuration": "Configuration",
+          "depth": "Depth",
+          "fill": "Cushion fill",
+          "shape": "Shape",
+          "top": "Top material",
+          "base": "Base finish",
+          "frame": "Frame",
+          "cushion": "Cushion",
+          "orientation": "Orientation",
+          "shade": "Shade",
+          "bulb": "Bulb"
+        },
+        "helpers": {
+          "bedSize": "Choose the bed frame size.",
+          "upholstery": "Stocked and special order upholstery options.",
+          "visibleFinish": "Visible frame or leg finish.",
+          "bedConfiguration": "Controls base and headboard setup.",
+          "seatingConfiguration": "Choose the seating profile before fabric and depth.",
+          "depth": "Controls seat depth and room footprint.",
+          "fill": "Defines the sit and maintenance level.",
+          "shape": "Select the dining room footprint.",
+          "diningSize": "Controls seating capacity and room clearance.",
+          "top": "Stone and wood top options for Oakved dining filters.",
+          "base": "Base finish can map to SKU attributes later.",
+          "frame": "Choose weathered wood or metal frame finish.",
+          "outdoorFabric": "Outdoor stocked and special order cushion fabrics.",
+          "cushion": "Controls cushion profile and comfort.",
+          "orientation": "Useful for lounge chair or modular outdoor layouts.",
+          "fixtureSize": "Choose fixture diameter or drop length.",
+          "metalFinish": "Metal finish for fixture body and canopy.",
+          "shade": "Shade options for light diffusion.",
+          "bulb": "Defines light source and compatibility."
+        }
+      },
+      "purchaseAssurance": {
+        "delivery": {
+          "title": "Delivery",
+          "copy": "Delivery windows are shown before checkout and confirmed after order review."
+        },
+        "installation": {
+          "title": "Installation",
+          "copy": "Large furniture can be scheduled with room-of-choice placement."
+        },
+        "returns": {
+          "title": "Returns",
+          "copy": "Review eligible returns, exchanges and custom-order terms before purchase."
+        }
+      },
+      "relatedLinks": {
+        "availableLeather": "ALSO AVAILABLE IN LEATHER",
+        "customConfiguration": "ALSO AVAILABLE FOR CUSTOM CONFIGURATION",
+        "luxeBed": "EXPLORE THE LUXE BED COLLECTION",
+        "customFabric": "ALSO AVAILABLE WITH CUSTOM FABRIC",
+        "bedroomLounge": "EXPLORE THE BEDROOM LOUNGE COLLECTION",
+        "woodTop": "ALSO AVAILABLE WITH WOOD TOP",
+        "customLength": "ALSO AVAILABLE FOR CUSTOM LENGTH",
+        "marbleDining": "EXPLORE THE MARBLE DINING COLLECTION",
+        "diningChair": "ALSO AVAILABLE AS A DINING CHAIR",
+        "customCushions": "ALSO AVAILABLE WITH CUSTOM CUSHIONS",
+        "outdoorLounge": "EXPLORE THE OUTDOOR LOUNGE COLLECTION",
+        "sconce": "ALSO AVAILABLE AS A SCONCE",
+        "customFinishes": "ALSO AVAILABLE IN CUSTOM FINISHES",
+        "architecturalLighting": "EXPLORE THE ARCHITECTURAL LIGHTING COLLECTION",
+        "pairDressers": "PAIR WITH DRESSERS",
+        "viewBedroomSets": "VIEW BEDROOM SETS",
+        "woodFinishes": "EXPLORE WOOD FINISHES",
+        "pairNightstands": "PAIR WITH NIGHTSTANDS",
+        "viewStorageCabinets": "VIEW STORAGE CABINETS",
+        "carvedWood": "EXPLORE CARVED WOOD DETAILS",
+        "pairVanityChairs": "PAIR WITH VANITY CHAIRS",
+        "pairDeskChairs": "PAIR WITH DESK CHAIRS",
+        "viewStudySets": "VIEW STUDY SETS",
+        "exploreBenches": "EXPLORE BENCHES",
+        "pairSideChairs": "PAIR WITH SIDE CHAIRS",
+        "viewDesksTables": "VIEW DESKS & TABLES",
+        "pairRoundTables": "PAIR WITH ROUND TABLES",
+        "viewChairsBenches": "VIEW CHAIRS & BENCHES",
+        "bedroomLoungePieces": "EXPLORE BEDROOM LOUNGE PIECES"
+      },
+      "accordions": {
+        "titles": {
+          "details": "DETAILS",
+          "dimensions": "DIMENSIONS",
+          "materials": "MATERIALS",
+          "care": "CARE",
+          "delivery": "DELIVERY"
+        },
+        "rows": {
+          "design": "Design",
+          "structure": "Structure",
+          "comfort": "Comfort",
+          "compatibility": "Compatibility",
+          "queen": "Queen 1.5m",
+          "king": "King 1.8m",
+          "californiaKing": "California King 2.0m",
+          "floorToPlatform": "Floor to platform",
+          "headboardDepth": "Headboard depth",
+          "frame": "Frame",
+          "upholstery": "Upholstery",
+          "fill": "Fill",
+          "feet": "Feet",
+          "fabricCare": "Fabric care",
+          "spills": "Spills",
+          "sunlight": "Sunlight",
+          "delivery": "Delivery",
+          "assembly": "Assembly",
+          "leadTime": "Lead time",
+          "configuration": "Configuration",
+          "overallWidth": "Overall width",
+          "overallDepth": "Overall depth",
+          "overallHeight": "Overall height",
+          "seatHeight": "Seat height",
+          "armHeight": "Arm height",
+          "cushions": "Cushions",
+          "stockedFabric": "Stocked fabric",
+          "customOrder": "Custom order",
+          "top": "Top",
+          "base": "Base",
+          "use": "Use",
+          "topThickness": "Top thickness",
+          "seatingCapacity": "Seating capacity",
+          "stone": "Stone",
+          "wood": "Wood",
+          "stoneCare": "Stone care",
+          "woodCare": "Wood care",
+          "heat": "Heat",
+          "cushion": "Cushion",
+          "outdoorCare": "Outdoor care",
+          "frameCare": "Frame care",
+          "stockedFabrics": "Stocked fabrics",
+          "customCushions": "Custom cushions",
+          "mounting": "Mounting",
+          "dimming": "Dimming",
+          "canopy": "Canopy",
+          "cordLength": "Cord length",
+          "weight": "Weight",
+          "body": "Body",
+          "shade": "Shade",
+          "cleaning": "Cleaning",
+          "shadeCare": "Shade care",
+          "electrical": "Electrical",
+          "installation": "Installation"
+        }
+      }
+    }
+  },
+  "zh-CN": {
+    "productList": {
+      "typeOptions": {
+        "nightstand": "\u5e8a\u5934\u67dc",
+        "bedBench": "\u5e8a\u5c3e\u51f3",
+        "dresser": "\u6597\u67dc",
+        "vanity": "\u68b3\u5986\u53f0",
+        "desk": "\u4e66\u684c",
+        "roundTable": "\u5706\u684c",
+        "singleSofa": "\u5355\u4eba\u6c99\u53d1",
+        "chair": "\u6905\u5b50",
+        "storage": "\u50a8\u7269\u67dc",
+        "deskTable": "\u684c\u53f0\u4e0e\u4e66\u684c",
+        "seating": "\u5ea7\u6905\u4e0e\u957f\u51f3",
+        "bedroomSet": "\u5367\u5ba4\u5957\u7ec4",
+        "storageSet": "\u5367\u5ba4\u6536\u7eb3",
+        "studySet": "\u4e66\u623f\u5957\u7ec4",
+        "bedroomRoom": "\u5367\u5ba4\u5bb6\u5177",
+        "masterBedroom": "\u4e3b\u5367",
+        "guestBedroom": "\u5ba2\u5367",
+        "room": "\u5b8c\u6574\u7a7a\u95f4",
+        "study": "\u4e66\u623f\u7a7a\u95f4",
+        "living": "\u5ba2\u5385\u89d2\u843d"
+      },
+      "facetGroups": {
+        "material": "\u6750\u8d28",
+        "color": "\u989c\u8272",
+        "availability": "\u73b0\u8d27\u60c5\u51b5",
+        "price": "\u4ef7\u683c"
+      },
+      "facetOptions": {
+        "material": {
+          "all": "\u5168\u90e8\u6750\u8d28",
+          "fabric": "\u9762\u6599",
+          "wood": "\u6728\u8d28",
+          "stone": "\u77f3\u6750",
+          "metal": "\u91d1\u5c5e"
+        },
+        "color": {
+          "all": "\u5168\u90e8\u989c\u8272",
+          "natural": "\u539f\u6728\u8272",
+          "brown": "\u68d5\u8272",
+          "light": "\u6d45\u8272"
+        },
+        "availability": {
+          "all": "\u5168\u90e8\u73b0\u8d27\u60c5\u51b5",
+          "inStock": "\u6709\u73b0\u8d27",
+          "lowStock": "\u5e93\u5b58\u7d27\u5f20"
+        },
+        "price": {
+          "all": "\u5168\u90e8\u4ef7\u683c",
+          "under1500": "\u4f4e\u4e8e $1,500",
+          "between1500And3500": "$1,500-$3,500",
+          "over3500": "\u9ad8\u4e8e $3,500"
+        }
+      }
+    },
+    "productDetail": {
+      "price": {
+        "prefix": "\u8d77\u4ef7",
+        "member": "\u4f1a\u5458\u4ef7",
+        "sale": "\u4fc3\u9500\u4ef7",
+        "regular": "\u5e38\u89c4\u4ef7",
+        "savings": "\u5e74\u5ea6\u9996\u5355 95 \u6298 / \u6574\u5c4b 85 \u6298",
+        "context": "\u8d77\u4ef7\u57fa\u4e8e\u5f53\u524d\u5c55\u793a\u7684\u5c3a\u5bf8\u548c\u73b0\u8d27\u9970\u9762\u3002"
+      },
+      "stock": {
+        "label": "\u5e93\u5b58",
+        "inStock": "\u6709\u73b0\u8d27",
+        "madeToOrder": "\u6309\u5355\u751f\u4ea7"
+      },
+      "membershipPrompt": {
+        "title": "\u53ef\u4eab\u4f1a\u5458\u4ef7",
+        "copy": "\u767b\u5f55\u6216\u52a0\u5165\u4f1a\u5458\u8ba1\u5212\uff0c\u4ee5\u4fbf\u5728\u7ed3\u8d26\u524d\u67e5\u770b\u7b26\u5408\u6761\u4ef6\u7684\u4f18\u60e0\u3002",
+        "linkLabel": "\u4e86\u89e3\u66f4\u591a"
+      },
+      "fabricSelector": {
+        "stockedFabrics": "\u53ef\u9009 {stocked} \u6b3e\u73b0\u8d27\u4e0e {special} \u6b3e\u7279\u522b\u8ba2\u5236\u9762\u6599",
+        "stoneWood": "\u53ef\u9009 {stocked} \u6b3e\u77f3\u6750\u53f0\u9762\u4e0e {special} \u6b3e\u6728\u8d28\u9970\u9762",
+        "outdoorFabrics": "\u53ef\u9009 {stocked} \u6b3e\u73b0\u8d27\u4e0e {special} \u6b3e\u7279\u522b\u8ba2\u5236\u6237\u5916\u9762\u6599",
+        "metalShade": "\u53ef\u9009 {stocked} \u6b3e\u91d1\u5c5e\u9970\u9762\u4e0e {special} \u6b3e\u706f\u7f69\u9009\u9879",
+        "generic": "\u53ef\u9009 {stocked} \u6b3e\u73b0\u8d27\u4e0e {special} \u6b3e\u7279\u522b\u8ba2\u5236\u9009\u9879",
+        "count": "{stocked} \u6b3e\u73b0\u8d27 / {special} \u6b3e\u8ba2\u5236"
+      },
+      "availability": {
+        "title": "\u67e5\u770b\u73b0\u8d27\u5546\u54c1",
+        "readyToShip": "3-7 \u5929\u53ef\u53d1\u8d27",
+        "specialOrder": "\u7279\u522b\u8ba2\u5236\u9009\u9879\u5c06\u6309\u786e\u8ba4\u7684\u751f\u4ea7\u5468\u671f\u53d1\u8d27"
+      },
+      "optionGroups": {
+        "labels": {
+          "size": "\u5c3a\u5bf8",
+          "fabric": "\u9762\u6599",
+          "finish": "\u9970\u9762",
+          "configuration": "\u914d\u7f6e",
+          "depth": "\u6df1\u5ea6",
+          "fill": "\u5750\u57ab\u586b\u5145",
+          "shape": "\u5f62\u72b6",
+          "top": "\u53f0\u9762\u6750\u8d28",
+          "base": "\u5e95\u5ea7\u9970\u9762",
+          "frame": "\u6846\u67b6",
+          "cushion": "\u5750\u57ab",
+          "orientation": "\u65b9\u5411",
+          "shade": "\u706f\u7f69",
+          "bulb": "\u706f\u6ce1"
+        },
+        "helpers": {
+          "bedSize": "\u9009\u62e9\u5e8a\u67b6\u5c3a\u5bf8\u3002",
+          "upholstery": "\u6d4f\u89c8\u73b0\u8d27\u4e0e\u7279\u522b\u8ba2\u5236\u8f6f\u5305\u9009\u9879\u3002",
+          "visibleFinish": "\u67e5\u770b\u53ef\u89c1\u6846\u67b6\u6216\u6905\u811a\u9970\u9762\u3002",
+          "bedConfiguration": "\u8c03\u6574\u5e95\u5ea7\u4e0e\u5e8a\u5934\u677f\u7684\u7ec4\u5408\u3002",
+          "seatingConfiguration": "\u5148\u9009\u5b9a\u5ea7\u611f\u914d\u7f6e\uff0c\u518d\u9009\u9762\u6599\u4e0e\u6df1\u5ea6\u3002",
+          "depth": "\u51b3\u5b9a\u5ea7\u6df1\u4e0e\u5360\u5730\u5c3a\u5bf8\u3002",
+          "fill": "\u5b9a\u4e49\u5750\u611f\u4e0e\u65e5\u5e38\u517b\u62a4\u5f3a\u5ea6\u3002",
+          "shape": "\u9009\u62e9\u9910\u533a\u5bb6\u5177\u7684\u5e03\u5c40\u5f62\u72b6\u3002",
+          "diningSize": "\u51b3\u5b9a\u5ea7\u4f4d\u6570\u91cf\u4e0e\u7a7a\u95f4\u9884\u7559\u3002",
+          "top": "Oakved \u9910\u684c\u7b5b\u9009\u63d0\u4f9b\u77f3\u6750\u4e0e\u6728\u8d28\u53f0\u9762\u9009\u9879\u3002",
+          "base": "\u5e95\u5ea7\u9970\u9762\u53ef\u5728\u540e\u7eed\u6620\u5c04\u5230 SKU \u5c5e\u6027\u3002",
+          "frame": "\u9009\u62e9\u505a\u65e7\u6728\u6216\u91d1\u5c5e\u6846\u67b6\u9970\u9762\u3002",
+          "outdoorFabric": "\u67e5\u770b\u6237\u5916\u5750\u57ab\u7684\u73b0\u8d27\u4e0e\u7279\u522b\u8ba2\u5236\u9762\u6599\u3002",
+          "cushion": "\u51b3\u5b9a\u5750\u57ab\u8f6e\u5ed3\u4e0e\u8212\u9002\u5ea6\u3002",
+          "orientation": "\u9002\u7528\u4e8e\u4f11\u95f2\u6905\u6216\u6a21\u5757\u5316\u6237\u5916\u5e03\u5c40\u3002",
+          "fixtureSize": "\u9009\u62e9\u706f\u5177\u76f4\u5f84\u6216\u5782\u5760\u957f\u5ea6\u3002",
+          "metalFinish": "\u9009\u62e9\u706f\u4f53\u4e0e\u5438\u9876\u76d6\u7684\u91d1\u5c5e\u9970\u9762\u3002",
+          "shade": "\u9009\u62e9\u5149\u7ebf\u6269\u6563\u6548\u679c\u7684\u706f\u7f69\u3002",
+          "bulb": "\u8bf4\u660e\u5149\u6e90\u89c4\u683c\u4e0e\u517c\u5bb9\u6027\u3002"
+        }
+      },
+      "purchaseAssurance": {
+        "delivery": {
+          "title": "\u914d\u9001",
+          "copy": "\u7ed3\u8d26\u524d\u4f1a\u663e\u793a\u914d\u9001\u65f6\u95f4\u7a97\uff0c\u5e76\u5728\u8ba2\u5355\u5ba1\u6838\u540e\u786e\u8ba4\u3002"
+        },
+        "installation": {
+          "title": "\u5b89\u88c5",
+          "copy": "\u5927\u4ef6\u5bb6\u5177\u53ef\u5b89\u6392\u9001\u81f3\u5ba4\u5185\u5e76\u5b8c\u6210\u5b9a\u4f4d\u6446\u653e\u3002"
+        },
+        "returns": {
+          "title": "\u9000\u6362",
+          "copy": "\u8d2d\u4e70\u524d\u8bf7\u67e5\u770b\u53ef\u9000\u6362\u3001\u6362\u8d27\u4ee5\u53ca\u7279\u522b\u8ba2\u5236\u6761\u6b3e\u3002"
+        }
+      },
+      "relatedLinks": {
+        "availableLeather": "\u53e6\u6709\u76ae\u9769\u6b3e\u53ef\u9009",
+        "customConfiguration": "\u53e6\u63d0\u4f9b\u5b9a\u5236\u914d\u7f6e",
+        "luxeBed": "\u63a2\u7d22 Luxe \u5e8a\u5177\u7cfb\u5217",
+        "customFabric": "\u53e6\u6709\u5b9a\u5236\u9762\u6599\u53ef\u9009",
+        "bedroomLounge": "\u63a2\u7d22 Bedroom Lounge \u7cfb\u5217",
+        "woodTop": "\u53e6\u6709\u6728\u8d28\u53f0\u9762\u53ef\u9009",
+        "customLength": "\u53e6\u63d0\u4f9b\u5b9a\u5236\u957f\u5ea6",
+        "marbleDining": "\u63a2\u7d22 Marble Dining \u7cfb\u5217",
+        "diningChair": "\u53e6\u6709\u9910\u6905\u6b3e\u53ef\u9009",
+        "customCushions": "\u53e6\u6709\u5b9a\u5236\u5750\u57ab\u53ef\u9009",
+        "outdoorLounge": "\u63a2\u7d22 Outdoor Lounge \u7cfb\u5217",
+        "sconce": "\u53e6\u6709\u58c1\u706f\u6b3e\u53ef\u9009",
+        "customFinishes": "\u53e6\u6709\u5b9a\u5236\u9970\u9762\u53ef\u9009",
+        "architecturalLighting": "\u63a2\u7d22 Architectural Lighting \u7cfb\u5217",
+        "pairDressers": "\u642d\u914d\u6597\u67dc",
+        "viewBedroomSets": "\u67e5\u770b\u5367\u5ba4\u5957\u7ec4",
+        "woodFinishes": "\u63a2\u7d22\u6728\u8d28\u9970\u9762",
+        "pairNightstands": "\u642d\u914d\u5e8a\u5934\u67dc",
+        "viewStorageCabinets": "\u67e5\u770b\u50a8\u7269\u67dc",
+        "carvedWood": "\u63a2\u7d22\u96d5\u523b\u6728\u8d28\u7ec6\u8282",
+        "pairVanityChairs": "\u642d\u914d\u68b3\u5986\u6905",
+        "pairDeskChairs": "\u642d\u914d\u4e66\u684c\u6905",
+        "viewStudySets": "\u67e5\u770b\u4e66\u623f\u5957\u7ec4",
+        "exploreBenches": "\u63a2\u7d22\u957f\u51f3",
+        "pairSideChairs": "\u642d\u914d\u5355\u6905",
+        "viewDesksTables": "\u67e5\u770b\u684c\u53f0\u4e0e\u4e66\u684c",
+        "pairRoundTables": "\u642d\u914d\u5706\u684c",
+        "viewChairsBenches": "\u67e5\u770b\u6905\u5b50\u4e0e\u957f\u51f3",
+        "bedroomLoungePieces": "\u63a2\u7d22 Bedroom Lounge \u5355\u54c1"
+      },
+      "accordions": {
+        "titles": {
+          "details": "\u8be6\u60c5",
+          "dimensions": "\u5c3a\u5bf8",
+          "materials": "\u6750\u8d28",
+          "care": "\u62a4\u7406",
+          "delivery": "\u914d\u9001"
+        },
+        "rows": {
+          "design": "\u8bbe\u8ba1",
+          "structure": "\u7ed3\u6784",
+          "comfort": "\u8212\u9002\u5ea6",
+          "compatibility": "\u9002\u914d\u6027",
+          "queen": "\u5927\u5e8a 1.5m",
+          "king": "\u7279\u5927\u5e8a 1.8m",
+          "californiaKing": "\u52a0\u5dde\u7279\u5927\u5e8a 2.0m",
+          "floorToPlatform": "\u5730\u9762\u81f3\u5e8a\u53f0\u9ad8\u5ea6",
+          "headboardDepth": "\u5e8a\u5934\u677f\u6df1\u5ea6",
+          "frame": "\u6846\u67b6",
+          "upholstery": "\u8f6f\u5305",
+          "fill": "\u586b\u5145",
+          "feet": "\u811a\u5ea7",
+          "fabricCare": "\u9762\u6599\u62a4\u7406",
+          "spills": "\u6c61\u6e0d\u5904\u7406",
+          "sunlight": "\u65e5\u7167",
+          "delivery": "\u914d\u9001",
+          "assembly": "\u7ec4\u88c5",
+          "leadTime": "\u4ea4\u4ed8\u5468\u671f",
+          "configuration": "\u914d\u7f6e",
+          "overallWidth": "\u603b\u5bbd\u5ea6",
+          "overallDepth": "\u603b\u6df1\u5ea6",
+          "overallHeight": "\u603b\u9ad8\u5ea6",
+          "seatHeight": "\u5ea7\u9ad8",
+          "armHeight": "\u6276\u624b\u9ad8\u5ea6",
+          "cushions": "\u5750\u57ab",
+          "stockedFabric": "\u73b0\u8d27\u9762\u6599",
+          "customOrder": "\u7279\u522b\u8ba2\u5236",
+          "top": "\u53f0\u9762",
+          "base": "\u5e95\u5ea7",
+          "use": "\u4f7f\u7528\u573a\u666f",
+          "topThickness": "\u53f0\u9762\u539a\u5ea6",
+          "seatingCapacity": "\u5ea7\u4f4d\u6570",
+          "stone": "\u77f3\u6750",
+          "wood": "\u6728\u6750",
+          "stoneCare": "\u77f3\u6750\u62a4\u7406",
+          "woodCare": "\u6728\u6750\u62a4\u7406",
+          "heat": "\u8010\u70ed\u6027",
+          "cushion": "\u5750\u57ab",
+          "outdoorCare": "\u6237\u5916\u62a4\u7406",
+          "frameCare": "\u6846\u67b6\u62a4\u7406",
+          "stockedFabrics": "\u73b0\u8d27\u9762\u6599",
+          "customCushions": "\u5b9a\u5236\u5750\u57ab",
+          "mounting": "\u5b89\u88c5\u65b9\u5f0f",
+          "dimming": "\u8c03\u5149",
+          "canopy": "\u5438\u9876\u76d6",
+          "cordLength": "\u7ebf\u957f",
+          "weight": "\u91cd\u91cf",
+          "body": "\u706f\u4f53",
+          "shade": "\u706f\u7f69",
+          "cleaning": "\u6e05\u6d01",
+          "shadeCare": "\u706f\u7f69\u62a4\u7406",
+          "electrical": "\u7535\u6c14\u89c4\u683c",
+          "installation": "\u5b89\u88c5"
+        }
+      }
+    }
+  },
+  "fr": {
+    "productList": {
+      "typeOptions": {
+        "nightstand": "Tables de chevet",
+        "bedBench": "Bancs",
+        "dresser": "Commodes",
+        "vanity": "Coiffeuses",
+        "desk": "Bureaux",
+        "roundTable": "Tables rondes",
+        "singleSofa": "Canapes individuels",
+        "chair": "Chaises",
+        "storage": "Meubles de rangement",
+        "deskTable": "Bureaux et tables",
+        "seating": "Assises et bancs",
+        "bedroomSet": "Ensembles chambre",
+        "storageSet": "Rangement chambre",
+        "studySet": "Ensembles bureau",
+        "bedroomRoom": "Mobilier de chambre",
+        "masterBedroom": "Chambre principale",
+        "guestBedroom": "Chambre d'amis",
+        "room": "Pieces completes",
+        "study": "Espaces bureau",
+        "living": "Coins salon"
+      },
+      "facetGroups": {
+        "material": "Matiere",
+        "color": "Couleur",
+        "availability": "Disponibilite",
+        "price": "Prix"
+      },
+      "facetOptions": {
+        "material": {
+          "all": "Toutes les matieres",
+          "fabric": "Tissu",
+          "wood": "Bois",
+          "stone": "Pierre",
+          "metal": "Metal"
+        },
+        "color": {
+          "all": "Toutes les couleurs",
+          "natural": "Naturel",
+          "brown": "Brun",
+          "light": "Clair"
+        },
+        "availability": {
+          "all": "Toutes les disponibilites",
+          "inStock": "En stock",
+          "lowStock": "Stock bas"
+        },
+        "price": {
+          "all": "Tous les prix",
+          "under1500": "Moins de $1,500",
+          "between1500And3500": "$1,500-$3,500",
+          "over3500": "Plus de $3,500"
+        }
+      }
+    },
+    "productDetail": {
+      "price": {
+        "prefix": "A partir de",
+        "member": "Membre",
+        "sale": "Solde",
+        "regular": "Standard",
+        "savings": "5% premier achat annuel / 15% piece complete",
+        "context": "Le prix de depart reflete la taille affichee et la finition en stock."
+      },
+      "stock": {
+        "label": "Stock",
+        "inStock": "En stock",
+        "madeToOrder": "Fabrique sur commande"
+      },
+      "membershipPrompt": {
+        "title": "Prix membre disponible",
+        "copy": "Connectez-vous ou rejoignez le programme d'adhesion pour voir les economies eligibles avant paiement.",
+        "linkLabel": "En savoir plus"
+      },
+      "fabricSelector": {
+        "stockedFabrics": "CHOISIR PARMI {stocked} TISSUS EN STOCK ET {special} TISSUS SUR COMMANDE",
+        "stoneWood": "CHOISIR PARMI {stocked} PLATEAUX PIERRE ET {special} FINITIONS BOIS",
+        "outdoorFabrics": "CHOISIR PARMI {stocked} TISSUS OUTDOOR EN STOCK ET {special} SUR COMMANDE",
+        "metalShade": "CHOISIR PARMI {stocked} FINITIONS METAL ET {special} OPTIONS D'ABAT-JOUR",
+        "generic": "CHOISIR PARMI {stocked} OPTIONS EN STOCK ET {special} SUR COMMANDE",
+        "count": "{stocked} en stock / {special} sur commande"
+      },
+      "availability": {
+        "title": "VOIR LES ARTICLES EN STOCK",
+        "readyToShip": "Pret a expedier sous 3 a 7 jours",
+        "specialOrder": "Les options sur commande suivent la fenetre de production confirmee"
+      },
+      "optionGroups": {
+        "labels": {
+          "size": "Taille",
+          "fabric": "Tissu",
+          "finish": "Finition",
+          "configuration": "Configuration",
+          "depth": "Profondeur",
+          "fill": "Garnissage coussin",
+          "shape": "Forme",
+          "top": "Matiere du plateau",
+          "base": "Finition de base",
+          "frame": "Structure",
+          "cushion": "Coussin",
+          "orientation": "Orientation",
+          "shade": "Abat-jour",
+          "bulb": "Ampoule"
+        },
+        "helpers": {
+          "bedSize": "Choisissez la dimension du cadre de lit.",
+          "upholstery": "Options de revetement en stock et sur commande speciale.",
+          "visibleFinish": "Finition visible du cadre ou du pietement.",
+          "bedConfiguration": "Regle la base et la composition de la tete de lit.",
+          "seatingConfiguration": "Choisissez le profil d'assise avant le tissu et la profondeur.",
+          "depth": "Controle la profondeur d'assise et l'encombrement.",
+          "fill": "Definit le confort d'assise et l'entretien.",
+          "shape": "Selectionnez l'implantation de la salle a manger.",
+          "diningSize": "Controle la capacite d'assise et le degagement dans la piece.",
+          "top": "Options de plateau pierre et bois pour les filtres de salle a manger Oakved.",
+          "base": "La finition de base pourra ensuite etre reliee aux attributs SKU.",
+          "frame": "Choisissez une finition de structure en bois vieilli ou en metal.",
+          "outdoorFabric": "Tissus de coussin outdoor en stock et sur commande speciale.",
+          "cushion": "Controle le profil du coussin et le niveau de confort.",
+          "orientation": "Utile pour un fauteuil lounge ou une composition outdoor modulaire.",
+          "fixtureSize": "Choisissez le diametre du luminaire ou la longueur de suspension.",
+          "metalFinish": "Finition metallique pour le corps du luminaire et la rosace.",
+          "shade": "Options d'abat-jour pour la diffusion de la lumiere.",
+          "bulb": "Definit la source lumineuse et la compatibilite."
+        }
+      },
+      "purchaseAssurance": {
+        "delivery": {
+          "title": "Livraison",
+          "copy": "Les fenetres de livraison sont affichees avant paiement puis confirmees apres verification."
+        },
+        "installation": {
+          "title": "Installation",
+          "copy": "Les grands meubles peuvent etre programmes avec placement dans la piece."
+        },
+        "returns": {
+          "title": "Retours",
+          "copy": "Consultez les retours, echanges et conditions de commande speciale avant achat."
+        }
+      },
+      "relatedLinks": {
+        "availableLeather": "Disponible aussi en cuir",
+        "customConfiguration": "Disponible aussi en configuration personnalisee",
+        "luxeBed": "Explorer la collection de lits Luxe",
+        "customFabric": "Disponible aussi avec tissu personnalise",
+        "bedroomLounge": "Explorer la collection Bedroom Lounge",
+        "woodTop": "Disponible aussi avec plateau en bois",
+        "customLength": "Disponible aussi en longueur personnalisee",
+        "marbleDining": "Explorer la collection Marble Dining",
+        "diningChair": "Disponible aussi en chaise de salle a manger",
+        "customCushions": "Disponible aussi avec coussins personnalises",
+        "outdoorLounge": "Explorer la collection Outdoor Lounge",
+        "sconce": "Disponible aussi en applique",
+        "customFinishes": "Disponible aussi en finitions personnalisees",
+        "architecturalLighting": "Explorer la collection Architectural Lighting",
+        "pairDressers": "Associer avec des commodes",
+        "viewBedroomSets": "Voir les ensembles de chambre",
+        "woodFinishes": "Explorer les finitions bois",
+        "pairNightstands": "Associer avec des tables de chevet",
+        "viewStorageCabinets": "Voir les meubles de rangement",
+        "carvedWood": "Explorer les details de bois sculpte",
+        "pairVanityChairs": "Associer avec des chaises de coiffeuse",
+        "pairDeskChairs": "Associer avec des chaises de bureau",
+        "viewStudySets": "Voir les ensembles de bureau",
+        "exploreBenches": "Explorer les bancs",
+        "pairSideChairs": "Associer avec des chaises d'appoint",
+        "viewDesksTables": "Voir les bureaux et tables",
+        "pairRoundTables": "Associer avec des tables rondes",
+        "viewChairsBenches": "Voir les chaises et bancs",
+        "bedroomLoungePieces": "Explorer les pieces Bedroom Lounge"
+      },
+      "accordions": {
+        "titles": {
+          "details": "DETAILS",
+          "dimensions": "DIMENSIONS",
+          "materials": "MATIERES",
+          "care": "ENTRETIEN",
+          "delivery": "LIVRAISON"
+        },
+        "rows": {
+          "design": "Style",
+          "structure": "Structure",
+          "comfort": "Confort",
+          "compatibility": "Compatibilite",
+          "queen": "Grand lit 1.5m",
+          "king": "Tres grand lit 1.8m",
+          "californiaKing": "Tres grand lit Californie 2.0m",
+          "floorToPlatform": "Sol au sommier",
+          "headboardDepth": "Profondeur de la tete de lit",
+          "frame": "Structure",
+          "upholstery": "Revetement",
+          "fill": "Garnissage",
+          "feet": "Pieds",
+          "fabricCare": "Entretien du tissu",
+          "spills": "Taches",
+          "sunlight": "Lumiere du soleil",
+          "delivery": "Livraison",
+          "assembly": "Assemblage",
+          "leadTime": "Delai",
+          "configuration": "Configuration",
+          "overallWidth": "Largeur totale",
+          "overallDepth": "Profondeur totale",
+          "overallHeight": "Hauteur totale",
+          "seatHeight": "Hauteur d'assise",
+          "armHeight": "Hauteur des accoudoirs",
+          "cushions": "Coussins",
+          "stockedFabric": "Tissu en stock",
+          "customOrder": "Commande personnalisee",
+          "top": "Plateau",
+          "base": "Base",
+          "use": "Usage",
+          "topThickness": "Epaisseur du plateau",
+          "seatingCapacity": "Capacite d'assise",
+          "stone": "Pierre",
+          "wood": "Bois",
+          "stoneCare": "Entretien de la pierre",
+          "woodCare": "Entretien du bois",
+          "heat": "Chaleur",
+          "cushion": "Coussin",
+          "outdoorCare": "Entretien outdoor",
+          "frameCare": "Entretien de la structure",
+          "stockedFabrics": "Tissus en stock",
+          "customCushions": "Coussins personnalises",
+          "mounting": "Montage",
+          "dimming": "Variation",
+          "canopy": "Rosace",
+          "cordLength": "Longueur du cordon",
+          "weight": "Poids",
+          "body": "Corps",
+          "shade": "Abat-jour",
+          "cleaning": "Nettoyage",
+          "shadeCare": "Entretien de l'abat-jour",
+          "electrical": "Caracteristiques electriques",
+          "installation": "Pose"
+        }
+      }
+    }
+  }
+};
+
+Object.entries(taskFourProductMessages).forEach(([lang, localeMessages]) => {
+  mergeLocaleMessages(messages[lang], localeMessages);
+});
+
+Object.entries(taskFourModelUiMessages).forEach(([lang, localeMessages]) => {
+  mergeLocaleMessages(messages[lang], localeMessages);
+});
+
+const saleCategoryMessages = {
+  en: {
+    sale: {
+      categories: {
+        "Living": "Living",
+        "Sofas": "Sofas",
+        "Dining": "Dining",
+        "Bedroom": "Bedroom",
+        "Bath": "Bath",
+        "Outdoor": "Outdoor",
+        "Rugs": "Rugs",
+        "Lighting": "Lighting",
+        "Bedding": "Bedding",
+        "Decor": "Decor",
+        "Bath Towels": "Bath Towels",
+      },
+    },
+  },
+  "zh-CN": {
+    sale: {
+      categories: {
+        "Living": "\u5ba2\u5385",
+        "Sofas": "\u6c99\u53d1",
+        "Dining": "\u9910\u5385",
+        "Bedroom": "\u5367\u5ba4",
+        "Bath": "\u6d74\u5ba4",
+        "Outdoor": "\u6237\u5916",
+        "Rugs": "\u5730\u6bef",
+        "Lighting": "\u706f\u5177",
+        "Bedding": "\u5e8a\u54c1",
+        "Decor": "\u88c5\u9970",
+        "Bath Towels": "\u6d74\u5dfe",
+      },
+    },
+  },
+  fr: {
+    sale: {
+      categories: {
+        "Living": "Salon",
+        "Sofas": "Canap\u00e9s",
+        "Dining": "Salle \u00e0 manger",
+        "Bedroom": "Chambre",
+        "Bath": "Bain",
+        "Outdoor": "Outdoor",
+        "Rugs": "Tapis",
+        "Lighting": "\u00c9clairage",
+        "Bedding": "Linge de lit",
+        "Decor": "D\u00e9cor",
+        "Bath Towels": "Serviettes de bain",
+      },
+    },
+  },
+};
+
+Object.entries(saleCategoryMessages).forEach(([lang, localeMessages]) => {
+  mergeLocaleMessages(messages[lang], localeMessages);
+});
 
 const locale = ref(getInitialLocale());
 updateDocumentLanguage(locale.value);

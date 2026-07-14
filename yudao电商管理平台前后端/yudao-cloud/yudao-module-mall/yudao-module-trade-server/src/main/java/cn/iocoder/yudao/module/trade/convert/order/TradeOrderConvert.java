@@ -81,6 +81,7 @@ public interface TradeOrderConvert {
             orderItem.setUserId(tradeOrderDO.getUserId());
             orderItem.setAfterSaleStatus(TradeOrderItemAfterSaleStatusEnum.NONE.getStatus());
             orderItem.setCommentStatus(false);
+            orderItem.setCostEstimated(Boolean.FALSE);
             return orderItem;
         });
     }
@@ -207,6 +208,20 @@ public interface TradeOrderConvert {
     })
     ProductCommentCreateReqDTO convert04(AppTradeOrderItemCommentCreateReqVO createReqVO, TradeOrderItemDO tradeOrderItemDO);
 
+    @Mappings({
+            @Mapping(target = "skuId", source = "tradeOrderItemDO.skuId"),
+            @Mapping(target = "orderId", source = "tradeOrderItemDO.orderId"),
+            @Mapping(target = "orderItemId", source = "tradeOrderItemDO.id"),
+            @Mapping(target = "descriptionScores", source = "item.descriptionScores"),
+            @Mapping(target = "benefitScores", source = "item.benefitScores"),
+            @Mapping(target = "content", source = "item.content"),
+            @Mapping(target = "picUrls", source = "item.picUrls"),
+            @Mapping(target = "anonymous", source = "anonymous"),
+            @Mapping(target = "userId", source = "tradeOrderItemDO.userId")
+    })
+    ProductCommentCreateReqDTO convert05(AppTradeOrderCommentCreateReqVO.Item item, Boolean anonymous,
+                                         TradeOrderItemDO tradeOrderItemDO);
+
     TradePriceCalculateReqBO convert(AppTradeOrderSettlementReqVO settlementReqVO);
 
     default TradePriceCalculateReqBO convert(Long userId, AppTradeOrderSettlementReqVO settlementReqVO,
@@ -238,7 +253,8 @@ public interface TradeOrderConvert {
                 continue;
             }
             reqBO.getItems().add(new TradePriceCalculateReqBO.Item().setSkuId(cart.getSkuId()).setCount(cart.getCount())
-                    .setCartId(item.getCartId()).setSelected(true)); // true 的原因，下单一定选中
+                    .setCartId(item.getCartId()).setRegistryId(cart.getRegistryId()).setRegistryItemId(cart.getRegistryItemId())
+                    .setSelected(true)); // true 的原因，下单一定选中
         }
         return reqBO;
     }

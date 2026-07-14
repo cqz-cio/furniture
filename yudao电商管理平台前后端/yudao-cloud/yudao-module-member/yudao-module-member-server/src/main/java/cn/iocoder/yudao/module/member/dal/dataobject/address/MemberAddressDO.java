@@ -1,17 +1,22 @@
 package cn.iocoder.yudao.module.member.dal.dataobject.address;
 
 import cn.iocoder.yudao.framework.mybatis.core.dataobject.BaseDO;
+import com.baomidou.mybatisplus.annotation.FieldStrategy;
 import com.baomidou.mybatisplus.annotation.KeySequence;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 import lombok.*;
+
+import java.util.Map;
 
 /**
  * 用户收件地址 DO
  *
  * @author 芋道源码
  */
-@TableName("member_address")
+@TableName(value = "member_address", autoResultMap = true)
 @KeySequence("member_address_seq") // 用于 Oracle、PostgreSQL、Kingbase、DB2、H2 数据库的主键自增。如果是 MySQL 等数据库，可不写。
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -52,5 +57,10 @@ public class MemberAddressDO extends BaseDO {
      * true - 默认收件地址
      */
     private Boolean defaultStatus;
+    /**
+     * Address verification audit payload from the buyer's latest checkout confirmation.
+     */
+    @TableField(typeHandler = JacksonTypeHandler.class, updateStrategy = FieldStrategy.ALWAYS)
+    private Map<String, Object> addressVerification;
 
 }

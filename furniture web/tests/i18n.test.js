@@ -90,12 +90,38 @@ describe("i18n locale helper", () => {
     expect(t("cart.itemCount", { count: 2 })).toBe("2 ARTICLES");
   });
 
+  it("translates focused storefront navigation keys instead of showing raw i18n paths", async () => {
+    const { availableLocales, setLocale, t } = await loadI18n();
+    const navigationKeys = [
+      "navigation.primary.bedroomFurniture",
+      "navigation.primary.storageCabinets",
+      "navigation.primary.desksTables",
+      "navigation.primary.seatingBenches",
+      "navigation.primary.roomSets",
+      "navigation.primary.woodcraft",
+      "navigation.primary.newSale",
+    ];
+
+    for (const locale of availableLocales) {
+      setLocale(locale.lang);
+      for (const key of navigationKeys) {
+        expect(t(key), `${key} missing for ${locale.lang}`).not.toBe(key);
+        expect(t(key), `${key} corrupted for ${locale.lang}`).not.toMatch(/\?{2,}/);
+      }
+    }
+
+    setLocale("zh-CN");
+    expect(t("navigation.primary.bedroomFurniture")).toBe("卧室家具");
+    expect(t("navigation.primary.storageCabinets")).toBe("柜类收纳");
+    expect(t("navigation.primary.newSale")).toBe("新品特惠");
+  });
+
   it("translates French messages and falls back to the key", async () => {
     const { setLocale, t } = await loadI18n();
 
     setLocale("fr");
 
-    expect(t("home.heroEyebrow")).toBe("Bienvenue dans l'univers RH");
+    expect(t("home.heroEyebrow")).toBe("Bienvenue chez Oakved");
     expect(t("missing.key")).toBe("missing.key");
   });
 
@@ -137,6 +163,8 @@ describe("i18n locale helper", () => {
       "membership.account.states.title",
       "membership.account.states.pendingLink.description",
       "membership.account.states.activeWholeRoom.title",
+      "membership.account.signInRequired",
+      "membership.account.actions.connectAccount",
       "membership.account.emptyStates.notMember.title",
       "membership.account.emptyStates.expired.description",
       "membership.account.planWholeRoom",
@@ -162,6 +190,136 @@ describe("i18n locale helper", () => {
 
     for (const locale of availableLocales) {
       for (const key of orderKeys) {
+        expect(getMessage(key, locale.lang), `${key} missing for ${locale.lang}`).toBeTruthy();
+      }
+    }
+  });
+
+  it("provides storefront navigation and home module labels across every supported locale", async () => {
+    const { availableLocales, getMessage } = await loadI18n();
+    const storefrontKeys = [
+      "navigation.primary.living",
+      "navigation.primary.dining",
+      "navigation.primary.bed",
+      "navigation.primary.bath",
+      "navigation.primary.outdoor",
+      "navigation.primary.lighting",
+      "navigation.primary.textiles",
+      "navigation.primary.rugs",
+      "navigation.primary.decor",
+      "navigation.primary.babyChild",
+      "navigation.primary.teen",
+      "navigation.primary.sale",
+      "navigation.primary.interiorDesign",
+      "home.modules.bedroom.title",
+      "home.modules.dining.title",
+      "home.modules.outdoorLiving.title",
+      "home.modules.sourcebooks.title",
+      "home.modules.services.title",
+    ];
+
+    for (const locale of availableLocales) {
+      for (const key of storefrontKeys) {
+        expect(getMessage(key, locale.lang), `${key} missing for ${locale.lang}`).toBeTruthy();
+      }
+    }
+  });
+
+  it("provides full visible-copy namespaces for every supported locale", async () => {
+    const { availableLocales, getMessage } = await loadI18n();
+    const keys = [
+      "home.commerce.eyebrow",
+      "home.commerce.title",
+      "home.featured.title",
+      "home.trust.memberPricing.title",
+      "landing.common.collection",
+      "landing.common.designServices",
+      "landing.common.joinMembers",
+      "landing.common.exploreServices",
+      "outdoor.hero.title",
+      "outdoor.services.title",
+      "teen.hero.title",
+      "teen.services.cta",
+      "babyChild.hero.title",
+      "babyChild.category.placeholderTitle",
+      "sale.hero.title",
+      "productList.filters.title",
+      "productList.filters.clearAll",
+      "productList.edit.title",
+      "productDetail.gallery.previous",
+      "productDetail.gallery.next",
+      "productDetail.gallery.instructions",
+      "productDetail.registry.add",
+      "productDetail.inspiration.eyebrow",
+      "productDetail.inspiration.title",
+      "productDetail.inspiration.description",
+      "productDetail.shopRoom.eyebrow",
+      "productDetail.shopRoom.title",
+      "productDetail.shopRoom.description",
+      "productDetail.completeRoom.eyebrow",
+      "productDetail.completeRoom.title",
+      "productDetail.completeRoom.description",
+      "cart.drawerTitle",
+      "cart.summary.title",
+      "cart.membership.description",
+      "checkout.header.title",
+      "checkout.header.shipping",
+      "checkout.header.payment",
+      "checkout.header.confirmation",
+      "checkout.payment.saveCard",
+      "checkout.payment.billingSameAsShipping",
+      "checkout.summary.memberSavings",
+      "checkout.footer.privacy",
+      "giftRegistry.eyebrow",
+      "giftRegistry.nav.home",
+      "giftRegistry.nav.create",
+      "giftRegistry.nav.find",
+      "giftRegistry.nav.manage",
+      "giftRegistry.nav.account",
+      "giftRegistry.home.title",
+      "giftRegistry.home.description",
+      "giftRegistry.find.title",
+      "giftRegistry.find.search",
+      "giftRegistry.find.create",
+      "giftRegistry.find.manage",
+      "giftRegistry.find.view",
+      "giftRegistry.create.title",
+      "giftRegistry.create.find",
+      "giftRegistry.create.manage",
+      "giftRegistry.create.flow",
+      "giftRegistry.create.steps.event",
+      "giftRegistry.create.steps.registrant",
+      "giftRegistry.create.steps.delivery",
+      "giftRegistry.create.steps.privacy",
+      "giftRegistry.create.steps.share",
+      "giftRegistry.create.purchaseCallbackNote",
+      "giftRegistry.manage.eyebrow",
+      "giftRegistry.manage.title",
+      "giftRegistry.manage.signInEyebrow",
+      "giftRegistry.manage.signInTitle",
+      "giftRegistry.manage.signIn",
+      "giftRegistry.manage.viewPublic",
+      "giftRegistry.manage.giftsEyebrow",
+      "giftRegistry.manage.addProductTitle",
+      "giftRegistry.manage.addGift",
+      "giftRegistry.manage.viewProduct",
+      "giftRegistry.public.titleFallback",
+      "giftRegistry.public.eventFallback",
+      "giftRegistry.public.unavailable",
+      "giftRegistry.public.requestedPurchased",
+      "giftRegistry.public.itemFallbackNote",
+      "giftRegistry.public.viewProduct",
+      "giftRegistry.public.addGiftToBag",
+      "giftRegistry.public.noGiftsEyebrow",
+      "giftRegistry.public.noGiftsTitle",
+      "giftRegistry.public.noGiftsDescription",
+      "account.dashboard.title",
+      "placeholder.missing.eyebrow",
+      "placeholder.missing.title",
+    ];
+
+    for (const locale of availableLocales) {
+      for (const key of keys) {
         expect(getMessage(key, locale.lang), `${key} missing for ${locale.lang}`).toBeTruthy();
       }
     }
