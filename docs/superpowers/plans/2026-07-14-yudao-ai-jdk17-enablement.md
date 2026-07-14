@@ -270,7 +270,7 @@ git commit -m "feat: enable AI module with keyless startup"
 **Interfaces:**
 - Produces: `.local-backups/mysql/ruoyi-vue-pro-<timestamp>.sql`; 14 required tables; intact existing rows; menu and super-admin role mappings.
 
-- [ ] **Step 1: Write the schema contract test**
+- [x] **Step 1: Write the schema contract test**
 
 ```powershell
 $required = @('ai_api_key','ai_model','ai_chat_role','ai_chat_conversation','ai_chat_message','ai_image','ai_knowledge','ai_knowledge_document','ai_knowledge_segment','ai_mind_map','ai_tool','ai_music','ai_workflow','ai_write')
@@ -279,21 +279,21 @@ $missing = $required | Where-Object { $_ -notin $actual }
 if ($missing) { throw "Missing AI tables: $($missing -join ', ')" }
 ```
 
-- [ ] **Step 2: Run the contract and verify it reports the eleven missing tables**
+- [x] **Step 2: Run the contract and verify it reports the eleven missing tables**
 
 Run: `powershell -NoProfile -File .\script\jdk17\tests\AiMigration.Tests.ps1`
 
 Expected: non-zero exit listing missing table names and no database changes.
 
-- [ ] **Step 3: Implement backup and restore-safe output handling**
+- [x] **Step 3: Implement backup and restore-safe output handling**
 
 The backup script requires `YUDAO_MYSQL_ROOT_PASSWORD`, verifies `mysqldump` inside `yudao-mysql-local`, writes under ignored `.local-backups/mysql`, checks that the output is non-empty and contains `CREATE TABLE`, and prints only the backup path and byte count. Add `.local-backups/` to `.gitignore`.
 
-- [ ] **Step 4: Define the complete idempotent schema and metadata migration**
+- [x] **Step 4: Define the complete idempotent schema and metadata migration**
 
 Create all 14 tables from the JDK 17 data objects and mapper usage with `CREATE TABLE IF NOT EXISTS`, including BaseDO audit columns, soft-delete fields, tenant columns where the module's annotations require them, JSON/text column widths, indexes on conversation/user/knowledge/document/model/status fields, and matching primary-key types. Use guarded `ALTER TABLE` procedures for missing columns on the existing three tables. Upsert dictionaries and the full `/ai` menu tree by stable menu name/permission, then insert missing `system_role_menu` rows for the super-admin role. Disable existing unverified `ai_api_key` rows and do not insert a usable key or enabled fake model.
 
-- [ ] **Step 5: Back up and apply once**
+- [x] **Step 5: Back up and apply once**
 
 Run: `powershell -NoProfile -File .\script\jdk17\Backup-AiDatabase.ps1`
 
@@ -301,7 +301,7 @@ Run: `powershell -NoProfile -File .\script\jdk17\Apply-AiMigration.ps1`
 
 Expected: a timestamped non-empty backup exists before SQL execution; migration exits 0.
 
-- [ ] **Step 6: Apply a second time and verify stable counts**
+- [x] **Step 6: Apply a second time and verify stable counts**
 
 Run: `powershell -NoProfile -File .\script\jdk17\Apply-AiMigration.ps1`
 
@@ -309,7 +309,7 @@ Run: `powershell -NoProfile -File .\script\jdk17\tests\AiMigration.Tests.ps1`
 
 Expected: second application exits 0; all 14 tables exist; menu names and role-menu pairs have no duplicates; existing business table counts are unchanged.
 
-- [ ] **Step 7: Commit database enablement**
+- [x] **Step 7: Commit database enablement**
 
 ```powershell
 git add .gitignore sql/mysql/ai-module-enable.sql script/jdk17/Backup-AiDatabase.ps1 script/jdk17/Apply-AiMigration.ps1 script/jdk17/tests/AiMigration.Tests.ps1
