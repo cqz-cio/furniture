@@ -15,12 +15,12 @@ import cn.iocoder.yudao.module.mes.service.qc.oqc.MesQcOqcLineService;
 import cn.iocoder.yudao.module.mes.service.qc.oqc.MesQcOqcService;
 import cn.iocoder.yudao.module.mes.service.qc.rqc.MesQcRqcLineService;
 import cn.iocoder.yudao.module.mes.service.qc.rqc.MesQcRqcService;
+import jakarta.annotation.Resource;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 
-import javax.annotation.Resource;
 import java.util.List;
 import java.util.Objects;
 
@@ -45,21 +45,18 @@ public class MesQcDefectRecordServiceImpl implements MesQcDefectRecordService {
     @Resource
     @Lazy
     private MesQcIqcLineService iqcLineService;
-
     @Resource
     @Lazy
     private MesQcIpqcService ipqcService;
     @Resource
     @Lazy
     private MesQcIpqcLineService ipqcLineService;
-
     @Resource
     @Lazy
     private MesQcOqcService oqcService;
     @Resource
     @Lazy
     private MesQcOqcLineService oqcLineService;
-
     @Resource
     @Lazy
     private MesQcRqcService rqcService;
@@ -107,6 +104,11 @@ public class MesQcDefectRecordServiceImpl implements MesQcDefectRecordService {
 
         // 3. 重新计算缺陷统计
         recalculateDefectStats(record.getQcType(), record.getQcId());
+    }
+
+    @Override
+    public MesQcDefectRecordDO getDefectRecord(Long id) {
+        return defectRecordMapper.selectById(id);
     }
 
     @Override

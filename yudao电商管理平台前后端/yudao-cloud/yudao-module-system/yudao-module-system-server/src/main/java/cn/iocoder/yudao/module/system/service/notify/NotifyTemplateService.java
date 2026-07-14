@@ -4,8 +4,8 @@ import cn.iocoder.yudao.framework.common.pojo.PageResult;
 import cn.iocoder.yudao.module.system.controller.admin.notify.vo.template.NotifyTemplatePageReqVO;
 import cn.iocoder.yudao.module.system.controller.admin.notify.vo.template.NotifyTemplateSaveReqVO;
 import cn.iocoder.yudao.module.system.dal.dataobject.notify.NotifyTemplateDO;
+import jakarta.validation.Valid;
 
-import javax.validation.Valid;
 import java.util.List;
 import java.util.Map;
 
@@ -68,6 +68,14 @@ public interface NotifyTemplateService {
      * @return 站内信模版分页
      */
     PageResult<NotifyTemplateDO> getNotifyTemplatePage(NotifyTemplatePageReqVO pageReqVO);
+
+    /**
+     * 获得指定状态的站内信模版列表
+     *
+     * @param status 状态
+     * @return 站内信模版列表
+     */
+    List<NotifyTemplateDO> getNotifyTemplateListByStatus(Integer status);
 
     /**
      * 格式化站内信内容

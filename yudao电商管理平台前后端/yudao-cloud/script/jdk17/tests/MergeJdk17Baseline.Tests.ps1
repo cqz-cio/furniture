@@ -81,7 +81,8 @@ try {
     Write-Host 'JDK 17 baseline merge fixture contract passed.'
 
     $localRepository = Join-Path $fixtureRoot 'local-repository'
-    $localBackend = Join-Path $localRepository 'backend'
+    $localBackendName = '电商后台'
+    $localBackend = Join-Path $localRepository $localBackendName
     $referenceRepository = Join-Path $fixtureRoot 'reference-repository'
     $preparationRoot = Join-Path $fixtureRoot 'prepared'
     [System.IO.Directory]::CreateDirectory($localBackend) | Out-Null
@@ -93,11 +94,11 @@ try {
     & git -C $localRepository config core.autocrlf false
     Write-FixtureFile $localBackend 'pom.xml' "java8`n"
     Write-FixtureFile $localBackend 'custom.txt' "base`n"
-    & git -C $localRepository add backend
+    & git -C $localRepository add $localBackendName
     & git -C $localRepository commit --quiet -m 'base'
     $baseCommit = (& git -C $localRepository rev-parse HEAD).Trim()
     Write-FixtureFile $localBackend 'custom.txt' "custom`n"
-    & git -C $localRepository add backend/custom.txt
+    & git -C $localRepository add "$localBackendName/custom.txt"
     & git -C $localRepository commit --quiet -m 'custom'
 
     & git -C $referenceRepository init --quiet
@@ -106,7 +107,7 @@ try {
     & git -C $referenceRepository config core.autocrlf false
     Write-FixtureFile $referenceRepository 'pom.xml' "java17`n"
     Write-FixtureFile $referenceRepository 'custom.txt' "base`n"
-    & git -C $referenceRepository add pom.xml custom.txt
+    & git -C $referenceRepository add .
     & git -C $referenceRepository commit --quiet -m 'jdk17'
     $referenceCommit = (& git -C $referenceRepository rev-parse HEAD).Trim()
 
@@ -134,6 +135,27 @@ try {
     }
 
     Write-Host 'JDK 17 repository preparation contract passed.'
+
+    foreach ($workingFile in @('pom.xml', 'custom.txt')) {
+        $workingPath = Join-Path $localBackend $workingFile
+        $workingContent = [System.IO.File]::ReadAllText($workingPath).Replace("`r`n", "`n").Replace("`n", "`r`n")
+        [System.IO.File]::WriteAllText($workingPath, $workingContent, [System.Text.UTF8Encoding]::new($false))
+    }
+    & $mergeScript -ApplyPrepared -PreparationRoot $preparationRoot
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Applying a verified prepared migration should succeed.'
+    }
+    if ([System.IO.File]::ReadAllText((Join-Path $localBackend 'pom.xml')).Trim() -ne 'java17') {
+        throw 'Prepared migration did not update the local baseline.'
+    }
+    if ([System.IO.File]::ReadAllText((Join-Path $localBackend 'custom.txt')).Trim() -ne 'custom') {
+        throw 'Prepared migration did not preserve the local customization.'
+    }
+    if (Test-Path -LiteralPath (Join-Path $localRepository 'pom.xml')) {
+        throw 'Prepared migration wrote backend files at the repository root.'
+    }
+
+    Write-Host 'JDK 17 prepared migration apply contract passed.'
 } finally {
     if (Test-Path -LiteralPath $fixtureRoot) {
         Remove-Item -LiteralPath $fixtureRoot -Recurse -Force

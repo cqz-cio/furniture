@@ -16,11 +16,11 @@ import cn.iocoder.yudao.module.system.framework.sms.core.client.SmsClient;
 import cn.iocoder.yudao.module.system.framework.sms.core.client.dto.SmsTemplateRespDTO;
 import cn.iocoder.yudao.module.system.framework.sms.core.enums.SmsTemplateAuditStatusEnum;
 import com.google.common.collect.Lists;
+import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
-import javax.annotation.Resource;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -45,9 +45,9 @@ public class SmsTemplateServiceImplTest extends BaseDbUnitTest {
     @Resource
     private SmsTemplateMapper smsTemplateMapper;
 
-    @MockBean
+    @MockitoBean
     private SmsChannelService smsChannelService;
-    @MockBean
+    @MockitoBean
     private SmsClient smsClient;
 
     @Test
@@ -242,6 +242,22 @@ public class SmsTemplateServiceImplTest extends BaseDbUnitTest {
         assertEquals(1, pageResult.getTotal());
         assertEquals(1, pageResult.getList().size());
         assertPojoEquals(dbSmsTemplate, pageResult.getList().get(0));
+    }
+
+    @Test
+    public void testGetSmsTemplateListByStatus() {
+        // mock 数据
+        SmsTemplateDO dbSmsTemplate = randomSmsTemplateDO(o -> o.setStatus(CommonStatusEnum.ENABLE.getStatus()));
+        smsTemplateMapper.insert(dbSmsTemplate);
+        smsTemplateMapper.insert(ObjectUtils.cloneIgnoreId(dbSmsTemplate,
+                o -> o.setStatus(CommonStatusEnum.DISABLE.getStatus())));
+
+        // 调用
+        List<SmsTemplateDO> list = smsTemplateService.getSmsTemplateListByStatus(
+                CommonStatusEnum.ENABLE.getStatus());
+        // 断言
+        assertEquals(1, list.size());
+        assertPojoEquals(dbSmsTemplate, list.get(0));
     }
 
     @Test

@@ -1,28 +1,32 @@
-[CmdletBinding(DefaultParameterSetName = 'Repository')]
+[CmdletBinding(DefaultParameterSetName = 'Prepare')]
 param(
     [Parameter(Mandatory = $true, ParameterSetName = 'Fixture')]
     [string] $FixtureRoot,
 
-    [Parameter(Mandatory = $true, ParameterSetName = 'Repository')]
+    [Parameter(Mandatory = $true, ParameterSetName = 'Prepare')]
     [string] $BaseCommit,
 
-    [Parameter(Mandatory = $true, ParameterSetName = 'Repository')]
+    [Parameter(Mandatory = $true, ParameterSetName = 'Prepare')]
     [string] $ReferenceRoot,
 
-    [Parameter(Mandatory = $true, ParameterSetName = 'Repository')]
+    [Parameter(Mandatory = $true, ParameterSetName = 'Prepare')]
     [string] $ReferenceCommit,
 
-    [Parameter(Mandatory = $false, ParameterSetName = 'Repository')]
+    [Parameter(Mandatory = $false, ParameterSetName = 'Prepare')]
+    [Parameter(Mandatory = $true, ParameterSetName = 'Apply')]
     [string] $PreparationRoot,
 
-    [Parameter(Mandatory = $false, ParameterSetName = 'Repository')]
+    [Parameter(Mandatory = $false, ParameterSetName = 'Prepare')]
     [string] $LocalRepositoryRoot,
 
-    [Parameter(Mandatory = $false, ParameterSetName = 'Repository')]
+    [Parameter(Mandatory = $false, ParameterSetName = 'Prepare')]
     [string] $LocalBackendRoot,
 
-    [Parameter(Mandatory = $false, ParameterSetName = 'Repository')]
-    [switch] $ForcePrepare
+    [Parameter(Mandatory = $false, ParameterSetName = 'Prepare')]
+    [switch] $ForcePrepare,
+
+    [Parameter(Mandatory = $true, ParameterSetName = 'Apply')]
+    [switch] $ApplyPrepared
 )
 
 $ErrorActionPreference = 'Stop'
@@ -188,11 +192,12 @@ function Invoke-GitArchive {
     $arguments.Add('archive')
     $arguments.Add('--format=zip')
     $arguments.Add("--output=$ArchivePath")
-    $arguments.Add($Commit)
-    if (-not [string]::IsNullOrWhiteSpace($PathSpec)) {
-        $arguments.Add('--')
-        $arguments.Add($PathSpec)
+    $treeish = if ([string]::IsNullOrWhiteSpace($PathSpec)) {
+        $Commit
+    } else {
+        "${Commit}:$PathSpec"
     }
+    $arguments.Add($treeish)
 
     & git @arguments
     if ($LASTEXITCODE -ne 0) {
@@ -233,6 +238,60 @@ if ($PSCmdlet.ParameterSetName -eq 'Fixture') {
         Write-Warning "$conflictCount merge conflict(s) require manual resolution."
         exit 1
     }
+    exit 0
+}
+
+if ($PSCmdlet.ParameterSetName -eq 'Apply') {
+    $preparationRootResolved = [System.IO.Path]::GetFullPath($PreparationRoot)
+    $metadataPath = Join-Path $preparationRootResolved 'metadata.json'
+    $currentRoot = Join-Path $preparationRootResolved 'current'
+    $outputRoot = Join-Path $preparationRootResolved 'output'
+    $patchPath = Join-Path $preparationRootResolved 'prepared.patch'
+    foreach ($requiredPath in @($metadataPath, $currentRoot, $outputRoot)) {
+        if (-not (Test-Path -LiteralPath $requiredPath)) {
+            throw "Prepared migration artifact is missing: $requiredPath"
+        }
+    }
+
+    $metadata = Get-Content -LiteralPath $metadataPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    $repositoryRoot = [System.IO.Path]::GetFullPath([string] $metadata.repositoryRoot)
+    $backendRoot = [System.IO.Path]::GetFullPath([string] $metadata.backendRoot)
+    $scopeRelative = [string] $metadata.scopeRelative
+    $currentHead = (& git -C $repositoryRoot rev-parse HEAD).Trim()
+    if ($LASTEXITCODE -ne 0 -or $currentHead -ne [string] $metadata.oursCommit) {
+        throw "Local HEAD changed after preparation. Expected $($metadata.oursCommit), got $currentHead."
+    }
+
+    & rg --no-ignore -l '^(<<<<<<< ours|>>>>>>> theirs)$' $outputRoot
+    $markerExitCode = $LASTEXITCODE
+    if ($markerExitCode -eq 0) {
+        throw 'Prepared output still contains unresolved merge markers.'
+    }
+    if ($markerExitCode -ne 1) {
+        throw "Unable to scan prepared output for conflict markers; rg exited with $markerExitCode."
+    }
+
+    Push-Location $preparationRootResolved
+    try {
+        & git -c core.autocrlf=false diff --no-index --binary --no-renames --output=prepared.patch -- current output
+        $patchExitCode = $LASTEXITCODE
+    } finally {
+        Pop-Location
+    }
+    if ($patchExitCode -notin @(0, 1)) {
+        throw "Unable to finalize prepared.patch; git diff exited with $patchExitCode."
+    }
+    [System.IO.File]::WriteAllText((Join-Path $preparationRootResolved 'conflicts.txt'), '', [System.Text.UTF8Encoding]::new($false))
+
+    & git -C $repositoryRoot apply --check --ignore-space-change --ignore-whitespace -p2 "--directory=$scopeRelative" -- $patchPath
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Prepared patch does not apply cleanly. No repository files were changed.'
+    }
+    & git -C $repositoryRoot apply --ignore-space-change --ignore-whitespace -p2 "--directory=$scopeRelative" -- $patchPath
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Prepared patch application failed after a successful check.'
+    }
+    Write-Host "Applied prepared JDK 17 migration to $backendRoot"
     exit 0
 }
 
@@ -295,8 +354,8 @@ $theirsTree = Join-Path $preparationRootResolved 'theirs'
 $baseExtract = Join-Path $preparationRootResolved '_base-extract'
 $oursExtract = Join-Path $preparationRootResolved '_current-extract'
 $theirsExtract = Join-Path $preparationRootResolved '_theirs-extract'
-Expand-GitTree -ArchivePath $baseArchive -ExtractRoot $baseExtract -NestedPath $scopeRelative -DestinationRoot $baseTree
-Expand-GitTree -ArchivePath $oursArchive -ExtractRoot $oursExtract -NestedPath $scopeRelative -DestinationRoot $oursTree
+Expand-GitTree -ArchivePath $baseArchive -ExtractRoot $baseExtract -DestinationRoot $baseTree
+Expand-GitTree -ArchivePath $oursArchive -ExtractRoot $oursExtract -DestinationRoot $oursTree
 Expand-GitTree -ArchivePath $theirsArchive -ExtractRoot $theirsExtract -DestinationRoot $theirsTree
 Remove-Item -LiteralPath $baseExtract, $oursExtract, $theirsExtract -Recurse -Force
 Remove-Item -LiteralPath $baseArchive, $oursArchive, $theirsArchive -Force

@@ -4,8 +4,8 @@ import cn.iocoder.yudao.framework.common.pojo.PageResult;
 import cn.iocoder.yudao.module.system.controller.admin.sms.vo.template.SmsTemplatePageReqVO;
 import cn.iocoder.yudao.module.system.controller.admin.sms.vo.template.SmsTemplateSaveReqVO;
 import cn.iocoder.yudao.module.system.dal.dataobject.sms.SmsTemplateDO;
+import jakarta.validation.Valid;
 
-import javax.validation.Valid;
 import java.util.List;
 import java.util.Map;
 
@@ -69,6 +69,14 @@ public interface SmsTemplateService {
      * @return 短信模板分页
      */
     PageResult<SmsTemplateDO> getSmsTemplatePage(SmsTemplatePageReqVO pageReqVO);
+
+    /**
+     * 获得指定状态的短信模板列表
+     *
+     * @param status 状态
+     * @return 短信模板列表
+     */
+    List<SmsTemplateDO> getSmsTemplateListByStatus(Integer status);
 
     /**
      * 获得指定短信渠道下的短信模板数量

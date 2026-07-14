@@ -55,13 +55,14 @@ public class GlobalExceptionHandler implements ErrorWebExceptionHandler {
                                                            ResponseStatusException ex) {
         // TODO 芋艿：这里要精细化翻译，默认返回用户是看不懂的
         ServerHttpRequest request = exchange.getRequest();
+        int statusCode = ex.getStatusCode().value();
         if (BehaviorTrackingGatewayFilter.TRACK_PATH.equals(request.getURI().getPath())) {
             log.error("[trackingGatewayError][path({}) method({}) status({}) type({})]",
-                    request.getURI().getPath(), request.getMethod(), ex.getRawStatusCode(), ex.getClass().getSimpleName());
+                    request.getURI().getPath(), request.getMethod(), statusCode, ex.getClass().getSimpleName());
         } else {
             log.error("[responseStatusExceptionHandler][uri({}/{}) 发生异常]", request.getURI(), request.getMethod(), ex);
         }
-        return CommonResult.error(ex.getRawStatusCode(), "Gateway request rejected");
+        return CommonResult.error(statusCode, "Gateway request rejected");
     }
 
     /**

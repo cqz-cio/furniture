@@ -29,8 +29,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
-import javax.annotation.Resource;
-import javax.validation.Valid;
+import jakarta.annotation.Resource;
+import jakarta.validation.Valid;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
@@ -159,6 +159,12 @@ public class MemberUserServiceImpl implements MemberUserService {
 
     @Override
     public void updateUser(Long userId, AppMemberUserUpdateReqVO reqVO) {
+        // 1.1 检测用户是否存在
+        validateUserExists(userId);
+        // 1.2 校验手机是否已经被绑定
+        validateEmailUnique(userId, reqVO.getEmail());
+
+        // 2. 更新用户
         MemberUserDO updateObj = BeanUtils.toBean(reqVO, MemberUserDO.class).setId(userId);
         memberUserMapper.updateById(updateObj);
     }
@@ -255,6 +261,7 @@ public class MemberUserServiceImpl implements MemberUserService {
         validateUserExists(updateReqVO.getId());
         // 校验手机唯一
         validateMobileUnique(updateReqVO.getId(), updateReqVO.getMobile());
+        // 校验邮箱唯一
         validateEmailUnique(updateReqVO.getId(), updateReqVO.getEmail());
 
         // 更新
@@ -303,10 +310,10 @@ public class MemberUserServiceImpl implements MemberUserService {
             return;
         }
         if (id == null) {
-            throw exception(USER_EMAIL_USED);
+            throw exception(USER_EMAIL_USED, email);
         }
         if (!user.getId().equals(id)) {
-            throw exception(USER_EMAIL_USED);
+            throw exception(USER_EMAIL_USED, email);
         }
     }
 

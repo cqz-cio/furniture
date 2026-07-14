@@ -2,10 +2,10 @@ package cn.iocoder.yudao.module.trade.controller.app.order.vo;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.AssertTrue;
 import lombok.Data;
 import cn.iocoder.yudao.module.trade.enums.delivery.DeliveryTypeEnum;
 
-import javax.validation.constraints.AssertTrue;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map;

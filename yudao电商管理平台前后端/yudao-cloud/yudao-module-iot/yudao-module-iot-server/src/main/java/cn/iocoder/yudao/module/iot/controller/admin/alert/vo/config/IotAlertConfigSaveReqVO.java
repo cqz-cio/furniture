@@ -3,10 +3,10 @@ package cn.iocoder.yudao.module.iot.controller.admin.alert.vo.config;
 import cn.iocoder.yudao.framework.common.enums.CommonStatusEnum;
 import cn.iocoder.yudao.framework.common.validation.InEnum;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
-import javax.validation.constraints.NotEmpty;
-import javax.validation.constraints.NotNull;
 import java.util.List;
 
 @Schema(description = "管理后台 - IoT 告警配置新增/修改 Request VO")
@@ -44,4 +44,12 @@ public class IotAlertConfigSaveReqVO {
     @NotEmpty(message = "接收的类型数组不能为空")
     private List<Integer> receiveTypes;
 
+    @Schema(description = "短信模板编号", example = "iot_alert_sms")
+    private String smsTemplateCode;
+
+    @Schema(description = "邮件模板编号", example = "iot_alert_mail")
+    private String mailTemplateCode;
+
+    @Schema(description = "站内信模板编号", example = "iot_alert_notify")
+    private String notifyTemplateCode;
 }

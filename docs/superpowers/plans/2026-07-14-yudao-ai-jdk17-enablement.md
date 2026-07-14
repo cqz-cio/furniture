@@ -103,7 +103,7 @@ git commit -m "build: add repository scoped JDK 17 toolchain"
 - Consumes: local base `57087aa6`, current working tree, official reference commit `ff4ed31c1b1141e9c9b25c7e8edd61d8cd8745d6`.
 - Produces: migrated tree plus `.codex-temp/jdk17-merge/conflicts.txt`; exits non-zero while conflict markers remain.
 
-- [ ] **Step 1: Write a fixture test covering unchanged, locally changed, upstream changed, added, and deleted files**
+- [x] **Step 1: Write a fixture test covering unchanged, locally changed, upstream changed, added, and deleted files**
 
 ```powershell
 $cases = @('unchanged.txt','ours-only.txt','theirs-only.txt','both.txt','ours-added.txt','theirs-added.txt')
@@ -114,29 +114,29 @@ if (-not (Select-String -Quiet -Path "$PSScriptRoot/fixtures/merge/output/both.t
 }
 ```
 
-- [ ] **Step 2: Run the fixture test and confirm it fails before the script exists**
+- [x] **Step 2: Run the fixture test and confirm it fails before the script exists**
 
 Run: `powershell -NoProfile -File .\script\jdk17\tests\MergeJdk17Baseline.Tests.ps1`
 
 Expected: non-zero exit caused by the missing merge script.
 
-- [ ] **Step 3: Implement the merge script**
+- [x] **Step 3: Implement the merge script**
 
 For each path in the union of the three trees, extract base and ours with `git show`, read theirs from the detached official reference, take theirs when ours equals base, retain ours when theirs equals base, preserve one-sided additions, and use `git merge-file -p ours base theirs` for true concurrent changes. Write every unresolved path to the conflict report and never overwrite untracked paths.
 
-- [ ] **Step 4: Run the fixture test**
+- [x] **Step 4: Run the fixture test**
 
 Run: `powershell -NoProfile -File .\script\jdk17\tests\MergeJdk17Baseline.Tests.ps1`
 
 Expected: the test confirms deterministic outputs and deliberate non-zero status for the conflict fixture.
 
-- [ ] **Step 5: Run the migration against the repository and resolve every reported conflict**
+- [x] **Step 5: Run the migration against the repository and resolve every reported conflict**
 
 Run: `powershell -NoProfile -File .\script\jdk17\Merge-Jdk17Baseline.ps1 -BaseCommit 57087aa6 -ReferenceRoot D:\code\.codex-temp\yudao-cloud-jdk17-ref -ReferenceCommit ff4ed31c1b1141e9c9b25c7e8edd61d8cd8745d6`
 
 Expected: the initial run may stop with a finite conflict list. Resolve Maven/config/framework conflicts by preserving local business configuration inside the official JDK 17 structure, then rerun marker scanning until `rg "^(<<<<<<<|=======|>>>>>>>)"` finds nothing.
 
-- [ ] **Step 6: Verify migration provenance and custom-file retention**
+- [x] **Step 6: Verify migration provenance and custom-file retention**
 
 Run: `git diff --check`
 
@@ -144,7 +144,7 @@ Run: `git diff --name-status 57087aa6 -- yudao-module-mall yudao-module-member y
 
 Expected: no whitespace/conflict errors and all intentional custom modules still exist.
 
-- [ ] **Step 7: Commit the mechanical baseline migration**
+- [x] **Step 7: Commit the mechanical baseline migration**
 
 ```powershell
 git add pom.xml yudao-dependencies yudao-framework yudao-gateway yudao-module-* yudao-server script/jdk17/Merge-Jdk17Baseline.ps1 script/jdk17/tests/MergeJdk17Baseline.Tests.ps1

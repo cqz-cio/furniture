@@ -1,5 +1,6 @@
 package cn.iocoder.yudao.module.system.controller.admin.mail;
 
+import cn.iocoder.yudao.framework.common.enums.CommonStatusEnum;
 import cn.iocoder.yudao.framework.common.pojo.CommonResult;
 import cn.iocoder.yudao.framework.common.pojo.PageResult;
 import cn.iocoder.yudao.framework.common.util.object.BeanUtils;
@@ -10,11 +11,11 @@ import cn.iocoder.yudao.module.system.service.mail.MailTemplateService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.annotation.Resource;
+import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import javax.annotation.Resource;
-import javax.validation.Valid;
 import java.util.List;
 
 import static cn.iocoder.yudao.framework.common.pojo.CommonResult.success;
@@ -80,10 +81,11 @@ public class MailTemplateController {
         return success(BeanUtils.toBean(pageResult, MailTemplateRespVO.class));
     }
 
-    @GetMapping({"/list-all-simple", "simple-list"})
-    @Operation(summary = "获得邮件模版精简列表")
-    public CommonResult<List<MailTemplateSimpleRespVO>> getSimpleTemplateList() {
-        List<MailTemplateDO> list = mailTempleService.getMailTemplateList();
+    @GetMapping({"/list-all-simple", "/simple-list"})
+    @Operation(summary = "获得邮件模版精简列表", description = "只包含被开启的邮件模版，主要用于前端的下拉选项")
+    public CommonResult<List<MailTemplateSimpleRespVO>> getSimpleMailTemplateList() {
+        List<MailTemplateDO> list = mailTempleService.getMailTemplateListByStatus(
+                CommonStatusEnum.ENABLE.getStatus());
         return success(BeanUtils.toBean(list, MailTemplateSimpleRespVO.class));
     }
 
