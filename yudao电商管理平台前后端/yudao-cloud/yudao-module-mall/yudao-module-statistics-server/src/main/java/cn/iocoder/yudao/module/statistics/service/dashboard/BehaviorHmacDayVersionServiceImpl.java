@@ -4,7 +4,7 @@ import cn.iocoder.yudao.module.statistics.dal.mysql.dashboard.HmacDayVersionMapp
 import cn.iocoder.yudao.module.statistics.framework.config.BehaviorTrackingProperties;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 import java.time.LocalDate;
 @Service
 public class BehaviorHmacDayVersionServiceImpl implements BehaviorHmacDayVersionService {

@@ -3,10 +3,10 @@ package cn.iocoder.yudao.module.member.api.giftregistry.dto;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
-import javax.validation.Valid;
-import javax.validation.constraints.Min;
-import javax.validation.constraints.NotEmpty;
-import javax.validation.constraints.NotNull;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import java.util.List;
 
 @Schema(description = "RPC 服务 - Gift Registry 购买回写 Request DTO")

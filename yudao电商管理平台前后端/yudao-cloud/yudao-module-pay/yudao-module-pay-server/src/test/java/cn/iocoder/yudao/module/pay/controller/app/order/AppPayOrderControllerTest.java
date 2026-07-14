@@ -14,7 +14,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 
-import javax.validation.Valid;
+import jakarta.validation.Valid;
 
 import static cn.iocoder.yudao.framework.test.core.util.RandomUtils.randomLongId;
 import static org.junit.jupiter.api.Assertions.assertEquals;

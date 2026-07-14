@@ -24,10 +24,6 @@ public class MemberUserBaseVO {
     @Schema(description = "手机号", example = "15601691300")
     private String mobile;
 
-    @Schema(description = "邮箱", example = "designer@example.com")
-    @Email(message = "邮箱格式不正确")
-    private String email;
-
     @Schema(description = "Trade Program 账号编号", example = "RH-TRADE-10086")
     @Length(max = 64, message = "Trade ID 长度不能超过 64 位")
     private String tradeId;

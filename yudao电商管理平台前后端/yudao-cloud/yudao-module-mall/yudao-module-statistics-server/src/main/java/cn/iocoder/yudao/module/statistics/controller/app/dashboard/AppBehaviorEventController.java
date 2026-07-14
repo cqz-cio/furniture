@@ -6,8 +6,8 @@ import cn.iocoder.yudao.module.statistics.controller.app.dashboard.vo.AppBehavio
 import cn.iocoder.yudao.module.statistics.service.dashboard.BehaviorEventService;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-import javax.annotation.Resource;
-import javax.validation.Valid;
+import jakarta.annotation.Resource;
+import jakarta.validation.Valid;
 @RestController @RequestMapping("/statistics/behavior") @Validated
 public class AppBehaviorEventController {
     @Resource private BehaviorEventService behaviorEventService;

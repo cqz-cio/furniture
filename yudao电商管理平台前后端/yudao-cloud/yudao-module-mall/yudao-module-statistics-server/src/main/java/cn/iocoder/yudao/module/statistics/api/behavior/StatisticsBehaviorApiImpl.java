@@ -4,7 +4,7 @@ import cn.iocoder.yudao.module.statistics.api.behavior.dto.CartBehaviorRecordReq
 import cn.iocoder.yudao.module.statistics.service.dashboard.*;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.validation.annotation.Validated;
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 import static cn.iocoder.yudao.framework.common.pojo.CommonResult.success;
 @RestController @Validated
 public class StatisticsBehaviorApiImpl implements StatisticsBehaviorApi {

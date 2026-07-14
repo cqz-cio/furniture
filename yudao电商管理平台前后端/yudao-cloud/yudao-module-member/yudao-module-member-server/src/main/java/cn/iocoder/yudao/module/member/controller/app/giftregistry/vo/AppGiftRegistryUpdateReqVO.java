@@ -2,7 +2,7 @@ package cn.iocoder.yudao.module.member.controller.app.giftregistry.vo;
 
 import lombok.Data;
 
-import javax.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotNull;
 import java.time.LocalDate;
 
 @Data

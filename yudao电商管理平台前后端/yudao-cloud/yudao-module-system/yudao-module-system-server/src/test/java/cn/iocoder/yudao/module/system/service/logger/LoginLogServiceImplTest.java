@@ -64,7 +64,8 @@ public class LoginLogServiceImplTest extends BaseDbUnitTest {
 
     @Test
     public void testCreateLoginLog() {
-        LoginLogCreateReqDTO reqDTO = randomPojo(LoginLogCreateReqDTO.class);
+        LoginLogCreateReqDTO reqDTO = randomPojo(LoginLogCreateReqDTO.class,
+                o -> o.setUsername("test-user"));
 
         // 调用
         loginLogService.createLoginLog(reqDTO);

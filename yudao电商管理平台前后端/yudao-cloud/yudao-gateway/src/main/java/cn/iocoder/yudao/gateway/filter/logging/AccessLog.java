@@ -2,7 +2,7 @@ package cn.iocoder.yudao.gateway.filter.logging;
 
 import lombok.Data;
 import org.springframework.cloud.gateway.route.Route;
-import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.util.MultiValueMap;
 
 import java.time.LocalDateTime;
@@ -74,7 +74,7 @@ public class AccessLog {
     /**
      * 响应结果
      */
-    private HttpStatus httpStatus;
+    private HttpStatusCode httpStatus;
 
     /**
      * 开始请求时间

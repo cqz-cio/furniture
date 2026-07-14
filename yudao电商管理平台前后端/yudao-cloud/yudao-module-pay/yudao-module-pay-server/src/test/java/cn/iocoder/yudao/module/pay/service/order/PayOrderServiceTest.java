@@ -35,6 +35,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 import static cn.iocoder.yudao.framework.common.util.date.LocalDateTimeUtils.*;
@@ -1165,7 +1166,7 @@ public class PayOrderServiceTest extends BaseDbAndRedisUnitTest {
         // mock 数据（PayOrderDO）
         PayOrderDO order = randomPojo(PayOrderDO.class,
                 o -> o.setStatus(PayOrderStatusEnum.WAITING.getStatus())
-                        .setExpireTime(addTime(Duration.ofMinutes(-1))));
+                        .setExpireTime(addTime(Duration.ofMinutes(-1)).truncatedTo(ChronoUnit.MICROS)));
         orderMapper.insert(order);
         // mock 数据（PayOrderExtensionDO 已支付）
         PayOrderExtensionDO orderExtension = randomPojo(PayOrderExtensionDO.class,
@@ -1189,7 +1190,7 @@ public class PayOrderServiceTest extends BaseDbAndRedisUnitTest {
         // mock 数据（PayOrderDO）
         PayOrderDO order = randomPojo(PayOrderDO.class,
                 o -> o.setStatus(PayOrderStatusEnum.WAITING.getStatus())
-                        .setExpireTime(addTime(Duration.ofMinutes(-1))));
+                        .setExpireTime(addTime(Duration.ofMinutes(-1)).truncatedTo(ChronoUnit.MICROS)));
         orderMapper.insert(order);
         // mock 数据（PayOrderExtensionDO 等待中）
         PayOrderExtensionDO orderExtension = randomPojo(PayOrderExtensionDO.class,
@@ -1211,7 +1212,7 @@ public class PayOrderServiceTest extends BaseDbAndRedisUnitTest {
         // mock 数据（PayOrderDO）
         PayOrderDO order = randomPojo(PayOrderDO.class,
                 o -> o.setStatus(PayOrderStatusEnum.WAITING.getStatus())
-                        .setExpireTime(addTime(Duration.ofMinutes(-1))));
+                        .setExpireTime(addTime(Duration.ofMinutes(-1)).truncatedTo(ChronoUnit.MICROS)));
         orderMapper.insert(order);
         // mock 数据（PayOrderExtensionDO 等待中）
         PayOrderExtensionDO orderExtension = randomPojo(PayOrderExtensionDO.class,
@@ -1245,7 +1246,7 @@ public class PayOrderServiceTest extends BaseDbAndRedisUnitTest {
             // mock 数据（PayOrderDO）
             PayOrderDO order = randomPojo(PayOrderDO.class,
                     o -> o.setStatus(PayOrderStatusEnum.WAITING.getStatus())
-                            .setExpireTime(addTime(Duration.ofMinutes(-1))));
+                            .setExpireTime(addTime(Duration.ofMinutes(-1)).truncatedTo(ChronoUnit.MICROS)));
             orderMapper.insert(order);
             // mock 数据（PayOrderExtensionDO 等待中）
             PayOrderExtensionDO orderExtension = randomPojo(PayOrderExtensionDO.class,
@@ -1279,7 +1280,7 @@ public class PayOrderServiceTest extends BaseDbAndRedisUnitTest {
         // mock 数据（PayOrderDO）
         PayOrderDO order = randomPojo(PayOrderDO.class,
                 o -> o.setStatus(PayOrderStatusEnum.WAITING.getStatus())
-                        .setExpireTime(addTime(Duration.ofMinutes(-1))));
+                        .setExpireTime(addTime(Duration.ofMinutes(-1)).truncatedTo(ChronoUnit.MICROS)));
         orderMapper.insert(order);
         // mock 数据（PayOrderExtensionDO 等待中）
         PayOrderExtensionDO orderExtension = randomPojo(PayOrderExtensionDO.class,

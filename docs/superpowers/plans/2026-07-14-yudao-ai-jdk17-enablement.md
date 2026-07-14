@@ -167,35 +167,35 @@ git commit -m "build: migrate backend to official JDK 17 baseline"
 - Consumes: Task 2 migrated Spring Boot 3/Jakarta dependency graph.
 - Produces: compiling framework, Gateway, system, and customized commerce services on Java 17.
 
-- [ ] **Step 1: Compile shared infrastructure and capture the first concrete incompatibility**
+- [x] **Step 1: Compile shared infrastructure and capture the first concrete incompatibility**
 
 Run: `powershell -NoProfile -File .\script\jdk17\Invoke-MavenJdk17.ps1 -MavenArgs @('-pl','yudao-dependencies,yudao-framework','-am','-DskipTests','install')`
 
 Expected: either success or a compiler error naming an exact obsolete import/API; never perform blind global namespace replacement.
 
-- [ ] **Step 2: Repair shared code with official JDK 17 equivalents and rerun until green**
+- [x] **Step 2: Repair shared code with official JDK 17 equivalents and rerun until green**
 
 Apply `javax.servlet` to `jakarta.servlet`, `javax.validation` to `jakarta.validation`, Spring Security 6 configuration, and Boot 3 property changes only where compilation or configuration tests prove they are needed. Preserve the custom API access-log filter and global exception behavior.
 
-- [ ] **Step 3: Compile Gateway and system-server**
+- [x] **Step 3: Compile Gateway and system-server**
 
 Run: `powershell -NoProfile -File .\script\jdk17\Invoke-MavenJdk17.ps1 -MavenArgs @('-pl','yudao-gateway,yudao-module-system/yudao-module-system-server','-am','-DskipTests','package')`
 
 Expected: `BUILD SUCCESS` on Java 17.
 
-- [ ] **Step 4: Compile commerce services in bounded groups and repair only reported compatibility issues**
+- [x] **Step 4: Compile commerce services in bounded groups and repair only reported compatibility issues**
 
 Run: `powershell -NoProfile -File .\script\jdk17\Invoke-MavenJdk17.ps1 -MavenArgs @('-pl','yudao-module-mall,yudao-module-member,yudao-module-pay,yudao-module-erp,yudao-module-statistics','-am','-DskipTests','package')`
 
 Expected: `BUILD SUCCESS`; furniture assistant, checkout, ERP, member, and dashboard source files remain present.
 
-- [ ] **Step 5: Run module tests**
+- [x] **Step 5: Run module tests**
 
 Run: `powershell -NoProfile -File .\script\jdk17\Invoke-MavenJdk17.ps1 -MavenArgs @('-pl','yudao-gateway,yudao-module-system/yudao-module-system-server,yudao-module-mall,yudao-module-member,yudao-module-pay,yudao-module-erp,yudao-module-statistics','-am','test')`
 
 Expected: all selected tests pass; provider-dependent integration tests are excluded only by their existing integration-test profile, not deleted.
 
-- [ ] **Step 6: Commit compatibility repairs**
+- [x] **Step 6: Commit compatibility repairs**
 
 ```powershell
 git add yudao-framework yudao-gateway yudao-module-system yudao-module-mall yudao-module-member yudao-module-pay yudao-module-erp yudao-module-statistics

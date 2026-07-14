@@ -22,7 +22,6 @@ import org.springframework.core.io.buffer.DataBufferFactory;
 import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.core.io.buffer.DefaultDataBufferFactory;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ReactiveHttpOutputMessage;
 import org.springframework.http.codec.CodecConfigurer;
@@ -218,7 +217,7 @@ public class AccessLogFilter implements GlobalFilter, Ordered {
                     gatewayLog.setUserId(SecurityFrameworkUtils.getLoginUserId(exchange));
                     gatewayLog.setUserType(SecurityFrameworkUtils.getLoginUserType(exchange));
                     gatewayLog.setResponseHeaders(response.getHeaders());
-                    gatewayLog.setHttpStatus((HttpStatus) response.getStatusCode());
+                    gatewayLog.setHttpStatus(response.getStatusCode());
 
                     // 获取响应类型，如果是 json 就打印
                     String originalResponseContentType = exchange.getAttribute(ServerWebExchangeUtils.ORIGINAL_RESPONSE_CONTENT_TYPE_ATTR);

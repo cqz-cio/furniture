@@ -6,7 +6,7 @@ import cn.iocoder.yudao.module.statistics.dal.mysql.dashboard.*;
 import cn.iocoder.yudao.module.statistics.dal.mysql.product.ProductStatisticsMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 import java.time.*;
 import java.util.*;
 @Service
