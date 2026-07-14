@@ -15,6 +15,7 @@ if (-not (Test-Path -LiteralPath $mavenWrapper -PathType Leaf)) {
 
 $beforeJavaHome = $env:JAVA_HOME
 $beforePath = $env:Path
+$beforeJavaToolOptions = $env:JAVA_TOOL_OPTIONS
 $jdkHomeOutput = @(& $resolver)
 if ($LASTEXITCODE -ne 0) {
     throw "Resolve-Jdk17.ps1 exited with $LASTEXITCODE"
@@ -43,6 +44,9 @@ if ($env:JAVA_HOME -ne $beforeJavaHome) {
 }
 if ($env:Path -ne $beforePath) {
     throw 'The Maven wrapper modified Path in the parent process'
+}
+if ($env:JAVA_TOOL_OPTIONS -ne $beforeJavaToolOptions) {
+    throw 'The Maven wrapper modified JAVA_TOOL_OPTIONS in the parent process'
 }
 
 Write-Host 'JDK 17 toolchain contract passed.'
