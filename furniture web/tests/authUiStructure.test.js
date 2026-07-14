@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const readSource = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
+const readSource = (path) => readFileSync(new URL(path, import.meta.url), "utf8").replace(/\r\n/g, "\n");
 
 describe("auth UI structure", () => {
   it("keeps RhHeader responsible for opening AuthModal and forwarding auth changes", () => {

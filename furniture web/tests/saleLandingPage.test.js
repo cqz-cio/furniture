@@ -12,7 +12,7 @@ describe("sale landing page", () => {
     expect(salePage).toContain("sale-hero-picture");
     expect(salePage).toContain("sale-membership-picture");
     expect(salePage).toContain("BrandEyebrow");
-    expect(salePage).toContain('suffix="Sale"');
+    expect(salePage).toContain(':suffix="t(\'sale.hero.eyebrow\')"');
     expect(salePage).not.toContain(">RH Sale<");
     expect(saleTile).toContain("sale-tile-picture");
     expect(salePage).not.toContain("ImageSpecPlaceholder");

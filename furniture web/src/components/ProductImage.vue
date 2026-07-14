@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, watch } from "vue";
+import { ref, watch } from "vue";
 
 const props = defineProps({
   src: {
@@ -16,29 +16,24 @@ const props = defineProps({
   },
 });
 
-const hasError = ref(false);
-const shouldShowImage = computed(() => props.src && !hasError.value);
-
-watch(
-  () => props.src,
-  () => {
-    hasError.value = false;
-  },
-);
+const failed = ref(false);
+watch(() => props.src, () => {
+  failed.value = false;
+});
 </script>
 
 <template>
   <div class="product-image-frame">
-    <img v-if="shouldShowImage" :src="src" :alt="label" loading="lazy" @error="hasError = true" />
+    <img v-if="src && !failed" :src="src" :alt="label" loading="lazy" @error="failed = true" />
     <img
-      v-if="shouldShowImage && hoverSrc"
+      v-if="src && !failed && hoverSrc"
       class="product-image-hover"
       :src="hoverSrc"
       :alt="`${label} detail view`"
       loading="lazy"
       aria-hidden="true"
     />
-    <div v-if="!shouldShowImage" class="product-image-fallback" aria-hidden="true">
+    <div v-if="!src || failed" class="product-image-fallback" aria-hidden="true">
       <span>{{ label }}</span>
     </div>
   </div>

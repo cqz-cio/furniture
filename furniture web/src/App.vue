@@ -1,6 +1,7 @@
 <script setup>
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import CartDrawer from "./components/CartDrawer.vue";
+import FurnitureAssistantPanel from "./components/FurnitureAssistantPanel.vue";
 import RhFooter from "./components/RhFooter.vue";
 import RhHeader from "./components/RhHeader.vue";
 import {
@@ -520,4 +521,5 @@ onBeforeUnmount(() => {
     @update-quantity="updateCartQuantity"
     @wishlist="addToWishlist"
   />
+  <FurnitureAssistantPanel @add-to-cart="addToCart" />
 </template>

@@ -4,6 +4,7 @@ import cn.hutool.core.collection.CollUtil;
 import cn.iocoder.yudao.framework.common.pojo.CommonResult;
 import cn.iocoder.yudao.framework.common.pojo.PageResult;
 import cn.iocoder.yudao.framework.common.util.object.BeanUtils;
+import cn.iocoder.yudao.module.erp.api.integration.MallErpProductApi;
 import cn.iocoder.yudao.module.product.controller.app.spu.vo.AppProductSpuDetailRespVO;
 import cn.iocoder.yudao.module.product.controller.app.spu.vo.AppProductSpuPageReqVO;
 import cn.iocoder.yudao.module.product.controller.app.spu.vo.AppProductSpuRespVO;
@@ -26,8 +27,12 @@ import javax.annotation.Resource;
 import javax.annotation.security.PermitAll;
 import javax.validation.Valid;
 import java.util.Collections;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import static cn.iocoder.yudao.framework.common.exception.util.ServiceExceptionUtil.exception;
 import static cn.iocoder.yudao.framework.common.pojo.CommonResult.success;
@@ -47,6 +52,8 @@ public class AppProductSpuController {
     private ProductSkuService productSkuService;
     @Resource
     private ProductBrowseHistoryService productBrowseHistoryService;
+    @Resource
+    private MallErpProductApi mallErpProductApi;
 
     @GetMapping("/list-by-ids")
     @Operation(summary = "获得商品 SPU 列表")
@@ -54,9 +61,11 @@ public class AppProductSpuController {
     @PermitAll
     public CommonResult<List<AppProductSpuRespVO>> getSpuList(@RequestParam("ids") Set<Long> ids) {
         List<ProductSpuDO> list = productSpuService.getSpuList(ids);
+        list = filterErpAlignedSpus(list);
         if (CollUtil.isEmpty(list)) {
             return success(Collections.emptyList());
         }
+        overlayErpStock(list);
 
         // 拼接返回
         list.forEach(spu -> spu.setSalesCount(spu.getSalesCount() + spu.getVirtualSalesCount()));
@@ -68,10 +77,22 @@ public class AppProductSpuController {
     @Operation(summary = "获得商品 SPU 分页")
     @PermitAll
     public CommonResult<PageResult<AppProductSpuRespVO>> getSpuPage(@Valid AppProductSpuPageReqVO pageVO) {
-        PageResult<ProductSpuDO> pageResult = productSpuService.getSpuPage(pageVO);
+        int requestedPageNo = pageVO.getPageNo();
+        int requestedPageSize = pageVO.getPageSize();
+        pageVO.setPageNo(1);
+        pageVO.setPageSize(cn.iocoder.yudao.framework.common.pojo.PageParam.PAGE_SIZE_NONE);
+        PageResult<ProductSpuDO> unfilteredPage = productSpuService.getSpuPage(pageVO);
+        pageVO.setPageNo(requestedPageNo);
+        pageVO.setPageSize(requestedPageSize);
+        List<ProductSpuDO> aligned = filterErpAlignedSpus(unfilteredPage.getList());
+        int fromIndex = Math.min((requestedPageNo - 1) * requestedPageSize, aligned.size());
+        int toIndex = Math.min(fromIndex + requestedPageSize, aligned.size());
+        PageResult<ProductSpuDO> pageResult = new PageResult<>(
+                new ArrayList<>(aligned.subList(fromIndex, toIndex)), (long) aligned.size());
         if (CollUtil.isEmpty(pageResult.getList())) {
             return success(PageResult.empty(pageResult.getTotal()));
         }
+        overlayErpStock(pageResult.getList());
 
         // 拼接返回
         pageResult.getList().forEach(spu -> spu.setSalesCount(spu.getSalesCount() + spu.getVirtualSalesCount()));
@@ -94,6 +115,10 @@ public class AppProductSpuController {
         }
         // 获得商品 SKU
         List<ProductSkuDO> skus = productSkuService.getSkuListBySpuId(spu.getId());
+        if (!isErpAligned(skus, getMappedSkuIds(skus))) {
+            throw exception(SPU_NOT_EXISTS);
+        }
+        overlayErpStock(spu, skus);
 
         // 增加浏览量
         productSpuService.updateBrowseCount(id, 1);
@@ -105,6 +130,44 @@ public class AppProductSpuController {
         AppProductSpuDetailRespVO spuVO = BeanUtils.toBean(spu, AppProductSpuDetailRespVO.class)
                 .setSkus(BeanUtils.toBean(skus, AppProductSpuDetailRespVO.Sku.class));
         return success(spuVO);
+    }
+
+    private void overlayErpStock(List<ProductSpuDO> spus) {
+        List<ProductSkuDO> skus = productSkuService.getSkuListBySpuId(
+                spus.stream().map(ProductSpuDO::getId).collect(Collectors.toSet()));
+        spus.forEach(spu -> overlayErpStock(spu, skus.stream()
+                .filter(sku -> spu.getId().equals(sku.getSpuId())).collect(Collectors.toList())));
+    }
+
+    private List<ProductSpuDO> filterErpAlignedSpus(List<ProductSpuDO> spus) {
+        if (CollUtil.isEmpty(spus)) {
+            return Collections.emptyList();
+        }
+        List<ProductSkuDO> skus = productSkuService.getSkuListBySpuId(
+                spus.stream().map(ProductSpuDO::getId).collect(Collectors.toSet()));
+        Map<Long, List<ProductSkuDO>> skusBySpuId = skus.stream()
+                .collect(Collectors.groupingBy(ProductSkuDO::getSpuId));
+        Set<Long> mappedSkuIds = getMappedSkuIds(skus);
+        return spus.stream().filter(spu -> isErpAligned(skusBySpuId.get(spu.getId()), mappedSkuIds))
+                .collect(Collectors.toList());
+    }
+
+    private Set<Long> getMappedSkuIds(Collection<ProductSkuDO> skus) {
+        if (CollUtil.isEmpty(skus)) {
+            return Collections.emptySet();
+        }
+        return mallErpProductApi.getMappedMallSkuIds(
+                skus.stream().map(ProductSkuDO::getId).collect(Collectors.toSet())).getCheckedData();
+    }
+
+    private boolean isErpAligned(List<ProductSkuDO> skus, Set<Long> mappedSkuIds) {
+        return CollUtil.isNotEmpty(skus) && skus.stream().allMatch(sku -> mappedSkuIds.contains(sku.getId()));
+    }
+
+    private void overlayErpStock(ProductSpuDO spu, List<ProductSkuDO> skus) {
+        skus.forEach(sku -> sku.setStock(mallErpProductApi.getSellableStock(sku.getId())
+                .getCheckedData().getSellableStock().intValue()));
+        spu.setStock(skus.stream().mapToInt(ProductSkuDO::getStock).sum());
     }
 
 }

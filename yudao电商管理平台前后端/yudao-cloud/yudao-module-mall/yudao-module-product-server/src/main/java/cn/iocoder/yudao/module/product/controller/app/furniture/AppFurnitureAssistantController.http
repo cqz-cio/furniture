@@ -1,0 +1,17 @@
+### Furniture assistant deterministic fallback
+POST http://127.0.0.1:48080/app-api/ai/furniture-assistant/chat
+Content-Type: application/json
+tenant-id: 121
+
+{
+  "message": "cream fabric sofa under 8000"
+}
+
+### Furniture assistant knowledge fallback
+POST http://127.0.0.1:48080/app-api/ai/furniture-assistant/chat
+Content-Type: application/json
+tenant-id: 121
+
+{
+  "message": "Can membership price stack with coupons?"
+}

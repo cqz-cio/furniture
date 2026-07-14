@@ -7,7 +7,8 @@ describe("sofas PLP browse controls", () => {
   it("wires search, type filter, sort, counts, and empty recovery into the product grid", () => {
     expect(source).toContain("buildProductListingModel");
     expect(source).toContain("resolveProductListingQuery");
-    expect(source).toContain("supplementMissingCompanyTypes");
+    expect(source).not.toContain("supplementMissingCompanyTypes");
+    expect(source).not.toContain("demoProducts");
     expect(source).toContain("const searchQuery = ref(\"\")");
     expect(source).toContain("const selectedProductType = ref(initialListingQuery.filter)");
     expect(source).toContain("const mobileFiltersOpen = ref(false)");

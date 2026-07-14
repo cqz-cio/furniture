@@ -2,6 +2,9 @@ package cn.iocoder.yudao.module.trade.service.price;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.iocoder.yudao.framework.common.util.object.BeanUtils;
+import cn.iocoder.yudao.module.erp.api.integration.MallErpProductApi;
+import cn.iocoder.yudao.module.erp.api.integration.dto.MallErpStockDTO;
+import cn.iocoder.yudao.module.erp.api.integration.dto.MallErpStockRequestDTO;
 import cn.iocoder.yudao.module.member.api.level.dto.MemberLevelRespDTO;
 import cn.iocoder.yudao.module.product.api.sku.ProductSkuApi;
 import cn.iocoder.yudao.module.product.api.sku.dto.ProductSkuRespDTO;
@@ -25,6 +28,7 @@ import org.springframework.validation.annotation.Validated;
 import javax.annotation.Resource;
 import java.util.List;
 import java.util.Map;
+import java.math.BigDecimal;
 
 import static cn.iocoder.yudao.framework.common.exception.util.ServiceExceptionUtil.exception;
 import static cn.iocoder.yudao.framework.common.util.collection.CollectionUtils.*;
@@ -46,6 +50,8 @@ public class TradePriceServiceImpl implements TradePriceService {
     private ProductSkuApi productSkuApi;
     @Resource
     private ProductSpuApi productSpuApi;
+    @Resource
+    private MallErpProductApi mallErpProductApi;
     @Resource
     private DiscountActivityApi discountActivityApi;
     @Resource
@@ -83,6 +89,10 @@ public class TradePriceServiceImpl implements TradePriceService {
         Map<Long, Integer> skuIdCountMap = convertMap(reqBO.getItems(),
                 TradePriceCalculateReqBO.Item::getSkuId, TradePriceCalculateReqBO.Item::getCount);
         List<ProductSkuRespDTO> skus = productSkuApi.getSkuList(skuIdCountMap.keySet()).getCheckedData();
+        List<MallErpStockRequestDTO> stockRequests = convertList(skuIdCountMap.entrySet(), entry ->
+                new MallErpStockRequestDTO().setMallSkuId(entry.getKey()).setCount(BigDecimal.valueOf(entry.getValue())));
+        Map<Long, MallErpStockDTO> erpStockMap = convertMap(
+                mallErpProductApi.validateSellableStock(stockRequests).getCheckedData(), MallErpStockDTO::getMallSkuId);
 
         // 校验商品 SKU
         skus.forEach(sku -> {
@@ -90,8 +100,10 @@ public class TradePriceServiceImpl implements TradePriceService {
             if (count == null) {
                 throw exception(SKU_NOT_EXISTS);
             }
-            if (count > sku.getStock()) {
-                throw exception(SKU_STOCK_NOT_ENOUGH);
+            MallErpStockDTO erpStock = erpStockMap.get(sku.getId());
+            if (erpStock == null || !Boolean.TRUE.equals(erpStock.getAvailable())) {
+                throw exception(SKU_STOCK_NOT_ENOUGH).setMessage("商品 SKU " + sku.getId()
+                        + " 库存不足，可售库存为 " + (erpStock == null ? 0 : erpStock.getSellableStock()));
             }
         });
         return skus;

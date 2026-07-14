@@ -108,6 +108,14 @@ yudao:
   info:
     version: 1.0.0
     base-package: cn.iocoder.yudao.module.product
+  furniture-assistant:
+    brand-name: Trendz
+    tone: luxury
+    knowledge-provider: keyword
+    provider: deepseek
+    base-url: https://api.deepseek.com
+    model: deepseek-chat
+    api-key-env-name: DEEPSEEK_API_KEY
   web:
     admin-ui:
       url: http://dashboard.yudao.iocoder.cn # Admin 管理后台 UI 的地址

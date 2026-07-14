@@ -1,11 +1,9 @@
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
-import { demoProducts } from "../data/demoProducts.js";
 import { useI18n } from "../i18n.js";
 import { registryProductToItemPayload } from "../services/giftRegistry.js";
 import { buildProductDetailModel } from "../services/productDetailModel.js";
 import { trackProductDetailView } from "../services/analytics.js";
-import { resolveProductBackendFailure } from "../services/productBackendFallback.js";
 import {
   isWishlistItemSaved,
   loadWishlistIdentityState,
@@ -24,9 +22,9 @@ const props = defineProps({
 const emit = defineEmits(["add-to-cart", "add-to-wishlist"]);
 const { t } = useI18n();
 
-const product = ref(demoProducts[0]);
+const product = ref(null);
 const loading = ref(true);
-const source = ref("demo");
+const source = ref("yudao");
 const catalogError = ref(false);
 const quantity = ref(1);
 const wishlistIdentityKeys = ref(new Set());
@@ -44,7 +42,7 @@ const money = (value) => `$${value.toLocaleString("en-US", { maximumFractionDigi
 const activeGalleryIndex = ref(0);
 const detail = computed(() => buildProductDetailModel(product.value));
 const activeGalleryItem = computed(() => detail.value.gallery[activeGalleryIndex.value] || detail.value.gallery[0]);
-const maxPurchaseQuantity = computed(() => Math.max(0, Number(product.value.stock) || 0));
+const maxPurchaseQuantity = computed(() => Math.max(0, Number(product.value?.stock) || 0));
 const canPurchase = computed(() => maxPurchaseQuantity.value > 0);
 let lastGalleryWheelAt = 0;
 
@@ -344,10 +342,9 @@ onMounted(async () => {
     void trackProductDetailView(product.value.id);
     catalogError.value = false;
   } catch {
-    const failure = resolveProductBackendFailure({ demoProducts });
-    product.value = failure.products.find((item) => String(item.id) === String(id)) || demoProducts[0];
-    source.value = failure.source;
-    catalogError.value = failure.error;
+    product.value = null;
+    source.value = "error";
+    catalogError.value = true;
   } finally {
     activeGalleryIndex.value = 0;
     loading.value = false;
@@ -359,10 +356,11 @@ onMounted(async () => {
   <section class="product-detail-page">
     <p v-if="loading" class="product-loading">{{ t("loadingProducts") }}</p>
 
-    <div v-if="!loading && catalogError" class="product-list-empty">
+    <div v-if="!loading && !product" class="product-list-empty">
       <p class="eyebrow">{{ t("productList.backendUnavailable.eyebrow") }}</p>
       <h2>{{ t("productList.backendUnavailable.title") }}</h2>
       <p>{{ t("productList.backendUnavailable.description") }}</p>
+      <p>{{ t("productUnavailable") }}</p>
     </div>
 
     <div v-else class="product-detail-grid">

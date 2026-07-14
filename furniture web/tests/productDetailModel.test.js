@@ -218,4 +218,15 @@ describe("product detail model", () => {
       expect(model.roomInspiration).toHaveLength(2);
     });
   });
+
+  it("does not classify storage furniture as a dining table from the word tableware", () => {
+    const model = buildProductDetailModel({
+      name: "Walnut Four-Door Sideboard",
+      subtitle: "Walnut sideboard for tableware storage and living-room display.",
+    });
+
+    expect(model.productType).toBe("furniture");
+    expect(model.collection).toBe("FURNITURE COLLECTION");
+    expect(model.highlights.join(" ")).not.toMatch(/dining table|stone top/i);
+  });
 });

@@ -11,7 +11,7 @@ describe("baby and teen landing pages", () => {
     expect(page).toContain("child-landing-page");
     expect(page).toContain("child-landing-hero");
     expect(page).toContain("BrandEyebrow");
-    expect(page).toContain('suffix="Baby &amp; Child"');
+    expect(page).toContain(':suffix="t(\'babyChild.hero.eyebrow\')"');
     expect(page).not.toContain(">RH Baby &amp; Child<");
     expect(page).toContain("heroImage.mobile");
     expect(page).toContain("generatedFurnitureAssets.babyChild.hero");
@@ -45,9 +45,9 @@ describe("baby and teen landing pages", () => {
     expect(categoryPage).toContain('"baby-child-registry"');
     expect(categoryPage).toContain("baby-category-placeholder");
     expect(categoryPage).toContain("BrandEyebrow");
-    expect(categoryPage).toContain('suffix="Baby &amp; Child"');
+    expect(categoryPage).toContain(':suffix="t(\'babyChild.hero.eyebrow\')"');
     expect(categoryPage).not.toContain(">RH Baby &amp; Child<");
-    expect(categoryPage).toContain("Product page placeholder");
+    expect(categoryPage).toContain('t("babyChild.category.placeholderDescription")');
     expect(styles).toContain(".baby-category-placeholder");
   });
 
@@ -58,7 +58,7 @@ describe("baby and teen landing pages", () => {
     expect(page).toContain("teen-landing-page");
     expect(page).toContain("teen-landing-hero");
     expect(page).toContain("BrandEyebrow");
-    expect(page).toContain('suffix="Teen"');
+    expect(page).toContain(':suffix="t(\'teen.hero.eyebrow\')"');
     expect(page).not.toContain(">RH Teen<");
     expect(page).toContain("heroImage.mobile");
     expect(page).toContain("generatedFurnitureAssets.teen.hero");

@@ -1,16 +1,13 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import ProductImage from "../components/ProductImage.vue";
-import { demoProducts } from "../data/demoProducts.js";
 import { useI18n } from "../i18n.js";
 import { PRODUCT_SORT_OPTIONS } from "../services/productListControls.js";
-import { resolveProductBackendFailure } from "../services/productBackendFallback.js";
 import {
   buildProductListingModel,
   productFacetGroups,
   productListingFilters,
   resolveProductListingQuery,
-  supplementMissingCompanyTypes,
 } from "../services/productListingModel.js";
 import {
   isWishlistItemSaved,
@@ -29,8 +26,8 @@ const emit = defineEmits(["add-to-cart", "add-to-wishlist"]);
 const { t } = useI18n();
 
 const loading = ref(true);
-const source = ref("demo");
-const products = ref(demoProducts);
+const source = ref("yudao");
+const products = ref([]);
 const catalogError = ref(false);
 const searchQuery = ref("");
 const initialListingQuery = resolveProductListingQuery(typeof window === "undefined" ? "" : window.location.search);
@@ -210,21 +207,13 @@ onMounted(async () => {
   loadProductWishlistState();
   try {
     const page = await getProductPage({ pageNo: 1, pageSize: 24 });
-    if (page.list.length > 0) {
-      products.value = supplementMissingCompanyTypes(page.list, demoProducts);
-      source.value = "yudao";
-      catalogError.value = false;
-    } else {
-      const failure = resolveProductBackendFailure({ demoProducts });
-      products.value = failure.products;
-      source.value = failure.source;
-      catalogError.value = failure.error;
-    }
+    products.value = page.list;
+    source.value = "yudao";
+    catalogError.value = false;
   } catch {
-    const failure = resolveProductBackendFailure({ demoProducts });
-    products.value = failure.products;
-    source.value = failure.source;
-    catalogError.value = failure.error;
+    products.value = [];
+    source.value = "error";
+    catalogError.value = true;
   } finally {
     loading.value = false;
   }
@@ -338,12 +327,14 @@ onBeforeUnmount(() => {
       <p class="eyebrow">{{ t("productList.backendUnavailable.eyebrow") }}</p>
       <h2>{{ t("productList.backendUnavailable.title") }}</h2>
       <p>{{ t("productList.backendUnavailable.description") }}</p>
+      <p>{{ t("catalogUnavailable") }}</p>
     </div>
 
     <div v-else-if="!loading && visibleProducts.length === 0" class="product-list-empty">
       <p class="eyebrow">{{ t("productList.empty.eyebrow") }}</p>
       <h2>{{ t("productList.empty.title") }}</h2>
       <p>{{ t("productList.empty.description") }}</p>
+      <p>{{ t("catalogEmpty") }}</p>
       <button type="button" @click="resetProductListControls">{{ t("productList.empty.action") }}</button>
     </div>
 

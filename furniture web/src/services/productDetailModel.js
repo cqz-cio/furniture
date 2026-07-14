@@ -238,6 +238,34 @@ const companyRelatedLinks = {
 };
 
 const productTypeTemplates = {
+  furniture: {
+    collection: "FURNITURE COLLECTION",
+    heroNote: "Shown in the selected finish and current stocked configuration.",
+    selector: { stockedCount: 6, specialOrderCount: 12, label: "SELECT FROM STOCKED AND SPECIAL ORDER FINISHES", swatches: swatches.woodStone },
+    relatedLinks: [
+      { label: "ALSO AVAILABLE IN LEATHER", href: "/products?material=leather" },
+      { label: "EXPLORE COORDINATING FURNITURE", href: "/products" },
+      { label: "VIEW AVAILABLE FINISHES", href: "/products?filter=finish" },
+    ],
+    highlights: [
+      "Designed for practical storage, display or everyday room use",
+      "Material and finish options vary by stocked configuration",
+      "Balanced proportions suit residential interiors",
+      "Product-specific dimensions and care details are shown below",
+    ],
+    optionGroups: [
+      { key: "finish", label: "Finish", helper: "Choose a stocked or special order finish.", values: swatches.woodStone.slice(3, 6) },
+      { key: "size", label: "Size", helper: "Select the footprint that fits the room.", values: ["Compact", "Standard", "Large"] },
+      { key: "configuration", label: "Configuration", helper: "Available configurations vary by product.", values: ["Standard", "With storage", "Extended"] },
+    ],
+    accordions: [
+      { title: "DETAILS", rows: [["Design", "Purpose-built furniture with balanced residential proportions"], ["Construction", "Wood, metal, glass or textile components as shown"], ["Finish", "Selected stocked finish"], ["Use", "Indoor residential use unless otherwise noted"]] },
+      { title: "DIMENSIONS", rows: [["Size", "See selected product configuration"], ["Clearance", "Allow space for access and daily use"], ["Weight", "Varies by material and size"]] },
+      { title: "MATERIALS", rows: [["Primary material", "As described in the product name and specification"], ["Finish", "Protective furniture finish suitable for normal indoor use"], ["Hardware", "Product-appropriate concealed or finished hardware"]] },
+      { title: "CARE", rows: [["Routine care", "Dust with a soft dry cloth"], ["Spills", "Wipe promptly and avoid abrasive cleaners"], ["Placement", "Avoid prolonged moisture and direct heat"]] },
+      { title: "DELIVERY", rows: [["Delivery", "Parcel or scheduled furniture delivery by size"], ["Assembly", "Assembly requirements vary by configuration"], ["Lead time", "Confirmed at checkout for the selected item"]] },
+    ],
+  },
   bed: {
     collection: "LUXE BED COLLECTION",
     heroNote: "Shown in Ivory Performance Linen with standard platform base.",
@@ -410,6 +438,7 @@ const inferProductType = (product = {}) => {
     "chair",
     "lighting",
     "bed",
+    "furniture",
   ]);
   if (knownCompanyTypes.has(rawType)) return rawType;
   const text = `${rawType} ${product.name || ""} ${product.subtitle || ""}`.toLowerCase();
@@ -421,18 +450,18 @@ const inferProductType = (product = {}) => {
   if (text.includes("desk")) return "desk";
   if (text.includes("round-table") || text.includes("round table")) return "round-table";
   if (text.includes("single-sofa") || text.includes("single sofa")) return "single-sofa";
-  if (text.includes("dining") || text.includes("table")) return "round-table";
+  if (/\bdining-table\b|\bdining\b.*\btable\b/.test(text)) return "round-table";
   if (text.includes("chair")) return "chair";
   if (text.includes("lighting") || text.includes("lamp") || text.includes("light")) return "lighting";
   if (text.includes("sofa") || text.includes("sectional")) return "single-sofa";
   if (text.includes("bed")) return "bed";
-  return "bed";
+  return "furniture";
 };
 
 export const buildProductDetailModel = (product = {}) => {
   const productType = inferProductType(product);
   const templateKey = productTypeTemplateAliases[productType] || productType;
-  const template = productTypeTemplates[templateKey] || productTypeTemplates.bed;
+  const template = productTypeTemplates[templateKey] || productTypeTemplates.furniture;
   const detailConfig = product.detailConfig || {};
   const description =
     stripHtml(product.description || product.subtitle) ||

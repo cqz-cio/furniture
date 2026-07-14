@@ -1212,4 +1212,3 @@ VALUES
   (6802, 'Trade Application Review', 'member:trade-application:review', 3, 2, 6800, '', '', '', NULL, 0, b'1', b'1', b'1', 'admin', NOW(), 'admin', NOW(), b'0');
 
 SET FOREIGN_KEY_CHECKS=1;
-

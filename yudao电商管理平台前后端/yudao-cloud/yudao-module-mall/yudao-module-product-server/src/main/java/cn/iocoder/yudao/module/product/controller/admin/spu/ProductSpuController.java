@@ -5,6 +5,8 @@ import cn.iocoder.yudao.framework.common.pojo.CommonResult;
 import cn.iocoder.yudao.framework.common.pojo.PageResult;
 import cn.iocoder.yudao.framework.common.util.object.BeanUtils;
 import cn.iocoder.yudao.framework.excel.core.util.ExcelUtils;
+import cn.iocoder.yudao.module.erp.api.integration.MallErpProductApi;
+import cn.iocoder.yudao.module.erp.api.integration.dto.MallErpProductDTO;
 import cn.iocoder.yudao.module.product.controller.admin.spu.vo.*;
 import cn.iocoder.yudao.module.product.convert.spu.ProductSpuConvert;
 import cn.iocoder.yudao.module.product.dal.dataobject.sku.ProductSkuDO;
@@ -42,6 +44,30 @@ public class ProductSpuController {
     private ProductSpuService productSpuService;
     @Resource
     private ProductSkuService productSkuService;
+    @Resource
+    private MallErpProductApi mallErpProductApi;
+
+    @GetMapping("/erp-integration")
+    @PreAuthorize("@ss.hasPermission('product:spu:query')")
+    public CommonResult<List<MallErpProductDTO>> getErpIntegration(@RequestParam("spuId") Long spuId) {
+        return success(productSkuService.getSkuListBySpuId(spuId).stream()
+                .map(sku -> mallErpProductApi.getByMallSkuId(sku.getId()).getCheckedData())
+                .collect(java.util.stream.Collectors.toList()));
+    }
+
+    @PostMapping("/erp-integration/sync")
+    @PreAuthorize("@ss.hasPermission('product:spu:update')")
+    public CommonResult<List<MallErpProductDTO>> syncErpIntegration(@RequestParam("spuId") Long spuId) {
+        return success(productSkuService.getSkuListBySpuId(spuId).stream()
+                .map(sku -> mallErpProductApi.syncMallSku(spuId, sku.getId()).getCheckedData())
+                .collect(java.util.stream.Collectors.toList()));
+    }
+
+    @PostMapping("/erp-integration/sync-all")
+    @PreAuthorize("@ss.hasPermission('product:spu:update')")
+    public CommonResult<List<MallErpProductDTO>> syncAllErpIntegrations() {
+        return mallErpProductApi.syncAllMallSkus();
+    }
 
     @PostMapping("/create")
     @Operation(summary = "创建商品 SPU")

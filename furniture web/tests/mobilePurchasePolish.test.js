@@ -23,7 +23,7 @@ describe("mobile purchase polish", () => {
 
     expect(globalSpecHide).toBeGreaterThan(-1);
     expect(globalSpecHide).toBeLessThan(firstResponsiveBlock);
-    expect(homePage).toContain('homeModuleCopy(index, "title")');
+    expect(homePage).toContain('categoryEditCopy(item, "title")');
     expect(homePage).not.toContain("<small>{{ item.sourceLevel }}</small>");
     expect(homePage).not.toContain("sourcebook-overlay-slots");
     expect(source).toContain(".nav-link {\n  display: inline-flex;");

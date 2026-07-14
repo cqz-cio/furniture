@@ -70,6 +70,9 @@
           <Icon class="mr-5px" icon="ep:download" />
           导出
         </el-button>
+        <el-button v-hasPermi="['product:spu:update']" plain @click="handleErpSyncAll">
+          ERP 全量同步
+        </el-button>
       </el-form-item>
     </el-form>
   </ContentWrap>
@@ -153,6 +156,18 @@
       </el-table-column>
       <el-table-column align="center" label="销量" min-width="90" prop="salesCount" />
       <el-table-column align="center" label="库存" min-width="90" prop="stock" />
+      <el-table-column align="center" label="ERP 编码" min-width="150">
+        <template #default="{ row }">{{ erpBySpuId[row.id]?.erpProductCode || '-' }}</template>
+      </el-table-column>
+      <el-table-column align="center" label="ERP 状态" min-width="100">
+        <template #default="{ row }">{{ erpBySpuId[row.id]?.syncStatus || '未映射' }}</template>
+      </el-table-column>
+      <el-table-column align="center" label="ERP 库存" min-width="90">
+        <template #default="{ row }">{{ erpBySpuId[row.id]?.sellableStock ?? '-' }}</template>
+      </el-table-column>
+      <el-table-column align="center" label="最后同步" min-width="180">
+        <template #default="{ row }">{{ erpBySpuId[row.id]?.lastSyncedAt || '-' }}</template>
+      </el-table-column>
       <el-table-column align="center" label="排序" min-width="70" prop="sort" />
       <el-table-column align="center" label="销售状态" min-width="80">
         <template #default="{ row }">
@@ -183,6 +198,9 @@
         <template #default="{ row }">
           <el-button link type="primary" @click="openDetail(row.id)"> 详情 </el-button>
           <el-button link type="primary" @click="openFrontendPreview(row.id)"> 前台预览 </el-button>
+          <el-button v-hasPermi="['product:spu:update']" link @click="handleErpSync(row.id)">
+            同步 ERP
+          </el-button>
           <el-button
             v-hasPermi="['product:spu:update']"
             link
@@ -253,6 +271,7 @@ const loading = ref(false) // 列表的加载中
 const exportLoading = ref(false) // 导出的加载中
 const total = ref(0) // 列表的总页数
 const list = ref<ProductSpuApi.Spu[]>([]) // 列表的数据
+const erpBySpuId = ref<Record<number, ProductSpuApi.ErpIntegration>>({})
 // tabs 数据
 const tabsData = ref([
   {
@@ -287,7 +306,7 @@ const queryParams = ref({
   pageSize: 10,
   tabType: 0,
   name: '',
-  categoryId: undefined,
+  categoryId: undefined as any,
   createTime: undefined
 }) // 查询参数
 const queryFormRef = ref() // 搜索的表单Ref
@@ -299,6 +318,10 @@ const getList = async () => {
     const data = await ProductSpuApi.getSpuPage(queryParams.value)
     list.value = data.list
     total.value = data.total
+    const integrations = await Promise.all(
+      data.list.map(async (spu) => [spu.id, (await ProductSpuApi.getErpIntegration(spu.id!))[0]] as const)
+    )
+    erpBySpuId.value = Object.fromEntries(integrations.filter(([, value]) => value))
   } finally {
     loading.value = false
   }
@@ -308,6 +331,18 @@ const getList = async () => {
 const handleTabClick = (tab: TabsPaneContext) => {
   queryParams.value.tabType = tab.paneName as number
   getList()
+}
+
+const handleErpSync = async (spuId: number) => {
+  await ProductSpuApi.syncErpIntegration(spuId)
+  message.success('ERP 同步成功')
+  await getList()
+}
+
+const handleErpSyncAll = async () => {
+  await ProductSpuApi.syncAllErpIntegrations()
+  message.success('ERP 全量同步成功')
+  await getList()
 }
 
 /** 获得每个 Tab 的数量 */
