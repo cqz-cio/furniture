@@ -12,6 +12,8 @@ import cn.iocoder.yudao.module.trade.dal.dataobject.order.TradeOrderDO;
 import cn.iocoder.yudao.module.trade.enums.order.TradeOrderTypeEnum;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -20,6 +22,9 @@ import java.util.Set;
 
 @Mapper
 public interface TradeOrderMapper extends BaseMapperX<TradeOrderDO> {
+
+    @Select("SELECT * FROM trade_order WHERE id = #{orderId} AND deleted = FALSE FOR UPDATE")
+    TradeOrderDO selectByIdForUpdate(@Param("orderId") Long orderId);
 
     default int updateByIdAndStatus(Long id, Integer status, TradeOrderDO update) {
         return update(update, new LambdaUpdateWrapper<TradeOrderDO>()

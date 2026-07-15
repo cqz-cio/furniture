@@ -1,12 +1,19 @@
 package cn.iocoder.yudao.module.trade.dal.mysql.fulfillment;
 
 import cn.iocoder.yudao.framework.mybatis.core.mapper.BaseMapperX;
+import cn.iocoder.yudao.framework.mybatis.core.query.LambdaQueryWrapperX;
 import cn.iocoder.yudao.module.trade.dal.dataobject.fulfillment.OrderFulfillmentSummaryDO;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
 public interface OrderFulfillmentSummaryMapper extends BaseMapperX<OrderFulfillmentSummaryDO> {
+
+    default OrderFulfillmentSummaryDO selectByOrderId(Long tenantId, Long orderId) {
+        return selectOne(new LambdaQueryWrapperX<OrderFulfillmentSummaryDO>()
+                .eq(OrderFulfillmentSummaryDO::getTenantId, tenantId)
+                .eq(OrderFulfillmentSummaryDO::getOrderId, orderId));
+    }
 
     default int updateCountsAndStatusByIdAndVersion(Long tenantId, Long id, Integer version, String status,
                                                      Integer shipmentCount, Integer deliveredShipmentCount) {
