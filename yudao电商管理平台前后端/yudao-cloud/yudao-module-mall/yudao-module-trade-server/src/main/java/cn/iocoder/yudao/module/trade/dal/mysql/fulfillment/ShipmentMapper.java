@@ -44,4 +44,19 @@ public interface ShipmentMapper extends BaseMapperX<ShipmentDO> {
                 .set(ShipmentDO::getVersion, version + 1));
     }
 
+    default int updateTrackingStateByIdAndVersion(Long tenantId, Long id, Integer version, String status,
+                                                   LocalDateTime occurredAt, Integer statusPriority, Long eventId,
+                                                   LocalDateTime deliveredAt) {
+        return update(null, new LambdaUpdateWrapper<ShipmentDO>()
+                .eq(ShipmentDO::getTenantId, tenantId)
+                .eq(ShipmentDO::getId, id)
+                .eq(ShipmentDO::getVersion, version)
+                .set(ShipmentDO::getStatus, status)
+                .set(ShipmentDO::getLastEventOccurredAt, occurredAt)
+                .set(ShipmentDO::getLastEventStatusPriority, statusPriority)
+                .set(ShipmentDO::getLastEventId, eventId)
+                .set(deliveredAt != null, ShipmentDO::getDeliveredAt, deliveredAt)
+                .set(ShipmentDO::getVersion, version + 1));
+    }
+
 }

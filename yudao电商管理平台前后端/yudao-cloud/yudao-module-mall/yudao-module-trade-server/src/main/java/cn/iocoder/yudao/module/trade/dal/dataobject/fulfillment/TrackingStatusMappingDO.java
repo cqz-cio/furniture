@@ -28,6 +28,7 @@ public class TrackingStatusMappingDO extends BaseDO {
     private String carrierCode;
     private String providerStatusNormalized;
     private String standardStatus;
+    private Integer statusPriority;
     private String mappingVersion;
     private LocalDateTime effectiveAt;
 

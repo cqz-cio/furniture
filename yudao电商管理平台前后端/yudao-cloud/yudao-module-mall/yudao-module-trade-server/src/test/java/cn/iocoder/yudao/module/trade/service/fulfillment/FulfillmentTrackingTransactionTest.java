@@ -1,0 +1,337 @@
+package cn.iocoder.yudao.module.trade.service.fulfillment;
+
+import cn.iocoder.yudao.framework.security.core.LoginUser;
+import cn.iocoder.yudao.framework.security.core.util.SecurityFrameworkUtils;
+import cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder;
+import cn.iocoder.yudao.framework.test.core.ut.BaseDbUnitTest;
+import cn.iocoder.yudao.module.trade.dal.dataobject.fulfillment.FulfillmentOutboxEventDO;
+import cn.iocoder.yudao.module.trade.dal.mysql.fulfillment.FulfillmentOutboxEventMapper;
+import cn.iocoder.yudao.module.trade.dal.mysql.fulfillment.ShipmentPackageMapper;
+import cn.iocoder.yudao.module.trade.enums.fulfillment.TrackingEventSourceEnum;
+import cn.iocoder.yudao.module.trade.framework.fulfillment.core.dto.ProviderTrackingEvent;
+import cn.iocoder.yudao.module.trade.service.fulfillment.command.ApplyTrackingEventCommand;
+import jakarta.annotation.Resource;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.mock.mockito.SpyBean;
+import org.springframework.context.annotation.Import;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.security.core.context.SecurityContextHolder;
+
+import javax.sql.DataSource;
+import java.time.Instant;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doCallRealMethod;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+
+@Import({FulfillmentTrackingServiceImpl.class, VersionedTrackingStatusMapper.class})
+class FulfillmentTrackingTransactionTest extends BaseDbUnitTest {
+
+    private static final Long TENANT_ID = 121L;
+    private static final Long ORDER_ID = 100L;
+    private static final Long SHIPMENT_ID = 70001L;
+    private static final Long PACKAGE_ID = 71001L;
+    private static final Long LEG_ID = 72001L;
+    private static final Long PROVIDER_ID = 83L;
+
+    @Resource private FulfillmentTrackingService service;
+    @Resource private DataSource dataSource;
+    @SpyBean private FulfillmentOutboxEventMapper outboxMapper;
+    @SpyBean private ShipmentPackageMapper packageMapper;
+
+    private JdbcTemplate jdbc;
+
+    @BeforeEach
+    void setUp() {
+        jdbc = new JdbcTemplate(dataSource);
+        LoginUser loginUser = new LoginUser().setId(110L).setTenantId(TENANT_ID).setUserType(1);
+        SecurityFrameworkUtils.setLoginUser(loginUser, new MockHttpServletRequest());
+        seedAggregate("HANDED_TO_CARRIER", 1);
+    }
+
+    @AfterEach
+    void clearContext() {
+        reset(outboxMapper);
+        reset(packageMapper);
+        TenantContextHolder.clear();
+        SecurityContextHolder.clearContext();
+    }
+
+    @Test
+    void knownMappingPersistsMicrosecondsWatermarksSummaryAndOutboxAtomically() {
+        mapping("MOVING", "IN_TRANSIT", "v1", 30, "2026-01-01 00:00:00.000000");
+        Instant occurredAt = Instant.parse("2026-07-15T02:03:04.123456789Z");
+
+        TrackingApplyResult result = service.applyEvent(command("known-1", " moving ", occurredAt));
+
+        assertTrue(result.inserted());
+        assertTrue(result.stateChanged());
+        assertEquals("HANDED_TO_CARRIER", result.previousStatus());
+        assertEquals("IN_TRANSIT", result.currentStatus());
+        assertEquals("IN_TRANSIT", value("SELECT status FROM trade_shipment WHERE id = " + SHIPMENT_ID, String.class));
+        assertEquals(30, value("SELECT last_event_status_priority FROM trade_shipment WHERE id = " + SHIPMENT_ID,
+                Integer.class));
+        Long eventId = value("SELECT id FROM trade_tracking_event WHERE external_event_id = 'known-1'", Long.class);
+        assertEquals(eventId, value("SELECT last_event_id FROM trade_shipment_package WHERE id = " + PACKAGE_ID,
+                Long.class));
+        assertEquals("2026-07-15 02:03:04.123456", value(
+                "SELECT FORMATDATETIME(occurred_at, 'yyyy-MM-dd HH:mm:ss.SSSSSS') FROM trade_tracking_event WHERE id = "
+                        + eventId, String.class));
+        assertEquals("v1", value("SELECT mapping_version FROM trade_tracking_event WHERE id = " + eventId,
+                String.class));
+        assertEquals(1, count("trade_fulfillment_outbox_event"));
+    }
+
+    @Test
+    void duplicateExternalIdAndCanonicalHashAreSuccessfulNoOpsWithoutOutbox() {
+        mapping("MOVING", "IN_TRANSIT", "v1", 30, "2026-01-01 00:00:00.000000");
+        Instant occurredAt = Instant.parse("2026-07-15T02:03:04.123456789Z");
+        service.applyEvent(command("duplicate-1", "moving", occurredAt));
+        int outboxCount = count("trade_fulfillment_outbox_event");
+
+        TrackingApplyResult externalDuplicate = service.applyEvent(command(" duplicate-1 ", " MOVING ", occurredAt));
+        TrackingApplyResult hashDuplicate = service.applyEvent(command(null, "moving", occurredAt));
+        TrackingApplyResult hashDuplicateNormalized = service.applyEvent(command(null, "  MOVING  ",
+                Instant.parse("2026-07-15T02:03:04.123456001Z")));
+
+        assertFalse(externalDuplicate.inserted());
+        assertFalse(hashDuplicateNormalized.inserted());
+        assertEquals(hashDuplicate.currentStatus(), hashDuplicateNormalized.currentStatus());
+        assertEquals(1, count("trade_tracking_event"));
+        assertEquals(outboxCount, count("trade_fulfillment_outbox_event"));
+    }
+
+    @Test
+    void unknownMappingIsConservativeAndEmitsOnlySafeAlertPayload() {
+        TrackingApplyResult result = service.applyEvent(command("unknown-1", "PRIVATE DELIVERED FLAG",
+                Instant.parse("2026-07-15T03:00:00Z")));
+
+        assertEquals("IN_TRANSIT", result.currentStatus());
+        assertEquals(Boolean.FALSE, value("SELECT mapping_known FROM trade_tracking_event WHERE external_event_id = "
+                + "'unknown-1'", Boolean.class));
+        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM trade_fulfillment_outbox_event "
+                + "WHERE event_type = 'TRACKING_STATUS_MAPPING_UNKNOWN'", Integer.class));
+        String payload = value("SELECT payload FROM trade_fulfillment_outbox_event "
+                + "WHERE event_type = 'TRACKING_STATUS_MAPPING_UNKNOWN'", String.class);
+        assertFalse(payload.contains("PRIVATE"));
+        assertFalse(payload.contains("private-tracking"));
+        assertFalse(payload.contains("description"));
+        assertFalse(payload.contains("location"));
+    }
+
+    @Test
+    void lateAndLowerPrioritySameTimeEventsStayInTimelineWithoutRegression() {
+        mapping("MOVING", "IN_TRANSIT", "v1", 30, "2026-01-01 00:00:00.000000");
+        mapping("MOVING LOW", "IN_TRANSIT", "v1", 10, "2026-01-01 00:00:00.000000");
+        mapping("EXCEPTION", "DELIVERY_EXCEPTION", "v1", 60, "2026-01-01 00:00:00.000000");
+        Instant time = Instant.parse("2026-07-15T04:00:00Z");
+        service.applyEvent(command("same-1", "MOVING", time));
+        service.applyEvent(command("same-2", "EXCEPTION", time));
+        TrackingApplyResult lower = service.applyEvent(command("same-3", "MOVING LOW", time));
+        TrackingApplyResult late = service.applyEvent(command("late-1", "MOVING", time.minusSeconds(60)));
+
+        assertEquals("DELIVERY_EXCEPTION", lower.currentStatus());
+        assertFalse(lower.stateChanged());
+        assertFalse(late.stateChanged());
+        assertEquals("DELIVERY_EXCEPTION", value("SELECT status FROM trade_shipment WHERE id = " + SHIPMENT_ID,
+                String.class));
+        assertEquals(4, count("trade_tracking_event"));
+    }
+
+    @Test
+    void replayUsesExactHistoricalMappingVersionAndMissingVersionFailsClosed() {
+        mapping("MOVING", "IN_TRANSIT", "v1", 30, "2026-01-01 00:00:00.000000");
+        mapping("MOVING", "DELIVERY_EXCEPTION", "v2", 60, "2026-07-01 00:00:00.000000");
+        ApplyTrackingEventCommand replay = command("replay-1", "MOVING", Instant.parse("2026-07-15T05:00:00Z"))
+                .setReplayMappingVersion("v1");
+
+        TrackingApplyResult result = service.applyEvent(replay);
+
+        assertEquals("IN_TRANSIT", result.currentStatus());
+        assertEquals("v1", value("SELECT mapping_version FROM trade_tracking_event WHERE external_event_id = "
+                + "'replay-1'", String.class));
+        assertEquals(30, value("SELECT last_event_status_priority FROM trade_shipment_package WHERE id = "
+                + PACKAGE_ID, Integer.class));
+        assertThrows(IllegalArgumentException.class, () -> service.applyEvent(
+                command("replay-missing", "MOVING", Instant.parse("2026-07-15T06:00:00Z"))
+                        .setReplayMappingVersion("missing")));
+        assertEquals(1, count("trade_tracking_event"));
+    }
+
+    @Test
+    void exceptionCanRecoverOnNewerEventAndTerminalStateIsProtected() {
+        mapping("MOVING", "IN_TRANSIT", "v1", 30, "2026-01-01 00:00:00.000000");
+        mapping("EXCEPTION", "DELIVERY_EXCEPTION", "v1", 60, "2026-01-01 00:00:00.000000");
+        service.applyEvent(command("exception-1", "EXCEPTION", Instant.parse("2026-07-15T06:30:00Z")));
+
+        TrackingApplyResult recovered = service.applyEvent(
+                command("recovery-1", "MOVING", Instant.parse("2026-07-15T06:31:00Z")));
+
+        assertTrue(recovered.stateChanged());
+        assertEquals("IN_TRANSIT", recovered.currentStatus());
+        jdbc.update("UPDATE trade_shipment SET status = 'DELIVERED', version = version + 1 WHERE id = ?", SHIPMENT_ID);
+        jdbc.update("UPDATE trade_shipment_package SET status = 'DELIVERED', version = version + 1 WHERE id = ?", PACKAGE_ID);
+        jdbc.update("UPDATE trade_shipment_leg SET status = 'DELIVERED', version = version + 1 WHERE id = ?", LEG_ID);
+        TrackingApplyResult terminal = service.applyEvent(
+                command("terminal-1", "EXCEPTION", Instant.parse("2026-07-15T06:32:00Z")));
+        assertFalse(terminal.stateChanged());
+        assertEquals("DELIVERED", value("SELECT status FROM trade_shipment WHERE id = " + SHIPMENT_ID, String.class));
+    }
+
+    @Test
+    void optimisticConflictRetriesCompleteTransactionAtMostThreeTimes() {
+        mapping("MOVING", "IN_TRANSIT", "v1", 30, "2026-01-01 00:00:00.000000");
+        doReturn(0, 0).doCallRealMethod().when(packageMapper).updateTrackingStateByIdAndVersion(
+                anyLong(), anyLong(), anyInt(), anyString(), any(), anyInt(), anyLong());
+
+        TrackingApplyResult result = service.applyEvent(
+                command("retry-1", "MOVING", Instant.parse("2026-07-15T06:45:00Z")));
+
+        assertTrue(result.inserted());
+        assertEquals(1, count("trade_tracking_event"));
+        verify(packageMapper, times(3)).updateTrackingStateByIdAndVersion(
+                anyLong(), anyLong(), anyInt(), anyString(), any(), anyInt(), anyLong());
+    }
+
+    @Test
+    void sameTimeSamePriorityUsesInternalEventIdAsStableWatermarkTieBreaker() {
+        mapping("MOVING", "IN_TRANSIT", "v1", 30, "2026-01-01 00:00:00.000000");
+        mapping("SAME RANK EXCEPTION", "DELIVERY_EXCEPTION", "v1", 30, "2026-01-01 00:00:00.000000");
+        Instant occurredAt = Instant.parse("2026-07-15T06:50:00Z");
+        service.applyEvent(command("tie-1", "MOVING", occurredAt));
+
+        TrackingApplyResult second = service.applyEvent(command("tie-2", "SAME RANK EXCEPTION", occurredAt));
+
+        Long secondEventId = value("SELECT id FROM trade_tracking_event WHERE external_event_id = 'tie-2'", Long.class);
+        assertFalse(second.stateChanged());
+        assertEquals("IN_TRANSIT", second.currentStatus());
+        assertEquals(secondEventId, value("SELECT last_event_id FROM trade_shipment_package WHERE id = "
+                + PACKAGE_ID, Long.class));
+        assertEquals(secondEventId, value("SELECT last_event_id FROM trade_shipment_leg WHERE id = "
+                + LEG_ID, Long.class));
+        assertEquals(secondEventId, value("SELECT last_event_id FROM trade_shipment WHERE id = "
+                + SHIPMENT_ID, Long.class));
+    }
+
+    @Test
+    void legCarrierAndTrackingTakePrecedenceOverPackageFacts() {
+        jdbc.update("INSERT INTO trade_carrier (id, tenant_id, code, name, country_codes, status) "
+                + "VALUES (74, ?, 'FEDEX', 'Second Carrier', 'US,CA', 0)", TENANT_ID);
+        jdbc.update("UPDATE trade_shipment_leg SET carrier_id = 74, tracking_number = 'leg-private-789' WHERE id = ?",
+                LEG_ID);
+        jdbc.update("INSERT INTO trade_tracking_status_mapping (tenant_id, provider_code, carrier_code, "
+                        + "provider_status_normalized, standard_status, mapping_version, status_priority, effective_at) "
+                        + "VALUES (?, 'provider-a', 'FEDEX', 'MOVING', 'IN_TRANSIT', 'v1', 30, "
+                        + "'2026-01-01 00:00:00.000000')", TENANT_ID);
+
+        TrackingApplyResult result = service.applyEvent(
+                command("leg-carrier-1", "MOVING", Instant.parse("2026-07-15T06:55:00Z")));
+
+        assertTrue(result.stateChanged());
+        assertEquals("IN_TRANSIT", result.currentStatus());
+        assertEquals(1, count("trade_tracking_event"));
+    }
+
+    @Test
+    void allPackagesDeliveredControlsShipmentAndOrderAggregation() {
+        jdbc.update("UPDATE trade_shipment SET status = 'OUT_FOR_DELIVERY', version = 2 WHERE id = ?", SHIPMENT_ID);
+        jdbc.update("UPDATE trade_shipment_package SET status = 'OUT_FOR_DELIVERY', version = 2 WHERE id = ?", PACKAGE_ID);
+        jdbc.update("UPDATE trade_shipment_leg SET status = 'OUT_FOR_DELIVERY', version = 2 WHERE id = ?", LEG_ID);
+        jdbc.update("INSERT INTO trade_shipment_package (id, tenant_id, shipment_id, package_no, package_type, "
+                + "carrier_id, tracking_number, status, version) VALUES "
+                + "(71002, ?, ?, 'PKG-2', 'PARCEL', 73, 'private-tracking-456', 'OUT_FOR_DELIVERY', 2)",
+                TENANT_ID, SHIPMENT_ID);
+        jdbc.update("INSERT INTO trade_shipment_leg (id, tenant_id, shipment_id, package_id, sequence_no, leg_type, "
+                + "carrier_id, provider_id, tracking_number, status, version) VALUES "
+                + "(72002, ?, ?, 71002, 2, 'LAST_MILE', 73, 83, 'private-tracking-456', 'OUT_FOR_DELIVERY', 2)",
+                TENANT_ID, SHIPMENT_ID);
+        mapping("DONE", "DELIVERED", "v1", 90, "2026-01-01 00:00:00.000000");
+
+        service.applyEvent(command("done-1", "DONE", Instant.parse("2026-07-15T07:00:00Z")));
+        assertEquals("OUT_FOR_DELIVERY", value("SELECT status FROM trade_shipment WHERE id = " + SHIPMENT_ID,
+                String.class));
+        ApplyTrackingEventCommand second = command("done-2", "DONE", Instant.parse("2026-07-15T07:01:00Z"))
+                .setPackageId(71002L).setShipmentLegId(72002L);
+        service.applyEvent(second);
+
+        assertEquals("DELIVERED", value("SELECT status FROM trade_shipment WHERE id = " + SHIPMENT_ID, String.class));
+        assertEquals("DELIVERED", value("SELECT status FROM trade_order_fulfillment_summary WHERE order_id = "
+                + ORDER_ID, String.class));
+        assertEquals(1, value("SELECT delivered_shipment_count FROM trade_order_fulfillment_summary WHERE order_id = "
+                + ORDER_ID, Integer.class));
+    }
+
+    @Test
+    void outboxFailureRollsBackTimelineWatermarksStatesAndSummary() {
+        mapping("MOVING", "IN_TRANSIT", "v1", 30, "2026-01-01 00:00:00.000000");
+        doThrow(new IllegalStateException("outbox failed")).when(outboxMapper).insert(any(FulfillmentOutboxEventDO.class));
+
+        assertThrows(IllegalStateException.class, () -> service.applyEvent(
+                command("rollback-1", "MOVING", Instant.parse("2026-07-15T08:00:00Z"))));
+
+        assertEquals(0, count("trade_tracking_event"));
+        assertEquals("HANDED_TO_CARRIER", value("SELECT status FROM trade_shipment WHERE id = " + SHIPMENT_ID,
+                String.class));
+        assertEquals(1, value("SELECT version FROM trade_shipment WHERE id = " + SHIPMENT_ID, Integer.class));
+        assertEquals("SHIPPED", value("SELECT status FROM trade_order_fulfillment_summary WHERE order_id = "
+                + ORDER_ID, String.class));
+    }
+
+    private ApplyTrackingEventCommand command(String externalId, String rawStatus, Instant occurredAt) {
+        return new ApplyTrackingEventCommand().setTenantId(TENANT_ID).setShipmentId(SHIPMENT_ID)
+                .setPackageId(PACKAGE_ID).setShipmentLegId(LEG_ID).setProviderId(PROVIDER_ID)
+                .setReceivedAt(occurredAt.plusSeconds(5)).setSource(TrackingEventSourceEnum.WEBHOOK)
+                .setProviderEvent(new ProviderTrackingEvent(externalId, rawStatus, occurredAt, "UTC",
+                        "Toronto ON", "private description", "private-payload-ref"));
+    }
+
+    private void seedAggregate(String status, int version) {
+        jdbc.update("INSERT INTO trade_carrier (id, tenant_id, code, name, country_codes, status) "
+                + "VALUES (73, ?, 'UPS', 'Carrier', 'US,CA', 0)", TENANT_ID);
+        jdbc.update("INSERT INTO trade_logistics_provider (id, tenant_id, code, name, capabilities, status) "
+                + "VALUES (?, ?, 'provider-a', 'Provider', 'TRACKING_QUERY', 0)", PROVIDER_ID, TENANT_ID);
+        jdbc.update("INSERT INTO trade_shipment (id, tenant_id, order_id, shipment_no, shipment_type, status, "
+                + "origin_country, destination_country, origin_timezone, destination_timezone, warehouse_id, provider_id, version) "
+                + "VALUES (?, ?, ?, 'SHP-TRACK-1', 'PARCEL', ?, 'CA', 'CA', 'America/Toronto', "
+                + "'America/Toronto', 31, ?, ?)", SHIPMENT_ID, TENANT_ID, ORDER_ID, status, PROVIDER_ID, version);
+        jdbc.update("INSERT INTO trade_shipment_package (id, tenant_id, shipment_id, package_no, package_type, "
+                + "carrier_id, tracking_number, status, version) VALUES "
+                + "(?, ?, ?, 'PKG-1', 'PARCEL', 73, 'private-tracking-123', ?, ?)",
+                PACKAGE_ID, TENANT_ID, SHIPMENT_ID, status, version);
+        jdbc.update("INSERT INTO trade_shipment_leg (id, tenant_id, shipment_id, package_id, sequence_no, leg_type, "
+                + "carrier_id, provider_id, tracking_number, status, version) VALUES "
+                + "(?, ?, ?, ?, 1, 'LAST_MILE', 73, ?, 'private-tracking-123', ?, ?)",
+                LEG_ID, TENANT_ID, SHIPMENT_ID, PACKAGE_ID, PROVIDER_ID, status, version);
+        jdbc.update("INSERT INTO trade_order_fulfillment_summary (id, tenant_id, order_id, status, shipment_count, "
+                + "delivered_shipment_count, version) VALUES (9001, ?, ?, 'SHIPPED', 1, 0, 1)", TENANT_ID, ORDER_ID);
+    }
+
+    private void mapping(String raw, String standard, String version, int priority, String effectiveAt) {
+        jdbc.update("INSERT INTO trade_tracking_status_mapping (tenant_id, provider_code, carrier_code, "
+                        + "provider_status_normalized, standard_status, mapping_version, status_priority, effective_at) "
+                        + "VALUES (?, 'provider-a', 'UPS', ?, ?, ?, ?, ?)",
+                TENANT_ID, raw, standard, version, priority, effectiveAt);
+    }
+
+    private int count(String table) {
+        return value("SELECT COUNT(*) FROM " + table, Integer.class);
+    }
+
+    private <T> T value(String sql, Class<T> type) {
+        return jdbc.queryForObject(sql, type);
+    }
+}

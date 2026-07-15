@@ -39,6 +39,8 @@ public class ShipmentPackageDO extends BaseDO {
     private String dimensionUnit;
     private String status;
     private LocalDateTime lastEventOccurredAt;
+    private Integer lastEventStatusPriority;
+    private Long lastEventId;
     private Integer version;
 
 }

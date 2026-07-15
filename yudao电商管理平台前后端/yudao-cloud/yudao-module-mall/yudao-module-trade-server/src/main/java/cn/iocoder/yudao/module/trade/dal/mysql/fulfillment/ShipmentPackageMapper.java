@@ -6,6 +6,7 @@ import cn.iocoder.yudao.module.trade.dal.dataobject.fulfillment.ShipmentPackageD
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import org.apache.ibatis.annotations.Mapper;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Mapper
@@ -38,6 +39,20 @@ public interface ShipmentPackageMapper extends BaseMapperX<ShipmentPackageDO> {
                 .eq(ShipmentPackageDO::getId, id)
                 .eq(ShipmentPackageDO::getVersion, version)
                 .set(ShipmentPackageDO::getStatus, status)
+                .set(ShipmentPackageDO::getVersion, version + 1));
+    }
+
+
+    default int updateTrackingStateByIdAndVersion(Long tenantId, Long id, Integer version, String status,
+                                                   LocalDateTime occurredAt, Integer statusPriority, Long eventId) {
+        return update(null, new LambdaUpdateWrapper<ShipmentPackageDO>()
+                .eq(ShipmentPackageDO::getTenantId, tenantId)
+                .eq(ShipmentPackageDO::getId, id)
+                .eq(ShipmentPackageDO::getVersion, version)
+                .set(ShipmentPackageDO::getStatus, status)
+                .set(ShipmentPackageDO::getLastEventOccurredAt, occurredAt)
+                .set(ShipmentPackageDO::getLastEventStatusPriority, statusPriority)
+                .set(ShipmentPackageDO::getLastEventId, eventId)
                 .set(ShipmentPackageDO::getVersion, version + 1));
     }
 }

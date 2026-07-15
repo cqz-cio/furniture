@@ -37,6 +37,8 @@ public class ShipmentDO extends BaseDO {
     private LocalDateTime estimatedDeliveryAt;
     private LocalDateTime deliveredAt;
     private LocalDateTime lastEventOccurredAt;
+    private Integer lastEventStatusPriority;
+    private Long lastEventId;
     private Integer version;
 
 }

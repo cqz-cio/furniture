@@ -18,4 +18,18 @@ public interface TrackingEventMapper extends BaseMapperX<TrackingEventDO> {
                 .orderByAsc(TrackingEventDO::getId));
     }
 
+    default TrackingEventDO selectByExternalEventId(Long tenantId, Long providerId, String externalEventId) {
+        return selectOne(new LambdaQueryWrapperX<TrackingEventDO>()
+                .eq(TrackingEventDO::getTenantId, tenantId)
+                .eq(TrackingEventDO::getProviderId, providerId)
+                .eq(TrackingEventDO::getExternalEventId, externalEventId));
+    }
+
+    default TrackingEventDO selectByEventHash(Long tenantId, Long providerId, String eventHash) {
+        return selectOne(new LambdaQueryWrapperX<TrackingEventDO>()
+                .eq(TrackingEventDO::getTenantId, tenantId)
+                .eq(TrackingEventDO::getProviderId, providerId)
+                .eq(TrackingEventDO::getEventHash, eventHash));
+    }
+
 }

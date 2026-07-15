@@ -43,6 +43,8 @@ public class ShipmentLegDO extends BaseDO {
     private String destinationLocation;
     private String status;
     private LocalDateTime lastEventOccurredAt;
+    private Integer lastEventStatusPriority;
+    private Long lastEventId;
     private LocalDateTime startedAt;
     private LocalDateTime completedAt;
     private Integer version;

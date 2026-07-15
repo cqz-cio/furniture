@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 const root = join(import.meta.dirname, "../../yudao电商管理平台前后端/yudao-cloud/sql/mysql");
 const migrationPath = join(root, "migrations/V015__trade_fulfillment_core.sql");
 const trackingMappingMigrationPath = join(root, "migrations/V016__trade_tracking_status_mapping.sql");
+const trackingWatermarkMigrationPath = join(root, "migrations/V017__trade_tracking_event_watermarks.sql");
 
 describe("V015 trade fulfillment core migration", () => {
   it("creates the complete Phase 1 persistence contract", () => {
@@ -44,6 +45,32 @@ describe("V015 trade fulfillment core migration", () => {
   });
 });
 
+describe("V017 deterministic tracking watermarks", () => {
+  it("persists the complete ordering tuple on every tracked aggregate", () => {
+    const sql = readFileSync(trackingWatermarkMigrationPath, "utf8");
+
+    expect(sql.match(/ADD COLUMN `last_event_status_priority` int DEFAULT NULL/g)).toHaveLength(3);
+    expect(sql.match(/ADD COLUMN `last_event_id` bigint DEFAULT NULL/g)).toHaveLength(3);
+    expect(sql).toContain("ADD COLUMN `status_priority` int NOT NULL DEFAULT 0");
+    expect(sql).toContain("ALTER TABLE `trade_shipment`");
+    expect(sql).toContain("ALTER TABLE `trade_shipment_package`");
+    expect(sql).toContain("ALTER TABLE `trade_shipment_leg`");
+    expect(sql).not.toContain("V016");
+  });
+
+  it("keeps the generated baseline V017 section byte-equivalent to the migration", () => {
+    const migration = readFileSync(trackingWatermarkMigrationPath, "utf8").replace(/\r\n/g, "\n").trimEnd();
+    const baseline = readFileSync(join(root, "oakved-baseline.sql"), "utf8").replace(/\r\n/g, "\n");
+    const marker = "-- BEGIN V017__trade_tracking_event_watermarks.sql\n";
+    const start = baseline.indexOf(marker);
+    const end = baseline.indexOf("\n-- BEGIN Oakved demo catalog", start);
+
+    expect(start).toBeGreaterThanOrEqual(0);
+    expect(end).toBeGreaterThan(start);
+    expect(baseline.slice(start + marker.length, end).trimEnd()).toBe(migration);
+  });
+});
+
 describe("V016 tracking status mapping migration", () => {
   it("adds versioned exact-carrier mappings and replayable event decisions", () => {
     const sql = readFileSync(trackingMappingMigrationPath, "utf8");
@@ -76,7 +103,7 @@ describe("V016 tracking status mapping migration", () => {
     const baseline = readFileSync(join(root, "oakved-baseline.sql"), "utf8").replace(/\r\n/g, "\n");
     const marker = "-- BEGIN V016__trade_tracking_status_mapping.sql\n";
     const start = baseline.indexOf(marker);
-    const end = baseline.indexOf("\n-- BEGIN Oakved demo catalog", start);
+    const end = baseline.indexOf("\n-- BEGIN V017__trade_tracking_event_watermarks.sql", start);
 
     expect(start).toBeGreaterThanOrEqual(0);
     expect(end).toBeGreaterThan(start);
