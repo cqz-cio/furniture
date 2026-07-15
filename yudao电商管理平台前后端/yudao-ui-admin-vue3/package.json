@@ -18,6 +18,7 @@
     "serve:prod": "vite preview --mode prod",
     "preview": "pnpm build:local && vite preview",
     "check:furniture-lite": "node scripts/check-furniture-lite-config.mjs",
+    "check:local-ai-routing": "node scripts/check-local-ai-routing.mjs",
     "check:dashboard": "node scripts/check-dashboard-contract.mjs",
     "clean": "npx rimraf node_modules",
     "clean:cache": "npx rimraf node_modules/.cache",
