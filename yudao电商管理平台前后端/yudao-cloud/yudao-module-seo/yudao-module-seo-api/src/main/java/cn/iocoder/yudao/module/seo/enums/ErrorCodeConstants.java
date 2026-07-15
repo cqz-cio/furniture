@@ -8,6 +8,7 @@ import cn.iocoder.yudao.framework.common.exception.ErrorCode;
 public interface ErrorCodeConstants {
 
     ErrorCode SITE_CONFIG_NOT_EXISTS = new ErrorCode(1_070_001_000, "SEO 站点配置不存在");
+    ErrorCode SITE_CONFIG_URL_INVALID = new ErrorCode(1_070_001_001, "SEO 站点地址必须是有效的 HTTP(S) 绝对地址");
 
     ErrorCode METADATA_NOT_EXISTS = new ErrorCode(1_070_002_000, "SEO 元数据不存在");
     ErrorCode METADATA_DUPLICATE = new ErrorCode(1_070_002_001, "该实体和语言的 SEO 元数据已存在");
