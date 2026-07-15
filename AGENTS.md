@@ -24,8 +24,9 @@ These rules apply regardless of the currently checked-out branch:
 
 These rules apply to every spreadsheet created or modified in this workspace unless the user explicitly requests a different visual style:
 
-- Use only black, white, and grayscale colors.
-- Use white as the default worksheet and data-area background.
-- Use black text by default; use gray fills and borders only to show hierarchy, grouping, status, or emphasis.
+- Use black text for all spreadsheet content.
+- Use a solid white background for every worksheet and table cell, including titles, section headers, table headers, data cells, status cells, priority cells, and conditional-formatting results.
+- Do not use black, gray, or colored cell fills. Keep every cell background white.
+- Create hierarchy with bold text, font size, spacing, and black or light-gray borders instead of filled backgrounds.
 - Do not use colored accents such as green, red, amber, or blue by default.
 - When the intended audience is non-technical, use plain business-language column names and explanations; place technical fields and source locations in supporting columns or appendix sheets.
