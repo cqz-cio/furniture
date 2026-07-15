@@ -25,7 +25,9 @@ public class FulfillmentIdempotencyDO extends BaseDO {
     private Long id;
     private Long tenantId;
     private String operation;
+    @ToString.Exclude
     private String idempotencyKeyHash;
+    @ToString.Exclude
     private String requestHash;
     private String resourceType;
     private Long resourceId;

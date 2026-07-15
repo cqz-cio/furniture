@@ -28,6 +28,7 @@ public class ShipmentPackageDO extends BaseDO {
     private String packageNo;
     private String packageType;
     private Long carrierId;
+    @ToString.Exclude
     private String trackingNumber;
     private BigDecimal weight;
     private String weightUnit;

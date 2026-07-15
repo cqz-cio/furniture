@@ -28,15 +28,21 @@ public class TrackingEventDO extends BaseDO {
     private Long packageId;
     private Long shipmentLegId;
     private Long providerId;
+    @ToString.Exclude
     private String externalEventId;
+    @ToString.Exclude
     private String eventHash;
     private String standardStatus;
+    @ToString.Exclude
     private String providerStatus;
+    @ToString.Exclude
     private String description;
+    @ToString.Exclude
     private String location;
     private LocalDateTime occurredAt;
     private String occurredTimezone;
     private LocalDateTime receivedAt;
+    @ToString.Exclude
     private String rawPayloadRef;
     private String source;
 

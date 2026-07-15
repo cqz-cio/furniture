@@ -32,6 +32,7 @@ public class FulfillmentOutboxEventDO extends BaseDO {
     private Long aggregateId;
     private String eventType;
     @TableField(typeHandler = JacksonTypeHandler.class)
+    @ToString.Exclude
     private Map<String, Object> payload;
     private String status;
     private Integer attemptCount;
