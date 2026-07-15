@@ -126,7 +126,10 @@ public class MallErpProductSyncServiceImpl implements MallErpProductSyncService 
 
     @Override
     public MallErpProductDTO getByMallSkuId(Long mallSkuId) {
-        MallErpProductMappingDO mapping = requireMapping(mallSkuId);
+        MallErpProductMappingDO mapping = mappingMapper.selectByMallSkuId(mallSkuId);
+        if (mapping == null) {
+            return null;
+        }
         return toDTO(mapping, erpProductMapper.selectById(mapping.getErpProductId()));
     }
 
