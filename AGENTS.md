@@ -19,3 +19,13 @@ These rules apply regardless of the currently checked-out branch:
 - The preferred start command is `powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\start-yudao-all-backend.ps1"`; add `-Build` only when the user needs to rebuild updated backend code.
 - The preferred stop command is `powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\stop-yudao-all-backend.ps1"`.
 - If the current branch does not contain the scripts, say so explicitly and use this lifecycle design as the reference for adding them; do not silently fall back to presenting two separate daily startup commands.
+
+# Spreadsheet Presentation Defaults
+
+These rules apply to every spreadsheet created or modified in this workspace unless the user explicitly requests a different visual style:
+
+- Use only black, white, and grayscale colors.
+- Use white as the default worksheet and data-area background.
+- Use black text by default; use gray fills and borders only to show hierarchy, grouping, status, or emphasis.
+- Do not use colored accents such as green, red, amber, or blue by default.
+- When the intended audience is non-technical, use plain business-language column names and explanations; place technical fields and source locations in supporting columns or appendix sheets.
