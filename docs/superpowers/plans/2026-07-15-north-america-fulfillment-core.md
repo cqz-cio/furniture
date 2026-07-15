@@ -633,6 +633,7 @@ git commit -m "feat: add fulfillment provider port"
 - Create: `yudao电商管理平台前后端/yudao-cloud/yudao-module-mall/yudao-module-trade-server/src/main/java/cn/iocoder/yudao/module/trade/service/fulfillment/command/CreateShipmentItemCommand.java`
 - Create: `yudao电商管理平台前后端/yudao-cloud/yudao-module-mall/yudao-module-trade-server/src/main/java/cn/iocoder/yudao/module/trade/service/fulfillment/support/FulfillmentHashing.java`
 - Create: `yudao电商管理平台前后端/yudao-cloud/yudao-module-mall/yudao-module-trade-server/src/main/java/cn/iocoder/yudao/module/trade/service/fulfillment/support/FulfillmentNoGenerator.java`
+- Create: `yudao电商管理平台前后端/yudao-cloud/yudao-module-mall/yudao-module-trade-server/src/main/java/cn/iocoder/yudao/module/trade/framework/fulfillment/config/FulfillmentProperties.java`
 - Create: `yudao电商管理平台前后端/yudao-cloud/yudao-module-mall/yudao-module-trade-server/src/test/java/cn/iocoder/yudao/module/trade/service/fulfillment/FulfillmentCommandServiceImplTest.java`
 
 **Interfaces:**
@@ -669,6 +670,8 @@ The transaction order must be:
 
 `FulfillmentNoGenerator` returns `SHP-` plus UTC `yyyyMMdd` plus 16 uppercase hex characters; database uniqueness remains the final collision guard.
 
+Create the `@ConfigurationProperties(prefix = "yudao.trade.fulfillment")` property skeleton in this task with boolean fields `enabled`, `writeNewModel`, `readFromNewModel`, `customerUiEnabled`, and `legacyMigrationWriteEnabled` all defaulting to false, plus blank `providerCode` and `idempotencyHmacKey`. Task 10 adds cross-field startup validation and environment YAML; Task 5 must inject this typed property rather than introducing a separate `@Value` string.
+
 - [ ] **Step 4: Run service and transaction tests**
 
 ```powershell
@@ -680,7 +683,7 @@ Expected: PASS; verify outbox and shipment rows roll back together when any inse
 - [ ] **Step 5: Commit**
 
 ```powershell
-git add -- 'yudao电商管理平台前后端/yudao-cloud/yudao-module-mall/yudao-module-trade-server/src/main/java/cn/iocoder/yudao/module/trade/service/fulfillment' 'yudao电商管理平台前后端/yudao-cloud/yudao-module-mall/yudao-module-trade-server/src/test/java/cn/iocoder/yudao/module/trade/service/fulfillment'
+git add -- 'yudao电商管理平台前后端/yudao-cloud/yudao-module-mall/yudao-module-trade-server/src/main/java/cn/iocoder/yudao/module/trade/service/fulfillment' 'yudao电商管理平台前后端/yudao-cloud/yudao-module-mall/yudao-module-trade-server/src/main/java/cn/iocoder/yudao/module/trade/framework/fulfillment/config/FulfillmentProperties.java' 'yudao电商管理平台前后端/yudao-cloud/yudao-module-mall/yudao-module-trade-server/src/test/java/cn/iocoder/yudao/module/trade/service/fulfillment'
 git commit -m "feat: create idempotent fulfillment shipments"
 ```
 
@@ -918,7 +921,7 @@ git commit -m "feat: preserve legacy logistics compatibility"
 ### Task 10: Add feature flags, security defaults, and full verification
 
 **Files:**
-- Create: `yudao电商管理平台前后端/yudao-cloud/yudao-module-mall/yudao-module-trade-server/src/main/java/cn/iocoder/yudao/module/trade/framework/fulfillment/config/FulfillmentProperties.java`
+- Modify: `yudao电商管理平台前后端/yudao-cloud/yudao-module-mall/yudao-module-trade-server/src/main/java/cn/iocoder/yudao/module/trade/framework/fulfillment/config/FulfillmentProperties.java`
 - Create: `yudao电商管理平台前后端/yudao-cloud/yudao-module-mall/yudao-module-trade-server/src/main/java/cn/iocoder/yudao/module/trade/framework/fulfillment/config/FulfillmentConfiguration.java`
 - Modify: `yudao电商管理平台前后端/yudao-cloud/yudao-server/src/main/resources/application.yaml`
 - Modify: `yudao电商管理平台前后端/yudao-cloud/yudao-server/src/main/resources/application-local.yaml`
