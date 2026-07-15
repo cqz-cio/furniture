@@ -1,0 +1,107 @@
+spring:
+  application:
+    name: seo-server
+
+  profiles:
+    active: local
+
+  main:
+    allow-circular-references: true
+    allow-bean-definition-overriding: true
+
+  config:
+    import:
+      - optional:classpath:application-${spring.profiles.active}.yaml
+      - optional:nacos:${spring.application.name}-${spring.profiles.active}.yaml
+
+  servlet:
+    multipart:
+      max-file-size: 16MB
+      max-request-size: 32MB
+
+  jackson:
+    serialization:
+      write-dates-as-timestamps: true
+      write-date-timestamps-as-nanoseconds: false
+      write-durations-as-timestamps: true
+      fail-on-empty-beans: false
+
+  cache:
+    type: REDIS
+    redis:
+      time-to-live: 1h
+
+server:
+  port: 48092
+
+logging:
+  file:
+    name: ${user.home}/logs/${spring.application.name}.log
+
+springdoc:
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui
+  default-flat-param-object: true
+
+knife4j:
+  enable: true
+  setting:
+    language: zh_cn
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      id-type: NONE
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+    banner: false
+  type-aliases-package: ${yudao.info.base-package}.dal.dataobject
+  encryptor:
+    password: XDV71a+xqStEA3WH
+
+mybatis-plus-join:
+  banner: false
+
+---
+spring:
+  data:
+    redis:
+      repositories:
+        enabled: false
+
+easy-trans:
+  is-enable-global: false
+
+xxl:
+  job:
+    executor:
+      appname: ${spring.application.name}
+      logpath: ${user.home}/logs/xxl-job/${spring.application.name}
+    accessToken: default_token
+
+yudao:
+  info:
+    version: 1.0.0
+    base-package: cn.iocoder.yudao.module.seo
+  web:
+    admin-ui:
+      url: http://dashboard.yudao.iocoder.cn
+  xss:
+    enable: false
+    exclude-urls:
+      - ${management.endpoints.web.base-path}/**
+  swagger:
+    title: 管理后台
+    description: 提供管理员管理的所有功能
+    version: ${yudao.info.version}
+  tenant:
+    enable: true
+    ignore-urls:
+
+debug: false
