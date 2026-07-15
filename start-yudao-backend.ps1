@@ -6,9 +6,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 $workspace = "D:\code"
-$env:JAVA_HOME = Join-Path $workspace "tools\jdk8\jdk1.8.0_492"
 $env:MAVEN_HOME = Join-Path $workspace "tools\maven\apache-maven-3.9.9"
-$env:Path = "$env:JAVA_HOME\bin;$env:MAVEN_HOME\bin;$env:Path"
 
 $yudaoRoot = Get-ChildItem -LiteralPath $workspace -Directory |
   Where-Object { $_.Name -like "yudao*" } |
@@ -23,15 +21,24 @@ if (-not (Test-Path -LiteralPath $backendRoot)) {
   throw "Cannot find backend directory: $backendRoot"
 }
 
+$jdkResolver = Join-Path $backendRoot "script\jdk17\Resolve-Jdk17.ps1"
+$jdkHomeOutput = @(& $jdkResolver)
+if ($LASTEXITCODE -ne 0 -or $jdkHomeOutput.Count -ne 1) {
+  throw "Unable to resolve exactly one Java 17 home."
+}
+$env:JAVA_HOME = [string] $jdkHomeOutput[0]
+$env:Path = "$env:JAVA_HOME\bin;$env:MAVEN_HOME\bin;$env:Path"
+
+$java = Join-Path $env:JAVA_HOME "bin\java.exe"
 $mvn = Join-Path $env:MAVEN_HOME "bin\mvn.cmd"
 $settings = Join-Path $workspace "tools\maven-settings.xml"
 
 if ($VerifyOnly) {
-  Write-Host "JAVA_HOME=$env:JAVA_HOME"
-  Write-Host "MAVEN_HOME=$env:MAVEN_HOME"
-  Write-Host "BACKEND_ROOT=$backendRoot"
-  Write-Host "SPRING_PROFILES_ACTIVE=$Profile"
-  & java -version
+  Write-Output "JAVA_HOME=$env:JAVA_HOME"
+  Write-Output "MAVEN_HOME=$env:MAVEN_HOME"
+  Write-Output "BACKEND_ROOT=$backendRoot"
+  Write-Output "SPRING_PROFILES_ACTIVE=$Profile"
+  & cmd.exe /d /c "`"$java`" -version 2>&1"
   & $mvn -v
   exit 0
 }
@@ -44,4 +51,4 @@ if (-not (Test-Path -LiteralPath $serverJar)) {
   throw "Cannot find packaged backend jar: $serverJar"
 }
 
-& java -jar $serverJar "--spring.profiles.active=$Profile"
+& $java -jar $serverJar "--spring.profiles.active=$Profile"

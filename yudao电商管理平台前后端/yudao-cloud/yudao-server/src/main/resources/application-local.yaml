@@ -204,6 +204,17 @@ yudao:
     enable: false # 本地环境，暂时关闭图片验证码，方便登录等接口的测试；
   security:
     mock-enable: true
+  trade:
+    express:
+      # Local development does not call a real express provider. Non-empty
+      # placeholders satisfy configuration validation without exposing secrets.
+      client: not_provide
+      kd-niao:
+        api-key: local-disabled
+        business-id: local-disabled
+      kd100:
+        key: local-disabled
+        customer: local-disabled
   pay:
     order-notify-url: http://yunai.natapp1.cc/admin-api/pay/notify/order # 支付渠道的【支付】回调地址
     refund-notify-url: http://yunai.natapp1.cc/admin-api/pay/notify/refund # 支付渠道的【退款】回调地址
