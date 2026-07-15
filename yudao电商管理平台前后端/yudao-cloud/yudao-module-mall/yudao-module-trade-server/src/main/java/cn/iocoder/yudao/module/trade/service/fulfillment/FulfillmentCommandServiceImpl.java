@@ -62,6 +62,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
@@ -110,6 +111,10 @@ public class FulfillmentCommandServiceImpl implements FulfillmentCommandService 
             ShipmentStatusEnum.DELIVERED,
             ShipmentStatusEnum.DELIVERY_EXCEPTION,
             ShipmentStatusEnum.RETURNING,
+            ShipmentStatusEnum.RETURNED);
+    private static final Set<ShipmentStatusEnum> COMPLETED_LEG_STATUSES = Set.of(
+            ShipmentStatusEnum.CANCELED,
+            ShipmentStatusEnum.DELIVERED,
             ShipmentStatusEnum.RETURNED);
 
     private final TradeOrderMapper tradeOrderMapper;
@@ -325,11 +330,12 @@ public class FulfillmentCommandServiceImpl implements FulfillmentCommandService 
     private DispatchAggregate loadAndValidateCompleteness(Long tenantId, ShipmentDO shipment) {
         List<ShipmentItemDO> items = shipmentItemMapper.selectListByShipmentId(tenantId, shipment.getId());
         List<ShipmentPackageDO> packageRows = packageMapper.selectListByShipmentId(tenantId, shipment.getId());
-        List<ShipmentLegDO> legRows = legMapper.selectListByShipmentId(tenantId, shipment.getId());
+        List<ShipmentLegDO> selectedLegRows = legMapper.selectListByShipmentId(tenantId, shipment.getId());
+        List<ShipmentLegDO> legRows = selectedLegRows == null ? List.of() : selectedLegRows;
         List<ShipmentPackageDO> packages = packageRows == null ? List.of() : packageRows.stream()
                 .filter(shipmentPackage -> !ShipmentStatusEnum.CANCELED.name().equals(shipmentPackage.getStatus()))
                 .sorted(Comparator.comparing(ShipmentPackageDO::getId)).toList();
-        List<ShipmentLegDO> legs = legRows == null ? List.of() : legRows.stream()
+        List<ShipmentLegDO> legs = legRows.stream()
                 .filter(leg -> !ShipmentStatusEnum.CANCELED.name().equals(leg.getStatus()))
                 .sorted(Comparator.comparing(ShipmentLegDO::getSequenceNo).thenComparing(ShipmentLegDO::getId))
                 .toList();
@@ -363,35 +369,27 @@ public class FulfillmentCommandServiceImpl implements FulfillmentCommandService 
                 throw exception(FULFILLMENT_DISPATCH_INCOMPLETE);
             }
         }
-        List<PackageDispatchPlan> packagePlans = buildPackageDispatchPlans(packages, legs);
+        Set<Long> activePackageIds = packages.stream().map(ShipmentPackageDO::getId)
+                .collect(java.util.stream.Collectors.toSet());
+        if (legRows.stream().anyMatch(leg -> leg.getPackageId() != null
+                && !activePackageIds.contains(leg.getPackageId()))) {
+            throw exception(FULFILLMENT_DISPATCH_INCOMPLETE);
+        }
+        List<ShipmentLegDO> activeLegs = legRows.stream().filter(FulfillmentCommandServiceImpl::isActiveLeg)
+                .sorted(Comparator.comparing(ShipmentLegDO::getSequenceNo).thenComparing(ShipmentLegDO::getId))
+                .toList();
+        List<PackageDispatchPlan> packagePlans = buildPackageDispatchPlans(packages, activeLegs);
         return new DispatchAggregate(items, packages, legs, packagePlans, carriersById, providersById);
     }
 
     private List<PackageDispatchPlan> buildPackageDispatchPlans(List<ShipmentPackageDO> packages,
                                                                  List<ShipmentLegDO> legs) {
-        List<ShipmentLegDO> packageBoundLegs = legs.stream().filter(leg -> leg.getPackageId() != null).toList();
-        if (packageBoundLegs.isEmpty()) {
-            ShipmentLegDO sharedLeg = legs.get(0);
-            for (ShipmentPackageDO shipmentPackage : packages) {
-                if (!shipmentPackage.getCarrierId().equals(sharedLeg.getCarrierId())) {
-                    throw exception(FULFILLMENT_DISPATCH_INCOMPLETE);
-                }
-            }
-            return packages.stream().map(shipmentPackage -> new PackageDispatchPlan(shipmentPackage, sharedLeg))
-                    .toList();
-        }
-        Set<Long> packageIds = packages.stream().map(ShipmentPackageDO::getId).collect(java.util.stream.Collectors.toSet());
-        if (packageBoundLegs.stream().anyMatch(leg -> !packageIds.contains(leg.getPackageId()))) {
-            throw exception(FULFILLMENT_DISPATCH_INCOMPLETE);
-        }
         return packages.stream().map(shipmentPackage -> {
-            ShipmentLegDO activeLeg = packageBoundLegs.stream()
-                    .filter(leg -> shipmentPackage.getId().equals(leg.getPackageId()))
+            ShipmentLegDO activeLeg = legs.stream()
+                    .filter(leg -> leg.getPackageId() == null
+                            || shipmentPackage.getId().equals(leg.getPackageId()))
                     .min(Comparator.comparing(ShipmentLegDO::getSequenceNo).thenComparing(ShipmentLegDO::getId))
                     .orElseThrow(() -> exception(FULFILLMENT_DISPATCH_INCOMPLETE));
-            if (!shipmentPackage.getCarrierId().equals(activeLeg.getCarrierId())) {
-                throw exception(FULFILLMENT_DISPATCH_INCOMPLETE);
-            }
             return new PackageDispatchPlan(shipmentPackage, activeLeg);
         }).toList();
     }
@@ -467,9 +465,21 @@ public class FulfillmentCommandServiceImpl implements FulfillmentCommandService 
     private void scheduleTrackingRegistration(Long tenantId, Long shipmentId, ShipmentPackageDO shipmentPackage,
                                               ShipmentLegDO activeLeg,
                                               Map<Long, LogisticsProviderDO> providersById) {
-        String trackingNumber = normalizeOptional(shipmentPackage.getTrackingNumber());
-        if (trackingNumber == null) {
-            return;
+        String activeLegTrackingNumber = normalizeOptional(activeLeg.getTrackingNumber());
+        final String registrationTrackingNumber;
+        final Long registrationCarrierId;
+        if (activeLegTrackingNumber != null) {
+            registrationTrackingNumber = activeLegTrackingNumber;
+            registrationCarrierId = activeLeg.getCarrierId();
+        } else {
+            if (!Objects.equals(shipmentPackage.getCarrierId(), activeLeg.getCarrierId())) {
+                return;
+            }
+            registrationTrackingNumber = normalizeOptional(shipmentPackage.getTrackingNumber());
+            registrationCarrierId = shipmentPackage.getCarrierId();
+            if (registrationTrackingNumber == null) {
+                return;
+            }
         }
         LogisticsProviderDO provider = providersById.get(activeLeg.getProviderId());
         if (provider == null) {
@@ -479,7 +489,7 @@ public class FulfillmentCommandServiceImpl implements FulfillmentCommandService 
         if (!client.getCapabilities().contains(ProviderCapability.TRACKING_REGISTRATION)) {
             return;
         }
-        CarrierDO carrier = requireEnabledCarrier(tenantId, shipmentPackage.getCarrierId());
+        CarrierDO carrier = requireEnabledCarrier(tenantId, registrationCarrierId);
         if (!TransactionSynchronizationManager.isSynchronizationActive()) {
             throw new IllegalStateException("Dispatch requires an active transaction synchronization");
         }
@@ -490,7 +500,7 @@ public class FulfillmentCommandServiceImpl implements FulfillmentCommandService 
                 try {
                     TrackingRegistrationResult result = client.registerTracking(new TrackingRegistrationCommand()
                             .setCarrierCode(carrier.getCode())
-                            .setTrackingNumber(trackingNumber));
+                            .setTrackingNumber(registrationTrackingNumber));
                     retryRequired = result == null || !result.isRegistered();
                 } catch (RuntimeException registrationFailure) {
                     retryRequired = true;
@@ -799,6 +809,14 @@ public class FulfillmentCommandServiceImpl implements FulfillmentCommandService 
             return DISPATCHED_STATUSES.contains(ShipmentStatusEnum.valueOf(status));
         } catch (IllegalArgumentException invalidStatus) {
             return false;
+        }
+    }
+
+    private static boolean isActiveLeg(ShipmentLegDO leg) {
+        try {
+            return !COMPLETED_LEG_STATUSES.contains(ShipmentStatusEnum.valueOf(leg.getStatus()));
+        } catch (IllegalArgumentException | NullPointerException invalidStatus) {
+            throw exception(FULFILLMENT_DISPATCH_INCOMPLETE);
         }
     }
 

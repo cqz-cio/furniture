@@ -54,13 +54,17 @@ class FulfillmentDispatchServiceTest extends BaseMockitoUnitTest {
     private static final Long SECOND_PACKAGE_ID = 71002L;
     private static final Long LEG_ID = 72001L;
     private static final Long SECOND_LEG_ID = 72002L;
+    private static final Long THIRD_LEG_ID = 72003L;
     private static final Long CARRIER_ID = 73L;
     private static final Long SECOND_CARRIER_ID = 74L;
+    private static final Long THIRD_CARRIER_ID = 75L;
     private static final Long PROVIDER_ID = 83L;
     private static final Long SECOND_PROVIDER_ID = 84L;
+    private static final Long THIRD_PROVIDER_ID = 85L;
     private static final Long LEGACY_EXPRESS_ID = 93L;
     private static final String TRACKING_NUMBER = "private-tracking-123";
     private static final String SECOND_TRACKING_NUMBER = "private-tracking-456";
+    private static final String SHARED_LEG_TRACKING_NUMBER = "private-shared-leg-tracking";
     private static final String IDEMPOTENCY_KEY = "private-idempotency-key";
 
     @InjectMocks
@@ -83,6 +87,7 @@ class FulfillmentDispatchServiceTest extends BaseMockitoUnitTest {
     @Mock private FulfillmentTrackingRegistrationFailureService registrationFailureService;
     @Mock private LogisticsProviderClient providerClient;
     @Mock private LogisticsProviderClient secondProviderClient;
+    @Mock private LogisticsProviderClient thirdProviderClient;
 
     @BeforeEach
     void setUp() {
@@ -578,27 +583,114 @@ class FulfillmentDispatchServiceTest extends BaseMockitoUnitTest {
     }
 
     @Test
-    void packageBoundModeRejectsUnboundPackageInsteadOfUsingShipmentLevelFallback() {
-        ShipmentPackageDO firstPackage = packageRow(CARRIER_ID, TRACKING_NUMBER);
-        ShipmentPackageDO secondPackage = packageRow(CARRIER_ID, SECOND_TRACKING_NUMBER)
+    void mixedSharedAndBoundLegsSelectSharedEarlyLegForEveryPackage() {
+        ShipmentPackageDO firstPackage = packageRow(SECOND_CARRIER_ID, TRACKING_NUMBER);
+        ShipmentPackageDO secondPackage = packageRow(THIRD_CARRIER_ID, SECOND_TRACKING_NUMBER)
                 .setId(SECOND_PACKAGE_ID).setPackageNo("PKG-2");
-        ShipmentLegDO boundLeg = legRow(CARRIER_ID, PROVIDER_ID, null, null);
-        ShipmentLegDO shipmentLevelLeg = legRow(CARRIER_ID, PROVIDER_ID, null, null)
-                .setId(SECOND_LEG_ID).setPackageId(null).setSequenceNo(2);
-        when(shipmentMapper.selectByIdForUpdate(TENANT_ID, SHIPMENT_ID))
-                .thenReturn(shipment(ShipmentTypeEnum.PARCEL, ShipmentStatusEnum.READY_TO_SHIP, 1));
-        when(shipmentItemMapper.selectListByShipmentId(TENANT_ID, SHIPMENT_ID))
-                .thenReturn(List.of(new ShipmentItemDO().setId(1L).setTenantId(TENANT_ID).setShipmentId(SHIPMENT_ID)));
-        when(packageMapper.selectListByShipmentId(TENANT_ID, SHIPMENT_ID))
-                .thenReturn(List.of(firstPackage, secondPackage));
-        when(legMapper.selectListByShipmentId(TENANT_ID, SHIPMENT_ID))
-                .thenReturn(List.of(boundLeg, shipmentLevelLeg));
+        ShipmentLegDO sharedFirstMile = legRow(CARRIER_ID, PROVIDER_ID, SHARED_LEG_TRACKING_NUMBER, null)
+                .setPackageId(null).setSequenceNo(1).setLegType("FIRST_MILE");
+        ShipmentLegDO firstLastMile = legRow(SECOND_CARRIER_ID, SECOND_PROVIDER_ID, TRACKING_NUMBER, null)
+                .setId(SECOND_LEG_ID).setPackageId(PACKAGE_ID).setSequenceNo(2);
+        ShipmentLegDO secondLastMile = legRow(THIRD_CARRIER_ID, THIRD_PROVIDER_ID, SECOND_TRACKING_NUMBER, null)
+                .setId(THIRD_LEG_ID).setPackageId(SECOND_PACKAGE_ID).setSequenceNo(2);
+        stubDispatchRows(List.of(firstPackage, secondPackage),
+                List.of(firstLastMile, secondLastMile, sharedFirstMile));
+        stubCarrierProvider(SECOND_CARRIER_ID, "UPS-LAST", LEGACY_EXPRESS_ID + 1,
+                SECOND_PROVIDER_ID, "second-mock", secondProviderClient);
+        stubCarrierProvider(THIRD_CARRIER_ID, "FEDEX-LAST", null,
+                THIRD_PROVIDER_ID, "third-mock", thirdProviderClient);
+        when(providerClient.getCapabilities()).thenReturn(Set.of(ProviderCapability.TRACKING_REGISTRATION));
+        when(providerClient.registerTracking(any())).thenReturn(new TrackingRegistrationResult().setRegistered(true));
+        TransactionSynchronizationManager.initSynchronization();
 
-        assertServiceException(() -> service.dispatch(IDEMPOTENCY_KEY, dispatchCommand()),
-                FULFILLMENT_DISPATCH_INCOMPLETE);
+        service.dispatch(IDEMPOTENCY_KEY, dispatchCommand());
 
-        verify(packageMapper, never()).updateStatusByIdAndVersion(anyLong(), anyLong(), anyInt(), anyString());
-        verify(outboxMapper, never()).insert(any(FulfillmentOutboxEventDO.class));
+        verify(legMapper).updateStatusByIdAndVersion(eq(TENANT_ID), eq(LEG_ID), eq(0),
+                eq(ShipmentStatusEnum.HANDED_TO_CARRIER.name()), any(LocalDateTime.class));
+        verify(legMapper, never()).updateStatusByIdAndVersion(eq(TENANT_ID), eq(SECOND_LEG_ID), anyInt(), anyString(),
+                any(LocalDateTime.class));
+        verify(legMapper, never()).updateStatusByIdAndVersion(eq(TENANT_ID), eq(THIRD_LEG_ID), anyInt(), anyString(),
+                any(LocalDateTime.class));
+        assertEquals(2, TransactionSynchronizationManager.getSynchronizations().size());
+        TransactionSynchronizationManager.getSynchronizations().forEach(TransactionSynchronization::afterCommit);
+        verify(providerClient, times(2)).registerTracking(argThat(command -> "UPS".equals(command.getCarrierCode())
+                && SHARED_LEG_TRACKING_NUMBER.equals(command.getTrackingNumber())));
+        verify(secondProviderClient, never()).registerTracking(any());
+        verify(thirdProviderClient, never()).registerTracking(any());
+        verify(outboxMapper, times(2)).insert(argThat((FulfillmentOutboxEventDO event) ->
+                "PACKAGE_DISPATCHED".equals(event.getEventType())));
+        verify(tradeOrderMapper).updateFulfillmentProjectionByIdAndStatus(eq(ORDER_ID),
+                eq(TradeOrderStatusEnum.UNDELIVERED.getStatus()), eq(LEGACY_EXPRESS_ID + 1), eq(TRACKING_NUMBER),
+                eq(true), any(LocalDateTime.class));
+    }
+
+    @Test
+    void completedOrCanceledSharedLegsYieldToEachPackageBoundLastMile() {
+        ShipmentPackageDO firstPackage = packageRow(SECOND_CARRIER_ID, TRACKING_NUMBER);
+        ShipmentPackageDO secondPackage = packageRow(THIRD_CARRIER_ID, SECOND_TRACKING_NUMBER)
+                .setId(SECOND_PACKAGE_ID).setPackageNo("PKG-2");
+        ShipmentLegDO completedShared = legRow(CARRIER_ID, PROVIDER_ID, SHARED_LEG_TRACKING_NUMBER, null)
+                .setPackageId(null).setSequenceNo(1).setLegType("LINEHAUL")
+                .setStatus(ShipmentStatusEnum.DELIVERED.name());
+        ShipmentLegDO canceledShared = legRow(CARRIER_ID, PROVIDER_ID, null, null)
+                .setId(THIRD_LEG_ID + 1).setPackageId(null).setSequenceNo(2).setLegType("LINEHAUL")
+                .setStatus(ShipmentStatusEnum.CANCELED.name());
+        ShipmentLegDO firstLastMile = legRow(SECOND_CARRIER_ID, SECOND_PROVIDER_ID, "first-leg-tracking", null)
+                .setId(SECOND_LEG_ID).setPackageId(PACKAGE_ID).setSequenceNo(3);
+        ShipmentLegDO secondLastMile = legRow(THIRD_CARRIER_ID, THIRD_PROVIDER_ID, "second-leg-tracking", null)
+                .setId(THIRD_LEG_ID).setPackageId(SECOND_PACKAGE_ID).setSequenceNo(3);
+        stubDispatchRows(List.of(firstPackage, secondPackage),
+                List.of(completedShared, canceledShared, firstLastMile, secondLastMile));
+        stubCarrierProvider(SECOND_CARRIER_ID, "UPS-LAST", LEGACY_EXPRESS_ID + 1,
+                SECOND_PROVIDER_ID, "second-mock", secondProviderClient);
+        stubCarrierProvider(THIRD_CARRIER_ID, "FEDEX-LAST", null,
+                THIRD_PROVIDER_ID, "third-mock", thirdProviderClient);
+        when(secondProviderClient.getCapabilities()).thenReturn(Set.of(ProviderCapability.TRACKING_REGISTRATION));
+        when(thirdProviderClient.getCapabilities()).thenReturn(Set.of(ProviderCapability.TRACKING_REGISTRATION));
+        when(secondProviderClient.registerTracking(any()))
+                .thenReturn(new TrackingRegistrationResult().setRegistered(true));
+        when(thirdProviderClient.registerTracking(any()))
+                .thenReturn(new TrackingRegistrationResult().setRegistered(true));
+        TransactionSynchronizationManager.initSynchronization();
+
+        service.dispatch(IDEMPOTENCY_KEY, dispatchCommand());
+
+        verify(legMapper).updateStatusByIdAndVersion(eq(TENANT_ID), eq(SECOND_LEG_ID), eq(0),
+                eq(ShipmentStatusEnum.HANDED_TO_CARRIER.name()), any(LocalDateTime.class));
+        verify(legMapper).updateStatusByIdAndVersion(eq(TENANT_ID), eq(THIRD_LEG_ID), eq(0),
+                eq(ShipmentStatusEnum.HANDED_TO_CARRIER.name()), any(LocalDateTime.class));
+        verify(legMapper, never()).updateStatusByIdAndVersion(eq(TENANT_ID), eq(LEG_ID), anyInt(), anyString(),
+                any(LocalDateTime.class));
+        TransactionSynchronizationManager.getSynchronizations().forEach(TransactionSynchronization::afterCommit);
+        verify(secondProviderClient).registerTracking(argThat(command -> "UPS-LAST".equals(command.getCarrierCode())
+                && "first-leg-tracking".equals(command.getTrackingNumber())));
+        verify(thirdProviderClient).registerTracking(argThat(command -> "FEDEX-LAST".equals(command.getCarrierCode())
+                && "second-leg-tracking".equals(command.getTrackingNumber())));
+        verify(providerClient, never()).registerTracking(any());
+        verify(outboxMapper, times(2)).insert(argThat((FulfillmentOutboxEventDO event) ->
+                "PACKAGE_DISPATCHED".equals(event.getEventType())));
+    }
+
+    @Test
+    void differentCarrierSharedLegWithoutTrackingSkipsRegistrationSafely() {
+        ShipmentPackageDO shipmentPackage = packageRow(SECOND_CARRIER_ID, TRACKING_NUMBER);
+        ShipmentLegDO sharedLeg = legRow(CARRIER_ID, PROVIDER_ID, null, null).setPackageId(null);
+        stubDispatchRows(List.of(shipmentPackage), List.of(sharedLeg));
+        when(carrierMapper.selectByIdAndTenantId(SECOND_CARRIER_ID, TENANT_ID)).thenReturn(new CarrierDO()
+                .setId(SECOND_CARRIER_ID).setTenantId(TENANT_ID).setCode("UPS-LAST")
+                .setLegacyExpressId(LEGACY_EXPRESS_ID + 1).setStatus(0));
+        TransactionSynchronizationManager.initSynchronization();
+
+        service.dispatch(IDEMPOTENCY_KEY, dispatchCommand());
+
+        assertTrue(TransactionSynchronizationManager.getSynchronizations().isEmpty());
+        verify(providerClient, never()).registerTracking(any());
+        verify(registrationFailureService, never()).recordRetry(anyLong(), anyLong(), anyLong(), anyLong());
+        verify(outboxMapper).insert(argThat((FulfillmentOutboxEventDO event) ->
+                "PACKAGE_DISPATCHED".equals(event.getEventType())));
+        verify(tradeOrderMapper).updateFulfillmentProjectionByIdAndStatus(eq(ORDER_ID),
+                eq(TradeOrderStatusEnum.UNDELIVERED.getStatus()), eq(LEGACY_EXPRESS_ID + 1), eq(TRACKING_NUMBER),
+                eq(true), any(LocalDateTime.class));
     }
 
     @Test
@@ -746,6 +838,16 @@ class FulfillmentDispatchServiceTest extends BaseMockitoUnitTest {
                 shipment(ShipmentTypeEnum.PARCEL, ShipmentStatusEnum.READY_TO_SHIP, 1)));
         when(tradeOrderMapper.selectByIdForUpdate(ORDER_ID)).thenReturn(new TradeOrderDO().setId(ORDER_ID)
                 .setStatus(TradeOrderStatusEnum.UNDELIVERED.getStatus()));
+    }
+
+    private void stubCarrierProvider(Long carrierId, String carrierCode, Long legacyExpressId,
+                                     Long providerId, String providerCode, LogisticsProviderClient client) {
+        when(carrierMapper.selectByIdAndTenantId(carrierId, TENANT_ID)).thenReturn(new CarrierDO()
+                .setId(carrierId).setTenantId(TENANT_ID).setCode(carrierCode).setLegacyExpressId(legacyExpressId)
+                .setStatus(0));
+        when(providerMapper.selectByIdAndTenantId(providerId, TENANT_ID)).thenReturn(new LogisticsProviderDO()
+                .setId(providerId).setTenantId(TENANT_ID).setCode(providerCode).setStatus(0));
+        when(providerRegistry.getClient(providerCode)).thenReturn(client);
     }
 
     private void assertRegistrationResultCreatesRetry(TrackingRegistrationResult result) {
