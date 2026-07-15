@@ -193,6 +193,7 @@ public class FulfillmentCommandServiceImpl implements FulfillmentCommandService 
     private Long addPackageInTenant(UpsertPackageCommand command) {
         ShipmentDO shipment = lockShipment(command.getTenantId(), command.getShipmentId());
         requireStatus(shipment, ShipmentStatusEnum.DRAFT);
+        validateVersion(shipment, command.getExpectedVersion());
         String trackingNumber = normalizeOptional(command.getTrackingNumber());
         if (command.getCarrierId() != null) {
             requireEnabledCarrier(command.getTenantId(), command.getCarrierId());
@@ -225,12 +226,14 @@ public class FulfillmentCommandServiceImpl implements FulfillmentCommandService 
             }
             throw duplicate;
         }
+        incrementShipmentVersion(command.getTenantId(), shipment);
         return shipmentPackage.getId();
     }
 
     private Long addLegInTenant(AddShipmentLegCommand command) {
         ShipmentDO shipment = lockShipment(command.getTenantId(), command.getShipmentId());
         requireStatus(shipment, ShipmentStatusEnum.DRAFT);
+        validateVersion(shipment, command.getExpectedVersion());
         requireEnabledCarrier(command.getTenantId(), command.getCarrierId());
         requireEnabledProvider(command.getTenantId(), command.getProviderId());
         if (command.getPackageId() != null) {
@@ -257,6 +260,7 @@ public class FulfillmentCommandServiceImpl implements FulfillmentCommandService 
                 .setStatus(ShipmentStatusEnum.DRAFT.name())
                 .setVersion(0);
         legMapper.insert(leg);
+        incrementShipmentVersion(command.getTenantId(), shipment);
         return leg.getId();
     }
 
@@ -811,6 +815,13 @@ public class FulfillmentCommandServiceImpl implements FulfillmentCommandService 
         }
     }
 
+    private void incrementShipmentVersion(Long tenantId, ShipmentDO shipment) {
+        int updated = shipmentMapper.incrementVersionByIdAndVersion(tenantId, shipment.getId(), shipment.getVersion());
+        if (updated != 1) {
+            throw exception(FULFILLMENT_VERSION_CONFLICT);
+        }
+    }
+
     private static boolean isDispatchedStatus(String status) {
         try {
             return DISPATCHED_STATUSES.contains(ShipmentStatusEnum.valueOf(status));
@@ -831,6 +842,7 @@ public class FulfillmentCommandServiceImpl implements FulfillmentCommandService 
         if (command == null || command.getTenantId() == null || command.getShipmentId() == null) {
             throw exception(FULFILLMENT_SHIPMENT_NOT_FOUND);
         }
+        validateExpectedVersion(command.getExpectedVersion());
         if (command.getPackageNo() == null || command.getPackageNo().isBlank()
                 || command.getPackageType() == null || command.getPackageType().isBlank()) {
             throw exception(FULFILLMENT_DISPATCH_INCOMPLETE);
@@ -855,6 +867,7 @@ public class FulfillmentCommandServiceImpl implements FulfillmentCommandService 
         if (command == null || command.getTenantId() == null || command.getShipmentId() == null) {
             throw exception(FULFILLMENT_SHIPMENT_NOT_FOUND);
         }
+        validateExpectedVersion(command.getExpectedVersion());
         if (command.getSequenceNo() == null || command.getSequenceNo() <= 0
                 || command.getLegType() == null || command.getLegType().isBlank()
                 || command.getCarrierId() == null || command.getProviderId() == null) {
@@ -867,6 +880,10 @@ public class FulfillmentCommandServiceImpl implements FulfillmentCommandService 
         if (tenantId == null || shipmentId == null) {
             throw exception(FULFILLMENT_SHIPMENT_NOT_FOUND);
         }
+        validateExpectedVersion(expectedVersion);
+    }
+
+    private static void validateExpectedVersion(Integer expectedVersion) {
         if (expectedVersion == null || expectedVersion < 0) {
             throw exception(FULFILLMENT_VERSION_CONFLICT);
         }

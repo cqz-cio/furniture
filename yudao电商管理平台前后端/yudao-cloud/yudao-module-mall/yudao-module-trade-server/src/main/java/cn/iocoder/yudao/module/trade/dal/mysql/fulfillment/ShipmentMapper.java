@@ -36,4 +36,12 @@ public interface ShipmentMapper extends BaseMapperX<ShipmentDO> {
                 .set(ShipmentDO::getVersion, version + 1));
     }
 
+    default int incrementVersionByIdAndVersion(Long tenantId, Long id, Integer version) {
+        return update(null, new LambdaUpdateWrapper<ShipmentDO>()
+                .eq(ShipmentDO::getTenantId, tenantId)
+                .eq(ShipmentDO::getId, id)
+                .eq(ShipmentDO::getVersion, version)
+                .set(ShipmentDO::getVersion, version + 1));
+    }
+
 }

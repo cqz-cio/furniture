@@ -22,6 +22,7 @@ public final class FulfillmentDispatchHashing {
         StringBuilder value = new StringBuilder(256);
         append(value, command.getTenantId());
         append(value, command.getShipmentId());
+        append(value, command.getExpectedVersion());
         append(value, text(command.getPackageNo()));
         append(value, vocabulary(command.getPackageType()));
         append(value, command.getCarrierId());
@@ -39,6 +40,7 @@ public final class FulfillmentDispatchHashing {
         StringBuilder value = new StringBuilder(256);
         append(value, command.getTenantId());
         append(value, command.getShipmentId());
+        append(value, command.getExpectedVersion());
         append(value, command.getPackageId());
         append(value, command.getSequenceNo());
         append(value, vocabulary(command.getLegType()));

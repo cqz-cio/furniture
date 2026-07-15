@@ -111,6 +111,8 @@ class FulfillmentDispatchServiceTest extends BaseMockitoUnitTest {
         }).when(legMapper).insert(any(ShipmentLegDO.class));
         lenient().when(shipmentMapper.updateStatusByIdAndVersion(anyLong(), anyLong(), anyInt(), anyString(), any()))
                 .thenReturn(1);
+        lenient().when(shipmentMapper.incrementVersionByIdAndVersion(anyLong(), anyLong(), anyInt()))
+                .thenReturn(1);
         lenient().when(packageMapper.updateStatusByIdAndVersion(anyLong(), anyLong(), anyInt(), anyString()))
                 .thenReturn(1);
         lenient().when(legMapper.updateStatusByIdAndVersion(anyLong(), anyLong(), anyInt(), anyString(), any()))
@@ -147,6 +149,8 @@ class FulfillmentDispatchServiceTest extends BaseMockitoUnitTest {
         assertEquals(ShipmentStatusEnum.DRAFT.name(), created.getStatus());
         assertEquals(0, created.getVersion());
         assertFalse(created.toString().contains(TRACKING_NUMBER));
+        assertFalse(packageCommand().toString().contains(TRACKING_NUMBER));
+        assertFalse(FulfillmentDispatchHashing.hash(packageCommand()).contains(TRACKING_NUMBER));
         ArgumentCaptor<FulfillmentIdempotencyDO> idempotencyCaptor =
                 ArgumentCaptor.forClass(FulfillmentIdempotencyDO.class);
         verify(idempotencyMapper).insert(idempotencyCaptor.capture());
@@ -154,6 +158,7 @@ class FulfillmentDispatchServiceTest extends BaseMockitoUnitTest {
         assertEquals("PACKAGE", idempotencyCaptor.getValue().getResourceType());
         assertFalse(idempotencyCaptor.getValue().toString().contains(IDEMPOTENCY_KEY));
         assertNotEquals(IDEMPOTENCY_KEY, idempotencyCaptor.getValue().getIdempotencyKeyHash());
+        verify(shipmentMapper).incrementVersionByIdAndVersion(TENANT_ID, SHIPMENT_ID, 0);
     }
 
     @Test
@@ -166,6 +171,35 @@ class FulfillmentDispatchServiceTest extends BaseMockitoUnitTest {
                         .setResourceId(PACKAGE_ID).setStatus("COMPLETED"));
 
         assertEquals(PACKAGE_ID, service.addPackage(IDEMPOTENCY_KEY, packageCommand()));
+
+        verify(shipmentMapper, never()).selectByIdForUpdate(anyLong(), anyLong());
+        verify(packageMapper, never()).insert(any(ShipmentPackageDO.class));
+        verify(shipmentMapper, never()).incrementVersionByIdAndVersion(anyLong(), anyLong(), anyInt());
+    }
+
+    @Test
+    void staleAddPackageVersionWithFreshKeyInsertsNothing() {
+        when(shipmentMapper.selectByIdForUpdate(TENANT_ID, SHIPMENT_ID)).thenReturn(shipment(ShipmentTypeEnum.PARCEL,
+                ShipmentStatusEnum.DRAFT, 1));
+
+        assertServiceException(() -> service.addPackage("fresh-stale-package-key", packageCommand()),
+                FULFILLMENT_VERSION_CONFLICT);
+
+        verify(packageMapper, never()).insert(any(ShipmentPackageDO.class));
+        verify(shipmentMapper, never()).incrementVersionByIdAndVersion(anyLong(), anyLong(), anyInt());
+    }
+
+    @Test
+    void addPackageExpectedVersionParticipatesInIdempotencyHash() {
+        doThrow(new DuplicateKeyException("duplicate")).when(idempotencyMapper)
+                .insert(any(FulfillmentIdempotencyDO.class));
+        when(idempotencyMapper.selectByOperationAndKeyHash(eq(TENANT_ID), eq("ADD_PACKAGE"), anyString()))
+                .thenReturn(new FulfillmentIdempotencyDO()
+                        .setRequestHash(FulfillmentDispatchHashing.hash(packageCommand()))
+                        .setResourceId(PACKAGE_ID).setStatus("COMPLETED"));
+
+        assertServiceException(() -> service.addPackage(IDEMPOTENCY_KEY,
+                        packageCommand().setExpectedVersion(1)), FULFILLMENT_IDEMPOTENCY_CONFLICT);
 
         verify(shipmentMapper, never()).selectByIdForUpdate(anyLong(), anyLong());
         verify(packageMapper, never()).insert(any(ShipmentPackageDO.class));
@@ -199,8 +233,49 @@ class FulfillmentDispatchServiceTest extends BaseMockitoUnitTest {
         assertEquals("private-pro", captor.getValue().getProNumber());
         assertFalse(captor.getValue().toString().contains("private-pro"));
         assertFalse(captor.getValue().toString().contains("private-origin"));
+        assertFalse(command.toString().contains("private-pro"));
+        assertFalse(command.toString().contains("private-origin"));
+        assertFalse(command.toString().contains("private-destination"));
+        String requestHash = FulfillmentDispatchHashing.hash(command);
+        assertFalse(requestHash.contains("private-pro"));
+        assertFalse(requestHash.contains("private-origin"));
         verify(idempotencyMapper).insert(argThat((FulfillmentIdempotencyDO row) -> "ADD_LEG".equals(row.getOperation())
                 && "LEG".equals(row.getResourceType())));
+        verify(shipmentMapper).incrementVersionByIdAndVersion(TENANT_ID, SHIPMENT_ID, 0);
+    }
+
+    @Test
+    void staleAddLegVersionWithFreshKeyInsertsNothing() {
+        when(shipmentMapper.selectByIdForUpdate(TENANT_ID, SHIPMENT_ID)).thenReturn(shipment(ShipmentTypeEnum.PARCEL,
+                ShipmentStatusEnum.DRAFT, 1));
+
+        assertServiceException(() -> service.addLeg("fresh-stale-leg-key", legCommand()),
+                FULFILLMENT_VERSION_CONFLICT);
+
+        verify(legMapper, never()).insert(any(ShipmentLegDO.class));
+        verify(shipmentMapper, never()).incrementVersionByIdAndVersion(anyLong(), anyLong(), anyInt());
+    }
+
+    @Test
+    void addLegCasFailureRaisesVersionConflictAfterChildInsert() {
+        when(shipmentMapper.selectByIdForUpdate(TENANT_ID, SHIPMENT_ID)).thenReturn(shipment(ShipmentTypeEnum.PARCEL,
+                ShipmentStatusEnum.DRAFT, 0));
+        when(packageMapper.selectByIdAndTenantId(PACKAGE_ID, TENANT_ID)).thenReturn(packageRow(CARRIER_ID, null));
+        when(shipmentMapper.incrementVersionByIdAndVersion(TENANT_ID, SHIPMENT_ID, 0)).thenReturn(0);
+
+        assertServiceException(() -> service.addLeg("leg-cas-failure", legCommand()),
+                FULFILLMENT_VERSION_CONFLICT);
+
+        verify(legMapper).insert(any(ShipmentLegDO.class));
+        verify(idempotencyMapper, never()).completeProcessingById(anyLong(), anyLong(), anyString(), anyLong(), any());
+    }
+
+    @Test
+    void expectedVersionChangesBothPackageAndLegRequestHashes() {
+        assertNotEquals(FulfillmentDispatchHashing.hash(packageCommand()),
+                FulfillmentDispatchHashing.hash(packageCommand().setExpectedVersion(1)));
+        assertNotEquals(FulfillmentDispatchHashing.hash(legCommand()),
+                FulfillmentDispatchHashing.hash(legCommand().setExpectedVersion(1)));
     }
 
     @Test
@@ -946,6 +1021,7 @@ class FulfillmentDispatchServiceTest extends BaseMockitoUnitTest {
 
     private static UpsertPackageCommand packageCommand() {
         return new UpsertPackageCommand().setTenantId(TENANT_ID).setShipmentId(SHIPMENT_ID)
+                .setExpectedVersion(0)
                 .setPackageNo("PKG-1").setPackageType("PARCEL").setCarrierId(CARRIER_ID)
                 .setTrackingNumber(TRACKING_NUMBER).setWeight(new BigDecimal("10.5")).setWeightUnit("LB")
                 .setLength(new BigDecimal("20")).setWidth(new BigDecimal("10")).setHeight(new BigDecimal("5"))
@@ -954,6 +1030,7 @@ class FulfillmentDispatchServiceTest extends BaseMockitoUnitTest {
 
     private static AddShipmentLegCommand legCommand() {
         return new AddShipmentLegCommand().setTenantId(TENANT_ID).setShipmentId(SHIPMENT_ID)
+                .setExpectedVersion(0)
                 .setPackageId(PACKAGE_ID).setSequenceNo(1).setLegType("LAST_MILE").setCarrierId(CARRIER_ID)
                 .setProviderId(PROVIDER_ID).setServiceLevel("GROUND").setTrackingNumber(TRACKING_NUMBER);
     }

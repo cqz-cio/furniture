@@ -6,6 +6,7 @@ import cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder;
 import cn.iocoder.yudao.framework.test.core.ut.BaseDbUnitTest;
 import cn.iocoder.yudao.module.trade.dal.dataobject.fulfillment.FulfillmentOutboxEventDO;
 import cn.iocoder.yudao.module.trade.dal.mysql.fulfillment.FulfillmentOutboxEventMapper;
+import cn.iocoder.yudao.module.trade.dal.mysql.fulfillment.ShipmentMapper;
 import cn.iocoder.yudao.module.trade.enums.fulfillment.ShipmentStatusEnum;
 import cn.iocoder.yudao.module.trade.enums.order.TradeOrderStatusEnum;
 import cn.iocoder.yudao.module.trade.framework.fulfillment.config.FulfillmentProperties;
@@ -13,12 +14,15 @@ import cn.iocoder.yudao.module.trade.framework.fulfillment.core.LogisticsProvide
 import cn.iocoder.yudao.module.trade.framework.fulfillment.core.LogisticsProviderClient;
 import cn.iocoder.yudao.module.trade.framework.fulfillment.core.ProviderCapability;
 import cn.iocoder.yudao.module.trade.service.fulfillment.command.DispatchShipmentCommand;
+import cn.iocoder.yudao.module.trade.service.fulfillment.command.AddShipmentLegCommand;
+import cn.iocoder.yudao.module.trade.service.fulfillment.command.UpsertPackageCommand;
 import cn.iocoder.yudao.module.trade.service.fulfillment.support.FulfillmentNoGenerator;
 import jakarta.annotation.Resource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.test.mock.mockito.SpyBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -32,6 +36,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -49,6 +54,7 @@ class FulfillmentDispatchTransactionTest extends BaseDbUnitTest {
     @MockBean private FulfillmentOutboxEventMapper outboxMapper;
     @MockBean private LogisticsProviderRegistry providerRegistry;
     @MockBean private FulfillmentTrackingRegistrationFailureService registrationFailureService;
+    @SpyBean private ShipmentMapper shipmentMapper;
 
     private JdbcTemplate jdbcTemplate;
 
@@ -97,6 +103,68 @@ class FulfillmentDispatchTransactionTest extends BaseDbUnitTest {
         assertNull(value("SELECT logistics_no FROM trade_order WHERE id = " + ORDER_ID, String.class));
         assertNull(value("SELECT delivery_time FROM trade_order WHERE id = " + ORDER_ID, java.sql.Timestamp.class));
         assertEquals(0, count("trade_fulfillment_idempotency"));
+    }
+
+    @Test
+    void zeroRowShipmentCasRollsBackNewPackageAndIdempotency() {
+        jdbcTemplate.update("UPDATE trade_shipment SET status = 'DRAFT' WHERE id = ?", SHIPMENT_ID);
+        doReturn(0).when(shipmentMapper).incrementVersionByIdAndVersion(TENANT_ID, SHIPMENT_ID, 1);
+
+        assertThrows(Exception.class, () -> service.addPackage("private-package-cas-key",
+                new UpsertPackageCommand().setTenantId(TENANT_ID).setShipmentId(SHIPMENT_ID).setExpectedVersion(1)
+                        .setPackageNo("PKG-CAS").setPackageType("PARCEL").setCarrierId(73L)
+                        .setTrackingNumber("private-package-cas-tracking")));
+
+        assertEquals(0, value("SELECT COUNT(*) FROM trade_shipment_package WHERE package_no = 'PKG-CAS'",
+                Integer.class));
+        assertEquals(1, value("SELECT version FROM trade_shipment WHERE id = " + SHIPMENT_ID, Integer.class));
+        assertEquals(0, count("trade_fulfillment_idempotency"));
+    }
+
+    @Test
+    void addPackageAdvancesShipmentVersionOnceAndExactReplayDoesNotBumpAgain() {
+        jdbcTemplate.update("UPDATE trade_shipment SET status = 'DRAFT' WHERE id = ?", SHIPMENT_ID);
+        UpsertPackageCommand command = new UpsertPackageCommand().setTenantId(TENANT_ID)
+                .setShipmentId(SHIPMENT_ID).setExpectedVersion(1).setPackageNo("PKG-VERSION")
+                .setPackageType("PARCEL").setCarrierId(73L).setTrackingNumber("private-version-tracking");
+
+        Long packageId = service.addPackage("private-package-version-key", command);
+        Long replayedPackageId = service.addPackage("private-package-version-key", command);
+
+        assertEquals(packageId, replayedPackageId);
+        assertEquals(1, value("SELECT COUNT(*) FROM trade_shipment_package WHERE package_no = 'PKG-VERSION'",
+                Integer.class));
+        assertEquals(2, value("SELECT version FROM trade_shipment WHERE id = " + SHIPMENT_ID, Integer.class));
+        assertEquals(1, count("trade_fulfillment_idempotency"));
+    }
+
+    @Test
+    void zeroRowShipmentCasRollsBackNewLegAndIdempotency() {
+        jdbcTemplate.update("UPDATE trade_shipment SET status = 'DRAFT' WHERE id = ?", SHIPMENT_ID);
+        doReturn(0).when(shipmentMapper).incrementVersionByIdAndVersion(TENANT_ID, SHIPMENT_ID, 1);
+
+        assertThrows(Exception.class, () -> service.addLeg("private-leg-cas-key",
+                new AddShipmentLegCommand().setTenantId(TENANT_ID).setShipmentId(SHIPMENT_ID).setExpectedVersion(1)
+                        .setPackageId(71001L).setSequenceNo(2).setLegType("LAST_MILE")
+                        .setCarrierId(73L).setProviderId(83L).setTrackingNumber("private-leg-cas-tracking")));
+
+        assertEquals(0, value("SELECT COUNT(*) FROM trade_shipment_leg WHERE sequence_no = 2", Integer.class));
+        assertEquals(1, value("SELECT version FROM trade_shipment WHERE id = " + SHIPMENT_ID, Integer.class));
+        assertEquals(0, count("trade_fulfillment_idempotency"));
+    }
+
+    @Test
+    void addLegAdvancesShipmentVersionExactlyOnce() {
+        jdbcTemplate.update("UPDATE trade_shipment SET status = 'DRAFT' WHERE id = ?", SHIPMENT_ID);
+
+        Long legId = service.addLeg("private-leg-version-key",
+                new AddShipmentLegCommand().setTenantId(TENANT_ID).setShipmentId(SHIPMENT_ID).setExpectedVersion(1)
+                        .setPackageId(71001L).setSequenceNo(2).setLegType("LAST_MILE")
+                        .setCarrierId(73L).setProviderId(83L).setTrackingNumber("private-leg-version-tracking"));
+
+        assertEquals(1, value("SELECT COUNT(*) FROM trade_shipment_leg WHERE id = " + legId, Integer.class));
+        assertEquals(2, value("SELECT version FROM trade_shipment WHERE id = " + SHIPMENT_ID, Integer.class));
+        assertEquals(1, count("trade_fulfillment_idempotency"));
     }
 
     private void insertReadyAggregate() {

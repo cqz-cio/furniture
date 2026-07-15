@@ -12,6 +12,7 @@ public class UpsertPackageCommand {
 
     private Long tenantId;
     private Long shipmentId;
+    private Integer expectedVersion;
     private String packageNo;
     private String packageType;
     private Long carrierId;

@@ -10,6 +10,7 @@ public class AddShipmentLegCommand {
 
     private Long tenantId;
     private Long shipmentId;
+    private Integer expectedVersion;
     private Long packageId;
     private Integer sequenceNo;
     private String legType;
