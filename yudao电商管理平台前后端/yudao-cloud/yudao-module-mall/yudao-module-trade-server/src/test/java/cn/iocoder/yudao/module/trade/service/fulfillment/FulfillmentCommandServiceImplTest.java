@@ -12,15 +12,20 @@ import cn.iocoder.yudao.module.trade.dal.dataobject.order.TradeOrderDO;
 import cn.iocoder.yudao.module.trade.dal.dataobject.order.TradeOrderItemDO;
 import cn.iocoder.yudao.module.trade.dal.mysql.fulfillment.FulfillmentIdempotencyMapper;
 import cn.iocoder.yudao.module.trade.dal.mysql.fulfillment.FulfillmentOutboxEventMapper;
+import cn.iocoder.yudao.module.trade.dal.mysql.fulfillment.CarrierMapper;
+import cn.iocoder.yudao.module.trade.dal.mysql.fulfillment.LogisticsProviderMapper;
 import cn.iocoder.yudao.module.trade.dal.mysql.fulfillment.OrderFulfillmentSummaryMapper;
 import cn.iocoder.yudao.module.trade.dal.mysql.fulfillment.ShipmentItemMapper;
+import cn.iocoder.yudao.module.trade.dal.mysql.fulfillment.ShipmentLegMapper;
 import cn.iocoder.yudao.module.trade.dal.mysql.fulfillment.ShipmentMapper;
+import cn.iocoder.yudao.module.trade.dal.mysql.fulfillment.ShipmentPackageMapper;
 import cn.iocoder.yudao.module.trade.dal.mysql.order.TradeOrderItemMapper;
 import cn.iocoder.yudao.module.trade.dal.mysql.order.TradeOrderMapper;
 import cn.iocoder.yudao.module.trade.enums.fulfillment.OrderFulfillmentStatusEnum;
 import cn.iocoder.yudao.module.trade.enums.fulfillment.ShipmentStatusEnum;
 import cn.iocoder.yudao.module.trade.enums.fulfillment.ShipmentTypeEnum;
 import cn.iocoder.yudao.module.trade.framework.fulfillment.config.FulfillmentProperties;
+import cn.iocoder.yudao.module.trade.framework.fulfillment.core.LogisticsProviderRegistry;
 import cn.iocoder.yudao.module.trade.service.fulfillment.command.CreateShipmentCommand;
 import cn.iocoder.yudao.module.trade.service.fulfillment.command.CreateShipmentItemCommand;
 import cn.iocoder.yudao.module.trade.service.fulfillment.support.FulfillmentHashing;
@@ -90,6 +95,14 @@ class FulfillmentCommandServiceImplTest extends BaseMockitoUnitTest {
     @Mock
     private ShipmentItemMapper shipmentItemMapper;
     @Mock
+    private ShipmentPackageMapper packageMapper;
+    @Mock
+    private ShipmentLegMapper legMapper;
+    @Mock
+    private CarrierMapper carrierMapper;
+    @Mock
+    private LogisticsProviderMapper providerMapper;
+    @Mock
     private OrderFulfillmentSummaryMapper summaryMapper;
     @Mock
     private FulfillmentIdempotencyMapper idempotencyMapper;
@@ -99,6 +112,10 @@ class FulfillmentCommandServiceImplTest extends BaseMockitoUnitTest {
     private FulfillmentProperties properties;
     @Mock
     private FulfillmentNoGenerator noGenerator;
+    @Mock
+    private LogisticsProviderRegistry providerRegistry;
+    @Mock
+    private FulfillmentTrackingRegistrationFailureService registrationFailureService;
 
     @BeforeEach
     void setUp() {

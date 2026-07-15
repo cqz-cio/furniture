@@ -6,6 +6,7 @@ import cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder;
 import cn.iocoder.yudao.framework.test.core.ut.BaseDbUnitTest;
 import cn.iocoder.yudao.module.trade.enums.fulfillment.ShipmentTypeEnum;
 import cn.iocoder.yudao.module.trade.framework.fulfillment.config.FulfillmentProperties;
+import cn.iocoder.yudao.module.trade.framework.fulfillment.core.LogisticsProviderRegistry;
 import cn.iocoder.yudao.module.trade.service.fulfillment.command.CreateShipmentCommand;
 import cn.iocoder.yudao.module.trade.service.fulfillment.command.CreateShipmentItemCommand;
 import cn.iocoder.yudao.module.trade.service.fulfillment.support.FulfillmentNoGenerator;
@@ -14,6 +15,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.Import;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -45,6 +47,10 @@ class FulfillmentCommandAtomicityTest extends BaseDbUnitTest {
     private DataSource dataSource;
     @Resource
     private PlatformTransactionManager transactionManager;
+    @MockBean
+    private LogisticsProviderRegistry providerRegistry;
+    @MockBean
+    private FulfillmentTrackingRegistrationFailureService registrationFailureService;
 
     private JdbcTemplate jdbcTemplate;
 

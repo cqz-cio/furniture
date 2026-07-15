@@ -5,12 +5,18 @@ import cn.iocoder.yudao.framework.mybatis.core.query.LambdaQueryWrapperX;
 import cn.iocoder.yudao.module.trade.dal.dataobject.fulfillment.ShipmentDO;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
 @Mapper
 public interface ShipmentMapper extends BaseMapperX<ShipmentDO> {
+
+    @Select("SELECT * FROM trade_shipment WHERE tenant_id = #{tenantId} AND id = #{id} "
+            + "AND deleted = FALSE FOR UPDATE")
+    ShipmentDO selectByIdForUpdate(@Param("tenantId") Long tenantId, @Param("id") Long id);
 
     default List<ShipmentDO> selectListByOrderId(Long tenantId, Long orderId) {
         return selectList(new LambdaQueryWrapperX<ShipmentDO>()

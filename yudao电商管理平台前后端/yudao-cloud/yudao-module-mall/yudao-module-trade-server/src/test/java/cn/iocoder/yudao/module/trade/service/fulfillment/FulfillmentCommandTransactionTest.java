@@ -14,6 +14,7 @@ import cn.iocoder.yudao.module.trade.dal.mysql.fulfillment.FulfillmentOutboxEven
 import cn.iocoder.yudao.module.trade.dal.mysql.order.TradeOrderMapper;
 import cn.iocoder.yudao.module.trade.enums.fulfillment.ShipmentTypeEnum;
 import cn.iocoder.yudao.module.trade.framework.fulfillment.config.FulfillmentProperties;
+import cn.iocoder.yudao.module.trade.framework.fulfillment.core.LogisticsProviderRegistry;
 import cn.iocoder.yudao.module.trade.service.fulfillment.command.CreateShipmentCommand;
 import cn.iocoder.yudao.module.trade.service.fulfillment.command.CreateShipmentItemCommand;
 import cn.iocoder.yudao.module.trade.service.fulfillment.support.FulfillmentNoGenerator;
@@ -68,6 +69,10 @@ class FulfillmentCommandTransactionTest extends BaseDbUnitTest {
 
     @MockBean
     private FulfillmentOutboxEventMapper outboxMapper;
+    @MockBean
+    private LogisticsProviderRegistry providerRegistry;
+    @MockBean
+    private FulfillmentTrackingRegistrationFailureService registrationFailureService;
 
     @BeforeEach
     void setUp() {
