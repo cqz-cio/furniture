@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
+import java.util.Locale;
 
 public final class FulfillmentDispatchHashing {
 
@@ -22,15 +23,15 @@ public final class FulfillmentDispatchHashing {
         append(value, command.getTenantId());
         append(value, command.getShipmentId());
         append(value, text(command.getPackageNo()));
-        append(value, text(command.getPackageType()));
+        append(value, vocabulary(command.getPackageType()));
         append(value, command.getCarrierId());
         append(value, text(command.getTrackingNumber()));
         append(value, decimal(command.getWeight()));
-        append(value, text(command.getWeightUnit()));
+        append(value, vocabulary(command.getWeightUnit()));
         append(value, decimal(command.getLength()));
         append(value, decimal(command.getWidth()));
         append(value, decimal(command.getHeight()));
-        append(value, text(command.getDimensionUnit()));
+        append(value, vocabulary(command.getDimensionUnit()));
         return sha256(value);
     }
 
@@ -40,7 +41,7 @@ public final class FulfillmentDispatchHashing {
         append(value, command.getShipmentId());
         append(value, command.getPackageId());
         append(value, command.getSequenceNo());
-        append(value, text(command.getLegType()));
+        append(value, vocabulary(command.getLegType()));
         append(value, command.getCarrierId());
         append(value, command.getProviderId());
         append(value, text(command.getServiceLevel()));
@@ -80,6 +81,11 @@ public final class FulfillmentDispatchHashing {
 
     private static String text(String value) {
         return value == null ? null : value.trim();
+    }
+
+    private static String vocabulary(String value) {
+        String normalized = text(value);
+        return normalized == null ? null : normalized.toUpperCase(Locale.ROOT);
     }
 
     private static String decimal(BigDecimal value) {

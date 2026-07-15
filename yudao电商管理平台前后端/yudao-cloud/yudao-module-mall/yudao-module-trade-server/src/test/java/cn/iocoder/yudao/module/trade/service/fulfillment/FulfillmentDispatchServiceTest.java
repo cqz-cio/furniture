@@ -16,6 +16,7 @@ import cn.iocoder.yudao.module.trade.framework.fulfillment.core.LogisticsProvide
 import cn.iocoder.yudao.module.trade.framework.fulfillment.core.LogisticsProviderRegistry;
 import cn.iocoder.yudao.module.trade.framework.fulfillment.core.ProviderCapability;
 import cn.iocoder.yudao.module.trade.framework.fulfillment.core.dto.TrackingRegistrationCommand;
+import cn.iocoder.yudao.module.trade.framework.fulfillment.core.dto.TrackingRegistrationResult;
 import cn.iocoder.yudao.module.trade.service.fulfillment.command.AddShipmentLegCommand;
 import cn.iocoder.yudao.module.trade.service.fulfillment.command.DispatchShipmentCommand;
 import cn.iocoder.yudao.module.trade.service.fulfillment.command.UpsertPackageCommand;
@@ -50,11 +51,16 @@ class FulfillmentDispatchServiceTest extends BaseMockitoUnitTest {
     private static final Long ORDER_ID = 100L;
     private static final Long SHIPMENT_ID = 70001L;
     private static final Long PACKAGE_ID = 71001L;
+    private static final Long SECOND_PACKAGE_ID = 71002L;
     private static final Long LEG_ID = 72001L;
+    private static final Long SECOND_LEG_ID = 72002L;
     private static final Long CARRIER_ID = 73L;
+    private static final Long SECOND_CARRIER_ID = 74L;
     private static final Long PROVIDER_ID = 83L;
+    private static final Long SECOND_PROVIDER_ID = 84L;
     private static final Long LEGACY_EXPRESS_ID = 93L;
     private static final String TRACKING_NUMBER = "private-tracking-123";
+    private static final String SECOND_TRACKING_NUMBER = "private-tracking-456";
     private static final String IDEMPOTENCY_KEY = "private-idempotency-key";
 
     @InjectMocks
@@ -76,6 +82,7 @@ class FulfillmentDispatchServiceTest extends BaseMockitoUnitTest {
     @Mock private LogisticsProviderRegistry providerRegistry;
     @Mock private FulfillmentTrackingRegistrationFailureService registrationFailureService;
     @Mock private LogisticsProviderClient providerClient;
+    @Mock private LogisticsProviderClient secondProviderClient;
 
     @BeforeEach
     void setUp() {
@@ -400,7 +407,8 @@ class FulfillmentDispatchServiceTest extends BaseMockitoUnitTest {
     void nonTrackingDuplicateKeyIsNotMisreportedAsTrackingConflict() {
         when(shipmentMapper.selectByIdForUpdate(TENANT_ID, SHIPMENT_ID)).thenReturn(shipment(ShipmentTypeEnum.PARCEL,
                 ShipmentStatusEnum.DRAFT, 0));
-        DuplicateKeyException packageNoConflict = new DuplicateKeyException("package number conflict");
+        DuplicateKeyException packageNoConflict = new DuplicateKeyException(
+                "Duplicate entry for key 'uk_shipment_package_no'");
         doThrow(packageNoConflict).when(packageMapper).insert(any(ShipmentPackageDO.class));
         when(packageMapper.selectByCarrierIdAndTrackingNumber(TENANT_ID, CARRIER_ID, TRACKING_NUMBER))
                 .thenReturn(null);
@@ -408,6 +416,189 @@ class FulfillmentDispatchServiceTest extends BaseMockitoUnitTest {
         assertSame(packageNoConflict,
                 assertThrows(DuplicateKeyException.class,
                         () -> service.addPackage(IDEMPOTENCY_KEY, packageCommand())));
+    }
+
+    @Test
+    void concurrentTrackingConstraintIsTranslatedWithoutLeakingTrackingNumber() {
+        when(shipmentMapper.selectByIdForUpdate(TENANT_ID, SHIPMENT_ID)).thenReturn(shipment(ShipmentTypeEnum.PARCEL,
+                ShipmentStatusEnum.DRAFT, 0));
+        when(packageMapper.selectByCarrierIdAndTrackingNumber(TENANT_ID, CARRIER_ID, TRACKING_NUMBER))
+                .thenReturn(null);
+        doThrow(new DuplicateKeyException("Duplicate entry '" + TRACKING_NUMBER
+                + "' for key 'uk_package_tracking'"))
+                .when(packageMapper).insert(any(ShipmentPackageDO.class));
+
+        RuntimeException failure = assertThrows(RuntimeException.class,
+                () -> service.addPackage(IDEMPOTENCY_KEY, packageCommand()));
+
+        assertEquals(FULFILLMENT_DUPLICATE_TRACKING_NUMBER.getCode(),
+                ((cn.iocoder.yudao.framework.common.exception.ServiceException) failure).getCode());
+        assertFalse(failure.getMessage().contains(TRACKING_NUMBER));
+    }
+
+    @Test
+    void normalizesSupportedPackageLegAndUnitVocabulary() {
+        when(shipmentMapper.selectByIdForUpdate(TENANT_ID, SHIPMENT_ID)).thenReturn(shipment(ShipmentTypeEnum.LTL,
+                ShipmentStatusEnum.DRAFT, 0));
+        when(packageMapper.selectByIdAndTenantId(PACKAGE_ID, TENANT_ID)).thenReturn(packageRow(CARRIER_ID, null));
+
+        service.addPackage("normalized-package", packageCommand().setPackageType(" pallet ")
+                .setWeightUnit(" kg ").setDimensionUnit(" cm "));
+        service.addLeg("normalized-leg", legCommand().setLegType(" last_mile "));
+
+        verify(packageMapper).insert(argThat((ShipmentPackageDO row) -> "PALLET".equals(row.getPackageType())
+                && "KG".equals(row.getWeightUnit()) && "CM".equals(row.getDimensionUnit())));
+        verify(legMapper).insert(argThat((ShipmentLegDO row) -> "LAST_MILE".equals(row.getLegType())));
+    }
+
+    @Test
+    void rejectsUnsupportedPackageLegAndUnitVocabulary() {
+        assertServiceException(() -> service.addPackage("bad-package-type",
+                        packageCommand().setPackageType("BAG")), FULFILLMENT_DISPATCH_INCOMPLETE);
+        assertServiceException(() -> service.addPackage("bad-weight-unit",
+                        packageCommand().setWeightUnit("OZ")), FULFILLMENT_DISPATCH_INCOMPLETE);
+        assertServiceException(() -> service.addPackage("bad-dimension-unit",
+                        packageCommand().setDimensionUnit("FT")), FULFILLMENT_DISPATCH_INCOMPLETE);
+        assertServiceException(() -> service.addPackage("missing-weight-unit",
+                        packageCommand().setWeightUnit(null)), FULFILLMENT_DISPATCH_INCOMPLETE);
+        assertServiceException(() -> service.addPackage("missing-dimension-unit",
+                        packageCommand().setDimensionUnit(null)), FULFILLMENT_DISPATCH_INCOMPLETE);
+        assertServiceException(() -> service.addLeg("bad-leg-type",
+                        legCommand().setLegType("CUSTOMS")), FULFILLMENT_DISPATCH_INCOMPLETE);
+
+        verify(packageMapper, never()).insert(any(ShipmentPackageDO.class));
+        verify(legMapper, never()).insert(any(ShipmentLegDO.class));
+    }
+
+    @Test
+    void allowsNullUnitsWhenWeightAndDimensionsAreAbsent() {
+        when(shipmentMapper.selectByIdForUpdate(TENANT_ID, SHIPMENT_ID)).thenReturn(shipment(ShipmentTypeEnum.PARCEL,
+                ShipmentStatusEnum.DRAFT, 0));
+        UpsertPackageCommand command = packageCommand().setWeight(null).setWeightUnit(null)
+                .setLength(null).setWidth(null).setHeight(null).setDimensionUnit(null);
+
+        service.addPackage("unitless-package", command);
+
+        verify(packageMapper).insert(argThat((ShipmentPackageDO row) -> row.getWeightUnit() == null
+                && row.getDimensionUnit() == null));
+    }
+
+    @Test
+    void multiPackageDispatchUsesEachBoundLegWithoutProviderCrossBinding() {
+        ShipmentPackageDO firstPackage = packageRow(CARRIER_ID, TRACKING_NUMBER);
+        ShipmentPackageDO secondPackage = packageRow(SECOND_CARRIER_ID, SECOND_TRACKING_NUMBER)
+                .setId(SECOND_PACKAGE_ID).setPackageNo("PKG-2");
+        ShipmentLegDO firstLeg = legRow(CARRIER_ID, PROVIDER_ID, TRACKING_NUMBER, null);
+        ShipmentLegDO secondLeg = legRow(SECOND_CARRIER_ID, SECOND_PROVIDER_ID, SECOND_TRACKING_NUMBER, null)
+                .setId(SECOND_LEG_ID).setPackageId(SECOND_PACKAGE_ID).setSequenceNo(2);
+        when(shipmentMapper.selectByIdForUpdate(TENANT_ID, SHIPMENT_ID))
+                .thenReturn(shipment(ShipmentTypeEnum.PARCEL, ShipmentStatusEnum.READY_TO_SHIP, 1));
+        when(shipmentItemMapper.selectListByShipmentId(TENANT_ID, SHIPMENT_ID))
+                .thenReturn(List.of(new ShipmentItemDO().setId(1L).setTenantId(TENANT_ID).setShipmentId(SHIPMENT_ID)));
+        when(packageMapper.selectListByShipmentId(TENANT_ID, SHIPMENT_ID))
+                .thenReturn(List.of(firstPackage, secondPackage));
+        when(legMapper.selectListByShipmentId(TENANT_ID, SHIPMENT_ID)).thenReturn(List.of(firstLeg, secondLeg));
+        when(carrierMapper.selectByIdAndTenantId(SECOND_CARRIER_ID, TENANT_ID)).thenReturn(new CarrierDO()
+                .setId(SECOND_CARRIER_ID).setTenantId(TENANT_ID).setCode("FEDEX").setStatus(0));
+        when(providerMapper.selectByIdAndTenantId(SECOND_PROVIDER_ID, TENANT_ID)).thenReturn(new LogisticsProviderDO()
+                .setId(SECOND_PROVIDER_ID).setTenantId(TENANT_ID).setCode("second-mock").setStatus(0));
+        when(providerRegistry.getClient("second-mock")).thenReturn(secondProviderClient);
+        when(providerClient.getCapabilities()).thenReturn(Set.of(ProviderCapability.TRACKING_REGISTRATION));
+        when(secondProviderClient.getCapabilities()).thenReturn(Set.of(ProviderCapability.TRACKING_REGISTRATION));
+        when(providerClient.registerTracking(any())).thenReturn(new TrackingRegistrationResult().setRegistered(true));
+        when(secondProviderClient.registerTracking(any()))
+                .thenReturn(new TrackingRegistrationResult().setRegistered(true));
+        when(summaryMapper.selectByOrderId(TENANT_ID, ORDER_ID)).thenReturn(new OrderFulfillmentSummaryDO()
+                .setId(9001L).setTenantId(TENANT_ID).setOrderId(ORDER_ID).setStatus("NOT_SHIPPED")
+                .setShipmentCount(1).setDeliveredShipmentCount(0).setVersion(2));
+        when(shipmentMapper.selectListByOrderId(TENANT_ID, ORDER_ID)).thenReturn(List.of(
+                shipment(ShipmentTypeEnum.PARCEL, ShipmentStatusEnum.READY_TO_SHIP, 1)));
+        when(tradeOrderMapper.selectByIdForUpdate(ORDER_ID)).thenReturn(new TradeOrderDO().setId(ORDER_ID)
+                .setStatus(TradeOrderStatusEnum.UNDELIVERED.getStatus()));
+        TransactionSynchronizationManager.initSynchronization();
+
+        service.dispatch(IDEMPOTENCY_KEY, dispatchCommand());
+
+        verify(packageMapper).updateStatusByIdAndVersion(TENANT_ID, PACKAGE_ID, 0,
+                ShipmentStatusEnum.HANDED_TO_CARRIER.name());
+        verify(packageMapper).updateStatusByIdAndVersion(TENANT_ID, SECOND_PACKAGE_ID, 0,
+                ShipmentStatusEnum.HANDED_TO_CARRIER.name());
+        verify(legMapper).updateStatusByIdAndVersion(eq(TENANT_ID), eq(LEG_ID), eq(0),
+                eq(ShipmentStatusEnum.HANDED_TO_CARRIER.name()), any(LocalDateTime.class));
+        verify(legMapper).updateStatusByIdAndVersion(eq(TENANT_ID), eq(SECOND_LEG_ID), eq(0),
+                eq(ShipmentStatusEnum.HANDED_TO_CARRIER.name()), any(LocalDateTime.class));
+        ArgumentCaptor<FulfillmentOutboxEventDO> outbox = ArgumentCaptor.forClass(FulfillmentOutboxEventDO.class);
+        verify(outboxMapper, times(2)).insert(outbox.capture());
+        assertEquals(Set.of(PACKAGE_ID, SECOND_PACKAGE_ID), outbox.getAllValues().stream()
+                .map(event -> (Long) event.getPayload().get("packageId")).collect(java.util.stream.Collectors.toSet()));
+        assertTrue(outbox.getAllValues().stream().allMatch(event -> "PACKAGE_DISPATCHED".equals(event.getEventType())
+                && !event.getPayload().toString().contains("private-tracking")));
+        assertEquals(2, TransactionSynchronizationManager.getSynchronizations().size());
+        TransactionSynchronizationManager.getSynchronizations().forEach(TransactionSynchronization::afterCommit);
+        verify(providerClient).registerTracking(argThat(command -> "UPS".equals(command.getCarrierCode())
+                && TRACKING_NUMBER.equals(command.getTrackingNumber())));
+        verify(secondProviderClient).registerTracking(argThat(command -> "FEDEX".equals(command.getCarrierCode())
+                && SECOND_TRACKING_NUMBER.equals(command.getTrackingNumber())));
+        verify(registrationFailureService, never()).recordRetry(anyLong(), anyLong(), anyLong(), anyLong());
+        verify(summaryMapper).updateCountsAndStatusByIdAndVersion(TENANT_ID, 9001L, 2,
+                OrderFulfillmentStatusEnum.SHIPPED.name(), 1, 0);
+        verify(tradeOrderMapper).updateFulfillmentProjectionByIdAndStatus(eq(ORDER_ID),
+                eq(TradeOrderStatusEnum.UNDELIVERED.getStatus()), eq(LEGACY_EXPRESS_ID), eq(TRACKING_NUMBER), eq(true),
+                any(LocalDateTime.class));
+    }
+
+    @Test
+    void shipmentLevelLegsUseStableFirstLegForAllCarrierMatchedPackages() {
+        ShipmentPackageDO firstPackage = packageRow(CARRIER_ID, TRACKING_NUMBER);
+        ShipmentPackageDO secondPackage = packageRow(CARRIER_ID, SECOND_TRACKING_NUMBER)
+                .setId(SECOND_PACKAGE_ID).setPackageNo("PKG-2");
+        ShipmentLegDO laterLeg = legRow(CARRIER_ID, SECOND_PROVIDER_ID, null, null)
+                .setId(SECOND_LEG_ID).setPackageId(null).setSequenceNo(2);
+        ShipmentLegDO firstLeg = legRow(CARRIER_ID, PROVIDER_ID, null, null).setPackageId(null).setSequenceNo(1);
+        stubDispatchRows(List.of(firstPackage, secondPackage), List.of(laterLeg, firstLeg));
+        when(providerMapper.selectByIdAndTenantId(SECOND_PROVIDER_ID, TENANT_ID)).thenReturn(new LogisticsProviderDO()
+                .setId(SECOND_PROVIDER_ID).setTenantId(TENANT_ID).setCode("second-mock").setStatus(0));
+        when(providerRegistry.getClient("second-mock")).thenReturn(secondProviderClient);
+        when(providerClient.getCapabilities()).thenReturn(Set.of(ProviderCapability.TRACKING_REGISTRATION));
+        when(providerClient.registerTracking(any())).thenReturn(new TrackingRegistrationResult().setRegistered(true));
+        TransactionSynchronizationManager.initSynchronization();
+
+        service.dispatch(IDEMPOTENCY_KEY, dispatchCommand());
+
+        verify(legMapper).updateStatusByIdAndVersion(eq(TENANT_ID), eq(LEG_ID), eq(0),
+                eq(ShipmentStatusEnum.HANDED_TO_CARRIER.name()), any(LocalDateTime.class));
+        verify(legMapper, never()).updateStatusByIdAndVersion(eq(TENANT_ID), eq(SECOND_LEG_ID), anyInt(), anyString(),
+                any(LocalDateTime.class));
+        assertEquals(2, TransactionSynchronizationManager.getSynchronizations().size());
+        TransactionSynchronizationManager.getSynchronizations().forEach(TransactionSynchronization::afterCommit);
+        verify(providerClient, times(2)).registerTracking(any(TrackingRegistrationCommand.class));
+        verify(secondProviderClient, never()).registerTracking(any());
+        verify(outboxMapper, times(2)).insert(argThat((FulfillmentOutboxEventDO event) ->
+                "PACKAGE_DISPATCHED".equals(event.getEventType())));
+    }
+
+    @Test
+    void packageBoundModeRejectsUnboundPackageInsteadOfUsingShipmentLevelFallback() {
+        ShipmentPackageDO firstPackage = packageRow(CARRIER_ID, TRACKING_NUMBER);
+        ShipmentPackageDO secondPackage = packageRow(CARRIER_ID, SECOND_TRACKING_NUMBER)
+                .setId(SECOND_PACKAGE_ID).setPackageNo("PKG-2");
+        ShipmentLegDO boundLeg = legRow(CARRIER_ID, PROVIDER_ID, null, null);
+        ShipmentLegDO shipmentLevelLeg = legRow(CARRIER_ID, PROVIDER_ID, null, null)
+                .setId(SECOND_LEG_ID).setPackageId(null).setSequenceNo(2);
+        when(shipmentMapper.selectByIdForUpdate(TENANT_ID, SHIPMENT_ID))
+                .thenReturn(shipment(ShipmentTypeEnum.PARCEL, ShipmentStatusEnum.READY_TO_SHIP, 1));
+        when(shipmentItemMapper.selectListByShipmentId(TENANT_ID, SHIPMENT_ID))
+                .thenReturn(List.of(new ShipmentItemDO().setId(1L).setTenantId(TENANT_ID).setShipmentId(SHIPMENT_ID)));
+        when(packageMapper.selectListByShipmentId(TENANT_ID, SHIPMENT_ID))
+                .thenReturn(List.of(firstPackage, secondPackage));
+        when(legMapper.selectListByShipmentId(TENANT_ID, SHIPMENT_ID))
+                .thenReturn(List.of(boundLeg, shipmentLevelLeg));
+
+        assertServiceException(() -> service.dispatch(IDEMPOTENCY_KEY, dispatchCommand()),
+                FULFILLMENT_DISPATCH_INCOMPLETE);
+
+        verify(packageMapper, never()).updateStatusByIdAndVersion(anyLong(), anyLong(), anyInt(), anyString());
+        verify(outboxMapper, never()).insert(any(FulfillmentOutboxEventDO.class));
     }
 
     @Test
@@ -444,6 +635,8 @@ class FulfillmentDispatchServiceTest extends BaseMockitoUnitTest {
         when(tradeOrderMapper.selectByIdForUpdate(ORDER_ID)).thenReturn(new TradeOrderDO().setId(ORDER_ID)
                 .setStatus(TradeOrderStatusEnum.UNDELIVERED.getStatus()));
         when(providerClient.getCapabilities()).thenReturn(Set.of(ProviderCapability.TRACKING_REGISTRATION));
+        when(providerClient.registerTracking(any(TrackingRegistrationCommand.class)))
+                .thenReturn(new TrackingRegistrationResult().setRegistered(true));
         TransactionSynchronizationManager.initSynchronization();
 
         service.dispatch(IDEMPOTENCY_KEY, dispatchCommand());
@@ -452,6 +645,16 @@ class FulfillmentDispatchServiceTest extends BaseMockitoUnitTest {
         TransactionSynchronizationManager.getSynchronizations().get(0).afterCommit();
         verify(providerClient).registerTracking(any(TrackingRegistrationCommand.class));
         verify(registrationFailureService, never()).recordRetry(anyLong(), anyLong(), anyLong(), anyLong());
+    }
+
+    @Test
+    void nullRegistrationResultCreatesRetryAfterCommit() {
+        assertRegistrationResultCreatesRetry(null);
+    }
+
+    @Test
+    void unregisteredResultCreatesRetryAfterCommit() {
+        assertRegistrationResultCreatesRetry(new TrackingRegistrationResult().setRegistered(false));
     }
 
     @Test
@@ -527,6 +730,38 @@ class FulfillmentDispatchServiceTest extends BaseMockitoUnitTest {
         when(summaryMapper.selectByOrderId(TENANT_ID, ORDER_ID)).thenReturn(new OrderFulfillmentSummaryDO()
                 .setId(9001L).setTenantId(TENANT_ID).setOrderId(ORDER_ID).setStatus("NOT_SHIPPED")
                 .setShipmentCount(1).setDeliveredShipmentCount(0).setVersion(2));
+    }
+
+    private void stubDispatchRows(List<ShipmentPackageDO> packages, List<ShipmentLegDO> legs) {
+        when(shipmentMapper.selectByIdForUpdate(TENANT_ID, SHIPMENT_ID))
+                .thenReturn(shipment(ShipmentTypeEnum.PARCEL, ShipmentStatusEnum.READY_TO_SHIP, 1));
+        when(shipmentItemMapper.selectListByShipmentId(TENANT_ID, SHIPMENT_ID))
+                .thenReturn(List.of(new ShipmentItemDO().setId(1L).setTenantId(TENANT_ID).setShipmentId(SHIPMENT_ID)));
+        when(packageMapper.selectListByShipmentId(TENANT_ID, SHIPMENT_ID)).thenReturn(packages);
+        when(legMapper.selectListByShipmentId(TENANT_ID, SHIPMENT_ID)).thenReturn(legs);
+        when(summaryMapper.selectByOrderId(TENANT_ID, ORDER_ID)).thenReturn(new OrderFulfillmentSummaryDO()
+                .setId(9001L).setTenantId(TENANT_ID).setOrderId(ORDER_ID).setStatus("NOT_SHIPPED")
+                .setShipmentCount(1).setDeliveredShipmentCount(0).setVersion(2));
+        when(shipmentMapper.selectListByOrderId(TENANT_ID, ORDER_ID)).thenReturn(List.of(
+                shipment(ShipmentTypeEnum.PARCEL, ShipmentStatusEnum.READY_TO_SHIP, 1)));
+        when(tradeOrderMapper.selectByIdForUpdate(ORDER_ID)).thenReturn(new TradeOrderDO().setId(ORDER_ID)
+                .setStatus(TradeOrderStatusEnum.UNDELIVERED.getStatus()));
+    }
+
+    private void assertRegistrationResultCreatesRetry(TrackingRegistrationResult result) {
+        stubDispatchAggregate(ShipmentTypeEnum.PARCEL, null);
+        when(shipmentMapper.selectListByOrderId(TENANT_ID, ORDER_ID)).thenReturn(List.of(
+                shipment(ShipmentTypeEnum.PARCEL, ShipmentStatusEnum.READY_TO_SHIP, 1)));
+        when(tradeOrderMapper.selectByIdForUpdate(ORDER_ID)).thenReturn(new TradeOrderDO().setId(ORDER_ID)
+                .setStatus(TradeOrderStatusEnum.UNDELIVERED.getStatus()));
+        when(providerClient.getCapabilities()).thenReturn(Set.of(ProviderCapability.TRACKING_REGISTRATION));
+        when(providerClient.registerTracking(any(TrackingRegistrationCommand.class))).thenReturn(result);
+        TransactionSynchronizationManager.initSynchronization();
+
+        service.dispatch(IDEMPOTENCY_KEY, dispatchCommand());
+        TransactionSynchronizationManager.getSynchronizations().get(0).afterCommit();
+
+        verify(registrationFailureService).recordRetry(TENANT_ID, SHIPMENT_ID, PACKAGE_ID, PROVIDER_ID);
     }
 
     private static ShipmentDO shipment(ShipmentTypeEnum type, ShipmentStatusEnum status, int version) {

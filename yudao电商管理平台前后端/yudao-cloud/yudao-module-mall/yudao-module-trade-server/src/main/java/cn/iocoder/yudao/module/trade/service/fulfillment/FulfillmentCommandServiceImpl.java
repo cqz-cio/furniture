@@ -32,6 +32,7 @@ import cn.iocoder.yudao.module.trade.framework.fulfillment.core.LogisticsProvide
 import cn.iocoder.yudao.module.trade.framework.fulfillment.core.LogisticsProviderRegistry;
 import cn.iocoder.yudao.module.trade.framework.fulfillment.core.ProviderCapability;
 import cn.iocoder.yudao.module.trade.framework.fulfillment.core.dto.TrackingRegistrationCommand;
+import cn.iocoder.yudao.module.trade.framework.fulfillment.core.dto.TrackingRegistrationResult;
 import cn.iocoder.yudao.module.trade.service.fulfillment.command.AddShipmentLegCommand;
 import cn.iocoder.yudao.module.trade.service.fulfillment.command.CreateShipmentCommand;
 import cn.iocoder.yudao.module.trade.service.fulfillment.command.CreateShipmentItemCommand;
@@ -57,6 +58,7 @@ import java.time.ZoneOffset;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -91,6 +93,11 @@ public class FulfillmentCommandServiceImpl implements FulfillmentCommandService 
     private static final String IDEMPOTENCY_PROCESSING = "PROCESSING";
     private static final String IDEMPOTENCY_COMPLETED = "COMPLETED";
     private static final String RESOURCE_SHIPMENT = "SHIPMENT";
+    private static final String TRACKING_UNIQUE_CONSTRAINT = "uk_package_tracking";
+    private static final Set<String> PACKAGE_TYPES = Set.of("PARCEL", "CARTON", "PALLET", "FURNITURE_ITEM");
+    private static final Set<String> LEG_TYPES = Set.of("FIRST_MILE", "LINEHAUL", "LAST_MILE");
+    private static final Set<String> WEIGHT_UNITS = Set.of("LB", "KG");
+    private static final Set<String> DIMENSION_UNITS = Set.of("IN", "CM");
     private static final Set<String> SUPPORTED_COUNTRIES = Set.of("US", "CA");
     private static final Set<String> IANA_TIMEZONE_IDS = Set.copyOf(ZoneId.getAvailableZoneIds());
     private static final Set<ShipmentStatusEnum> DISPATCHED_STATUSES = Set.of(
@@ -194,24 +201,21 @@ public class FulfillmentCommandServiceImpl implements FulfillmentCommandService 
                 .setTenantId(command.getTenantId())
                 .setShipmentId(command.getShipmentId())
                 .setPackageNo(command.getPackageNo().trim())
-                .setPackageType(command.getPackageType().trim())
+                .setPackageType(normalizeRequiredVocabulary(command.getPackageType(), PACKAGE_TYPES))
                 .setCarrierId(command.getCarrierId())
                 .setTrackingNumber(trackingNumber)
                 .setWeight(command.getWeight())
-                .setWeightUnit(normalizeOptional(command.getWeightUnit()))
+                .setWeightUnit(normalizeOptionalVocabulary(command.getWeightUnit(), WEIGHT_UNITS))
                 .setLength(command.getLength())
                 .setWidth(command.getWidth())
                 .setHeight(command.getHeight())
-                .setDimensionUnit(normalizeOptional(command.getDimensionUnit()))
+                .setDimensionUnit(normalizeOptionalVocabulary(command.getDimensionUnit(), DIMENSION_UNITS))
                 .setStatus(ShipmentStatusEnum.DRAFT.name())
                 .setVersion(0);
         try {
             packageMapper.insert(shipmentPackage);
         } catch (DuplicateKeyException duplicate) {
-            ShipmentPackageDO conflictingTracking = command.getCarrierId() == null || trackingNumber == null ? null
-                    : packageMapper.selectByCarrierIdAndTrackingNumber(command.getTenantId(), command.getCarrierId(),
-                    trackingNumber);
-            if (conflictingTracking != null) {
+            if (isTrackingConstraintViolation(duplicate)) {
                 throw exception(FULFILLMENT_DUPLICATE_TRACKING_NUMBER);
             }
             throw duplicate;
@@ -236,7 +240,7 @@ public class FulfillmentCommandServiceImpl implements FulfillmentCommandService 
                 .setShipmentId(command.getShipmentId())
                 .setPackageId(command.getPackageId())
                 .setSequenceNo(command.getSequenceNo())
-                .setLegType(command.getLegType().trim())
+                .setLegType(normalizeRequiredVocabulary(command.getLegType(), LEG_TYPES))
                 .setCarrierId(command.getCarrierId())
                 .setProviderId(command.getProviderId())
                 .setServiceLevel(normalizeOptional(command.getServiceLevel()))
@@ -260,20 +264,24 @@ public class FulfillmentCommandServiceImpl implements FulfillmentCommandService 
         LocalDateTime nowUtc = LocalDateTime.now(Clock.systemUTC());
         requireTransition(shipment, ShipmentStatusEnum.HANDED_TO_CARRIER, nowUtc);
 
-        for (ShipmentPackageDO shipmentPackage : aggregate.packages()) {
+        for (PackageDispatchPlan plan : aggregate.packagePlans()) {
+            ShipmentPackageDO shipmentPackage = plan.shipmentPackage();
             int updated = packageMapper.updateStatusByIdAndVersion(tenantId, shipmentPackage.getId(),
                     shipmentPackage.getVersion(), ShipmentStatusEnum.HANDED_TO_CARRIER.name());
             if (updated != 1) {
                 throw exception(FULFILLMENT_VERSION_CONFLICT);
             }
         }
-        ShipmentLegDO activeLeg = aggregate.legs().stream()
-                .min(Comparator.comparing(ShipmentLegDO::getSequenceNo).thenComparing(ShipmentLegDO::getId))
-                .orElseThrow(() -> exception(FULFILLMENT_DISPATCH_INCOMPLETE));
-        int legUpdated = legMapper.updateStatusByIdAndVersion(tenantId, activeLeg.getId(), activeLeg.getVersion(),
-                ShipmentStatusEnum.HANDED_TO_CARRIER.name(), nowUtc);
-        if (legUpdated != 1) {
-            throw exception(FULFILLMENT_VERSION_CONFLICT);
+        Map<Long, ShipmentLegDO> selectedLegs = new LinkedHashMap<>();
+        for (PackageDispatchPlan plan : aggregate.packagePlans()) {
+            selectedLegs.putIfAbsent(plan.activeLeg().getId(), plan.activeLeg());
+        }
+        for (ShipmentLegDO activeLeg : selectedLegs.values()) {
+            int legUpdated = legMapper.updateStatusByIdAndVersion(tenantId, activeLeg.getId(), activeLeg.getVersion(),
+                    ShipmentStatusEnum.HANDED_TO_CARRIER.name(), nowUtc);
+            if (legUpdated != 1) {
+                throw exception(FULFILLMENT_VERSION_CONFLICT);
+            }
         }
         updateShipmentStatus(tenantId, shipment, ShipmentStatusEnum.HANDED_TO_CARRIER, nowUtc);
 
@@ -292,32 +300,39 @@ public class FulfillmentCommandServiceImpl implements FulfillmentCommandService 
             projectLegacyOrder(shipment.getOrderId(), projection, allDispatched, nowUtc);
         }
 
-        ShipmentPackageDO dispatchedPackage = aggregate.packages().stream()
-                .min(Comparator.comparing(ShipmentPackageDO::getId))
-                .orElseThrow(() -> exception(FULFILLMENT_DISPATCH_INCOMPLETE));
-        outboxMapper.insert(new FulfillmentOutboxEventDO()
-                .setTenantId(tenantId)
-                .setEventId(UUID.randomUUID().toString())
-                .setAggregateType(RESOURCE_SHIPMENT)
-                .setAggregateId(shipment.getId())
-                .setEventType("PACKAGE_DISPATCHED")
-                .setPayload(Map.of(
-                        "tenantId", tenantId,
-                        "orderId", shipment.getOrderId(),
-                        "shipmentId", shipment.getId(),
-                        "packageId", dispatchedPackage.getId()))
-                .setStatus("PENDING")
-                .setAttemptCount(0)
-                .setNextAttemptAt(nowUtc));
-        scheduleTrackingRegistration(tenantId, shipment.getId(), dispatchedPackage, activeLeg,
-                aggregate.providersById());
+        for (PackageDispatchPlan plan : aggregate.packagePlans()) {
+            ShipmentPackageDO dispatchedPackage = plan.shipmentPackage();
+            outboxMapper.insert(new FulfillmentOutboxEventDO()
+                    .setTenantId(tenantId)
+                    .setEventId(UUID.randomUUID().toString())
+                    .setAggregateType(RESOURCE_SHIPMENT)
+                    .setAggregateId(shipment.getId())
+                    .setEventType("PACKAGE_DISPATCHED")
+                    .setPayload(Map.of(
+                            "tenantId", tenantId,
+                            "orderId", shipment.getOrderId(),
+                            "shipmentId", shipment.getId(),
+                            "packageId", dispatchedPackage.getId()))
+                    .setStatus("PENDING")
+                    .setAttemptCount(0)
+                    .setNextAttemptAt(nowUtc));
+            scheduleTrackingRegistration(tenantId, shipment.getId(), dispatchedPackage, plan.activeLeg(),
+                    aggregate.providersById());
+        }
         return shipment.getId();
     }
 
     private DispatchAggregate loadAndValidateCompleteness(Long tenantId, ShipmentDO shipment) {
         List<ShipmentItemDO> items = shipmentItemMapper.selectListByShipmentId(tenantId, shipment.getId());
-        List<ShipmentPackageDO> packages = packageMapper.selectListByShipmentId(tenantId, shipment.getId());
-        List<ShipmentLegDO> legs = legMapper.selectListByShipmentId(tenantId, shipment.getId());
+        List<ShipmentPackageDO> packageRows = packageMapper.selectListByShipmentId(tenantId, shipment.getId());
+        List<ShipmentLegDO> legRows = legMapper.selectListByShipmentId(tenantId, shipment.getId());
+        List<ShipmentPackageDO> packages = packageRows == null ? List.of() : packageRows.stream()
+                .filter(shipmentPackage -> !ShipmentStatusEnum.CANCELED.name().equals(shipmentPackage.getStatus()))
+                .sorted(Comparator.comparing(ShipmentPackageDO::getId)).toList();
+        List<ShipmentLegDO> legs = legRows == null ? List.of() : legRows.stream()
+                .filter(leg -> !ShipmentStatusEnum.CANCELED.name().equals(leg.getStatus()))
+                .sorted(Comparator.comparing(ShipmentLegDO::getSequenceNo).thenComparing(ShipmentLegDO::getId))
+                .toList();
         if (items == null || items.isEmpty() || packages == null || packages.isEmpty()
                 || legs == null || legs.isEmpty()) {
             throw exception(FULFILLMENT_DISPATCH_INCOMPLETE);
@@ -348,7 +363,37 @@ public class FulfillmentCommandServiceImpl implements FulfillmentCommandService 
                 throw exception(FULFILLMENT_DISPATCH_INCOMPLETE);
             }
         }
-        return new DispatchAggregate(items, packages, legs, carriersById, providersById);
+        List<PackageDispatchPlan> packagePlans = buildPackageDispatchPlans(packages, legs);
+        return new DispatchAggregate(items, packages, legs, packagePlans, carriersById, providersById);
+    }
+
+    private List<PackageDispatchPlan> buildPackageDispatchPlans(List<ShipmentPackageDO> packages,
+                                                                 List<ShipmentLegDO> legs) {
+        List<ShipmentLegDO> packageBoundLegs = legs.stream().filter(leg -> leg.getPackageId() != null).toList();
+        if (packageBoundLegs.isEmpty()) {
+            ShipmentLegDO sharedLeg = legs.get(0);
+            for (ShipmentPackageDO shipmentPackage : packages) {
+                if (!shipmentPackage.getCarrierId().equals(sharedLeg.getCarrierId())) {
+                    throw exception(FULFILLMENT_DISPATCH_INCOMPLETE);
+                }
+            }
+            return packages.stream().map(shipmentPackage -> new PackageDispatchPlan(shipmentPackage, sharedLeg))
+                    .toList();
+        }
+        Set<Long> packageIds = packages.stream().map(ShipmentPackageDO::getId).collect(java.util.stream.Collectors.toSet());
+        if (packageBoundLegs.stream().anyMatch(leg -> !packageIds.contains(leg.getPackageId()))) {
+            throw exception(FULFILLMENT_DISPATCH_INCOMPLETE);
+        }
+        return packages.stream().map(shipmentPackage -> {
+            ShipmentLegDO activeLeg = packageBoundLegs.stream()
+                    .filter(leg -> shipmentPackage.getId().equals(leg.getPackageId()))
+                    .min(Comparator.comparing(ShipmentLegDO::getSequenceNo).thenComparing(ShipmentLegDO::getId))
+                    .orElseThrow(() -> exception(FULFILLMENT_DISPATCH_INCOMPLETE));
+            if (!shipmentPackage.getCarrierId().equals(activeLeg.getCarrierId())) {
+                throw exception(FULFILLMENT_DISPATCH_INCOMPLETE);
+            }
+            return new PackageDispatchPlan(shipmentPackage, activeLeg);
+        }).toList();
     }
 
     private void updateDispatchSummary(Long tenantId, Long orderId, List<ShipmentDO> activeShipments,
@@ -441,11 +486,16 @@ public class FulfillmentCommandServiceImpl implements FulfillmentCommandService 
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
+                boolean retryRequired;
                 try {
-                    client.registerTracking(new TrackingRegistrationCommand()
+                    TrackingRegistrationResult result = client.registerTracking(new TrackingRegistrationCommand()
                             .setCarrierCode(carrier.getCode())
                             .setTrackingNumber(trackingNumber));
+                    retryRequired = result == null || !result.isRegistered();
                 } catch (RuntimeException registrationFailure) {
+                    retryRequired = true;
+                }
+                if (retryRequired) {
                     registrationFailureService.recordRetry(tenantId, shipmentId, shipmentPackage.getId(),
                             provider.getId());
                 }
@@ -760,10 +810,20 @@ public class FulfillmentCommandServiceImpl implements FulfillmentCommandService 
                 || command.getPackageType() == null || command.getPackageType().isBlank()) {
             throw exception(FULFILLMENT_DISPATCH_INCOMPLETE);
         }
+        normalizeRequiredVocabulary(command.getPackageType(), PACKAGE_TYPES);
+        String weightUnit = normalizeOptionalVocabulary(command.getWeightUnit(), WEIGHT_UNITS);
+        String dimensionUnit = normalizeOptionalVocabulary(command.getDimensionUnit(), DIMENSION_UNITS);
         validateNonNegative(command.getWeight());
         validateNonNegative(command.getLength());
         validateNonNegative(command.getWidth());
         validateNonNegative(command.getHeight());
+        if ((command.getWeight() == null) != (weightUnit == null)) {
+            throw exception(FULFILLMENT_DISPATCH_INCOMPLETE);
+        }
+        boolean hasDimensions = command.getLength() != null || command.getWidth() != null || command.getHeight() != null;
+        if (hasDimensions != (dimensionUnit != null)) {
+            throw exception(FULFILLMENT_DISPATCH_INCOMPLETE);
+        }
     }
 
     private static void validateLegCommand(AddShipmentLegCommand command) {
@@ -775,6 +835,7 @@ public class FulfillmentCommandServiceImpl implements FulfillmentCommandService 
                 || command.getCarrierId() == null || command.getProviderId() == null) {
             throw exception(FULFILLMENT_DISPATCH_INCOMPLETE);
         }
+        normalizeRequiredVocabulary(command.getLegType(), LEG_TYPES);
     }
 
     private static void validateMutationIdentity(Long tenantId, Long shipmentId, Integer expectedVersion) {
@@ -800,9 +861,53 @@ public class FulfillmentCommandServiceImpl implements FulfillmentCommandService 
         return normalized.isEmpty() ? null : normalized;
     }
 
+    private static String normalizeRequiredVocabulary(String value, Set<String> allowedValues) {
+        String normalized = normalizeOptional(value);
+        if (normalized == null || !allowedValues.contains(normalized.toUpperCase(Locale.ROOT))) {
+            throw exception(FULFILLMENT_DISPATCH_INCOMPLETE);
+        }
+        return normalized.toUpperCase(Locale.ROOT);
+    }
+
+    private static String normalizeOptionalVocabulary(String value, Set<String> allowedValues) {
+        String normalized = normalizeOptional(value);
+        if (normalized == null) {
+            return null;
+        }
+        String canonical = normalized.toUpperCase(Locale.ROOT);
+        if (!allowedValues.contains(canonical)) {
+            throw exception(FULFILLMENT_DISPATCH_INCOMPLETE);
+        }
+        return canonical;
+    }
+
+    private static boolean isTrackingConstraintViolation(Throwable failure) {
+        Throwable current = failure;
+        for (int depth = 0; current != null && depth < 12; depth++, current = current.getCause()) {
+            String message = current.getMessage();
+            if (message != null && message.toLowerCase(Locale.ROOT).contains(TRACKING_UNIQUE_CONSTRAINT)) {
+                return true;
+            }
+            try {
+                Object constraintName = current.getClass().getMethod("getConstraintName").invoke(current);
+                if (constraintName != null && constraintName.toString().toLowerCase(Locale.ROOT)
+                        .contains(TRACKING_UNIQUE_CONSTRAINT)) {
+                    return true;
+                }
+            } catch (ReflectiveOperationException | SecurityException ignored) {
+                // Most JDBC exceptions expose the constraint only in their message.
+            }
+        }
+        return false;
+    }
+
     private record DispatchAggregate(List<ShipmentItemDO> items, List<ShipmentPackageDO> packages,
-                                     List<ShipmentLegDO> legs, Map<Long, CarrierDO> carriersById,
+                                     List<ShipmentLegDO> legs, List<PackageDispatchPlan> packagePlans,
+                                     Map<Long, CarrierDO> carriersById,
                                      Map<Long, LogisticsProviderDO> providersById) {
+    }
+
+    private record PackageDispatchPlan(ShipmentPackageDO shipmentPackage, ShipmentLegDO activeLeg) {
     }
 
     private record LegacyProjection(Long legacyExpressId, String trackingNumber) {
