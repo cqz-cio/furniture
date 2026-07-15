@@ -41,7 +41,7 @@
 - Create: `yudao-cloud/yudao-module-seo/yudao-module-seo-api/src/main/java/cn/iocoder/yudao/module/seo/enums/SeoEntityTypeEnum.java`
 - Create: `yudao-cloud/yudao-module-seo/yudao-module-seo-api/src/main/java/cn/iocoder/yudao/module/seo/enums/SeoPublishStatusEnum.java`
 - Create: `yudao-cloud/yudao-module-seo/yudao-module-seo-api/src/main/java/cn/iocoder/yudao/module/seo/enums/ErrorCodeConstants.java`
-- Create: `yudao-cloud/sql/mysql/migrations/V015__seo_foundation.sql`
+- Create: `yudao-cloud/sql/mysql/migrations/V016__seo_foundation.sql`
 - Create: `yudao-cloud/yudao-module-seo/yudao-module-seo-server/src/test/resources/sql/create_tables.sql`
 - Create: `yudao-cloud/yudao-module-seo/yudao-module-seo-server/src/test/resources/sql/clean.sql`
 
@@ -194,7 +194,7 @@ git commit -m "feat(seo): scaffold seo module"
 - Create: `yudao-cloud/yudao-module-seo/yudao-module-seo-api/src/main/java/cn/iocoder/yudao/module/seo/enums/SeoPublishStatusEnum.java`
 - Create: `yudao-cloud/yudao-module-seo/yudao-module-seo-api/src/main/java/cn/iocoder/yudao/module/seo/enums/ErrorCodeConstants.java`
 - Create: `yudao-cloud/yudao-module-seo/yudao-module-seo-api/src/test/java/cn/iocoder/yudao/module/seo/enums/SeoEnumTest.java`
-- Create: `yudao-cloud/sql/mysql/migrations/V015__seo_foundation.sql`
+- Create: `yudao-cloud/sql/mysql/migrations/V016__seo_foundation.sql`
 - Create: `yudao-cloud/yudao-module-seo/yudao-module-seo-server/src/test/resources/sql/create_tables.sql`
 - Create: `yudao-cloud/yudao-module-seo/yudao-module-seo-server/src/test/resources/sql/clean.sql`
 
@@ -237,7 +237,7 @@ Enums expose `getCode()` and null-safe `isValid(String)`.
 
 - [ ] **Step 4: Create MySQL and H2 schemas**
 
-`V015__seo_foundation.sql` creates:
+`V016__seo_foundation.sql` creates. `V015` is reserved by the fulfillment migration, so SEO must not reuse it:
 
 ```sql
 CREATE TABLE seo_site_config (
@@ -310,7 +310,7 @@ Follow current migration conventions for deterministic menu IDs and `system_menu
 
 ```powershell
 mvn -pl yudao-module-seo/yudao-module-seo-api -am -Dtest=SeoEnumTest -Dsurefire.failIfNoSpecifiedTests=false test
-Select-String -Path sql/mysql/migrations/V015__seo_foundation.sql -Pattern "seo_site_config","seo_metadata","seo:metadata:publish"
+Select-String -Path sql/mysql/migrations/V016__seo_foundation.sql -Pattern "seo_site_config","seo_metadata","seo:metadata:publish"
 ```
 
 Expected: enum test passes; each required schema/menu token appears.
@@ -318,7 +318,8 @@ Expected: enum test passes; each required schema/menu token appears.
 - [ ] **Step 6: Commit schema contracts**
 
 ```powershell
-git add -- yudao电商管理平台前后端/yudao-cloud/yudao-module-seo/yudao-module-seo-api yudao电商管理平台前后端/yudao-cloud/yudao-module-seo/yudao-module-seo-server/src/test/resources/sql yudao电商管理平台前后端/yudao-cloud/sql/mysql/migrations/V015__seo_foundation.sql
+git add -- yudao电商管理平台前后端/yudao-cloud/yudao-module-seo/yudao-module-seo-api yudao电商管理平台前后端/yudao-cloud/yudao-module-seo/yudao-module-seo-server/src/test/resources/sql
+git add -f -- yudao电商管理平台前后端/yudao-cloud/sql/mysql/migrations/V016__seo_foundation.sql
 git commit -m "feat(seo): define foundation schema contracts"
 ```
 
@@ -828,7 +829,7 @@ Expected: all three commands exit `0`.
 Verify:
 
 ```powershell
-Select-String -Path sql/mysql/migrations/V015__seo_foundation.sql -Pattern "uk_tenant_site_deleted","uk_entity_locale_deleted","idx_public_resolve"
+Select-String -Path sql/mysql/migrations/V016__seo_foundation.sql -Pattern "uk_tenant_site_deleted","uk_entity_locale_deleted","idx_public_resolve"
 rg "tenantId" yudao-module-seo/yudao-module-seo-server/src/main/java/cn/iocoder/yudao/module/seo/controller
 rg "focusKeyphrase|relatedKeyphrases|tenantId" yudao-module-seo/yudao-module-seo-server/src/main/java/cn/iocoder/yudao/module/seo/controller/app/metadata/vo/SeoPublicMetadataRespVO.java
 ```
