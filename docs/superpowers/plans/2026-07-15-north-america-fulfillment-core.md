@@ -414,6 +414,16 @@ public enum ShipmentStatusEnum {
 }
 ```
 
+The other Phase 1 enums are simple enums with no fields or custom constructors and must contain exactly:
+
+```text
+ShipmentTypeEnum: PARCEL, LTL, WHITE_GLOVE
+OrderFulfillmentStatusEnum: NOT_SHIPPED, PARTIALLY_SHIPPED, SHIPPED, PARTIALLY_DELIVERED, DELIVERED, DELIVERY_EXCEPTION, RETURNING, RETURNED
+TrackingEventSourceEnum: WEBHOOK, POLLING, MANUAL, MIGRATION
+```
+
+Do not add `UNKNOWN`, numeric codes, labels, or provider-specific values.
+
 Implement `ShipmentStateMachine` as an immutable `EnumMap<ShipmentStatusEnum, Set<ShipmentStatusEnum>>`. The allowed transitions are:
 
 ```java
@@ -429,7 +439,7 @@ DELIVERY_EXCEPTION -> IN_TRANSIT, AT_LOCAL_TERMINAL, APPOINTMENT_REQUIRED, APPOI
 RETURNING -> RETURNED, DELIVERY_EXCEPTION
 ```
 
-Decision order must be: same status = `TIMELINE_ONLY`; terminal current state = `TIMELINE_ONLY`; older `occurredAt` = `TIMELINE_ONLY`; allowed edge = `APPLY`; otherwise = `REJECT`.
+`currentOccurredAt` and `incomingOccurredAt` use `java.time.LocalDateTime` with UTC value semantics. `incomingOccurredAt` is required; `currentOccurredAt` may be null when no event has been applied, in which case the late-event comparison is skipped. Decision order must be: same status = `TIMELINE_ONLY`; terminal current state = `TIMELINE_ONLY`; older `occurredAt` = `TIMELINE_ONLY`; allowed edge = `APPLY`; otherwise = `REJECT`.
 
 Reserve `1_011_009_000` through `1_011_009_011` in `ErrorCodeConstants` for the complete Phase 1 error set so later parallel tasks compile against one stable contract:
 
