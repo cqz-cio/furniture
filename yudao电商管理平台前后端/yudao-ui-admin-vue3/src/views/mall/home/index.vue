@@ -10,8 +10,8 @@
           title="销售额"
           prefix="￥"
           :decimals="2"
-          :value="fenToYuan(orderComparison?.value?.orderPayPrice || 0)"
-          :reference="fenToYuan(orderComparison?.reference?.orderPayPrice || 0)"
+          :value="Number(fenToYuan(orderComparison?.value?.orderPayPrice || 0))"
+          :reference="Number(fenToYuan(orderComparison?.reference?.orderPayPrice || 0))"
         />
       </el-col>
       <el-col :md="6" :sm="12" :xs="24" :loading="loading">

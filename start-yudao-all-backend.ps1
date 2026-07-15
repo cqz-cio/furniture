@@ -19,14 +19,12 @@ $cloudRoot = Join-Path $yudaoRoot.FullName 'yudao-cloud'
 $scriptRoot = Join-Path $cloudRoot 'script\jdk17'
 $resolver = Join-Path $scriptRoot 'Resolve-Jdk17.ps1'
 $mavenRunner = Join-Path $scriptRoot 'Invoke-MavenJdk17.ps1'
-$aiStarter = Join-Path $scriptRoot 'Start-Jdk17Backend.ps1'
 $backendStopper = Join-Path $scriptRoot 'Stop-Jdk17Backend.ps1'
 $runDirectory = Join-Path $cloudRoot '.local-run\jdk17'
 $logDirectory = Join-Path $runDirectory 'logs'
 $serverJar = Join-Path $cloudRoot 'yudao-server\target\yudao-server.jar'
-$aiJar = Join-Path $cloudRoot 'yudao-module-ai\yudao-module-ai-server\target\yudao-module-ai-server.jar'
 
-foreach ($requiredScript in @($resolver, $mavenRunner, $aiStarter, $backendStopper)) {
+foreach ($requiredScript in @($resolver, $mavenRunner, $backendStopper)) {
     if (-not (Test-Path -LiteralPath $requiredScript -PathType Leaf)) {
         throw "Missing required script: $requiredScript"
     }
@@ -40,16 +38,12 @@ $jdkHome = [string]$jdkHomeOutput[0]
 $javaExe = Join-Path $jdkHome 'bin\java.exe'
 
 if ($VerifyOnly) {
-    foreach ($jar in @($serverJar, $aiJar)) {
-        if (-not (Test-Path -LiteralPath $jar -PathType Leaf)) {
-            throw "Artifact not found: $jar. Run without -VerifyOnly and add -Build."
-        }
+    if (-not (Test-Path -LiteralPath $serverJar -PathType Leaf)) {
+        throw "Artifact not found: $serverJar. Run without -VerifyOnly and add -Build."
     }
     Write-Output "JAVA_HOME=$jdkHome"
     Write-Output 'YUDAO_SERVER_PORT=48080'
-    Write-Output 'AI_SERVER_PORT=48090'
     Write-Output "YUDAO_SERVER_JAR=$serverJar"
-    Write-Output "AI_SERVER_JAR=$aiJar"
     exit 0
 }
 
@@ -90,10 +84,8 @@ foreach ($container in @('yudao-mysql-local', 'yudao-redis-local', 'yudao-nacos-
         throw "Required Docker container '$container' is not running."
     }
 }
-foreach ($port in @(48080, 48090)) {
-    if (Test-PortOccupied -Port $port) {
-        throw "Port $port is occupied; no backend process was started."
-    }
+if (Test-PortOccupied -Port 48080) {
+    throw 'Port 48080 is occupied; no backend process was started.'
 }
 
 if ($Build) {
@@ -101,7 +93,7 @@ if ($Build) {
     try {
         & $mavenRunner -MavenArgs @(
             '-pl',
-            'yudao-server,yudao-module-ai/yudao-module-ai-server',
+            'yudao-server',
             '-am',
             'package',
             '-DskipTests'
@@ -110,10 +102,8 @@ if ($Build) {
         Pop-Location
     }
 }
-foreach ($jar in @($serverJar, $aiJar)) {
-    if (-not (Test-Path -LiteralPath $jar -PathType Leaf)) {
-        throw "Artifact not found: $jar. Run again with -Build."
-    }
+if (-not (Test-Path -LiteralPath $serverJar -PathType Leaf)) {
+    throw "Artifact not found: $serverJar. Run again with -Build."
 }
 
 New-Item -ItemType Directory -Force -Path $runDirectory, $logDirectory | Out-Null
@@ -136,13 +126,8 @@ try {
 
     Wait-Healthy -Port 48080 -Process $serverProcess -Service 'yudao-server' -ErrorLog $serverErr
     Write-Host "yudao-server started: PID=$($serverProcess.Id), port=48080, health=UP"
-    Write-Host 'Starting ai-server on port 48090...'
-    & $aiStarter -Services @('ai-server') -SkipBuild `
-        -StartupTimeoutSeconds $StartupTimeoutSeconds -RunDirectory $runDirectory
-
     $mainHealth = (Invoke-RestMethod -Uri 'http://127.0.0.1:48080/actuator/health' -TimeoutSec 5).status
-    $aiHealth = (Invoke-RestMethod -Uri 'http://127.0.0.1:48090/actuator/health' -TimeoutSec 5).status
-    Write-Host "All backends started: yudao-server=$mainHealth, ai-server=$aiHealth"
+    Write-Host "Unified backend started: yudao-server=$mainHealth (AI included)"
     Write-Host "Logs: $logDirectory"
 } catch {
     & $backendStopper -RunDirectory $runDirectory -Services @('yudao-server', 'ai-server')

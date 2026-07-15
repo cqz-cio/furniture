@@ -1,6 +1,5 @@
 const config: {
   base_url: string
-  ai_base_url?: string
   result_code: number | string
   default_headers: AxiosHeaders
   request_timeout: number
@@ -9,12 +8,6 @@ const config: {
    * api请求基础路径
    */
   base_url: import.meta.env.VITE_BASE_URL + import.meta.env.VITE_API_URL,
-  /**
-   * 独立 AI 服务地址。未配置时继续走统一后端/网关。
-   */
-  ai_base_url: import.meta.env.VITE_AI_BASE_URL
-    ? import.meta.env.VITE_AI_BASE_URL + import.meta.env.VITE_API_URL
-    : undefined,
   /**
    * 接口成功返回状态码
    */

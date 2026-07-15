@@ -82,7 +82,7 @@
           icon-bg-color="text-green-500"
           prefix="￥"
           :decimals="2"
-          :value="fenToYuan(trendSummary?.value?.orderPayPrice || 0)"
+          :value="Number(fenToYuan(trendSummary?.value?.orderPayPrice || 0))"
           :percent="
             calculateRelativeRate(
               trendSummary?.value?.orderPayPrice,
@@ -118,7 +118,7 @@
           icon-bg-color="text-yellow-500"
           prefix="￥"
           :decimals="2"
-          :value="fenToYuan(trendSummary?.value?.afterSaleRefundPrice || 0)"
+          :value="Number(fenToYuan(trendSummary?.value?.afterSaleRefundPrice || 0))"
           :percent="
             calculateRelativeRate(
               trendSummary?.value?.afterSaleRefundPrice,
@@ -174,8 +174,8 @@ const lineChartOptions = reactive<EChartsOption>({
   series: [
     { name: '商品浏览量', type: 'line', smooth: true, itemStyle: { color: '#B37FEB' } },
     { name: '商品访客数', type: 'line', smooth: true, itemStyle: { color: '#FFAB2B' } },
-    { name: '支付金额', type: 'bar', smooth: true, yAxisIndex: 1, itemStyle: { color: '#1890FF' } },
-    { name: '退款金额', type: 'bar', smooth: true, yAxisIndex: 1, itemStyle: { color: '#00C050' } }
+    { name: '支付金额', type: 'bar', yAxisIndex: 1, itemStyle: { color: '#1890FF' } },
+    { name: '退款金额', type: 'bar', yAxisIndex: 1, itemStyle: { color: '#00C050' } }
   ],
   toolbox: {
     feature: {
@@ -214,9 +214,7 @@ const lineChartOptions = reactive<EChartsOption>({
         show: false
       },
       axisLabel: {
-        textStyle: {
-          color: '#7F8B9C'
-        }
+        color: '#7F8B9C'
       },
       splitLine: {
         show: true,
@@ -235,9 +233,7 @@ const lineChartOptions = reactive<EChartsOption>({
         show: false
       },
       axisLabel: {
-        textStyle: {
-          color: '#7F8B9C'
-        }
+        color: '#7F8B9C'
       },
       splitLine: {
         show: true,
@@ -256,7 +252,7 @@ const getProductTrendData = async () => {
   const times = shortcutDateRangePicker.value.times
   if (DateUtil.isSameDay(times[0], times[1])) {
     // 前天
-    times[0] = DateUtil.formatDate(dayjs(times[0]).subtract(1, 'd'))
+    times[0] = DateUtil.formatDate(dayjs(times[0]).subtract(1, 'd').toDate())
   }
   // 查询数据
   await Promise.all([getProductTrendSummary(), getProductStatisticsList()])
@@ -276,8 +272,8 @@ const getProductStatisticsList = async () => {
   const list: ProductStatisticsVO[] = await ProductStatisticsApi.getProductStatisticsList({ times })
   // 处理数据
   for (let item of list) {
-    item.orderPayPrice = fenToYuan(item.orderPayPrice)
-    item.afterSaleRefundPrice = fenToYuan(item.afterSaleRefundPrice)
+    item.orderPayPrice = Number(fenToYuan(item.orderPayPrice))
+    item.afterSaleRefundPrice = Number(fenToYuan(item.afterSaleRefundPrice))
   }
   // 更新 Echarts 数据
   if (lineChartOptions.dataset && lineChartOptions.dataset['source']) {

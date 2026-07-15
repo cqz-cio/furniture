@@ -38,6 +38,12 @@
         </div>
       </el-header>
 
+      <AiModelConfigurationAlert
+        class="mx-20px mt-10px"
+        :model-type="AiModelTypeEnum.CHAT"
+        @loaded="handleModelConfigurationLoaded"
+      />
+
       <!-- main：消息列表 -->
       <el-main class="m-0 p-0 relative h-full w-full">
         <div>
@@ -133,6 +139,8 @@ import MessageListEmpty from './components/message/MessageListEmpty.vue'
 import MessageLoading from './components/message/MessageLoading.vue'
 import MessageNewConversation from './components/message/MessageNewConversation.vue'
 import MessageFileUpload from './components/message/MessageFileUpload.vue'
+import AiModelConfigurationAlert from '@/views/ai/components/AiModelConfigurationAlert.vue'
+import { AiModelTypeEnum } from '@/views/ai/utils/constants'
 
 /** AI 聊天对话 列表 */
 defineOptions({ name: 'AiChat' })
@@ -163,6 +171,10 @@ const prompt = ref<string>() // prompt
 const enableContext = ref<boolean>(true) // 是否开启上下文
 const enableWebSearch = ref<boolean>(false) // 是否开启联网搜索
 const uploadFiles = ref<string[]>([]) // 上传的文件 URL 列表
+const modelConfigured = ref(false)
+const handleModelConfigurationLoaded = (configured: boolean) => {
+  modelConfigured.value = configured
+}
 // 接收 Stream 消息
 const receiveMessageFullText = ref('')
 const receiveMessageDisplayedText = ref('')
@@ -407,6 +419,10 @@ const onCompositionend = () => {
 /** 真正执行【发送】消息操作 */
 const doSendMessage = async (content: string) => {
   // 校验
+  if (!modelConfigured.value) {
+    message.warning('请先配置 AI 模型和 API Key，再发送消息')
+    return
+  }
   if (content.length < 1) {
     message.error('发送失败，原因：内容为空！')
     return

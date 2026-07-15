@@ -7,23 +7,28 @@ const axiosService = await readFile(new URL('../src/config/axios/service.ts', im
 
 assert.match(
   envLocal,
-  /^VITE_AI_BASE_URL=['"]?http:\/\/localhost:48090['"]?$/m,
-  'local development must point AI requests at the standalone AI service'
+  /^VITE_BASE_URL=['"]?http:\/\/localhost:48080['"]?$/m,
+  'local development must point requests at the unified backend'
 )
-assert.match(
+assert.doesNotMatch(
+  envLocal,
+  /^VITE_AI_BASE_URL=/m,
+  'local development must not configure a separate AI backend'
+)
+assert.doesNotMatch(
   axiosConfig,
-  /ai_base_url:\s*import\.meta\.env\.VITE_AI_BASE_URL/,
-  'axios config must expose the optional AI service base URL'
+  /ai_base_url|VITE_AI_BASE_URL/,
+  'axios config must use the unified backend only'
 )
-assert.match(
+assert.doesNotMatch(
   axiosService,
   /config\.url\?\.startsWith\('\/ai\/'\)/,
-  'axios must recognize AI module request paths'
+  'axios must not special-case AI request paths'
 )
-assert.match(
+assert.doesNotMatch(
   axiosService,
-  /config\.baseURL\s*=\s*ai_base_url/,
-  'AI module requests must override the default service base URL'
+  /config\.baseURL\s*=\s*ai_base_url|\bai_base_url\b/,
+  'AI requests must not override the unified base URL'
 )
 
-console.log('Local standalone AI routing contract passed.')
+console.log('Local unified AI routing contract passed.')

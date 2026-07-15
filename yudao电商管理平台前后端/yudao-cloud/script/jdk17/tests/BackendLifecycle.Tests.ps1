@@ -13,6 +13,12 @@ $startContent = Get-Content -LiteralPath $startScript -Raw
 if ($startContent -notmatch '/actuator/health' -or $startContent -notmatch "status\s+-eq\s+'UP'") {
     throw 'Launcher must require a successful Actuator health response, not only an open TCP port.'
 }
+$stopContent = Get-Content -LiteralPath $stopScript -Raw
+if ($stopContent -match 'Get-CimInstance' -or
+    $stopContent -notmatch 'StartTime' -or
+    $stopContent -notmatch "ProcessName\s+-ne\s+'java'") {
+    throw 'Stop script must validate recorded Java process identity without requiring CIM administrator access.'
+}
 $monitorPom = Join-Path $PSScriptRoot '..\..\..\yudao-framework\yudao-spring-boot-starter-monitor\pom.xml'
 if ((Get-Content -LiteralPath $monitorPom -Raw) -notmatch 'spring-boot-starter-actuator') {
     throw 'The shared monitor starter must provide the Actuator health endpoint used by the launcher.'

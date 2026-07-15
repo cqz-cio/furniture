@@ -47,10 +47,21 @@ foreach ($stateFile in $stateFiles) {
         continue
     }
 
-    $processInfo = Get-CimInstance Win32_Process -Filter "ProcessId = $processId" -ErrorAction Stop
-    if (-not $processInfo.CommandLine -or
-        $processInfo.CommandLine.IndexOf($jarPath, [StringComparison]::OrdinalIgnoreCase) -lt 0) {
-        Write-Warning "$($state.Service): PID $processId was not stopped because its command line does not match the recorded jar; state record retained."
+    if ($process.ProcessName -ne 'java') {
+        Write-Warning "$($state.Service): PID $processId was not stopped because it is not a Java process; state record retained."
+        continue
+    }
+
+    try {
+        $recordedStartTime = [DateTimeOffset]::Parse([string]$state.StartedAt)
+        $processStartTime = [DateTimeOffset]$process.StartTime
+        $startTimeDifference = [Math]::Abs(($processStartTime - $recordedStartTime).TotalSeconds)
+    } catch {
+        Write-Warning "$($state.Service): PID $processId was not stopped because its start time could not be verified; state record retained."
+        continue
+    }
+    if ($startTimeDifference -gt 120) {
+        Write-Warning "$($state.Service): PID $processId was not stopped because its start time does not match the recorded process; state record retained."
         continue
     }
 
