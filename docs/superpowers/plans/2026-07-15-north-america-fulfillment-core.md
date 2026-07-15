@@ -39,6 +39,8 @@
 **Files:**
 - Create: `yudao电商管理平台前后端/yudao-cloud/sql/mysql/migrations/V015__trade_fulfillment_core.sql`
 - Create: `furniture web/tests/databaseFulfillmentMigration.test.js`
+- Modify: `furniture web/tests/dbMigrations.test.js`
+- Modify: `furniture web/tests/databaseSafetyWorkflow.test.js`
 - Modify: `yudao电商管理平台前后端/yudao-cloud/sql/mysql/oakved-baseline.sql` (generated)
 
 **Interfaces:**
@@ -340,15 +342,15 @@ Run from `D:\code\furniture web`:
 
 ```powershell
 npm.cmd run build:db-baseline
-npm.cmd test -- databaseFulfillmentMigration.test.js databaseBaselineGenerator.test.js databaseSafetyWorkflow.test.js dbMigrations.test.js
+npm.cmd test -- databaseFulfillmentMigration.test.js databaseSafetyWorkflow.test.js dbMigrations.test.js
 ```
 
-Expected: generator reports versions `001` through `015`; all focused tests PASS.
+Expected: generator reports versions `001` through `015`; all focused tests PASS. In an isolated worktree, `ruoyi-vue-pro.sql` and `quartz.sql` are ignored local generator inputs and must be copied temporarily from the primary workspace before generation; never stage or commit those temporary copies. Update the two existing migration tests from the V014/14 catalog to the V015/15 catalog, preferring migration-directory discovery over duplicated hard-coded file lists.
 
 - [ ] **Step 5: Commit**
 
 ```powershell
-git add -- 'furniture web/tests/databaseFulfillmentMigration.test.js' 'yudao电商管理平台前后端/yudao-cloud/sql/mysql/migrations/V015__trade_fulfillment_core.sql' 'yudao电商管理平台前后端/yudao-cloud/sql/mysql/oakved-baseline.sql'
+git add -- 'furniture web/tests/databaseFulfillmentMigration.test.js' 'furniture web/tests/dbMigrations.test.js' 'furniture web/tests/databaseSafetyWorkflow.test.js' 'yudao电商管理平台前后端/yudao-cloud/sql/mysql/migrations/V015__trade_fulfillment_core.sql' 'yudao电商管理平台前后端/yudao-cloud/sql/mysql/oakved-baseline.sql'
 git commit -m "feat: add north america fulfillment schema"
 ```
 
