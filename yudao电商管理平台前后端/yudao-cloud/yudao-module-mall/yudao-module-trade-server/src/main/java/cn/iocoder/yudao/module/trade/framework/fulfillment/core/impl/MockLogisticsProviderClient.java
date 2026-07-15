@@ -15,6 +15,9 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static cn.iocoder.yudao.framework.common.exception.util.ServiceExceptionUtil.exception;
+import static cn.iocoder.yudao.module.trade.enums.ErrorCodeConstants.FULFILLMENT_PROVIDER_CAPABILITY_UNSUPPORTED;
+
 @Component
 public class MockLogisticsProviderClient implements LogisticsProviderClient {
 
@@ -46,11 +49,7 @@ public class MockLogisticsProviderClient implements LogisticsProviderClient {
 
     @Override
     public TrackingRegistrationResult registerTracking(TrackingRegistrationCommand command) {
-        Objects.requireNonNull(command, "command");
-        return new TrackingRegistrationResult()
-                .setCarrierCode(command.getCarrierCode())
-                .setTrackingNumber(command.getTrackingNumber())
-                .setRegistered(true);
+        throw exception(FULFILLMENT_PROVIDER_CAPABILITY_UNSUPPORTED);
     }
 
     @Override

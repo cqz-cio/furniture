@@ -1,7 +1,6 @@
 package cn.iocoder.yudao.module.trade.framework.fulfillment.core;
 
 import cn.iocoder.yudao.framework.common.exception.ServiceException;
-import cn.iocoder.yudao.module.trade.enums.fulfillment.ShipmentStatusEnum;
 import cn.iocoder.yudao.module.trade.framework.fulfillment.core.dto.ProviderTrackingEvent;
 import cn.iocoder.yudao.module.trade.framework.fulfillment.core.dto.TrackingQuery;
 import cn.iocoder.yudao.module.trade.framework.fulfillment.core.dto.TrackingRegistrationCommand;
@@ -12,6 +11,7 @@ import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.AnnotatedElement;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
@@ -19,10 +19,12 @@ import java.util.Map;
 import java.util.Set;
 
 import static cn.iocoder.yudao.module.trade.enums.ErrorCodeConstants.FULFILLMENT_PROVIDER_NOT_AVAILABLE;
+import static cn.iocoder.yudao.module.trade.enums.ErrorCodeConstants.FULFILLMENT_PROVIDER_CAPABILITY_UNSUPPORTED;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class LogisticsProviderRegistryTest {
 
@@ -66,30 +68,43 @@ class LogisticsProviderRegistryTest {
     }
 
     @Test
-    void mock_returnsInjectedEventsDeterministicallyWithoutHttpSurface() {
+    void mock_rejectsTrackingRegistrationWithControlledCapabilityError() {
+        MockLogisticsProviderClient client = new MockLogisticsProviderClient(Map.of());
+        TrackingRegistrationCommand command = new TrackingRegistrationCommand()
+                .setCarrierCode("ups")
+                .setTrackingNumber("1Z999");
+
+        ServiceException exception = assertThrows(ServiceException.class, () -> client.registerTracking(command));
+
+        assertEquals(FULFILLMENT_PROVIDER_CAPABILITY_UNSUPPORTED.getCode(), exception.getCode());
+    }
+
+    @Test
+    void mock_returnsImmutableRawProviderEventsWithoutFixturePollution() {
         TrackingQuery query = new TrackingQuery()
                 .setCarrierCode("ups")
                 .setTrackingNumber("1Z999");
-        List<ProviderTrackingEvent> events = List.of(
-                new ProviderTrackingEvent()
-                        .setStatus(ShipmentStatusEnum.IN_TRANSIT)
-                        .setOccurredAt(LocalDateTime.of(2026, 7, 15, 9, 30))
-                        .setDescription("Departed origin facility"),
-                new ProviderTrackingEvent()
-                        .setStatus(ShipmentStatusEnum.OUT_FOR_DELIVERY)
-                        .setOccurredAt(LocalDateTime.of(2026, 7, 16, 8, 0))
-                        .setDescription("Out for delivery"));
+        List<ProviderTrackingEvent> events = new ArrayList<>(List.of(
+                new ProviderTrackingEvent("I", LocalDateTime.of(2026, 7, 15, 9, 30),
+                        "Los Angeles, CA", "Departed origin facility"),
+                new ProviderTrackingEvent("OD", LocalDateTime.of(2026, 7, 16, 8, 0),
+                        "Ontario, CA", "Out for delivery")));
         MockLogisticsProviderClient client = new MockLogisticsProviderClient(Map.of(query, events));
+        events.clear();
 
         TrackingSnapshot first = client.queryTracking(query);
+        assertThrows(UnsupportedOperationException.class, () -> first.getEvents().clear());
         TrackingSnapshot second = client.queryTracking(new TrackingQuery()
                 .setCarrierCode("ups")
                 .setTrackingNumber("1Z999"));
 
         assertEquals("ups", first.getCarrierCode());
         assertEquals("1Z999", first.getTrackingNumber());
-        assertEquals(events, first.getEvents());
+        assertEquals(List.of("I", "OD"), first.getEvents().stream()
+                .map(ProviderTrackingEvent::providerStatus)
+                .toList());
         assertEquals(first, second);
+        assertTrue(ProviderTrackingEvent.class.isRecord());
         assertFalse(referencesHttpClient(MockLogisticsProviderClient.class));
         assertFalse(hasControllerAnnotation(MockLogisticsProviderClient.class));
     }
