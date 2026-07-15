@@ -121,6 +121,7 @@ $serverOut = Join-Path $logDirectory 'yudao-server.out.log'
 $serverErr = Join-Path $logDirectory 'yudao-server.err.log'
 
 try {
+    Write-Host 'Starting yudao-server on port 48080...'
     $serverProcess = Start-Process -FilePath $javaExe `
         -ArgumentList "-jar `"$serverJar`" --spring.profiles.active=local" `
         -WorkingDirectory $cloudRoot -WindowStyle Hidden -PassThru `
@@ -134,13 +135,15 @@ try {
     } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $runDirectory 'yudao-server.json') -Encoding UTF8
 
     Wait-Healthy -Port 48080 -Process $serverProcess -Service 'yudao-server' -ErrorLog $serverErr
+    Write-Host "yudao-server started: PID=$($serverProcess.Id), port=48080, health=UP"
+    Write-Host 'Starting ai-server on port 48090...'
     & $aiStarter -Services @('ai-server') -SkipBuild `
         -StartupTimeoutSeconds $StartupTimeoutSeconds -RunDirectory $runDirectory
 
     $mainHealth = (Invoke-RestMethod -Uri 'http://127.0.0.1:48080/actuator/health' -TimeoutSec 5).status
     $aiHealth = (Invoke-RestMethod -Uri 'http://127.0.0.1:48090/actuator/health' -TimeoutSec 5).status
-    Write-Output "All backends started: yudao-server=$mainHealth, ai-server=$aiHealth"
-    Write-Output "Logs: $logDirectory"
+    Write-Host "All backends started: yudao-server=$mainHealth, ai-server=$aiHealth"
+    Write-Host "Logs: $logDirectory"
 } catch {
     & $backendStopper -RunDirectory $runDirectory -Services @('yudao-server', 'ai-server')
     throw

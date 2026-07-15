@@ -25,6 +25,8 @@ $startContent = Get-Content -LiteralPath $startScript -Raw
 if ($startContent -notmatch '/actuator/health' -or
     $startContent -notmatch 'Start-Jdk17Backend\.ps1' -or
     $startContent -notmatch 'Stop-Jdk17Backend\.ps1' -or
+    $startContent -notmatch 'Starting yudao-server' -or
+    $startContent -notmatch 'Starting ai-server' -or
     $startContent -notmatch 'yudao-mysql-local' -or
     $startContent -notmatch 'yudao-redis-local' -or
     $startContent -notmatch 'yudao-nacos-local') {
