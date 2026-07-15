@@ -57,6 +57,20 @@ try {
       continue
     }
 
+    # Older local baselines used /dashboard for the same fixed-id menu that V013
+    # inserts as dashboard. Normalize only that exact legacy record before V013.
+    if ($version -eq "013") {
+      Invoke-MySql @'
+UPDATE `system_menu`
+SET `path`='dashboard'
+WHERE `id`=7990
+  AND `path`='/dashboard'
+  AND `component`='dashboard/index'
+  AND `component_name`='FurnitureDashboard'
+  AND `deleted`=b'0';
+'@ | Out-Null
+    }
+
     $containerPath = "/tmp/$($file.Name)"
     docker compose -f $ComposeFile cp $file.FullName "mysql:$containerPath"
     if ($LASTEXITCODE -ne 0) { throw "Failed to copy migration $($file.Name)." }
