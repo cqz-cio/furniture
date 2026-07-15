@@ -396,7 +396,7 @@ void exceptionCanRecoverToOutForDelivery() {
 - [ ] **Step 2: Run and verify RED**
 
 ```powershell
-mvn.cmd -pl yudao-module-mall/yudao-module-trade-server -am -Dtest=ShipmentStateMachineTest -Dsurefire.failIfNoSpecifiedTests=false test
+mvn.cmd -pl yudao-module-mall/yudao-module-trade-server -am "-Dtest=ShipmentStateMachineTest" "-Dsurefire.failIfNoSpecifiedTests=false" test
 ```
 
 Expected: compilation FAIL because the fulfillment enums and state machine do not exist.
@@ -504,7 +504,7 @@ Also prove duplicate tracking numbers, duplicate external event IDs, and duplica
 - [ ] **Step 2: Run and verify RED**
 
 ```powershell
-mvn.cmd -pl yudao-module-mall/yudao-module-trade-server -am -Dtest=FulfillmentPersistenceTest -Dsurefire.failIfNoSpecifiedTests=false test
+mvn.cmd -pl yudao-module-mall/yudao-module-trade-server -am "-Dtest=FulfillmentPersistenceTest" "-Dsurefire.failIfNoSpecifiedTests=false" test
 ```
 
 Expected: compilation FAIL because DOs and mappers do not exist.
@@ -538,7 +538,7 @@ default int updateStatusByIdAndVersion(Long tenantId, Long id, Integer version,
 - [ ] **Step 4: Run persistence tests and the existing trade transaction test**
 
 ```powershell
-mvn.cmd -pl yudao-module-mall/yudao-module-trade-server -am -Dtest=FulfillmentPersistenceTest,TradeOrderUpdateServiceImplTransactionTest -Dsurefire.failIfNoSpecifiedTests=false test
+mvn.cmd -pl yudao-module-mall/yudao-module-trade-server -am "-Dtest=FulfillmentPersistenceTest,TradeOrderUpdateServiceImplTransactionTest" "-Dsurefire.failIfNoSpecifiedTests=false" test
 ```
 
 Expected: PASS and no H2 cleanup-order violation.
@@ -584,7 +584,7 @@ Assert that codes are normalized with `Locale.ROOT`, duplicate provider codes fa
 - [ ] **Step 2: Run and verify RED**
 
 ```powershell
-mvn.cmd -pl yudao-module-mall/yudao-module-trade-server -am -Dtest=LogisticsProviderRegistryTest -Dsurefire.failIfNoSpecifiedTests=false test
+mvn.cmd -pl yudao-module-mall/yudao-module-trade-server -am "-Dtest=LogisticsProviderRegistryTest" "-Dsurefire.failIfNoSpecifiedTests=false" test
 ```
 
 - [ ] **Step 3: Implement the registry and Mock**
@@ -638,7 +638,7 @@ Cover successful US and CA drafts, cross-border rejection, unsupported country r
 - [ ] **Step 2: Run and verify RED**
 
 ```powershell
-mvn.cmd -pl yudao-module-mall/yudao-module-trade-server -am -Dtest=FulfillmentCommandServiceImplTest -Dsurefire.failIfNoSpecifiedTests=false test
+mvn.cmd -pl yudao-module-mall/yudao-module-trade-server -am "-Dtest=FulfillmentCommandServiceImplTest" "-Dsurefire.failIfNoSpecifiedTests=false" test
 ```
 
 - [ ] **Step 3: Implement transactional draft creation**
@@ -660,7 +660,7 @@ The transaction order must be:
 - [ ] **Step 4: Run service and transaction tests**
 
 ```powershell
-mvn.cmd -pl yudao-module-mall/yudao-module-trade-server -am -Dtest=FulfillmentCommandServiceImplTest,FulfillmentPersistenceTest -Dsurefire.failIfNoSpecifiedTests=false test
+mvn.cmd -pl yudao-module-mall/yudao-module-trade-server -am "-Dtest=FulfillmentCommandServiceImplTest,FulfillmentPersistenceTest" "-Dsurefire.failIfNoSpecifiedTests=false" test
 ```
 
 Expected: PASS; verify outbox and shipment rows roll back together when any insert fails.
@@ -701,7 +701,7 @@ The projection assertion must verify `trade_order.logistics_id` receives `trade_
 - [ ] **Step 2: Run and verify RED**
 
 ```powershell
-mvn.cmd -pl yudao-module-mall/yudao-module-trade-server -am -Dtest=FulfillmentDispatchServiceTest -Dsurefire.failIfNoSpecifiedTests=false test
+mvn.cmd -pl yudao-module-mall/yudao-module-trade-server -am "-Dtest=FulfillmentDispatchServiceTest" "-Dsurefire.failIfNoSpecifiedTests=false" test
 ```
 
 - [ ] **Step 3: Implement package/leg validation and dispatch**
@@ -723,7 +723,7 @@ Dispatch must execute in one transaction:
 - [ ] **Step 4: Run focused tests**
 
 ```powershell
-mvn.cmd -pl yudao-module-mall/yudao-module-trade-server -am -Dtest=FulfillmentDispatchServiceTest,FulfillmentCommandServiceImplTest,TradeOrderUpdateServiceImplTest -Dsurefire.failIfNoSpecifiedTests=false test
+mvn.cmd -pl yudao-module-mall/yudao-module-trade-server -am "-Dtest=FulfillmentDispatchServiceTest,FulfillmentCommandServiceImplTest,TradeOrderUpdateServiceImplTest" "-Dsurefire.failIfNoSpecifiedTests=false" test
 ```
 
 Expected: PASS; existing order delivery tests stay green.
@@ -768,7 +768,7 @@ Normalize with Unicode NFKC, trim, collapse internal whitespace, and uppercase c
 - [ ] **Step 2: Run and verify RED**
 
 ```powershell
-mvn.cmd -pl yudao-module-mall/yudao-module-trade-server -am -Dtest=FulfillmentTrackingServiceImplTest,FulfillmentTrackingTransactionTest -Dsurefire.failIfNoSpecifiedTests=false test
+mvn.cmd -pl yudao-module-mall/yudao-module-trade-server -am "-Dtest=FulfillmentTrackingServiceImplTest,FulfillmentTrackingTransactionTest" "-Dsurefire.failIfNoSpecifiedTests=false" test
 ```
 
 - [ ] **Step 3: Implement event application**
@@ -828,7 +828,7 @@ Assert `Idempotency-Key` is mandatory for every POST and PUT, expected version i
 - [ ] **Step 2: Run and verify RED**
 
 ```powershell
-mvn.cmd -pl yudao-module-mall/yudao-module-trade-server -am -Dtest=TradeFulfillmentControllerTest,FulfillmentQueryServiceImplTest -Dsurefire.failIfNoSpecifiedTests=false test
+mvn.cmd -pl yudao-module-mall/yudao-module-trade-server -am "-Dtest=TradeFulfillmentControllerTest,FulfillmentQueryServiceImplTest" "-Dsurefire.failIfNoSpecifiedTests=false" test
 ```
 
 - [ ] **Step 3: Implement APIs, permissions, and read models**
@@ -848,7 +848,7 @@ Controllers obtain tenant/user context from framework helpers. Never accept `ten
 - [ ] **Step 4: Run API tests**
 
 ```powershell
-mvn.cmd -pl yudao-module-mall/yudao-module-trade-server -am -Dtest=TradeFulfillmentControllerTest,FulfillmentQueryServiceImplTest,FulfillmentCommandServiceImplTest,FulfillmentTrackingServiceImplTest -Dsurefire.failIfNoSpecifiedTests=false test
+mvn.cmd -pl yudao-module-mall/yudao-module-trade-server -am "-Dtest=TradeFulfillmentControllerTest,FulfillmentQueryServiceImplTest,FulfillmentCommandServiceImplTest,FulfillmentTrackingServiceImplTest" "-Dsurefire.failIfNoSpecifiedTests=false" test
 ```
 
 Expected: PASS and no authorization-free write endpoint.
@@ -883,7 +883,7 @@ Assert: new-model events are returned as `ExpressTrackRespDTO(time, content)` wh
 - [ ] **Step 2: Run and verify RED**
 
 ```powershell
-mvn.cmd -pl yudao-module-mall/yudao-module-trade-server -am -Dtest=FulfillmentLegacyProjectionServiceTest,FulfillmentLegacyMigrationServiceTest,AppTradeOrderControllerTest -Dsurefire.failIfNoSpecifiedTests=false test
+mvn.cmd -pl yudao-module-mall/yudao-module-trade-server -am "-Dtest=FulfillmentLegacyProjectionServiceTest,FulfillmentLegacyMigrationServiceTest,AppTradeOrderControllerTest" "-Dsurefire.failIfNoSpecifiedTests=false" test
 ```
 
 - [ ] **Step 3: Implement safe projection and backfill**
@@ -936,7 +936,7 @@ Assert every flag defaults false, production startup rejects blank HMAC key when
 - [ ] **Step 2: Run and verify RED**
 
 ```powershell
-mvn.cmd -pl yudao-module-mall/yudao-module-trade-server -am -Dtest=FulfillmentPropertiesTest -Dsurefire.failIfNoSpecifiedTests=false test
+mvn.cmd -pl yudao-module-mall/yudao-module-trade-server -am "-Dtest=FulfillmentPropertiesTest" "-Dsurefire.failIfNoSpecifiedTests=false" test
 ```
 
 - [ ] **Step 3: Implement guarded configuration**
@@ -957,7 +957,7 @@ From `D:\code\yudao电商管理平台前后端\yudao-cloud`:
 
 ```powershell
 mvn.cmd -pl yudao-module-mall/yudao-module-trade-server -am test
-mvn.cmd -pl yudao-server -am -DskipTests package
+mvn.cmd -pl yudao-server -am "-DskipTests" package
 ```
 
 Expected: all tests PASS; backend package exits 0; no external provider request is made.
