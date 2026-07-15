@@ -750,6 +750,10 @@ git add -- 'yudao电商管理平台前后端/yudao-cloud/yudao-module-mall/yudao
 git commit -m "feat: dispatch fulfillment shipments"
 ```
 
+### Task 7A: Add versioned provider-status mapping and replay audit foundation
+
+Implement and verify `docs/superpowers/plans/2026-07-15-north-america-tracking-mapping-foundation.md` before Task 7. This adds V016 rather than rewriting the already committed V015 migration. It must not seed real provider mappings.
+
 ### Task 7: Ingest deterministic tracking events and update summaries with outbox atomicity
 
 **Files:**
