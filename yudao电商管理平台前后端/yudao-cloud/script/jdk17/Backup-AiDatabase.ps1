@@ -14,12 +14,15 @@ if ([string]::IsNullOrWhiteSpace($password)) {
 
 $cloudRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $backupDirectory = Join-Path $cloudRoot '.local-backups\mysql'
-$timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+$timestamp = Get-Date -Format 'yyyyMMdd-HHmmss-fff'
 $fileName = "$DatabaseName-$timestamp.sql"
 $containerPath = "/tmp/$fileName"
 $backupPath = Join-Path $backupDirectory $fileName
 
 New-Item -ItemType Directory -Force -Path $backupDirectory | Out-Null
+if (Test-Path -LiteralPath $backupPath) {
+    throw "Refusing to overwrite an existing backup: $backupPath"
+}
 
 $running = & docker inspect -f '{{.State.Running}}' $ContainerName 2>$null
 if ($LASTEXITCODE -ne 0 -or $running -ne 'true') {

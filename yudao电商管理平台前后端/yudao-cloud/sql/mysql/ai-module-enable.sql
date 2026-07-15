@@ -580,11 +580,16 @@ CALL ai_ensure_menu(@ai_workflow, 'AI 工作流测试', 'ai:workflow:test', 3, 5
 DROP PROCEDURE IF EXISTS `ai_ensure_menu`;
 
 INSERT INTO system_role_menu(role_id, menu_id, creator, updater, deleted, tenant_id)
+WITH RECURSIVE ai_menus AS (
+  SELECT id FROM system_menu WHERE id = @ai_root AND deleted = b'0'
+  UNION ALL
+  SELECT m.id
+  FROM system_menu m
+  JOIN ai_menus parent ON m.parent_id = parent.id
+  WHERE m.deleted = b'0'
+)
 SELECT r.id, m.id, '1', '1', b'0', r.tenant_id
 FROM system_role r
-JOIN system_menu m ON m.deleted = b'0' AND (
-  m.id = @ai_root OR m.parent_id = @ai_root OR m.permission LIKE 'ai:%' OR
-  m.parent_id IN (SELECT id FROM system_menu WHERE parent_id = @ai_console AND deleted = b'0')
-)
+JOIN ai_menus m
 LEFT JOIN system_role_menu rm ON rm.role_id = r.id AND rm.menu_id = m.id AND rm.deleted = b'0'
 WHERE r.code = 'super_admin' AND r.deleted = b'0' AND rm.id IS NULL;

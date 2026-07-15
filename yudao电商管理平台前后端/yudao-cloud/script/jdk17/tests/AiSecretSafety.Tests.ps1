@@ -6,13 +6,16 @@ $repositoryRoot = Resolve-Path (Join-Path $PSScriptRoot '..\..\..')
 $aiRoot = Resolve-Path (Join-Path $repositoryRoot 'yudao-module-ai')
 $runtimeConfig = Join-Path $aiRoot 'yudao-module-ai-server\src\main\resources\application.yaml'
 $credentialLike = '(?i)(sk-[A-Za-z0-9_-]{12,}|AIza[A-Za-z0-9_-]{20,}|Bearer\s+[A-Za-z0-9._-]{12,}|^\s*api-key:\s*(?!\$\{[A-Z0-9_]+(?::[^}]*)?\})[^#\s][^\s]*)'
+$sensitiveSqlSeed = '(?i)(INSERT INTO `system_mail_account`|INSERT INTO `system_sms_channel`|INSERT INTO `infra_file_config`.*\\"accessKey\\")'
 $gitRoot = (& git -C $repositoryRoot.Path rev-parse --show-toplevel).Trim()
 if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($gitRoot)) {
     throw 'Unable to resolve the Git worktree root.'
 }
 $repositoryPrefix = $repositoryRoot.Path.Substring($gitRoot.Length).TrimStart('\').Replace('\', '/') + '/'
 $trackedConfigFiles = @(& git -C $gitRoot ls-files -- `
-        "$repositoryPrefix*.yaml" "$repositoryPrefix*.yml" "$repositoryPrefix*.properties")
+        "$repositoryPrefix*.yaml" "$repositoryPrefix*.yml" "$repositoryPrefix*.properties" `
+        "$repositoryPrefix*.sql" "$repositoryPrefix*.ps1" "$repositoryPrefix*.mjs" `
+        "$repositoryPrefix*.js" "$repositoryPrefix*.java" "$repositoryPrefix*.json")
 if ($LASTEXITCODE -ne 0) {
     throw 'Unable to enumerate tracked configuration files.'
 }
@@ -23,6 +26,9 @@ if ($trackedConfigFiles.Count -eq 0) {
 $matches = @(
     $trackedConfigFiles | ForEach-Object {
         Select-String -LiteralPath (Join-Path $gitRoot $_) -Pattern $credentialLike
+        if ([IO.Path]::GetExtension($_) -eq '.sql') {
+            Select-String -LiteralPath (Join-Path $gitRoot $_) -Pattern $sensitiveSqlSeed
+        }
     }
 )
 

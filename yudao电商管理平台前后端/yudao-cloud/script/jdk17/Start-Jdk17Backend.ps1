@@ -45,16 +45,13 @@ function Test-PortOccupied {
     return $Port -in [Net.NetworkInformation.IPGlobalProperties]::GetIPGlobalProperties().GetActiveTcpListeners().Port
 }
 
-function Test-TcpPort {
+function Test-HttpHealth {
     param([int]$Port)
-    $client = [Net.Sockets.TcpClient]::new()
     try {
-        $task = $client.ConnectAsync('127.0.0.1', $Port)
-        return $task.Wait(2000) -and $client.Connected
+        $response = Invoke-RestMethod -Uri "http://127.0.0.1:$Port/actuator/health" -TimeoutSec 5
+        return $response.status -eq 'UP'
     } catch {
         return $false
-    } finally {
-        $client.Dispose()
     }
 }
 
@@ -146,7 +143,7 @@ foreach ($service in $selectedServices) {
             Remove-Item -LiteralPath $statePath -Force -ErrorAction SilentlyContinue
             throw "$service exited during startup. Inspect $stderrPath and $stdoutPath."
         }
-        if (Test-TcpPort -Port $definition.Port) {
+        if (Test-HttpHealth -Port $definition.Port) {
             $healthy = $true
             break
         }
@@ -155,7 +152,7 @@ foreach ($service in $selectedServices) {
     if (-not $healthy) {
         Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
         Remove-Item -LiteralPath $statePath -Force -ErrorAction SilentlyContinue
-        throw "$service did not open port $($definition.Port) within $StartupTimeoutSeconds seconds. Inspect $stderrPath and $stdoutPath."
+        throw "$service did not report Actuator health UP on port $($definition.Port) within $StartupTimeoutSeconds seconds. Inspect $stderrPath and $stdoutPath."
     }
 
     $registered = $false
@@ -170,7 +167,7 @@ foreach ($service in $selectedServices) {
     if (-not $registered) {
         Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
         Remove-Item -LiteralPath $statePath -Force -ErrorAction SilentlyContinue
-        throw "$service became healthy but did not register in Nacos."
+        throw "$service reported Actuator health UP but did not register in Nacos."
     }
 
     Write-Output "$service started: PID=$($process.Id), port=$($definition.Port)"

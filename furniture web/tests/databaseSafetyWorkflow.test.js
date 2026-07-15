@@ -50,6 +50,7 @@ describe("safe database deployment workflow", () => {
     expect(seed).toContain("SIGNAL SQLSTATE '45000'");
     expect(baseline).not.toMatch(/INSERT INTO `infra_file_config` .*\\\"accessKey\\\"/);
     expect(baseline).not.toContain("INSERT INTO `system_sms_channel`");
+    expect(baseline).not.toContain("INSERT INTO `system_mail_account`");
     expect(baseline).toContain("Sensitive external-service seed omitted");
   });
 

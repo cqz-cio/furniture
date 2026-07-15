@@ -12,6 +12,12 @@ if ([string]::IsNullOrWhiteSpace($password)) {
     throw 'YUDAO_MYSQL_ROOT_PASSWORD is required.'
 }
 
+$migrationPath = Join-Path (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path 'sql\mysql\ai-module-enable.sql'
+$migrationText = Get-Content -LiteralPath $migrationPath -Raw
+if ($migrationText -notmatch '(?s)INSERT INTO system_role_menu.*?WITH RECURSIVE ai_menus') {
+    throw 'AI role-menu migration must populate the complete recursive menu subtree.'
+}
+
 function Invoke-MySqlQuery {
     param([Parameter(Mandatory)][string]$Sql)
 

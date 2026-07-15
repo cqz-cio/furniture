@@ -19,16 +19,13 @@ $definitions = @{
     'ai-server' = @{ Port = 48090; NacosName = 'ai-server' }
 }
 
-function Test-TcpPort {
+function Test-HttpHealth {
     param([int]$Port)
-    $client = [Net.Sockets.TcpClient]::new()
     try {
-        $task = $client.ConnectAsync('127.0.0.1', $Port)
-        return $task.Wait(2000) -and $client.Connected
+        $response = Invoke-RestMethod -Uri "http://127.0.0.1:$Port/actuator/health" -TimeoutSec 5
+        return $response.status -eq 'UP'
     } catch {
         return $false
-    } finally {
-        $client.Dispose()
     }
 }
 
@@ -56,8 +53,8 @@ foreach ($service in $Services) {
         throw "$service recorded PID $($state.Pid) is not running."
     }
 
-    if (-not (Test-TcpPort -Port $definition.Port)) {
-        throw "$service is running but port $($definition.Port) is not accepting connections."
+    if (-not (Test-HttpHealth -Port $definition.Port)) {
+        throw "$service is running but Actuator health is not UP on port $($definition.Port)."
     }
 
     $uri = 'http://127.0.0.1:8848/nacos/v1/ns/instance/list' +

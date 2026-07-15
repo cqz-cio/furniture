@@ -2,8 +2,7 @@
 param(
     [string]$ContainerName = 'yudao-mysql-local',
     [string]$DatabaseName = 'ruoyi-vue-pro',
-    [string]$MySqlUser = 'root',
-    [switch]$SkipBackup
+    [string]$MySqlUser = 'root'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -18,12 +17,10 @@ if (-not (Test-Path -LiteralPath $migrationPath -PathType Leaf)) {
     throw "AI migration file not found: $migrationPath"
 }
 
-if (-not $SkipBackup) {
-    & (Join-Path $PSScriptRoot 'Backup-AiDatabase.ps1') `
-        -ContainerName $ContainerName -DatabaseName $DatabaseName -MySqlUser $MySqlUser
-    if ($LASTEXITCODE -ne 0) {
-        throw 'Database backup failed; migration was not applied.'
-    }
+& (Join-Path $PSScriptRoot 'Backup-AiDatabase.ps1') `
+    -ContainerName $ContainerName -DatabaseName $DatabaseName -MySqlUser $MySqlUser
+if ($LASTEXITCODE -ne 0) {
+    throw 'Database backup failed; migration was not applied.'
 }
 
 $containerPath = '/tmp/yudao-ai-module-enable.sql'

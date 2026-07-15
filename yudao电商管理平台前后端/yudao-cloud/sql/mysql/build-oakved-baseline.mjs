@@ -11,7 +11,8 @@ export const sanitizeBootstrapSql = (value) => normalize(value)
   .map((line) => {
     const isCloudFileConfig = line.startsWith("INSERT INTO `infra_file_config`") && line.includes('\\"accessKey\\"');
     const isSmsChannelConfig = line.startsWith("INSERT INTO `system_sms_channel`");
-    if (isCloudFileConfig || isSmsChannelConfig) {
+    const isMailAccountConfig = line.startsWith("INSERT INTO `system_mail_account`");
+    if (isCloudFileConfig || isSmsChannelConfig || isMailAccountConfig) {
       return "-- Sensitive external-service seed omitted; configure credentials after installation.";
     }
     return line;
