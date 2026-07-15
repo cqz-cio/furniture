@@ -119,6 +119,30 @@ public interface ErrorCodeConstants {
     ErrorCode BROKERAGE_WITHDRAW_UPDATE_STATUS_FAIL_PAY_MERCHANT_EXISTS = new ErrorCode(1_011_008_008, "提现单更新转账状态失败，转账单的商户订单不匹配");
     ErrorCode BROKERAGE_WITHDRAW_UPDATE_STATUS_FAIL_PAY_CHANNEL_NOT_MATCH = new ErrorCode(1_011_008_009, "提现单更新转账状态失败，转账渠道不匹配");
 
+    // ========== Fulfillment 模块 1-011-009-000 ==========
+    ErrorCode FULFILLMENT_SHIPMENT_NOT_FOUND = new ErrorCode(1_011_009_000, "Shipment was not found");
+    ErrorCode FULFILLMENT_ORDER_NOT_FOUND = new ErrorCode(1_011_009_001, "Order was not found");
+    ErrorCode FULFILLMENT_ORDER_ITEM_QUANTITY_EXCEEDED =
+            new ErrorCode(1_011_009_002, "Shipment quantity exceeds the order item quantity");
+    ErrorCode FULFILLMENT_COUNTRY_NOT_SUPPORTED =
+            new ErrorCode(1_011_009_003, "Shipping destination is not supported");
+    ErrorCode FULFILLMENT_CROSS_BORDER_NOT_SUPPORTED =
+            new ErrorCode(1_011_009_004, "Cross-border shipping is not supported");
+    ErrorCode FULFILLMENT_INVALID_STATUS_TRANSITION =
+            new ErrorCode(1_011_009_005, "Shipment status transition is not allowed");
+    ErrorCode FULFILLMENT_DUPLICATE_TRACKING_NUMBER =
+            new ErrorCode(1_011_009_006, "Tracking number is already in use");
+    ErrorCode FULFILLMENT_PROVIDER_NOT_AVAILABLE =
+            new ErrorCode(1_011_009_007, "Fulfillment provider is unavailable");
+    ErrorCode FULFILLMENT_PROVIDER_CAPABILITY_UNSUPPORTED =
+            new ErrorCode(1_011_009_008, "Requested fulfillment capability is unavailable");
+    ErrorCode FULFILLMENT_VERSION_CONFLICT =
+            new ErrorCode(1_011_009_009, "Shipment was updated by another request; refresh and retry");
+    ErrorCode FULFILLMENT_IDEMPOTENCY_CONFLICT =
+            new ErrorCode(1_011_009_010, "Request conflicts with an earlier request");
+    ErrorCode FULFILLMENT_DISPATCH_INCOMPLETE =
+            new ErrorCode(1_011_009_011, "Shipment dispatch is incomplete");
+
     ErrorCode ORDER_COMMENT_ITEM_LIST_MISMATCH = new ErrorCode(1_011_000_042, "创建交易订单评价失败，订单项集合不完整或不匹配");
 
     ErrorCode ORDER_COMMENT_MIXED_MODE_NOT_ALLOWED = new ErrorCode(1_011_000_043, "创建交易订单评价失败，订单存在已评价商品，不允许再发起整单集中评价");
