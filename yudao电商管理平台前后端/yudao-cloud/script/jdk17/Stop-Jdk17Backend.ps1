@@ -1,5 +1,8 @@
 [CmdletBinding()]
-param([string]$RunDirectory)
+param(
+    [string]$RunDirectory,
+    [string[]]$Services = @()
+)
 
 $ErrorActionPreference = 'Stop'
 
@@ -14,7 +17,21 @@ if (-not (Test-Path -LiteralPath $RunDirectory -PathType Container)) {
     exit 0
 }
 
-foreach ($stateFile in Get-ChildItem -LiteralPath $RunDirectory -Filter '*.json' -File) {
+$stateFiles = @(Get-ChildItem -LiteralPath $RunDirectory -Filter '*.json' -File)
+if ($Services.Count -gt 0) {
+    $selectedServices = [System.Collections.Generic.HashSet[string]]::new(
+        [string[]]$Services,
+        [StringComparer]::OrdinalIgnoreCase
+    )
+    $stateFiles = @($stateFiles | Where-Object { $selectedServices.Contains($_.BaseName) })
+}
+
+if ($stateFiles.Count -eq 0) {
+    Write-Output 'No matching recorded JDK 17 backend processes.'
+    exit 0
+}
+
+foreach ($stateFile in $stateFiles) {
     $state = Get-Content -LiteralPath $stateFile.FullName -Raw | ConvertFrom-Json
     $processId = [int]$state.Pid
     $jarPath = [IO.Path]::GetFullPath([string]$state.JarPath)
