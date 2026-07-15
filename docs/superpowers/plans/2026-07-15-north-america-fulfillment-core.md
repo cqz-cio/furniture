@@ -733,7 +733,7 @@ Dispatch must execute in one transaction:
 8. Update summary to `PARTIALLY_SHIPPED` or `SHIPPED` from all valid shipments.
 9. If this is the first active package and the carrier has `legacyExpressId`, update legacy fields with a version/status guard; do not mark partially shipped orders as fully delivered.
 10. Insert `PACKAGE_DISPATCHED` outbox event.
-11. Call Mock `registerTracking` only after local data is committed through an after-commit action; registration failure creates a retryable outbox/sync event and does not roll back dispatch.
+11. After commit, call `registerTracking` only when the selected provider explicitly declares the registration capability; otherwise skip registration and rely on polling/query. Registration failure creates a retryable outbox/sync event and does not roll back dispatch. Phase 1 Mock declares `TRACKING_QUERY` only, so dispatch must not call Mock `registerTracking`.
 
 - [ ] **Step 4: Run focused tests**
 
