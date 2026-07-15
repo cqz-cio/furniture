@@ -36,6 +36,14 @@ public class TrackingEventDO extends BaseDO {
     @ToString.Exclude
     private String providerStatus;
     @ToString.Exclude
+    private String providerStatusNormalized;
+    private String mappingVersion;
+    private LocalDateTime mappingEffectiveAt;
+    private Boolean mappingKnown;
+    private String transitionDecision;
+    private String previousStatus;
+    private String resultStatus;
+    @ToString.Exclude
     private String description;
     @ToString.Exclude
     private String location;

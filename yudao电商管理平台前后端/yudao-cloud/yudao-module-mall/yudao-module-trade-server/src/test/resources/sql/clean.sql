@@ -1,6 +1,7 @@
 DELETE FROM trade_fulfillment_outbox_event;
 DELETE FROM trade_fulfillment_idempotency;
 DELETE FROM trade_tracking_event;
+DELETE FROM trade_tracking_status_mapping;
 DELETE FROM trade_shipment_leg;
 DELETE FROM trade_shipment_package;
 DELETE FROM trade_shipment_item;

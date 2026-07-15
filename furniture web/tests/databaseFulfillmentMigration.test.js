@@ -1,9 +1,11 @@
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const root = join(import.meta.dirname, "../../yudao电商管理平台前后端/yudao-cloud/sql/mysql");
 const migrationPath = join(root, "migrations/V015__trade_fulfillment_core.sql");
+const trackingMappingMigrationPath = join(root, "migrations/V016__trade_tracking_status_mapping.sql");
 
 describe("V015 trade fulfillment core migration", () => {
   it("creates the complete Phase 1 persistence contract", () => {
@@ -34,5 +36,50 @@ describe("V015 trade fulfillment core migration", () => {
     const build = readFileSync(join(root, "build-oakved-baseline.mjs"), "utf8");
     expect(build).toContain("discoverMigrations");
     expect(migrationPath).toMatch(/V015__trade_fulfillment_core\.sql$/);
+    const normalized = readFileSync(migrationPath, "utf8")
+      .replace(/\r\n/g, "\n")
+      .replace(/\s+$/, "") + "\n";
+    expect(createHash("sha256").update(normalized).digest("hex"))
+      .toBe("683687685b5b4943949d965f3b3df86eaa2e4dfcdbf50641fb4fc05db8d80ec4");
+  });
+});
+
+describe("V016 tracking status mapping migration", () => {
+  it("adds versioned exact-carrier mappings and replayable event decisions", () => {
+    const sql = readFileSync(trackingMappingMigrationPath, "utf8");
+
+    expect(sql).toContain("CREATE TABLE IF NOT EXISTS `trade_tracking_status_mapping`");
+    for (const column of [
+      "`provider_code` varchar(32) NOT NULL",
+      "`carrier_code` varchar(32) NOT NULL",
+      "`provider_status_normalized` varchar(128) NOT NULL",
+      "`standard_status` varchar(32) NOT NULL",
+      "`mapping_version` varchar(32) NOT NULL",
+      "`effective_at` datetime(6) NOT NULL",
+    ]) {
+      expect(sql).toContain(column);
+    }
+    expect(sql).toContain("UNIQUE KEY `uk_tracking_status_mapping`");
+    expect(sql).toContain("KEY `idx_tracking_status_mapping_effective`");
+    expect(sql).toContain("ADD COLUMN `provider_status_normalized`");
+    expect(sql).toContain("ADD COLUMN `mapping_known`");
+    expect(sql).toContain("ADD COLUMN `transition_decision`");
+    expect(sql).toContain("MODIFY COLUMN `occurred_at` datetime(6) NOT NULL");
+    expect(sql).toContain("MODIFY COLUMN `received_at` datetime(6) NOT NULL");
+    expect(sql).toContain("MODIFY COLUMN `last_event_occurred_at` datetime(6) DEFAULT NULL");
+    expect(sql.match(/ADD COLUMN `last_event_occurred_at` datetime\(6\) DEFAULT NULL/g)).toHaveLength(2);
+    expect(sql).not.toMatch(/INSERT\s+INTO\s+`?trade_tracking_status_mapping`?/i);
+  });
+
+  it("keeps the generated baseline V016 section byte-equivalent to the migration", () => {
+    const migration = readFileSync(trackingMappingMigrationPath, "utf8").replace(/\r\n/g, "\n").trimEnd();
+    const baseline = readFileSync(join(root, "oakved-baseline.sql"), "utf8").replace(/\r\n/g, "\n");
+    const marker = "-- BEGIN V016__trade_tracking_status_mapping.sql\n";
+    const start = baseline.indexOf(marker);
+    const end = baseline.indexOf("\n-- BEGIN Oakved demo catalog", start);
+
+    expect(start).toBeGreaterThanOrEqual(0);
+    expect(end).toBeGreaterThan(start);
+    expect(baseline.slice(start + marker.length, end).trimEnd()).toBe(migration);
   });
 });

@@ -271,6 +271,7 @@ class FulfillmentPersistenceTest extends BaseDbUnitTest {
         TrackingEventDO event = createTrackingEvent(TENANT_ID, 1L, "external-event-secret", EVENT_TIME);
         event.setEventHash("event-hash-secret");
         event.setProviderStatus("provider-status-secret");
+        event.setProviderStatusNormalized("provider-status-normalized-secret");
         event.setDescription("description-secret");
         event.setLocation("location-secret");
         event.setRawPayloadRef("payload-ref-secret");
@@ -288,6 +289,7 @@ class FulfillmentPersistenceTest extends BaseDbUnitTest {
         assertFalse(event.toString().contains("external-event-secret"));
         assertFalse(event.toString().contains("event-hash-secret"));
         assertFalse(event.toString().contains("provider-status-secret"));
+        assertFalse(event.toString().contains("provider-status-normalized-secret"));
         assertFalse(event.toString().contains("description-secret"));
         assertFalse(event.toString().contains("location-secret"));
         assertFalse(event.toString().contains("payload-ref-secret"));

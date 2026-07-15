@@ -10,7 +10,7 @@ import cn.iocoder.yudao.module.trade.framework.fulfillment.core.impl.MockLogisti
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.AnnotatedElement;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -85,10 +85,10 @@ class LogisticsProviderRegistryTest {
                 .setCarrierCode("ups")
                 .setTrackingNumber("1Z999");
         List<ProviderTrackingEvent> events = new ArrayList<>(List.of(
-                new ProviderTrackingEvent("I", LocalDateTime.of(2026, 7, 15, 9, 30),
-                        "Los Angeles, CA", "Departed origin facility"),
-                new ProviderTrackingEvent("OD", LocalDateTime.of(2026, 7, 16, 8, 0),
-                        "Ontario, CA", "Out for delivery")));
+                new ProviderTrackingEvent("external-1", "I", Instant.parse("2026-07-15T16:30:00.123456Z"),
+                        "America/Los_Angeles", "Los Angeles, CA", "Departed origin facility", "payload-ref-1"),
+                new ProviderTrackingEvent("external-2", "OD", Instant.parse("2026-07-16T15:00:00.654321Z"),
+                        "America/Los_Angeles", "Ontario, CA", "Out for delivery", "payload-ref-2")));
         MockLogisticsProviderClient client = new MockLogisticsProviderClient(Map.of(query, events));
         events.clear();
 
@@ -107,6 +107,28 @@ class LogisticsProviderRegistryTest {
         assertTrue(ProviderTrackingEvent.class.isRecord());
         assertFalse(referencesHttpClient(MockLogisticsProviderClient.class));
         assertFalse(hasControllerAnnotation(MockLogisticsProviderClient.class));
+    }
+
+    @Test
+    void providerEventsExposeOnlyImmutableRawFactsAndRedactSensitiveValues() {
+        ProviderTrackingEvent event = new ProviderTrackingEvent(
+                "external-event-secret", "provider-status-secret", Instant.parse("2026-07-15T16:30:00.123456Z"),
+                "America/Los_Angeles", "location-secret", "description-secret", "payload-ref-secret");
+
+        assertEquals(List.of(
+                        "externalEventId", "providerStatus", "occurredAt", "occurredTimezone",
+                        "location", "description", "rawPayloadRef"),
+                Arrays.stream(ProviderTrackingEvent.class.getRecordComponents())
+                        .map(component -> component.getName())
+                        .toList());
+        assertEquals(Instant.class, ProviderTrackingEvent.class.getRecordComponents()[2].getType());
+        for (String sensitive : List.of(
+                "external-event-secret", "provider-status-secret", "location-secret",
+                "description-secret", "payload-ref-secret")) {
+            assertFalse(event.toString().contains(sensitive));
+        }
+        assertTrue(event.toString().contains("2026-07-15T16:30:00.123456Z"));
+        assertTrue(event.toString().contains("America/Los_Angeles"));
     }
 
     private static boolean referencesHttpClient(Class<?> type) {

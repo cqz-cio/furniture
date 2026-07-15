@@ -42,6 +42,7 @@ public class ShipmentLegDO extends BaseDO {
     @ToString.Exclude
     private String destinationLocation;
     private String status;
+    private LocalDateTime lastEventOccurredAt;
     private LocalDateTime startedAt;
     private LocalDateTime completedAt;
     private Integer version;

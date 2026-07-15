@@ -11,6 +11,7 @@ import lombok.NoArgsConstructor;
 import lombok.ToString;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @TableName("trade_shipment_package")
 @KeySequence("trade_shipment_package_seq")
@@ -37,6 +38,7 @@ public class ShipmentPackageDO extends BaseDO {
     private BigDecimal height;
     private String dimensionUnit;
     private String status;
+    private LocalDateTime lastEventOccurredAt;
     private Integer version;
 
 }

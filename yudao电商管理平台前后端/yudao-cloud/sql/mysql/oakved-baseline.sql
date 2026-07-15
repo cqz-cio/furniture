@@ -7717,6 +7717,46 @@ CREATE TABLE IF NOT EXISTS `trade_fulfillment_outbox_event` (
   KEY `idx_fulfillment_outbox_due` (`tenant_id`,`status`,`next_attempt_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- BEGIN V016__trade_tracking_status_mapping.sql
+CREATE TABLE IF NOT EXISTS `trade_tracking_status_mapping` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `tenant_id` bigint NOT NULL,
+  `provider_code` varchar(32) NOT NULL,
+  `carrier_code` varchar(32) NOT NULL,
+  `provider_status_normalized` varchar(128) NOT NULL,
+  `standard_status` varchar(32) NOT NULL,
+  `mapping_version` varchar(32) NOT NULL,
+  `effective_at` datetime(6) NOT NULL,
+  `creator` varchar(64) NOT NULL DEFAULT '',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updater` varchar(64) NOT NULL DEFAULT '',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` bit(1) NOT NULL DEFAULT b'0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_tracking_status_mapping` (`tenant_id`,`provider_code`,`carrier_code`,`provider_status_normalized`,`mapping_version`,`deleted`),
+  KEY `idx_tracking_status_mapping_effective` (`tenant_id`,`provider_code`,`carrier_code`,`effective_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE `trade_tracking_event`
+  ADD COLUMN `provider_status_normalized` varchar(128) NOT NULL DEFAULT '' AFTER `provider_status`,
+  ADD COLUMN `mapping_version` varchar(32) DEFAULT NULL AFTER `provider_status_normalized`,
+  ADD COLUMN `mapping_effective_at` datetime(6) DEFAULT NULL AFTER `mapping_version`,
+  ADD COLUMN `mapping_known` bit(1) NOT NULL DEFAULT b'0' AFTER `mapping_effective_at`,
+  ADD COLUMN `transition_decision` varchar(20) NOT NULL DEFAULT 'TIMELINE_ONLY' AFTER `mapping_known`,
+  ADD COLUMN `previous_status` varchar(32) DEFAULT NULL AFTER `transition_decision`,
+  ADD COLUMN `result_status` varchar(32) DEFAULT NULL AFTER `previous_status`,
+  MODIFY COLUMN `occurred_at` datetime(6) NOT NULL,
+  MODIFY COLUMN `received_at` datetime(6) NOT NULL;
+
+ALTER TABLE `trade_shipment`
+  MODIFY COLUMN `last_event_occurred_at` datetime(6) DEFAULT NULL;
+
+ALTER TABLE `trade_shipment_package`
+  ADD COLUMN `last_event_occurred_at` datetime(6) DEFAULT NULL AFTER `status`;
+
+ALTER TABLE `trade_shipment_leg`
+  ADD COLUMN `last_event_occurred_at` datetime(6) DEFAULT NULL AFTER `status`;
+
 -- BEGIN Oakved demo catalog
 -- Oakved demo catalog: tenant 121, 26 mall products, ERP products, stock and mappings.
 SET @tenant_id = 121;
@@ -7900,4 +7940,5 @@ INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256)
 INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('013','statistics commerce dashboard','V013__statistics_commerce_dashboard.sql','6f32a961948ffa9cd77cf46edbdbc9a58ea4319c39f120df5fd84357147d5881') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
 INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('014','statistics commerce dashboard backfill','V014__statistics_commerce_dashboard_backfill.sql','382b67883bb7a3d4694ef6591ea9f4049194f649ad3410e5da7be9758186d04a') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
 INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('015','trade fulfillment core','V015__trade_fulfillment_core.sql','683687685b5b4943949d965f3b3df86eaa2e4dfcdbf50641fb4fc05db8d80ec4') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
+INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('016','trade tracking status mapping','V016__trade_tracking_status_mapping.sql','21dbb820f0e1099b73154bcc2d6011cdc1ea98556f580aaa0e5ccdd7ed7951da') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
 SET FOREIGN_KEY_CHECKS = 1;
