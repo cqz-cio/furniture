@@ -1,22 +1,47 @@
 # Local Infrastructure
 
-This Compose file starts only the local dependencies required by `yudao-server` in the `local` profile.
+This Compose stack runs the MySQL and Redis dependencies used by `yudao-server` in the `local` profile.
 
-## Start
+## Start safely
 
-Run from `yudao-cloud`:
+From `yudao-cloud` run:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File ".\script\docker\start-local-infra.ps1"
 ```
 
-Or run Docker Compose directly:
+Normal startup never removes Docker volumes. It starts the services and applies only pending numbered migrations from `sql/mysql/migrations`. Applied versions and normalized SHA-256 checksums are stored in `schema_migrations`; changing an already-applied migration is treated as an error.
+
+## First database creation
+
+An empty MySQL volume imports only `sql/mysql/oakved-baseline.sql`. This generated baseline contains:
+
+- the platform and Quartz schemas;
+- all numbered migrations in version order;
+- tenant 121 demo data with 26 mall products;
+- the matching ERP products, warehouse stock and mall/ERP mappings;
+- the migration ledger and checksums.
+
+After adding a new numbered migration, regenerate the first-install script from `furniture web`:
 
 ```powershell
-docker compose -f ".\script\docker\docker-compose-local-infra.yml" up -d
+npm run build:db-baseline
+npm run verify:db-migrations
 ```
 
-## Services
+Never edit a published `Vnnn__*.sql` file. Add the next version instead.
+
+## Deliberate local reset
+
+Reset is separate from startup because it deletes the local MySQL and Redis volumes. The reset script first writes and validates a `mysqldump` backup, then requires the exact confirmation text `RESET OAKVED LOCAL DATA`:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File ".\script\docker\reset-local-infra.ps1"
+```
+
+Backups are written under `script/docker/backups` unless `-BackupDirectory` is supplied.
+
+## Connection details
 
 - MySQL: `127.0.0.1:3306`
 - Database: `ruoyi-vue-pro`
@@ -26,34 +51,4 @@ docker compose -f ".\script\docker\docker-compose-local-infra.yml" up -d
 
 These values match `yudao-server/src/main/resources/application-local.yaml`.
 
-## SQL Initialization
-
-MySQL imports these files on first container volume creation:
-
-- `sql/mysql/ruoyi-vue-pro.sql`
-- `sql/mysql/quartz.sql`
-- `sql/mysql/yudao-module-tables.sql`
-- `sql/mysql/member-email-auth.sql`
-- `sql/mysql/member-trade-application.sql`
-- `sql/mysql/member-membership.sql`
-- `sql/mysql/member-gift-registry.sql`
-- `sql/mysql/trade-gift-registry-context.sql`
-
-The startup script also reapplies local feature migrations after MySQL is ready:
-
-- `sql/mysql/yudao-module-tables.sql`
-- `sql/mysql/member-email-auth.sql`
-- `sql/mysql/member-trade-application.sql`
-- `sql/mysql/member-membership.sql`
-- `sql/mysql/member-gift-registry.sql`
-- `sql/mysql/trade-gift-registry-context.sql`
-
-If you need to reimport SQL from scratch, this removes the local MySQL and Redis volumes:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File ".\script\docker\start-local-infra.ps1" -Recreate
-```
-
-## Port Conflicts
-
-If another container is already using `3306` or `6379`, stop it in Docker Desktop before starting this Compose stack.
+If another service already uses port `3306` or `6379`, stop it before starting this stack.

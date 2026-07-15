@@ -9,7 +9,7 @@ import cn.iocoder.yudao.module.system.dal.mysql.logger.LoginLogMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.Import;
 
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 
 import static cn.iocoder.yudao.framework.common.util.date.LocalDateTimeUtils.buildBetweenTime;
 import static cn.iocoder.yudao.framework.common.util.date.LocalDateTimeUtils.buildTime;
@@ -64,7 +64,8 @@ public class LoginLogServiceImplTest extends BaseDbUnitTest {
 
     @Test
     public void testCreateLoginLog() {
-        LoginLogCreateReqDTO reqDTO = randomPojo(LoginLogCreateReqDTO.class);
+        LoginLogCreateReqDTO reqDTO = randomPojo(LoginLogCreateReqDTO.class,
+                o -> o.setUsername("test-user"));
 
         // 调用
         loginLogService.createLoginLog(reqDTO);

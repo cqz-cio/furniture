@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
 import java.util.Collections;
 import java.util.Optional;
 import java.util.UUID;
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 
 @Service
 @Slf4j

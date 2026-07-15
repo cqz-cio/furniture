@@ -2,7 +2,7 @@ package cn.iocoder.yudao.module.member.controller.admin.membership.vo;
 
 import lombok.Data;
 
-import javax.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotNull;
 
 @Data
 public class MemberMembershipOpenReqVO {

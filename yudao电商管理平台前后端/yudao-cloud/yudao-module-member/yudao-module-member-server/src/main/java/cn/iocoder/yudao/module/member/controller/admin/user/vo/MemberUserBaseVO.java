@@ -6,8 +6,9 @@ import org.hibernate.validator.constraints.Length;
 import org.hibernate.validator.constraints.URL;
 import org.springframework.format.annotation.DateTimeFormat;
 
-import javax.validation.constraints.Email;
-import javax.validation.constraints.NotNull;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -23,10 +24,6 @@ public class MemberUserBaseVO {
     @Schema(description = "手机号", example = "15601691300")
     private String mobile;
 
-    @Schema(description = "邮箱", example = "designer@example.com")
-    @Email(message = "邮箱格式不正确")
-    private String email;
-
     @Schema(description = "Trade Program 账号编号", example = "RH-TRADE-10086")
     @Length(max = 64, message = "Trade ID 长度不能超过 64 位")
     private String tradeId;
@@ -34,6 +31,11 @@ public class MemberUserBaseVO {
     @Schema(description = "状态", requiredMode = Schema.RequiredMode.REQUIRED, example = "2")
     @NotNull(message = "状态不能为空")
     private Byte status;
+
+    @Schema(description = "邮箱", example = "member@iocoder.cn")
+    @Email(message = "邮箱格式不正确")
+    @Size(max = 50, message = "邮箱长度不能超过 50 个字符")
+    private String email;
 
     @Schema(description = "用户昵称", requiredMode = Schema.RequiredMode.REQUIRED, example = "李四")
     @NotNull(message = "用户昵称不能为空")

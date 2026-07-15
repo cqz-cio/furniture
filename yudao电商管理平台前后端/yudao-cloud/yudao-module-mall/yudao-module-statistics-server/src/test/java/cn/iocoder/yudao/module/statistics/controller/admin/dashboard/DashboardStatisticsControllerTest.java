@@ -53,7 +53,7 @@ class DashboardStatisticsControllerTest {
     @Test
     void profitExportRequiresProfitQueryAndProfitExportPermissions() throws Exception {
         PreAuthorize guard = DashboardStatisticsController.class
-                .getMethod("profitExport", DashboardQueryReqVO.class, javax.servlet.http.HttpServletResponse.class)
+                .getMethod("profitExport", DashboardQueryReqVO.class, jakarta.servlet.http.HttpServletResponse.class)
                 .getAnnotation(PreAuthorize.class);
         assertNotNull(guard);
         assertTrue(guard.value().contains("statistics:dashboard:profit-query"));

@@ -1,7 +1,3 @@
-param(
-  [switch] $ReimportSql
-)
-
 $ErrorActionPreference = "Stop"
 
 $workspace = "D:\code"
@@ -19,9 +15,4 @@ if (-not (Test-Path -LiteralPath $infraScript)) {
   throw "Cannot find local infrastructure script: $infraScript"
 }
 
-$arguments = @("-ExecutionPolicy", "Bypass", "-File", $infraScript)
-if ($ReimportSql) {
-  $arguments += "-Recreate"
-}
-
-& powershell @arguments
+& powershell -ExecutionPolicy Bypass -File $infraScript

@@ -1,10 +1,9 @@
 package cn.iocoder.yudao.module.iot.core.messagebus.config;
 
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
-
-import javax.validation.constraints.NotNull;
 
 /**
  * IoT 消息总线配置属性

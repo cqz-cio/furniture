@@ -2,7 +2,7 @@ package cn.iocoder.yudao.module.trade.service.cart.behavior;
 import cn.iocoder.yudao.framework.common.util.servlet.ServletUtils;
 import lombok.Value;
 import org.springframework.stereotype.Component;
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 @Component
 public class BehaviorTrackingConsentPolicy {
  @org.springframework.beans.factory.annotation.Value("${yudao.trade.cart-tracking.enabled:false}") private boolean enabled;

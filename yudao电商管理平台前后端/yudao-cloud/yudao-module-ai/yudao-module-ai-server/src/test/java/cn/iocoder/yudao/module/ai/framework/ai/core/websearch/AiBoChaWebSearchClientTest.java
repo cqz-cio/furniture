@@ -15,7 +15,7 @@ import org.junit.jupiter.api.Test;
 public class AiBoChaWebSearchClientTest {
 
     private final AiBoChaWebSearchClient webSearchClient = new AiBoChaWebSearchClient(
-            "sk-40500e52840f4d24b956d0b1d80d9abe");
+            System.getenv().getOrDefault("AI_TEST_API_KEY", "test-api-key"));
 
     @Test
     @Disabled

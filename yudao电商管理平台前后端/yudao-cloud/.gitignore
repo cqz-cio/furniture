@@ -64,6 +64,8 @@ package-lock.json
 
 functions/mock
 .temp/**
+.local-backups/
+.local-run/
 
 # umi
 .umi

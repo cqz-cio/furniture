@@ -14,7 +14,7 @@ public interface ErrorCodeConstants {
     ErrorCode USER_MOBILE_NOT_EXISTS = new ErrorCode(1_004_001_001, "手机号未注册用户");
     ErrorCode USER_MOBILE_USED = new ErrorCode(1_004_001_002, "修改手机失败，该手机号({})已经被使用");
     ErrorCode USER_POINT_NOT_ENOUGH = new ErrorCode(1_004_001_003, "用户积分余额不足");
-    ErrorCode USER_EMAIL_USED = new ErrorCode(1_004_001_004, "该邮箱已经被使用");
+    ErrorCode USER_EMAIL_USED = new ErrorCode(1_004_001_004, "修改邮箱失败，该邮箱({})已经被使用");
     ErrorCode USER_EMAIL_NOT_EXISTS = new ErrorCode(1_004_001_005, "邮箱未注册用户");
 
     // ========== AUTH 模块 1-004-003-000 ==========

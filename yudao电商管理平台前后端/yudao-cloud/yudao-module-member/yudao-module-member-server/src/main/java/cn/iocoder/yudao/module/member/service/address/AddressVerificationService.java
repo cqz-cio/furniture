@@ -4,7 +4,7 @@ import cn.iocoder.yudao.module.member.controller.app.address.vo.AppAddressVerify
 import cn.iocoder.yudao.module.member.controller.app.address.vo.AppAddressVerifyRespVO;
 import cn.iocoder.yudao.module.member.controller.app.address.vo.AppAddressVerificationStatusRespVO;
 
-import javax.validation.Valid;
+import jakarta.validation.Valid;
 
 public interface AddressVerificationService {
 

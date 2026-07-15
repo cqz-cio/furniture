@@ -10,7 +10,7 @@ import cn.iocoder.yudao.framework.common.util.object.BeanUtils;
 import cn.hutool.crypto.SecureUtil;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 import java.util.ArrayList;
 import java.util.List;
 import java.io.ByteArrayOutputStream;

@@ -18,7 +18,7 @@ import cn.iocoder.yudao.module.trade.service.cart.behavior.BehaviorTrackingConse
 import cn.iocoder.yudao.module.trade.service.cart.event.CartAddedEvent;
 import org.springframework.validation.annotation.Validated;
 
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 import java.util.*;
 
 import static cn.iocoder.yudao.framework.common.exception.util.ServiceExceptionUtil.exception;

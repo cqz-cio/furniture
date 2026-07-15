@@ -3,7 +3,7 @@ package cn.iocoder.yudao.module.member.controller.app.membership.vo;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
-import javax.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotBlank;
 
 @Schema(description = "User App - Membership checkout intent request")
 @Data

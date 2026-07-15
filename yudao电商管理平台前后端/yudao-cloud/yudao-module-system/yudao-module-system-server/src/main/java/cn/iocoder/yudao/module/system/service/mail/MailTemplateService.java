@@ -4,8 +4,8 @@ import cn.iocoder.yudao.framework.common.pojo.PageResult;
 import cn.iocoder.yudao.module.system.controller.admin.mail.vo.template.MailTemplatePageReqVO;
 import cn.iocoder.yudao.module.system.controller.admin.mail.vo.template.MailTemplateSaveReqVO;
 import cn.iocoder.yudao.module.system.dal.dataobject.mail.MailTemplateDO;
+import jakarta.validation.Valid;
 
-import javax.validation.Valid;
 import java.util.List;
 import java.util.Map;
 
@@ -68,6 +68,14 @@ public interface MailTemplateService {
      * @return 模版数组
      */
     List<MailTemplateDO> getMailTemplateList();
+
+    /**
+     * 获取指定状态的邮件模版数组
+     *
+     * @param status 状态
+     * @return 邮件模版数组
+     */
+    List<MailTemplateDO> getMailTemplateListByStatus(Integer status);
 
     /**
      * 从缓存中获取邮件模版

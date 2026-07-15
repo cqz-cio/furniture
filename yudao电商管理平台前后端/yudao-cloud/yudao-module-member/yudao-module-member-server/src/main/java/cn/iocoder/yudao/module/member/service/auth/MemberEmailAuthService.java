@@ -5,7 +5,7 @@ import cn.iocoder.yudao.module.member.controller.app.auth.vo.AppAuthEmailCodeVal
 import cn.iocoder.yudao.module.member.controller.app.auth.vo.AppAuthEmailPasswordResetReqVO;
 import cn.iocoder.yudao.module.member.dal.dataobject.user.MemberUserDO;
 
-import javax.validation.Valid;
+import jakarta.validation.Valid;
 
 public interface MemberEmailAuthService {
 

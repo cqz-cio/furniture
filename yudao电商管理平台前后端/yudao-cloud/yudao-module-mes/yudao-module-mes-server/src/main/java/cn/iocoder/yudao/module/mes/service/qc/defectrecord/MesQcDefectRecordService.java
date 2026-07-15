@@ -4,8 +4,7 @@ import cn.iocoder.yudao.framework.common.pojo.PageResult;
 import cn.iocoder.yudao.module.mes.controller.admin.qc.defectrecord.vo.MesQcDefectRecordPageReqVO;
 import cn.iocoder.yudao.module.mes.controller.admin.qc.defectrecord.vo.MesQcDefectRecordSaveReqVO;
 import cn.iocoder.yudao.module.mes.dal.dataobject.qc.defectrecord.MesQcDefectRecordDO;
-
-import javax.validation.Valid;
+import jakarta.validation.Valid;
 
 /**
  * MES 质检缺陷记录 Service 接口
@@ -35,6 +34,14 @@ public interface MesQcDefectRecordService {
      * @param id 编号
      */
     void deleteDefectRecord(Long id);
+
+    /**
+     * 获得质检缺陷记录
+     *
+     * @param id 编号
+     * @return 质检缺陷记录
+     */
+    MesQcDefectRecordDO getDefectRecord(Long id);
 
     /**
      * 获得质检缺陷记录分页

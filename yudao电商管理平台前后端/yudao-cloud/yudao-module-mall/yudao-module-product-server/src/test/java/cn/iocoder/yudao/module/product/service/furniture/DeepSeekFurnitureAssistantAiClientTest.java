@@ -12,7 +12,7 @@ class DeepSeekFurnitureAssistantAiClientTest {
     void isEnabled_shouldReuseSpringAiDeepSeekApiKeyWhenFurnitureKeyIsMissing() {
         FurnitureAssistantProperties properties = FurnitureAssistantProperties.keywordMode();
         MockEnvironment environment = new MockEnvironment()
-                .withProperty("spring.ai.deepseek.api-key", "sk-spring-ai-deepseek");
+                .withProperty("spring.ai.deepseek.api-key", "test-api-key");
         DeepSeekFurnitureAssistantAiClient client = new DeepSeekFurnitureAssistantAiClient(properties, environment);
 
         assertTrue(client.isEnabled());

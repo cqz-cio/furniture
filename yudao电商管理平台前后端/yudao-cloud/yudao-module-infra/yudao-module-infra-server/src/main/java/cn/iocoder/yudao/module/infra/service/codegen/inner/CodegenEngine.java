@@ -38,12 +38,12 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableTable;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Table;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.Resource;
 import lombok.Setter;
 import org.springframework.stereotype.Component;
 import org.springframework.util.ClassUtils;
 
-import javax.annotation.PostConstruct;
-import javax.annotation.Resource;
 import java.util.*;
 
 import static cn.hutool.core.map.MapUtil.getStr;
@@ -412,6 +412,8 @@ public class CodegenEngine {
                               String filePath, Map<String, Object> bindingMap) {
         filePath = formatFilePath(filePath, bindingMap);
         String content = templateEngine.getTemplate(vmPath).render(bindingMap);
+        // 保证 Windows、Linux 下产出一致，并让后续格式化规则统一按 LF 匹配。
+        content = content.replace("\r\n", "\n").replace("\r", "");
         // 格式化代码
         content = prettyCode(content, vmPath);
         result.put(filePath, content);

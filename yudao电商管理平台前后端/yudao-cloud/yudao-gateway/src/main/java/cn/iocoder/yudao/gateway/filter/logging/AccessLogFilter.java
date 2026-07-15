@@ -10,7 +10,6 @@ import cn.iocoder.yudao.gateway.filter.statistics.BehaviorTrackingGatewayFilter;
 import com.alibaba.nacos.common.utils.StringUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.reactivestreams.Publisher;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.cloud.gateway.filter.factory.rewrite.CachedBodyOutputMessage;
@@ -38,7 +37,7 @@ import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -115,7 +114,7 @@ public class AccessLogFilter implements GlobalFilter, Ordered {
         AccessLog gatewayLog = new AccessLog();
         gatewayLog.setRoute(WebFrameworkUtils.getGatewayRoute(exchange));
         gatewayLog.setSchema(request.getURI().getScheme());
-        gatewayLog.setRequestMethod(request.getMethodValue());
+        gatewayLog.setRequestMethod(request.getMethod().name());
         gatewayLog.setRequestUrl(request.getURI().getRawPath());
         gatewayLog.setQueryParams(request.getQueryParams());
         gatewayLog.setRequestHeaders(sanitizeHeaders(request.getHeaders()));

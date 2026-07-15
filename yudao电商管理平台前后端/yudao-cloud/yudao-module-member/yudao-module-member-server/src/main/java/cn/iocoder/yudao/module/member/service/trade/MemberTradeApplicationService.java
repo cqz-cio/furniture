@@ -6,7 +6,7 @@ import cn.iocoder.yudao.module.member.controller.admin.trade.vo.MemberTradeAppli
 import cn.iocoder.yudao.module.member.controller.app.trade.vo.AppTradeApplicationSubmitReqVO;
 import cn.iocoder.yudao.module.member.dal.dataobject.trade.MemberTradeApplicationDO;
 
-import javax.validation.Valid;
+import jakarta.validation.Valid;
 
 public interface MemberTradeApplicationService {
 

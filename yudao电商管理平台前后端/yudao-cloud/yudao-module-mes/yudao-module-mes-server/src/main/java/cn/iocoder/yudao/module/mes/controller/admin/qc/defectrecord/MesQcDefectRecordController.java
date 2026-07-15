@@ -11,12 +11,11 @@ import cn.iocoder.yudao.module.mes.service.qc.defectrecord.MesQcDefectRecordServ
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.annotation.Resource;
+import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-
-import javax.annotation.Resource;
-import javax.validation.Valid;
 
 import static cn.iocoder.yudao.framework.common.pojo.CommonResult.success;
 
@@ -51,6 +50,15 @@ public class MesQcDefectRecordController {
     public CommonResult<Boolean> deleteDefectRecord(@RequestParam("id") Long id) {
         defectRecordService.deleteDefectRecord(id);
         return success(true);
+    }
+
+    @GetMapping("/get")
+    @Operation(summary = "获得质检缺陷记录")
+    @Parameter(name = "id", description = "编号", required = true, example = "1024")
+    @PreAuthorize("@ss.hasPermission('mes:qc-defect:query')")
+    public CommonResult<MesQcDefectRecordRespVO> getDefectRecord(@RequestParam("id") Long id) {
+        MesQcDefectRecordDO record = defectRecordService.getDefectRecord(id);
+        return success(BeanUtils.toBean(record, MesQcDefectRecordRespVO.class));
     }
 
     @GetMapping("/page")

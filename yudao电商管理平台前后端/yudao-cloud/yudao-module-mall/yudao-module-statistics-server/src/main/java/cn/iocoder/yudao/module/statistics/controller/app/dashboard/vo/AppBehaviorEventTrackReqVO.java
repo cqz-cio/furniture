@@ -1,6 +1,6 @@
 package cn.iocoder.yudao.module.statistics.controller.app.dashboard.vo;
 import lombok.Data;
-import javax.validation.constraints.*;
+import jakarta.validation.constraints.*;
 @Data
 public class AppBehaviorEventTrackReqVO {
     @NotBlank @Size(max=64) private String eventId;

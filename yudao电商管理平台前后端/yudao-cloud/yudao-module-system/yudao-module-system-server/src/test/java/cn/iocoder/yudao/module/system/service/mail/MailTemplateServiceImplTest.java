@@ -10,7 +10,7 @@ import cn.iocoder.yudao.module.system.dal.mysql.mail.MailTemplateMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.Import;
 
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -154,6 +154,23 @@ public class MailTemplateServiceImplTest extends BaseDbUnitTest {
         assertEquals(2, list.size());
         assertEquals(dbMailTemplate01, list.get(0));
         assertEquals(dbMailTemplate02, list.get(1));
+    }
+
+    @Test
+    public void testGetMailTemplateListByStatus() {
+        // mock 数据
+        MailTemplateDO dbMailTemplate = randomPojo(MailTemplateDO.class,
+                o -> o.setStatus(CommonStatusEnum.ENABLE.getStatus()));
+        mailTemplateMapper.insert(dbMailTemplate);
+        mailTemplateMapper.insert(cloneIgnoreId(dbMailTemplate,
+                o -> o.setStatus(CommonStatusEnum.DISABLE.getStatus())));
+
+        // 调用
+        List<MailTemplateDO> list = mailTemplateService.getMailTemplateListByStatus(
+                CommonStatusEnum.ENABLE.getStatus());
+        // 断言
+        assertEquals(1, list.size());
+        assertPojoEquals(dbMailTemplate, list.get(0));
     }
 
     @Test

@@ -26,7 +26,7 @@ public class OpenAIChatModelTests {
     private final OpenAiChatModel chatModel = OpenAiChatModel.builder()
             .openAiApi(OpenAiApi.builder()
                     .baseUrl("https://api.holdai.top")
-                    .apiKey("sk-z5joyRoV1iFEnh2SAi8QPNrIZTXyQSyxTmD5CoNDQbFixK2l") // apiKey
+                    .apiKey(System.getenv().getOrDefault("AI_TEST_API_KEY", "test-api-key")) // apiKey
                     .build())
             .defaultOptions(OpenAiChatOptions.builder()
                     .model("gpt-5-nano-2025-08-07") // 模型

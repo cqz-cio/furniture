@@ -6,7 +6,7 @@ import cn.iocoder.yudao.module.member.controller.admin.membership.vo.MemberMembe
 import cn.iocoder.yudao.module.member.controller.admin.membership.vo.MemberMembershipUpdateReqVO;
 import cn.iocoder.yudao.module.member.dal.dataobject.membership.MemberMembershipDO;
 
-import javax.validation.Valid;
+import jakarta.validation.Valid;
 
 public interface MemberMembershipService {
 
