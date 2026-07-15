@@ -29,7 +29,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Clock;
+import java.time.DateTimeException;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -57,6 +60,7 @@ public class FulfillmentCommandServiceImpl implements FulfillmentCommandService 
     private static final String IDEMPOTENCY_COMPLETED = "COMPLETED";
     private static final String RESOURCE_SHIPMENT = "SHIPMENT";
     private static final Set<String> SUPPORTED_COUNTRIES = Set.of("US", "CA");
+    private static final Set<String> IANA_TIMEZONE_IDS = Set.copyOf(ZoneId.getAvailableZoneIds());
 
     private final TradeOrderMapper tradeOrderMapper;
     private final TradeOrderItemMapper tradeOrderItemMapper;
@@ -96,10 +100,6 @@ public class FulfillmentCommandServiceImpl implements FulfillmentCommandService 
             return resolveDuplicateRequest(command.getTenantId(), keyHash, requestHash);
         }
 
-        String originCountry = normalizeCountry(command.getOriginCountry());
-        String destinationCountry = normalizeCountry(command.getDestinationCountry());
-        validateDomesticRoute(originCountry, destinationCountry);
-
         TradeOrderDO order = tradeOrderMapper.selectByIdForUpdate(command.getOrderId());
         if (order == null) {
             throw exception(FULFILLMENT_ORDER_NOT_FOUND);
@@ -109,7 +109,13 @@ public class FulfillmentCommandServiceImpl implements FulfillmentCommandService 
         for (TradeOrderItemDO orderItem : orderItems) {
             orderItemsById.put(orderItem.getId(), orderItem);
         }
+
+        String originCountry = normalizeCountry(command.getOriginCountry());
+        String destinationCountry = normalizeCountry(command.getDestinationCountry());
+        validateDomesticRoute(originCountry, destinationCountry);
         validateItems(command, orderItemsById);
+        String originTimezone = normalizeIanaTimezone(command.getOriginTimezone());
+        String destinationTimezone = normalizeIanaTimezone(command.getDestinationTimezone());
 
         ShipmentDO shipment = new ShipmentDO()
                 .setTenantId(command.getTenantId())
@@ -119,8 +125,8 @@ public class FulfillmentCommandServiceImpl implements FulfillmentCommandService 
                 .setStatus(ShipmentStatusEnum.DRAFT.name())
                 .setOriginCountry(originCountry)
                 .setDestinationCountry(destinationCountry)
-                .setOriginTimezone(command.getOriginTimezone().trim())
-                .setDestinationTimezone(command.getDestinationTimezone().trim())
+                .setOriginTimezone(originTimezone)
+                .setDestinationTimezone(destinationTimezone)
                 .setWarehouseId(command.getWarehouseId())
                 .setProviderId(command.getProviderId())
                 .setVersion(0);
@@ -248,6 +254,21 @@ public class FulfillmentCommandServiceImpl implements FulfillmentCommandService 
 
     private static String normalizeCountry(String country) {
         return country == null ? "" : country.trim().toUpperCase(Locale.ROOT);
+    }
+
+    private static String normalizeIanaTimezone(String timezone) {
+        String normalized = timezone.trim();
+        final ZoneId zoneId;
+        try {
+            zoneId = ZoneId.of(normalized);
+        } catch (DateTimeException exception) {
+            throw new IllegalArgumentException("Timezone must be a valid IANA Zone ID", exception);
+        }
+        if (zoneId instanceof ZoneOffset || (!"UTC".equals(normalized)
+                && (!normalized.contains("/") || !IANA_TIMEZONE_IDS.contains(normalized)))) {
+            throw new IllegalArgumentException("Timezone must be a valid IANA Zone ID");
+        }
+        return normalized;
     }
 
 }

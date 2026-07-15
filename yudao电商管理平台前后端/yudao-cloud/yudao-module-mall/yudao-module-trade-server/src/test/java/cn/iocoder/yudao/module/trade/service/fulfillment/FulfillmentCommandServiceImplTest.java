@@ -29,6 +29,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.springframework.dao.DuplicateKeyException;
@@ -62,6 +63,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -186,30 +188,79 @@ class FulfillmentCommandServiceImplTest extends BaseMockitoUnitTest {
     }
 
     @Test
+    void rejectsOffsetShortAndUnknownTimezonesBeforeShipmentInsert() {
+        stubOrderAndItem();
+
+        for (String invalidTimezone : List.of("+02:00", "EST", "not/a-zone")) {
+            CreateShipmentCommand invalidOrigin = command("US", "US", BigDecimal.ONE)
+                    .setOriginTimezone(invalidTimezone);
+            assertThrows(IllegalArgumentException.class,
+                    () -> service.createShipment(IDEMPOTENCY_KEY, invalidOrigin));
+
+            CreateShipmentCommand invalidDestination = command("US", "US", BigDecimal.ONE)
+                    .setDestinationTimezone(invalidTimezone);
+            assertThrows(IllegalArgumentException.class,
+                    () -> service.createShipment(IDEMPOTENCY_KEY, invalidDestination));
+        }
+
+        verify(shipmentMapper, never()).insert(any(ShipmentDO.class));
+    }
+
+    @Test
+    void acceptsUtcAndStoresTrimmedIanaTimezones() {
+        stubOrderAndItem();
+        CreateShipmentCommand command = command("US", "US", BigDecimal.ONE)
+                .setOriginTimezone(" UTC ")
+                .setDestinationTimezone(" America/Toronto ");
+
+        service.createShipment(IDEMPOTENCY_KEY, command);
+
+        ArgumentCaptor<ShipmentDO> shipmentCaptor = ArgumentCaptor.forClass(ShipmentDO.class);
+        verify(shipmentMapper).insert(shipmentCaptor.capture());
+        assertEquals("UTC", shipmentCaptor.getValue().getOriginTimezone());
+        assertEquals("America/Toronto", shipmentCaptor.getValue().getDestinationTimezone());
+    }
+
+    @Test
     void rejectsCrossBorderShipment() {
+        stubOrderAndItem();
+
         assertServiceException(() -> service.createShipment(IDEMPOTENCY_KEY,
                 command("US", "CA", BigDecimal.ONE)), FULFILLMENT_CROSS_BORDER_NOT_SUPPORTED);
 
-        verify(tradeOrderMapper, never()).selectByIdForUpdate(anyLong());
+        InOrder calls = inOrder(idempotencyMapper, tradeOrderMapper, tradeOrderItemMapper);
+        calls.verify(idempotencyMapper).insert(any(FulfillmentIdempotencyDO.class));
+        calls.verify(tradeOrderMapper).selectByIdForUpdate(ORDER_ID);
+        calls.verify(tradeOrderItemMapper).selectListByOrderId(ORDER_ID);
+        verify(shipmentMapper, never()).insert(any(ShipmentDO.class));
     }
 
     @Test
     void rejectsUnsupportedCountry() {
+        stubOrderAndItem();
+
         assertServiceException(() -> service.createShipment(IDEMPOTENCY_KEY,
                 command("CN", "CN", BigDecimal.ONE)), FULFILLMENT_COUNTRY_NOT_SUPPORTED);
 
-        verify(tradeOrderMapper, never()).selectByIdForUpdate(anyLong());
+        InOrder calls = inOrder(idempotencyMapper, tradeOrderMapper, tradeOrderItemMapper);
+        calls.verify(idempotencyMapper).insert(any(FulfillmentIdempotencyDO.class));
+        calls.verify(tradeOrderMapper).selectByIdForUpdate(ORDER_ID);
+        calls.verify(tradeOrderItemMapper).selectListByOrderId(ORDER_ID);
+        verify(shipmentMapper, never()).insert(any(ShipmentDO.class));
     }
 
     @Test
-    void rejectsOrderInvisibleInCommandTenant() {
+    void rejectsOrderInvisibleInCommandTenantBeforeInspectingInvalidRoute() {
         when(tradeOrderMapper.selectByIdForUpdate(ORDER_ID)).thenAnswer(invocation -> {
             assertEquals(TENANT_ID, TenantContextHolder.getTenantId());
             return null;
         });
 
         assertServiceException(() -> service.createShipment(IDEMPOTENCY_KEY,
-                command("US", "US", BigDecimal.ONE)), FULFILLMENT_ORDER_NOT_FOUND);
+                command("CN", "CN", BigDecimal.ONE)), FULFILLMENT_ORDER_NOT_FOUND);
+
+        verify(tradeOrderItemMapper, never()).selectListByOrderId(anyLong());
+        verify(shipmentMapper, never()).insert(any(ShipmentDO.class));
     }
 
     @Test
