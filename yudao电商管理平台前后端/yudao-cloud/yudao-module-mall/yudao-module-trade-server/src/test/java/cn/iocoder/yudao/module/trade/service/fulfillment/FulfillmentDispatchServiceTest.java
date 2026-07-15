@@ -694,6 +694,56 @@ class FulfillmentDispatchServiceTest extends BaseMockitoUnitTest {
     }
 
     @Test
+    void canceledPackageAndItsCanceledHistoricalLegDoNotBlockActivePackageDispatch() {
+        ShipmentPackageDO activePackage = packageRow(CARRIER_ID, TRACKING_NUMBER);
+        ShipmentPackageDO canceledPackage = packageRow(CARRIER_ID, SECOND_TRACKING_NUMBER)
+                .setId(SECOND_PACKAGE_ID).setPackageNo("PKG-2").setStatus(ShipmentStatusEnum.CANCELED.name());
+        ShipmentLegDO activeLeg = legRow(CARRIER_ID, PROVIDER_ID, TRACKING_NUMBER, null);
+        ShipmentLegDO canceledHistoricalLeg = legRow(CARRIER_ID, PROVIDER_ID, SECOND_TRACKING_NUMBER, null)
+                .setId(SECOND_LEG_ID).setPackageId(SECOND_PACKAGE_ID).setSequenceNo(2)
+                .setStatus(ShipmentStatusEnum.CANCELED.name());
+        stubDispatchRows(List.of(activePackage, canceledPackage), List.of(activeLeg, canceledHistoricalLeg));
+
+        service.dispatch(IDEMPOTENCY_KEY, dispatchCommand());
+
+        verify(packageMapper).updateStatusByIdAndVersion(TENANT_ID, PACKAGE_ID, 0,
+                ShipmentStatusEnum.HANDED_TO_CARRIER.name());
+        verify(packageMapper, never()).updateStatusByIdAndVersion(eq(TENANT_ID), eq(SECOND_PACKAGE_ID), anyInt(),
+                anyString());
+        verify(legMapper).updateStatusByIdAndVersion(eq(TENANT_ID), eq(LEG_ID), eq(0),
+                eq(ShipmentStatusEnum.HANDED_TO_CARRIER.name()), any(LocalDateTime.class));
+        verify(legMapper, never()).updateStatusByIdAndVersion(eq(TENANT_ID), eq(SECOND_LEG_ID), anyInt(), anyString(),
+                any(LocalDateTime.class));
+        verify(outboxMapper).insert(argThat((FulfillmentOutboxEventDO event) -> PACKAGE_ID.equals(
+                event.getPayload().get("packageId"))));
+    }
+
+    @Test
+    void activeLegBoundToCanceledPackageFailsClosed() {
+        ShipmentPackageDO activePackage = packageRow(CARRIER_ID, TRACKING_NUMBER);
+        ShipmentPackageDO canceledPackage = packageRow(CARRIER_ID, SECOND_TRACKING_NUMBER)
+                .setId(SECOND_PACKAGE_ID).setPackageNo("PKG-2").setStatus(ShipmentStatusEnum.CANCELED.name());
+        ShipmentLegDO sharedActiveLeg = legRow(CARRIER_ID, PROVIDER_ID, TRACKING_NUMBER, null)
+                .setPackageId(null);
+        ShipmentLegDO invalidActiveLeg = legRow(CARRIER_ID, PROVIDER_ID, SECOND_TRACKING_NUMBER, null)
+                .setId(SECOND_LEG_ID).setPackageId(SECOND_PACKAGE_ID).setSequenceNo(2);
+        when(shipmentMapper.selectByIdForUpdate(TENANT_ID, SHIPMENT_ID))
+                .thenReturn(shipment(ShipmentTypeEnum.PARCEL, ShipmentStatusEnum.READY_TO_SHIP, 1));
+        when(shipmentItemMapper.selectListByShipmentId(TENANT_ID, SHIPMENT_ID))
+                .thenReturn(List.of(new ShipmentItemDO().setId(1L).setTenantId(TENANT_ID).setShipmentId(SHIPMENT_ID)));
+        when(packageMapper.selectListByShipmentId(TENANT_ID, SHIPMENT_ID))
+                .thenReturn(List.of(activePackage, canceledPackage));
+        when(legMapper.selectListByShipmentId(TENANT_ID, SHIPMENT_ID))
+                .thenReturn(List.of(sharedActiveLeg, invalidActiveLeg));
+
+        assertServiceException(() -> service.dispatch(IDEMPOTENCY_KEY, dispatchCommand()),
+                FULFILLMENT_DISPATCH_INCOMPLETE);
+
+        verify(packageMapper, never()).updateStatusByIdAndVersion(anyLong(), anyLong(), anyInt(), anyString());
+        verify(outboxMapper, never()).insert(any(FulfillmentOutboxEventDO.class));
+    }
+
+    @Test
     void capableRegistrationRunsOnlyAfterCommitAndFailureCreatesSafeRetryOutbox() {
         stubDispatchAggregate(ShipmentTypeEnum.PARCEL, null);
         when(shipmentMapper.selectListByOrderId(TENANT_ID, ORDER_ID)).thenReturn(List.of(

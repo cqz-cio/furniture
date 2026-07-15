@@ -329,10 +329,11 @@ public class FulfillmentCommandServiceImpl implements FulfillmentCommandService 
 
     private DispatchAggregate loadAndValidateCompleteness(Long tenantId, ShipmentDO shipment) {
         List<ShipmentItemDO> items = shipmentItemMapper.selectListByShipmentId(tenantId, shipment.getId());
-        List<ShipmentPackageDO> packageRows = packageMapper.selectListByShipmentId(tenantId, shipment.getId());
+        List<ShipmentPackageDO> selectedPackageRows = packageMapper.selectListByShipmentId(tenantId, shipment.getId());
+        List<ShipmentPackageDO> packageRows = selectedPackageRows == null ? List.of() : selectedPackageRows;
         List<ShipmentLegDO> selectedLegRows = legMapper.selectListByShipmentId(tenantId, shipment.getId());
         List<ShipmentLegDO> legRows = selectedLegRows == null ? List.of() : selectedLegRows;
-        List<ShipmentPackageDO> packages = packageRows == null ? List.of() : packageRows.stream()
+        List<ShipmentPackageDO> packages = packageRows.stream()
                 .filter(shipmentPackage -> !ShipmentStatusEnum.CANCELED.name().equals(shipmentPackage.getStatus()))
                 .sorted(Comparator.comparing(ShipmentPackageDO::getId)).toList();
         List<ShipmentLegDO> legs = legRows.stream()
@@ -371,13 +372,19 @@ public class FulfillmentCommandServiceImpl implements FulfillmentCommandService 
         }
         Set<Long> activePackageIds = packages.stream().map(ShipmentPackageDO::getId)
                 .collect(java.util.stream.Collectors.toSet());
+        Set<Long> allPackageIds = packageRows.stream().map(ShipmentPackageDO::getId)
+                .collect(java.util.stream.Collectors.toSet());
         if (legRows.stream().anyMatch(leg -> leg.getPackageId() != null
-                && !activePackageIds.contains(leg.getPackageId()))) {
+                && !allPackageIds.contains(leg.getPackageId()))) {
             throw exception(FULFILLMENT_DISPATCH_INCOMPLETE);
         }
         List<ShipmentLegDO> activeLegs = legRows.stream().filter(FulfillmentCommandServiceImpl::isActiveLeg)
                 .sorted(Comparator.comparing(ShipmentLegDO::getSequenceNo).thenComparing(ShipmentLegDO::getId))
                 .toList();
+        if (activeLegs.stream().anyMatch(leg -> leg.getPackageId() != null
+                && !activePackageIds.contains(leg.getPackageId()))) {
+            throw exception(FULFILLMENT_DISPATCH_INCOMPLETE);
+        }
         List<PackageDispatchPlan> packagePlans = buildPackageDispatchPlans(packages, activeLegs);
         return new DispatchAggregate(items, packages, legs, packagePlans, carriersById, providersById);
     }
