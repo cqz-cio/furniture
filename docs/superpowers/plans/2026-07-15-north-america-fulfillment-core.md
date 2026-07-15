@@ -359,6 +359,7 @@ git commit -m "feat: add north america fulfillment schema"
 - Create: `yudao电商管理平台前后端/yudao-cloud/yudao-module-mall/yudao-module-trade-api/src/main/java/cn/iocoder/yudao/module/trade/enums/fulfillment/ShipmentTypeEnum.java`
 - Create: `yudao电商管理平台前后端/yudao-cloud/yudao-module-mall/yudao-module-trade-api/src/main/java/cn/iocoder/yudao/module/trade/enums/fulfillment/OrderFulfillmentStatusEnum.java`
 - Create: `yudao电商管理平台前后端/yudao-cloud/yudao-module-mall/yudao-module-trade-api/src/main/java/cn/iocoder/yudao/module/trade/enums/fulfillment/TrackingEventSourceEnum.java`
+- Modify: `yudao电商管理平台前后端/yudao-cloud/yudao-module-mall/yudao-module-trade-api/src/main/java/cn/iocoder/yudao/module/trade/enums/ErrorCodeConstants.java`
 - Create: `yudao电商管理平台前后端/yudao-cloud/yudao-module-mall/yudao-module-trade-server/src/main/java/cn/iocoder/yudao/module/trade/service/fulfillment/domain/ShipmentStateMachine.java`
 - Create: `yudao电商管理平台前后端/yudao-cloud/yudao-module-mall/yudao-module-trade-server/src/test/java/cn/iocoder/yudao/module/trade/service/fulfillment/domain/ShipmentStateMachineTest.java`
 
@@ -430,6 +431,25 @@ RETURNING -> RETURNED, DELIVERY_EXCEPTION
 
 Decision order must be: same status = `TIMELINE_ONLY`; terminal current state = `TIMELINE_ONLY`; older `occurredAt` = `TIMELINE_ONLY`; allowed edge = `APPLY`; otherwise = `REJECT`.
 
+Reserve `1_011_009_000` through `1_011_009_011` in `ErrorCodeConstants` for the complete Phase 1 error set so later parallel tasks compile against one stable contract:
+
+```text
+FULFILLMENT_SHIPMENT_NOT_FOUND
+FULFILLMENT_ORDER_NOT_FOUND
+FULFILLMENT_ORDER_ITEM_QUANTITY_EXCEEDED
+FULFILLMENT_COUNTRY_NOT_SUPPORTED
+FULFILLMENT_CROSS_BORDER_NOT_SUPPORTED
+FULFILLMENT_INVALID_STATUS_TRANSITION
+FULFILLMENT_DUPLICATE_TRACKING_NUMBER
+FULFILLMENT_PROVIDER_NOT_AVAILABLE
+FULFILLMENT_PROVIDER_CAPABILITY_UNSUPPORTED
+FULFILLMENT_VERSION_CONFLICT
+FULFILLMENT_IDEMPOTENCY_CONFLICT
+FULFILLMENT_DISPATCH_INCOMPLETE
+```
+
+Messages must be customer-safe and must not echo request bodies, tracking numbers, addresses, provider payloads, or secrets.
+
 - [ ] **Step 4: Run tests and verify GREEN**
 
 Run the command from Step 2. Expected: all `ShipmentStateMachineTest` cases PASS.
@@ -437,7 +457,7 @@ Run the command from Step 2. Expected: all `ShipmentStateMachineTest` cases PASS
 - [ ] **Step 5: Commit**
 
 ```powershell
-git add -- 'yudao电商管理平台前后端/yudao-cloud/yudao-module-mall/yudao-module-trade-api/src/main/java/cn/iocoder/yudao/module/trade/enums/fulfillment' 'yudao电商管理平台前后端/yudao-cloud/yudao-module-mall/yudao-module-trade-server/src/main/java/cn/iocoder/yudao/module/trade/service/fulfillment/domain' 'yudao电商管理平台前后端/yudao-cloud/yudao-module-mall/yudao-module-trade-server/src/test/java/cn/iocoder/yudao/module/trade/service/fulfillment/domain'
+git add -- 'yudao电商管理平台前后端/yudao-cloud/yudao-module-mall/yudao-module-trade-api/src/main/java/cn/iocoder/yudao/module/trade/enums/fulfillment' 'yudao电商管理平台前后端/yudao-cloud/yudao-module-mall/yudao-module-trade-api/src/main/java/cn/iocoder/yudao/module/trade/enums/ErrorCodeConstants.java' 'yudao电商管理平台前后端/yudao-cloud/yudao-module-mall/yudao-module-trade-server/src/main/java/cn/iocoder/yudao/module/trade/service/fulfillment/domain' 'yudao电商管理平台前后端/yudao-cloud/yudao-module-mall/yudao-module-trade-server/src/test/java/cn/iocoder/yudao/module/trade/service/fulfillment/domain'
 git commit -m "feat: add fulfillment state machine"
 ```
 
@@ -601,7 +621,6 @@ git commit -m "feat: add fulfillment provider port"
 - Create: `yudao电商管理平台前后端/yudao-cloud/yudao-module-mall/yudao-module-trade-server/src/main/java/cn/iocoder/yudao/module/trade/service/fulfillment/command/CreateShipmentItemCommand.java`
 - Create: `yudao电商管理平台前后端/yudao-cloud/yudao-module-mall/yudao-module-trade-server/src/main/java/cn/iocoder/yudao/module/trade/service/fulfillment/support/FulfillmentHashing.java`
 - Create: `yudao电商管理平台前后端/yudao-cloud/yudao-module-mall/yudao-module-trade-server/src/main/java/cn/iocoder/yudao/module/trade/service/fulfillment/support/FulfillmentNoGenerator.java`
-- Modify: `yudao电商管理平台前后端/yudao-cloud/yudao-module-mall/yudao-module-trade-api/src/main/java/cn/iocoder/yudao/module/trade/enums/ErrorCodeConstants.java`
 - Create: `yudao电商管理平台前后端/yudao-cloud/yudao-module-mall/yudao-module-trade-server/src/test/java/cn/iocoder/yudao/module/trade/service/fulfillment/FulfillmentCommandServiceImplTest.java`
 
 **Interfaces:**
@@ -622,28 +641,7 @@ Cover successful US and CA drafts, cross-border rejection, unsupported country r
 mvn.cmd -pl yudao-module-mall/yudao-module-trade-server -am -Dtest=FulfillmentCommandServiceImplTest -Dsurefire.failIfNoSpecifiedTests=false test
 ```
 
-- [ ] **Step 3: Add controlled error codes**
-
-Reserve `1_011_009_000` through `1_011_009_011`:
-
-```java
-FULFILLMENT_SHIPMENT_NOT_FOUND
-FULFILLMENT_ORDER_NOT_FOUND
-FULFILLMENT_ORDER_ITEM_QUANTITY_EXCEEDED
-FULFILLMENT_COUNTRY_NOT_SUPPORTED
-FULFILLMENT_CROSS_BORDER_NOT_SUPPORTED
-FULFILLMENT_INVALID_STATUS_TRANSITION
-FULFILLMENT_DUPLICATE_TRACKING_NUMBER
-FULFILLMENT_PROVIDER_NOT_AVAILABLE
-FULFILLMENT_PROVIDER_CAPABILITY_UNSUPPORTED
-FULFILLMENT_VERSION_CONFLICT
-FULFILLMENT_IDEMPOTENCY_CONFLICT
-FULFILLMENT_DISPATCH_INCOMPLETE
-```
-
-Messages must be customer-safe and must not echo request bodies, tracking numbers, addresses, provider payloads, or secrets.
-
-- [ ] **Step 4: Implement transactional draft creation**
+- [ ] **Step 3: Implement transactional draft creation**
 
 The transaction order must be:
 
@@ -659,7 +657,7 @@ The transaction order must be:
 
 `FulfillmentNoGenerator` returns `SHP-` plus UTC `yyyyMMdd` plus 16 uppercase hex characters; database uniqueness remains the final collision guard.
 
-- [ ] **Step 5: Run service and transaction tests**
+- [ ] **Step 4: Run service and transaction tests**
 
 ```powershell
 mvn.cmd -pl yudao-module-mall/yudao-module-trade-server -am -Dtest=FulfillmentCommandServiceImplTest,FulfillmentPersistenceTest -Dsurefire.failIfNoSpecifiedTests=false test
@@ -667,10 +665,10 @@ mvn.cmd -pl yudao-module-mall/yudao-module-trade-server -am -Dtest=FulfillmentCo
 
 Expected: PASS; verify outbox and shipment rows roll back together when any insert fails.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 5: Commit**
 
 ```powershell
-git add -- 'yudao电商管理平台前后端/yudao-cloud/yudao-module-mall/yudao-module-trade-api/src/main/java/cn/iocoder/yudao/module/trade/enums/ErrorCodeConstants.java' 'yudao电商管理平台前后端/yudao-cloud/yudao-module-mall/yudao-module-trade-server/src/main/java/cn/iocoder/yudao/module/trade/service/fulfillment' 'yudao电商管理平台前后端/yudao-cloud/yudao-module-mall/yudao-module-trade-server/src/test/java/cn/iocoder/yudao/module/trade/service/fulfillment'
+git add -- 'yudao电商管理平台前后端/yudao-cloud/yudao-module-mall/yudao-module-trade-server/src/main/java/cn/iocoder/yudao/module/trade/service/fulfillment' 'yudao电商管理平台前后端/yudao-cloud/yudao-module-mall/yudao-module-trade-server/src/test/java/cn/iocoder/yudao/module/trade/service/fulfillment'
 git commit -m "feat: create idempotent fulfillment shipments"
 ```
 
