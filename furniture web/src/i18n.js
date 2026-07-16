@@ -3825,6 +3825,13 @@ const navigationMessages = {
           decor: "DECOR",
           sale: "SALE",
         },
+        mobile: {
+          shopFurniture: "Shop Furniture",
+          service: "Service",
+          membershipFaq: "Membership FAQ",
+          giftRegistry: "Gift Registry",
+          tradeProgram: "Trade Program",
+        },
         submenu: {
           catalog: "OAKVED catalog",
           solstice: "The Solstice",
@@ -3958,6 +3965,127 @@ const navigationMessages = {
 
 Object.entries(navigationMessages).forEach(([lang, value]) => {
   Object.assign(messages[lang], value);
+});
+
+const localizedStorefrontMessages = {
+  "zh-CN": {
+    catalogPage: {
+      eyebrow: "OAKVED 品牌画册",
+      title: "隽永空间的细致研究。",
+      introduction: "探索 OAKVED 系列所呈现的考究空间、天然材质，以及定义雕刻生活美学的每一处细节。",
+      imageAlt: "OAKVED 品牌画册中的精致室内空间系列",
+    },
+    storefront: {
+      primary: {
+        new: "新品",
+        collections: "按系列选购",
+        bedroom: "卧室",
+        living: "客厅",
+        dining: "餐厅",
+        bespoke: "定制",
+        decor: "家居饰品",
+        sale: "特惠",
+      },
+      mobile: {
+        shopFurniture: "选购家具",
+        service: "服务",
+        membershipFaq: "会员常见问题",
+        giftRegistry: "礼品登记",
+        tradeProgram: "设计师合作计划",
+      },
+      submenu: {
+        catalog: "OAKVED 画册",
+        solstice: "The Solstice",
+        halcyon: "Halcyon",
+        kindred: "Kindred",
+        beds: "床",
+        headboard: "床头板",
+        nightstands: "床头柜",
+        benches: "长凳",
+        dressers: "斗柜",
+        chairs: "椅子",
+        sideTables: "边桌",
+        fabricCare: "面料养护",
+        materialsCraftsmanship: "材料与工艺",
+        sales: "特惠",
+        sofas: "沙发",
+        tables: "桌几",
+        consoles: "玄关桌",
+        sideboards: "餐边柜",
+        cabinets: "储物柜",
+        stools: "凳子",
+        rectangularTables: "长方形餐桌",
+        roundOvalTables: "圆形及椭圆形餐桌",
+        bistroTables: "小餐桌",
+        fabricChairs: "布艺餐椅",
+        woodWovenChairs: "木质及编织餐椅",
+        barCounterStools: "吧台及中岛高脚凳",
+        upholsterySwatches: "软包面料样本",
+      },
+    },
+  },
+  fr: {
+    catalogPage: {
+      eyebrow: "LE CATALOGUE OAKVED",
+      title: "Une étude des intérieurs intemporels.",
+      introduction:
+        "Découvrez les collections Oakved à travers des intérieurs soigneusement composés, des matières naturelles et les détails qui définissent l’art de vivre sculpté.",
+      imageAlt: "Collection d’intérieurs raffinés présentée dans le catalogue Oakved",
+    },
+    storefront: {
+      primary: {
+        new: "NOUVEAUTÉS",
+        collections: "PAR COLLECTION",
+        bedroom: "CHAMBRE",
+        living: "SALON",
+        dining: "SALLE À MANGER",
+        bespoke: "SUR MESURE",
+        decor: "DÉCORATION",
+        sale: "SOLDES",
+      },
+      mobile: {
+        shopFurniture: "MOBILIER",
+        service: "SERVICES",
+        membershipFaq: "FAQ ADHÉSION",
+        giftRegistry: "LISTE CADEAUX",
+        tradeProgram: "PROGRAMME PROFESSIONNELS",
+      },
+      submenu: {
+        catalog: "Catalogue OAKVED",
+        solstice: "The Solstice",
+        halcyon: "Halcyon",
+        kindred: "Kindred",
+        beds: "Lits",
+        headboard: "Têtes de lit",
+        nightstands: "Tables de chevet",
+        benches: "Bancs",
+        dressers: "Commodes",
+        chairs: "Chaises",
+        sideTables: "Tables d’appoint",
+        fabricCare: "Entretien des tissus",
+        materialsCraftsmanship: "Matériaux et savoir-faire",
+        sales: "Soldes",
+        sofas: "Canapés",
+        tables: "Tables",
+        consoles: "Consoles",
+        sideboards: "Buffets",
+        cabinets: "Armoires",
+        stools: "Tabourets",
+        rectangularTables: "Tables rectangulaires",
+        roundOvalTables: "Tables rondes et ovales",
+        bistroTables: "Tables bistrot",
+        fabricChairs: "Chaises en tissu",
+        woodWovenChairs: "Chaises en bois et tressées",
+        barCounterStools: "Tabourets de bar et de comptoir",
+        upholsterySwatches: "Échantillons de tissus d’ameublement",
+      },
+    },
+  },
+};
+
+Object.entries(localizedStorefrontMessages).forEach(([lang, value]) => {
+  messages[lang].catalogPage = value.catalogPage;
+  messages[lang].navigation.storefront = value.storefront;
 });
 
 const tradeProgramMessages = {

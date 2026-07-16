@@ -133,8 +133,8 @@ describe("storefront launch polish", () => {
 
     expect(source).toContain("mobileDrawerSections");
     expect(source).toContain('class="mobile-drawer-section"');
-    expect(source).toContain("Shop Furniture");
-    expect(source).toContain("Service");
+    expect(source).toContain('t("navigation.storefront.mobile.shopFurniture")');
+    expect(source).toContain('t("navigation.storefront.mobile.service")');
   });
 
   it("shows loading skeletons and quick-add feedback on the PLP", () => {

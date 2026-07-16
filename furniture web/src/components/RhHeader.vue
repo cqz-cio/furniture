@@ -89,15 +89,27 @@ const dropdownPositionStyle = computed(() => ({
 }));
 const mobileDrawerSections = computed(() => [
   {
-    heading: "Shop Furniture",
+    heading: t("navigation.storefront.mobile.shopFurniture"),
     items: mobileDrawerNavigation,
   },
   {
-    heading: "Service",
+    heading: t("navigation.storefront.mobile.service"),
     items: [
-      { label: "Membership FAQ", href: "/membership/faqs" },
-      { label: "Gift Registry", href: "/gift-registry" },
-      { label: "Trade Program", href: "/trade/sign-in" },
+      {
+        key: "membership-faq",
+        labelKey: "navigation.storefront.mobile.membershipFaq",
+        href: "/membership/faqs",
+      },
+      {
+        key: "gift-registry",
+        labelKey: "navigation.storefront.mobile.giftRegistry",
+        href: "/gift-registry",
+      },
+      {
+        key: "trade-program",
+        labelKey: "navigation.storefront.mobile.tradeProgram",
+        href: "/trade/sign-in",
+      },
     ],
   },
 ]);
