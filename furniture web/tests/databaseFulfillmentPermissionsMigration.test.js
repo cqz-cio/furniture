@@ -55,7 +55,7 @@ describe("V022 fulfillment admin permission migration", () => {
     const baseline = readFileSync(baselinePath, "utf8").replace(/\r\n/g, "\n");
     const marker = "-- BEGIN V022__trade_fulfillment_admin_permissions.sql\n";
     const start = baseline.indexOf(marker) + marker.length;
-    const end = baseline.indexOf("\n-- BEGIN Oakved demo catalog", start);
+    const end = baseline.indexOf("\n-- BEGIN V020__trade_fulfillment_legacy_migration_fact.sql", start);
     expect(start).toBeGreaterThan(marker.length - 1);
     expect(end).toBeGreaterThan(start);
     expect(baseline.slice(start, end).replace(/\s+$/, "") + "\n").toBe(migration);
