@@ -34,7 +34,7 @@ const activeRecordIndexes = {
     ],
   },
 };
-const manualTrackingAuditMigrationPath = join(root, "migrations/V018__trade_manual_tracking_audit.sql");
+const manualTrackingAuditMigrationPath = join(root, "migrations/V021__trade_manual_tracking_audit.sql");
 
 describe("V015 trade fulfillment core migration", () => {
   it("creates the complete Phase 1 persistence contract", () => {
@@ -100,7 +100,7 @@ describe("V017 deterministic tracking watermarks", () => {
   });
 });
 
-describe("V018 manual tracking audit", () => {
+describe("V021 manual tracking audit", () => {
   it("appends only the structured manual audit columns", () => {
     const sql = readFileSync(manualTrackingAuditMigrationPath, "utf8");
 
@@ -112,7 +112,7 @@ describe("V018 manual tracking audit", () => {
     expect(sql).not.toMatch(/api[_-]?key|secret|credential|tracking_number|raw_payload/i);
   });
 
-  it("keeps V015 through V017 immutable and baseline V018 byte-equivalent", () => {
+  it("keeps V015 through V020 immutable and baseline V021 byte-equivalent", () => {
     const hashes = new Map([
       ["V015__trade_fulfillment_core.sql", "683687685b5b4943949d965f3b3df86eaa2e4dfcdbf50641fb4fc05db8d80ec4"],
       ["V016__trade_tracking_status_mapping.sql", "21dbb820f0e1099b73154bcc2d6011cdc1ea98556f580aaa0e5ccdd7ed7951da"],
@@ -127,9 +127,9 @@ describe("V018 manual tracking audit", () => {
 
     const migration = readFileSync(manualTrackingAuditMigrationPath, "utf8").replace(/\r\n/g, "\n").trimEnd();
     const baseline = readFileSync(join(root, "oakved-baseline.sql"), "utf8").replace(/\r\n/g, "\n");
-    const marker = "-- BEGIN V018__trade_manual_tracking_audit.sql\n";
+    const marker = "-- BEGIN V021__trade_manual_tracking_audit.sql\n";
     const start = baseline.indexOf(marker);
-    const end = baseline.indexOf("\n-- BEGIN V019__trade_fulfillment_admin_permissions.sql", start);
+    const end = baseline.indexOf("\n-- BEGIN V022__trade_fulfillment_admin_permissions.sql", start);
 
     expect(start).toBeGreaterThanOrEqual(0);
     expect(end).toBeGreaterThan(start);

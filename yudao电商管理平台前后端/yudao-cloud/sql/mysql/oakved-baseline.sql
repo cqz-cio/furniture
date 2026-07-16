@@ -8029,7 +8029,33 @@ ALTER TABLE `seo_metadata`
   ADD COLUMN `active_record` tinyint GENERATED ALWAYS AS (CASE WHEN `deleted` = b'0' THEN 1 ELSE NULL END) STORED,
   ADD UNIQUE KEY `uk_entity_locale_active` (`tenant_id`, `site_id`, `entity_type`, `entity_id`, `locale`, `active_record`);
 
--- BEGIN V019__trade_fulfillment_admin_permissions.sql
+-- BEGIN V021__trade_manual_tracking_audit.sql
+-- Append structured manual-event audit fields after the published V018-V020 catalog.
+ALTER TABLE `trade_tracking_event`
+  ADD COLUMN `manual_operator_id` bigint DEFAULT NULL AFTER `source`,
+  ADD COLUMN `manual_reason` varchar(500) DEFAULT NULL AFTER `manual_operator_id`,
+  ADD COLUMN `request_trace_id` varchar(64) DEFAULT NULL AFTER `manual_reason`;
+
+-- BEGIN V022__trade_fulfillment_admin_permissions.sql
+-- Fail closed unless the published order-list parent exists with its exact identity.
+DROP TEMPORARY TABLE IF EXISTS `trade_fulfillment_menu_guard`;
+CREATE TEMPORARY TABLE `trade_fulfillment_menu_guard` (
+  `valid` tinyint NOT NULL,
+  CONSTRAINT `chk_trade_fulfillment_menu_guard` CHECK (`valid` = 1)
+) ENGINE=InnoDB;
+
+INSERT INTO `trade_fulfillment_menu_guard` (`valid`)
+SELECT 0 WHERE (SELECT COUNT(*) FROM `system_menu`
+  WHERE `id` = 2076
+    AND `name` = '订单列表'
+    AND `type` = 2
+    AND `parent_id` = 2072
+    AND `path` = 'order'
+    AND `component` = 'mall/trade/order/index'
+    AND `component_name` = 'TradeOrder'
+    AND `status` = 0
+    AND `deleted` = b'0') <> 1;
+
 INSERT INTO `system_menu`
 (`name`, `permission`, `type`, `sort`, `parent_id`, `path`, `icon`,
  `component`, `component_name`, `status`, `visible`, `keep_alive`,
@@ -8109,6 +8135,41 @@ AND NOT EXISTS (
     SELECT 1 FROM `system_menu`
     WHERE `permission` = 'trade:fulfillment:tracking:manual' AND `deleted` = b'0'
 );
+
+-- Existing permissions must be unique type=3 children of the guarded parent.
+INSERT INTO `trade_fulfillment_menu_guard` (`valid`)
+SELECT 0 WHERE
+  (SELECT COUNT(*) FROM `system_menu`
+    WHERE `permission` = 'trade:fulfillment:shipment:query' AND `deleted` = b'0') <> 1
+  OR (SELECT COUNT(*) FROM `system_menu`
+    WHERE `permission` = 'trade:fulfillment:shipment:query'
+      AND `parent_id` = 2076 AND `type` = 3 AND `deleted` = b'0') <> 1
+UNION ALL SELECT 0 WHERE
+  (SELECT COUNT(*) FROM `system_menu`
+    WHERE `permission` = 'trade:fulfillment:shipment:create' AND `deleted` = b'0') <> 1
+  OR (SELECT COUNT(*) FROM `system_menu`
+    WHERE `permission` = 'trade:fulfillment:shipment:create'
+      AND `parent_id` = 2076 AND `type` = 3 AND `deleted` = b'0') <> 1
+UNION ALL SELECT 0 WHERE
+  (SELECT COUNT(*) FROM `system_menu`
+    WHERE `permission` = 'trade:fulfillment:shipment:update' AND `deleted` = b'0') <> 1
+  OR (SELECT COUNT(*) FROM `system_menu`
+    WHERE `permission` = 'trade:fulfillment:shipment:update'
+      AND `parent_id` = 2076 AND `type` = 3 AND `deleted` = b'0') <> 1
+UNION ALL SELECT 0 WHERE
+  (SELECT COUNT(*) FROM `system_menu`
+    WHERE `permission` = 'trade:fulfillment:shipment:dispatch' AND `deleted` = b'0') <> 1
+  OR (SELECT COUNT(*) FROM `system_menu`
+    WHERE `permission` = 'trade:fulfillment:shipment:dispatch'
+      AND `parent_id` = 2076 AND `type` = 3 AND `deleted` = b'0') <> 1
+UNION ALL SELECT 0 WHERE
+  (SELECT COUNT(*) FROM `system_menu`
+    WHERE `permission` = 'trade:fulfillment:tracking:manual' AND `deleted` = b'0') <> 1
+  OR (SELECT COUNT(*) FROM `system_menu`
+    WHERE `permission` = 'trade:fulfillment:tracking:manual'
+      AND `parent_id` = 2076 AND `type` = 3 AND `deleted` = b'0') <> 1;
+
+DROP TEMPORARY TABLE `trade_fulfillment_menu_guard`;
 
 -- BEGIN Oakved demo catalog
 -- Oakved demo catalog: tenant 121, 26 mall products, ERP products, stock and mappings.
@@ -8298,4 +8359,6 @@ INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256)
 INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('018','trade fulfillment active record uniqueness','V018__trade_fulfillment_active_record_uniqueness.sql','2bf0b39fbda389e3d14cbc8b99b60a29a09556f9a37870fd50f640d2cb008bfc') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
 INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('019','seo foundation','V019__seo_foundation.sql','ac7f05177bdc01b98a05ee8efcaca34300c81ee18f3a3e92349069f93330082c') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
 INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('020','seo active record uniqueness','V020__seo_active_record_uniqueness.sql','ab2330f8ae1b459f6be8979a201b192817274d2df662282aaf4a8b341b4d3a48') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
+INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('021','trade manual tracking audit','V021__trade_manual_tracking_audit.sql','deb8ec6514082f92c885771056cb272e032f2170150c9905e6ae11e40425d2f6') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
+INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('022','trade fulfillment admin permissions','V022__trade_fulfillment_admin_permissions.sql','b7aafccd61873c87c219c575b1102a192c05030a1ec98a33b94271174cdf3b73') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
 SET FOREIGN_KEY_CHECKS = 1;
