@@ -31,6 +31,28 @@ function New-DockerResult([int]$ExitCode, [string[]]$Output) {
     return [pscustomobject]@{ ExitCode = $ExitCode; Output = $Output }
 }
 
+$nativeShim = Join-Path $PSScriptRoot "test-fixtures\fulfillment-docker-native-shim.ps1"
+$env:FULFILLMENT_DOCKER_SHIM_EXIT = "7"
+& $env:ComSpec /d /c "exit 91"
+Assert-Equal 91 $LASTEXITCODE "native exit seed must be established before invoking the shim"
+$nativeResult = Invoke-FulfillmentCleanupDocker -Action "rm" -Name "native-shim-case" `
+        -DockerExecutable "powershell.exe" `
+        -DockerPrefixArguments @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $nativeShim)
+Assert-Equal 7 $nativeResult.ExitCode "wrapper must return the shim process exit code instead of stale LASTEXITCODE"
+Assert-Equal "shim-stdout:rm|-f|native-shim-case" ($nativeResult.StandardOutput -join "") `
+        "wrapper must capture native stdout"
+Assert-Equal "shim-stderr:rm|-f|native-shim-case" ($nativeResult.StandardError -join "") `
+        "wrapper must capture native stderr"
+
+$env:FULFILLMENT_DOCKER_SHIM_EXIT = "13"
+& $env:ComSpec /d /c "exit 0"
+Assert-Equal 0 $LASTEXITCODE "second native exit seed must differ from the shim result"
+$secondNativeResult = Invoke-FulfillmentCleanupDocker -Action "inspect" -Name "native-shim-case" `
+        -DockerExecutable "powershell.exe" `
+        -DockerPrefixArguments @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $nativeShim)
+Assert-Equal 13 $secondNativeResult.ExitCode "wrapper must capture each native process exit independently"
+Remove-Item Env:FULFILLMENT_DOCKER_SHIM_EXIT
+
 $calls = [System.Collections.Generic.List[string]]::new()
 $rmSuccess = {
     param($Action, $Name)

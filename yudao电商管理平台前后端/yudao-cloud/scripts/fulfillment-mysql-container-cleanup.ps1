@@ -1,19 +1,68 @@
-function Invoke-FulfillmentCleanupDocker([string]$Action, [string]$Name) {
-    $previousErrorActionPreference = $ErrorActionPreference
-    try {
-        $ErrorActionPreference = "Continue"
-        if ($Action -eq "rm") {
-            $output = @(docker rm -f $Name 2>&1)
-        } elseif ($Action -eq "inspect") {
-            $output = @(docker inspect $Name 2>&1)
-        } else {
-            throw "Unsupported Docker cleanup action: $Action"
-        }
-        $exitCode = $LASTEXITCODE
-    } finally {
-        $ErrorActionPreference = $previousErrorActionPreference
+function ConvertTo-FulfillmentNativeArgument([string]$Value) {
+    if ($Value.Length -gt 0 -and $Value -notmatch '[\s"]') {
+        return $Value
     }
-    return [pscustomobject]@{ ExitCode = $exitCode; Output = $output }
+    $escaped = [regex]::Replace($Value, '(\\*)"', '$1$1\"')
+    $escaped = [regex]::Replace($escaped, '(\\+)$', '$1$1')
+    return '"' + $escaped + '"'
+}
+
+function Invoke-FulfillmentCleanupDocker {
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateSet("rm", "inspect")]
+        [string]$Action,
+        [Parameter(Mandatory = $true)]
+        [ValidatePattern('^[A-Za-z0-9][A-Za-z0-9_.-]*$')]
+        [string]$Name,
+        [string]$DockerExecutable = "docker",
+        [string[]]$DockerPrefixArguments = @()
+    )
+
+    $arguments = [System.Collections.Generic.List[string]]::new()
+    foreach ($prefixArgument in $DockerPrefixArguments) {
+        $arguments.Add($prefixArgument)
+    }
+    $arguments.Add($Action)
+    if ($Action -eq "rm") {
+        $arguments.Add("-f")
+    }
+    $arguments.Add($Name)
+    $argumentLine = ($arguments | ForEach-Object { ConvertTo-FulfillmentNativeArgument $_ }) -join " "
+
+    $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+    $startInfo.FileName = $DockerExecutable
+    $startInfo.Arguments = $argumentLine
+    $startInfo.UseShellExecute = $false
+    $startInfo.CreateNoWindow = $true
+    $startInfo.RedirectStandardOutput = $true
+    $startInfo.RedirectStandardError = $true
+    $process = New-Object System.Diagnostics.Process
+    $process.StartInfo = $startInfo
+    try {
+        if (-not $process.Start()) {
+            throw "Unable to start Docker cleanup process: $DockerExecutable"
+        }
+        $stdoutRead = $process.StandardOutput.ReadToEndAsync()
+        $stderrRead = $process.StandardError.ReadToEndAsync()
+        $process.WaitForExit()
+        $stdoutText = $stdoutRead.GetAwaiter().GetResult()
+        $stderrText = $stderrRead.GetAwaiter().GetResult()
+        $standardOutput = if ([string]::IsNullOrEmpty($stdoutText)) { @() } else {
+            @($stdoutText.TrimEnd("`r", "`n") -split "`r?`n")
+        }
+        $standardError = if ([string]::IsNullOrEmpty($stderrText)) { @() } else {
+            @($stderrText.TrimEnd("`r", "`n") -split "`r?`n")
+        }
+        return [pscustomobject]@{
+            ExitCode = $process.ExitCode
+            Output = @($standardOutput) + @($standardError)
+            StandardOutput = $standardOutput
+            StandardError = $standardError
+        }
+    } finally {
+        $process.Dispose()
+    }
 }
 
 function Remove-FulfillmentMySqlIntegrationContainer {
