@@ -470,6 +470,53 @@ class FulfillmentTrackingTransactionTest extends BaseDbUnitTest {
     }
 
     @Test
+    void alreadyCanceledTargetCannotCancelShipmentWithAnotherActivePackage() {
+        jdbc.update("UPDATE trade_shipment SET status = 'HANDED_TO_CARRIER', version = 2 WHERE id = ?", SHIPMENT_ID);
+        jdbc.update("UPDATE trade_shipment_package SET status = 'CANCELED', version = 2 WHERE id = ?", PACKAGE_ID);
+        jdbc.update("UPDATE trade_shipment_leg SET status = 'CANCELED', version = 2 WHERE id = ?", LEG_ID);
+        jdbc.update("INSERT INTO trade_shipment_package (id, tenant_id, shipment_id, package_no, package_type, "
+                + "carrier_id, tracking_number, status, version) VALUES "
+                + "(71002, ?, ?, 'PKG-2', 'PARCEL', 73, 'private-tracking-456', 'IN_TRANSIT', 2)",
+                TENANT_ID, SHIPMENT_ID);
+        mapping("CANCELED", "CANCELED", "v1", 110, "2026-01-01 00:00:00.000000");
+
+        TrackingApplyResult result = service.applyEvent(command("already-canceled", "CANCELED",
+                Instant.parse("2026-07-15T08:15:00Z")));
+
+        assertTrue(result.inserted());
+        assertFalse(result.stateChanged());
+        assertEquals("CANCELED", value("SELECT status FROM trade_shipment_package WHERE id = " + PACKAGE_ID,
+                String.class));
+        assertEquals("HANDED_TO_CARRIER", value("SELECT status FROM trade_shipment WHERE id = " + SHIPMENT_ID,
+                String.class));
+        assertEquals("SHIPPED", value("SELECT status FROM trade_order_fulfillment_summary WHERE order_id = "
+                + ORDER_ID, String.class));
+        assertEquals(1, count("trade_tracking_event"));
+        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM trade_fulfillment_outbox_event "
+                + "WHERE event_type = 'TRACKING_UPDATED'", Integer.class));
+        assertEquals(1, count("trade_fulfillment_outbox_event"));
+    }
+
+    @Test
+    void newlyCanceledLastActivePackageExplicitlyCancelsShipment() {
+        mapping("CANCELED", "CANCELED", "v1", 110, "2026-01-01 00:00:00.000000");
+
+        TrackingApplyResult result = service.applyEvent(command("last-active-canceled", "CANCELED",
+                Instant.parse("2026-07-15T08:20:00Z")));
+
+        assertTrue(result.stateChanged());
+        assertEquals("CANCELED", value("SELECT status FROM trade_shipment_package WHERE id = " + PACKAGE_ID,
+                String.class));
+        assertEquals("CANCELED", value("SELECT status FROM trade_shipment_leg WHERE id = " + LEG_ID, String.class));
+        assertEquals("CANCELED", value("SELECT status FROM trade_shipment WHERE id = " + SHIPMENT_ID, String.class));
+        assertEquals("NOT_SHIPPED", value("SELECT status FROM trade_order_fulfillment_summary WHERE order_id = "
+                + ORDER_ID, String.class));
+        assertEquals(0, value("SELECT shipment_count FROM trade_order_fulfillment_summary WHERE order_id = "
+                + ORDER_ID, Integer.class));
+        assertEquals(1, count("trade_fulfillment_outbox_event"));
+    }
+
+    @Test
     void outboxFailureRollsBackTimelineWatermarksStatesAndSummary() {
         mapping("MOVING", "IN_TRANSIT", "v1", 30, "2026-01-01 00:00:00.000000");
         doThrow(new IllegalStateException("outbox failed")).when(outboxMapper).insert(any(FulfillmentOutboxEventDO.class));

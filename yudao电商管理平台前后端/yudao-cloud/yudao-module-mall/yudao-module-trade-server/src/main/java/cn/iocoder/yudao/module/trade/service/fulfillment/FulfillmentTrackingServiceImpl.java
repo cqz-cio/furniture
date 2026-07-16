@@ -156,11 +156,14 @@ public class FulfillmentTrackingServiceImpl implements FulfillmentTrackingServic
         eventMapper.insert(event);
 
         String shipmentPreviousStatus = shipment.getStatus();
+        boolean packageWasCanceled = shipmentPackage != null
+                && ShipmentStatusEnum.CANCELED.name().equals(shipmentPackage.getStatus());
         TransitionOutcome packageOutcome = shipmentPackage == null ? TransitionOutcome.noop(null)
                 : applyPackageTransition(tenantId, shipmentPackage, resolution, occurredAt, event.getId());
         TransitionOutcome legOutcome = leg == null ? TransitionOutcome.noop(null) : applyLegTransition(tenantId,
                 leg, resolution, occurredAt, event.getId());
-        TransitionOutcome shipmentDriver = shipmentPackage == null ? legOutcome : packageOutcome;
+        TransitionOutcome shipmentDriver = shipmentPackage == null ? legOutcome
+                : packageWasCanceled ? TransitionOutcome.noop(shipmentPackage.getStatus()) : packageOutcome;
         TransitionOutcome shipmentOutcome = applyShipmentTransition(tenantId, shipment, shipmentPackage,
                 shipmentDriver, resolution, occurredAt, event.getId());
         boolean stateChanged = packageOutcome.stateChanged() || legOutcome.stateChanged()
@@ -354,6 +357,9 @@ public class FulfillmentTrackingServiceImpl implements FulfillmentTrackingServic
     private ShipmentStatusEnum aggregateShipmentCandidate(List<ShipmentStatusEnum> statuses,
                                                             ShipmentStatusEnum effectiveTargetStatus,
                                                             ShipmentStatusEnum current) {
+        if (statuses.isEmpty() && effectiveTargetStatus == ShipmentStatusEnum.CANCELED) {
+            return ShipmentStatusEnum.CANCELED;
+        }
         if (!statuses.isEmpty() && statuses.stream().allMatch(status -> status == ShipmentStatusEnum.DELIVERED)) {
             return ShipmentStatusEnum.DELIVERED;
         }
@@ -369,7 +375,8 @@ public class FulfillmentTrackingServiceImpl implements FulfillmentTrackingServic
         }
         if (effectiveTargetStatus == ShipmentStatusEnum.DELIVERED
                 || effectiveTargetStatus == ShipmentStatusEnum.RETURNED
-                || effectiveTargetStatus == ShipmentStatusEnum.RETURNING) {
+                || effectiveTargetStatus == ShipmentStatusEnum.RETURNING
+                || effectiveTargetStatus == ShipmentStatusEnum.CANCELED) {
             return current;
         }
         return effectiveTargetStatus;
