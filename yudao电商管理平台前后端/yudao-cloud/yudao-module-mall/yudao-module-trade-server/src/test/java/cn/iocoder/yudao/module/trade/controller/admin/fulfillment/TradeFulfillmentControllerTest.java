@@ -3,6 +3,7 @@ package cn.iocoder.yudao.module.trade.controller.admin.fulfillment;
 import cn.iocoder.yudao.framework.apilog.core.annotation.ApiAccessLog;
 import cn.iocoder.yudao.framework.common.biz.infra.logger.ApiErrorLogCommonApi;
 import cn.iocoder.yudao.framework.common.pojo.CommonResult;
+import cn.iocoder.yudao.framework.common.pojo.PageResult;
 import cn.iocoder.yudao.framework.common.util.monitor.TracerUtils;
 import cn.iocoder.yudao.framework.security.core.LoginUser;
 import cn.iocoder.yudao.framework.security.core.util.SecurityFrameworkUtils;
@@ -14,6 +15,9 @@ import cn.iocoder.yudao.module.trade.enums.fulfillment.ShipmentTypeEnum;
 import cn.iocoder.yudao.module.trade.service.fulfillment.*;
 import cn.iocoder.yudao.module.trade.service.fulfillment.command.*;
 import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
+import jakarta.validation.ElementKind;
+import jakarta.validation.Path;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.constraints.NotBlank;
@@ -23,6 +27,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.http.MediaType;
+import org.springframework.aop.framework.ProxyFactory;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -30,6 +35,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.validation.beanvalidation.MethodValidationInterceptor;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import org.slf4j.LoggerFactory;
@@ -47,6 +53,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 class TradeFulfillmentControllerTest {
@@ -102,6 +109,19 @@ class TradeFulfillmentControllerTest {
                 "@ss.hasPermission('trade:fulfillment:shipment:dispatch')",
                 "@ss.hasPermission('trade:fulfillment:tracking:manual')",
                 "@ss.hasPermission('trade:fulfillment:shipment:query')"), permissions);
+        Map<String, String> permissionByRoute = methods.stream().collect(Collectors.toMap(
+                TradeFulfillmentControllerTest::routeKey,
+                method -> method.getAnnotation(PreAuthorize.class).value()));
+        assertEquals(Map.of(
+                "POST ", "@ss.hasPermission('trade:fulfillment:shipment:create')",
+                "PUT /{id}/ready", "@ss.hasPermission('trade:fulfillment:shipment:update')",
+                "POST /{id}/packages", "@ss.hasPermission('trade:fulfillment:shipment:update')",
+                "POST /{id}/legs", "@ss.hasPermission('trade:fulfillment:shipment:update')",
+                "POST /{id}/dispatch", "@ss.hasPermission('trade:fulfillment:shipment:dispatch')",
+                "POST /{id}/manual-event", "@ss.hasPermission('trade:fulfillment:tracking:manual')",
+                "GET /{id}", "@ss.hasPermission('trade:fulfillment:shipment:query')",
+                "GET /{id}/timeline", "@ss.hasPermission('trade:fulfillment:shipment:query')",
+                "GET /page", "@ss.hasPermission('trade:fulfillment:shipment:query')"), permissionByRoute);
     }
 
     @Test
@@ -147,9 +167,20 @@ class TradeFulfillmentControllerTest {
         assertEquals(77L, controller.createShipment("key", req).getData());
         var captor = org.mockito.ArgumentCaptor.forClass(CreateShipmentCommand.class);
         verify(commandService).createShipment(eq("key"), captor.capture());
-        assertEquals(TENANT_ID, captor.getValue().getTenantId());
-        assertEquals(req.getOrderId(), captor.getValue().getOrderId());
-        assertEquals(req.getItems().get(0).getQuantity(), captor.getValue().getItems().get(0).getQuantity());
+        CreateShipmentCommand command = captor.getValue();
+        assertEquals(TENANT_ID, command.getTenantId());
+        assertEquals(req.getOrderId(), command.getOrderId());
+        assertEquals(req.getShipmentType(), command.getShipmentType());
+        assertEquals(req.getOriginCountry(), command.getOriginCountry());
+        assertEquals(req.getDestinationCountry(), command.getDestinationCountry());
+        assertEquals(req.getOriginTimezone(), command.getOriginTimezone());
+        assertEquals(req.getDestinationTimezone(), command.getDestinationTimezone());
+        assertEquals(req.getWarehouseId(), command.getWarehouseId());
+        assertEquals(req.getProviderId(), command.getProviderId());
+        assertEquals(1, command.getItems().size());
+        assertEquals(req.getItems().get(0).getOrderItemId(), command.getItems().get(0).getOrderItemId());
+        assertEquals(req.getItems().get(0).getSkuId(), command.getItems().get(0).getSkuId());
+        assertEquals(req.getItems().get(0).getQuantity(), command.getItems().get(0).getQuantity());
         assertFalse(Arrays.stream(CreateShipmentCommand.class.getDeclaredFields())
                 .anyMatch(f -> f.getName().equals("expectedVersion")));
     }
@@ -161,18 +192,41 @@ class TradeFulfillmentControllerTest {
         controller.addPackage("p-key", 500L, packageReq);
         var packageCaptor = org.mockito.ArgumentCaptor.forClass(UpsertPackageCommand.class);
         verify(commandService).addPackage(eq("p-key"), packageCaptor.capture());
-        assertEquals(TENANT_ID, packageCaptor.getValue().getTenantId());
-        assertEquals(500L, packageCaptor.getValue().getShipmentId());
-        assertEquals(packageReq.getExpectedVersion(), packageCaptor.getValue().getExpectedVersion());
+        UpsertPackageCommand packageCommand = packageCaptor.getValue();
+        assertEquals(TENANT_ID, packageCommand.getTenantId());
+        assertEquals(500L, packageCommand.getShipmentId());
+        assertEquals(packageReq.getExpectedVersion(), packageCommand.getExpectedVersion());
+        assertEquals(packageReq.getPackageNo(), packageCommand.getPackageNo());
+        assertEquals(packageReq.getPackageType(), packageCommand.getPackageType());
+        assertEquals(packageReq.getCarrierId(), packageCommand.getCarrierId());
+        assertEquals(packageReq.getTrackingNumber(), packageCommand.getTrackingNumber());
+        assertEquals(packageReq.getWeight(), packageCommand.getWeight());
+        assertEquals(packageReq.getWeightUnit(), packageCommand.getWeightUnit());
+        assertEquals(packageReq.getLength(), packageCommand.getLength());
+        assertEquals(packageReq.getWidth(), packageCommand.getWidth());
+        assertEquals(packageReq.getHeight(), packageCommand.getHeight());
+        assertEquals(packageReq.getDimensionUnit(), packageCommand.getDimensionUnit());
 
         ShipmentLegCreateReqVO legReq = validLeg();
         when(commandService.addLeg(eq("l-key"), any())).thenReturn(89L);
         controller.addLeg("l-key", 501L, legReq);
         var legCaptor = org.mockito.ArgumentCaptor.forClass(AddShipmentLegCommand.class);
         verify(commandService).addLeg(eq("l-key"), legCaptor.capture());
-        assertEquals(TENANT_ID, legCaptor.getValue().getTenantId());
-        assertEquals(501L, legCaptor.getValue().getShipmentId());
-        assertEquals(legReq.getTrackingNumber(), legCaptor.getValue().getTrackingNumber());
+        AddShipmentLegCommand legCommand = legCaptor.getValue();
+        assertEquals(TENANT_ID, legCommand.getTenantId());
+        assertEquals(501L, legCommand.getShipmentId());
+        assertEquals(legReq.getExpectedVersion(), legCommand.getExpectedVersion());
+        assertEquals(legReq.getPackageId(), legCommand.getPackageId());
+        assertEquals(legReq.getSequenceNo(), legCommand.getSequenceNo());
+        assertEquals(legReq.getLegType(), legCommand.getLegType());
+        assertEquals(legReq.getCarrierId(), legCommand.getCarrierId());
+        assertEquals(legReq.getProviderId(), legCommand.getProviderId());
+        assertEquals(legReq.getServiceLevel(), legCommand.getServiceLevel());
+        assertEquals(legReq.getTrackingNumber(), legCommand.getTrackingNumber());
+        assertEquals(legReq.getProNumber(), legCommand.getProNumber());
+        assertEquals(legReq.getBolNumber(), legCommand.getBolNumber());
+        assertEquals(legReq.getOriginLocation(), legCommand.getOriginLocation());
+        assertEquals(legReq.getDestinationLocation(), legCommand.getDestinationLocation());
     }
 
     @Test
@@ -207,6 +261,11 @@ class TradeFulfillmentControllerTest {
         assertFalse(command.getRequestTraceId().isBlank());
         assertTrue(command.getRequestTraceId().length() <= 64);
         assertEquals(req.getPackageId(), command.getPackageId());
+        assertEquals(req.getShipmentLegId(), command.getShipmentLegId());
+        assertEquals(req.getRequestedStatus(), command.getRequestedStatus());
+        assertEquals(req.getOccurredAt(), command.getOccurredAt());
+        assertEquals(req.getExpectedVersion(), command.getExpectedShipmentVersion());
+        assertEquals(req.getReason(), command.getReason());
         assertEquals(Boolean.TRUE, response.getData().getInserted());
         assertEquals("IN_TRANSIT", response.getData().getCurrentStatus());
     }
@@ -256,18 +315,18 @@ class TradeFulfillmentControllerTest {
 
     @Test
     void requestAndResponseTypesExposeNoForbiddenProperties() throws Exception {
-        assertNoProperties(ShipmentCreateReqVO.class,
-                "tenantId", "shipmentId", "shipmentNo", "status", "version", "creator", "updater");
-        assertNoProperties(ShipmentPackageCreateReqVO.class,
-                "tenantId", "shipmentId", "status", "creator", "updater");
-        assertNoProperties(ShipmentLegCreateReqVO.class,
-                "tenantId", "shipmentId", "status", "creator", "updater");
-        assertNoProperties(ManualTrackingEventReqVO.class,
-                "tenantId", "shipmentId", "operatorId", "requestTraceId", "providerId", "carrierId",
-                "trackingNumber", "proNumber", "bolNumber", "priority", "mappingVersion",
-                "rawPayloadRef", "externalEventId", "outboxStatus", "credential");
-        assertEquals(Set.of("inserted", "stateChanged", "previousStatus", "currentStatus"),
-                beanProperties(TrackingApplyRespVO.class));
+        assertProperties(ShipmentCreateReqVO.class, "orderId", "shipmentType", "originCountry",
+                "destinationCountry", "originTimezone", "destinationTimezone", "warehouseId", "providerId", "items");
+        assertProperties(ShipmentCreateItemReqVO.class, "orderItemId", "skuId", "quantity");
+        assertProperties(ShipmentPackageCreateReqVO.class, "expectedVersion", "packageNo", "packageType",
+                "carrierId", "trackingNumber", "weight", "weightUnit", "length", "width", "height", "dimensionUnit");
+        assertProperties(ShipmentLegCreateReqVO.class, "expectedVersion", "packageId", "sequenceNo", "legType",
+                "carrierId", "providerId", "serviceLevel", "trackingNumber", "proNumber", "bolNumber",
+                "originLocation", "destinationLocation");
+        assertProperties(ShipmentVersionReqVO.class, "expectedVersion");
+        assertProperties(ManualTrackingEventReqVO.class, "packageId", "shipmentLegId", "requestedStatus",
+                "occurredAt", "expectedVersion", "reason");
+        assertProperties(TrackingApplyRespVO.class, "inserted", "stateChanged", "previousStatus", "currentStatus");
 
         validateBoundaries();
         assertSensitiveToStringExclusion(validPackage(), "TRACK-SECRET");
@@ -278,7 +337,7 @@ class TradeFulfillmentControllerTest {
     @Test
     void validationFailuresDoNotEchoOrGloballyLogSensitiveRejectedValues() throws Exception {
         GlobalExceptionHandler global = new GlobalExceptionHandler("test", mock(ApiErrorLogCommonApi.class));
-        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller).setControllerAdvice(global).build();
+        MockMvc mockMvc = proxiedMockMvc(global);
         ch.qos.logback.classic.Logger globalLogger =
                 (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(GlobalExceptionHandler.class);
         ListAppender<ILoggingEvent> appender = new ListAppender<>();
@@ -304,15 +363,142 @@ class TradeFulfillmentControllerTest {
             appender.stop();
         }
 
-        Method handler = TradeFulfillmentController.class.getDeclaredMethod("handleSensitiveValidationFailure");
-        assertEquals(0, handler.getParameterCount(), "handler must not receive rejected values or exceptions");
-        assertArrayEquals(new Class<?>[]{MethodArgumentNotValidException.class,
-                        org.springframework.validation.BindException.class,
-                        jakarta.validation.ConstraintViolationException.class},
-                handler.getAnnotation(ExceptionHandler.class).value());
-        String keySentinel = "IDEMPOTENCY_KEY_SENTINEL_".repeat(6);
-        assertTrue(keySentinel.length() > 128);
-        assertFalse(controller.handleSensitiveValidationFailure().toString().contains(keySentinel));
+        assertTrue(Arrays.stream(TradeFulfillmentController.class.getDeclaredMethods())
+                .noneMatch(method -> method.isAnnotationPresent(ExceptionHandler.class)));
+    }
+
+    @Test
+    void httpMethodValidationRejectsBadKeysBeforeServiceAndPreservesValidKeyExactly() throws Exception {
+        GlobalExceptionHandler global = new GlobalExceptionHandler("test", mock(ApiErrorLogCommonApi.class));
+        MockMvc mockMvc = proxiedMockMvc(global);
+        ch.qos.logback.classic.Logger globalLogger =
+                (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(GlobalExceptionHandler.class);
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        globalLogger.addAppender(appender);
+        String longKey = "IDEMPOTENCY_KEY_SENTINEL_".repeat(6);
+        try {
+            mockMvc.perform(post("/trade/fulfillment/shipments")
+                            .contentType(MediaType.APPLICATION_JSON).content(validCreateJson()))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.code").value(400));
+            mockMvc.perform(post("/trade/fulfillment/shipments").header("Idempotency-Key", " ")
+                            .contentType(MediaType.APPLICATION_JSON).content(validCreateJson()))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.code").value(400));
+            String longResponse = mockMvc.perform(post("/trade/fulfillment/shipments")
+                            .header("Idempotency-Key", longKey)
+                            .contentType(MediaType.APPLICATION_JSON).content(validCreateJson()))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.code").value(400))
+                    .andReturn().getResponse().getContentAsString();
+            assertFalse(longResponse.contains(longKey));
+            verifyNoInteractions(commandService);
+
+            when(commandService.createShipment(eq("  exact-key  "), any())).thenReturn(701L);
+            mockMvc.perform(post("/trade/fulfillment/shipments")
+                            .header("Idempotency-Key", "  exact-key  ")
+                            .contentType(MediaType.APPLICATION_JSON).content(validCreateJson()))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.code").value(0))
+                    .andExpect(jsonPath("$.data").value(701));
+            verify(commandService).createShipment(eq("  exact-key  "), any());
+            assertTrue(appender.list.isEmpty(), "global handler must not log request validation");
+        } finally {
+            globalLogger.detachAppender(appender);
+            appender.stop();
+        }
+    }
+
+    @Test
+    void runtimeGetRoutesResolvePageDetailAndTimelineExactly() throws Exception {
+        GlobalExceptionHandler global = new GlobalExceptionHandler("test", mock(ApiErrorLogCommonApi.class));
+        MockMvc mockMvc = proxiedMockMvc(global);
+        when(queryService.getShipmentPage(eq(TENANT_ID), any())).thenReturn(PageResult.empty());
+        when(queryService.getShipment(TENANT_ID, 123L)).thenReturn(new ShipmentDetailRespVO());
+        when(queryService.getTimeline(TENANT_ID, 123L)).thenReturn(List.of());
+
+        mockMvc.perform(get("/trade/fulfillment/shipments/page"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.code").value(0));
+        verify(queryService).getShipmentPage(eq(TENANT_ID), any());
+        verify(queryService, never()).getShipment(eq(TENANT_ID), isNull());
+
+        mockMvc.perform(get("/trade/fulfillment/shipments/123"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.code").value(0));
+        verify(queryService).getShipment(TENANT_ID, 123L);
+
+        mockMvc.perform(get("/trade/fulfillment/shipments/123/timeline"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.code").value(0));
+        verify(queryService).getTimeline(TENANT_ID, 123L);
+    }
+
+    @Test
+    void getPageValidationIsValueFreeAndDoesNotCallQueryService() throws Exception {
+        GlobalExceptionHandler global = new GlobalExceptionHandler("test", mock(ApiErrorLogCommonApi.class));
+        MockMvc mockMvc = proxiedMockMvc(global);
+        String response = mockMvc.perform(get("/trade/fulfillment/shipments/page")
+                        .param("originCountry", "COUNTRY_SENTINEL"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.code").value(400))
+                .andReturn().getResponse().getContentAsString();
+        assertFalse(response.contains("COUNTRY_SENTINEL"));
+        verifyNoInteractions(queryService);
+    }
+
+    @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    void serviceConstraintViolationReturnsSafe500AndOnlyLogsMetadata() throws Exception {
+        ConstraintViolation<?> violation = mock(ConstraintViolation.class);
+        when(violation.getRootBeanClass()).thenReturn((Class) FulfillmentQueryService.class);
+        Path path = mock(Path.class);
+        Path.Node methodNode = mock(Path.Node.class);
+        when(methodNode.getKind()).thenReturn(ElementKind.METHOD);
+        when(methodNode.getName()).thenReturn("getShipment");
+        Path.Node parameterNode = mock(Path.Node.class);
+        when(parameterNode.getKind()).thenReturn(ElementKind.PARAMETER);
+        when(parameterNode.getName()).thenReturn("tenantId");
+        when(path.iterator()).thenAnswer(ignored -> List.of(methodNode, parameterNode).iterator());
+        when(violation.getPropertyPath()).thenReturn(path);
+        ConstraintViolationException serviceFailure = new ConstraintViolationException(
+                "SERVICE_VALUE_SENTINEL", Set.<ConstraintViolation<?>>of(violation));
+        when(queryService.getShipment(TENANT_ID, 123L)).thenThrow(serviceFailure);
+
+        GlobalExceptionHandler global = new GlobalExceptionHandler("test", mock(ApiErrorLogCommonApi.class));
+        MockMvc mockMvc = proxiedMockMvc(global);
+        ch.qos.logback.classic.Logger safeLogger = (ch.qos.logback.classic.Logger)
+                LoggerFactory.getLogger(TradeFulfillmentValidationExceptionHandler.class);
+        ch.qos.logback.classic.Logger globalLogger =
+                (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(GlobalExceptionHandler.class);
+        ListAppender<ILoggingEvent> safeAppender = new ListAppender<>();
+        ListAppender<ILoggingEvent> globalAppender = new ListAppender<>();
+        safeAppender.start(); globalAppender.start();
+        safeLogger.addAppender(safeAppender); globalLogger.addAppender(globalAppender);
+        try {
+            String response = mockMvc.perform(get("/trade/fulfillment/shipments/123"))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.code").value(500))
+                    .andReturn().getResponse().getContentAsString();
+            assertFalse(response.contains("SERVICE_VALUE_SENTINEL"));
+            assertEquals(1, safeAppender.list.size());
+            String log = safeAppender.list.get(0).getFormattedMessage();
+            assertTrue(log.contains("FulfillmentQueryService"));
+            assertTrue(log.contains("getShipment"));
+            assertTrue(log.contains("tenantId"));
+            assertFalse(log.contains("SERVICE_VALUE_SENTINEL"));
+            assertNull(safeAppender.list.get(0).getThrowableProxy());
+            assertTrue(globalAppender.list.isEmpty());
+        } finally {
+            safeLogger.detachAppender(safeAppender); globalLogger.detachAppender(globalAppender);
+            safeAppender.stop(); globalAppender.stop();
+        }
+    }
+
+    @Test
+    void illegalJsonEnumReturnsValueFree400BeforeService() throws Exception {
+        GlobalExceptionHandler global = new GlobalExceptionHandler("test", mock(ApiErrorLogCommonApi.class));
+        MockMvc mockMvc = proxiedMockMvc(global);
+        String body = validCreateJson().replace("\"PARCEL\"", "\"ENUM_SENTINEL\"");
+        String response = mockMvc.perform(post("/trade/fulfillment/shipments")
+                        .header("Idempotency-Key", "enum-key")
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.code").value(400))
+                .andReturn().getResponse().getContentAsString();
+        assertFalse(response.contains("ENUM_SENTINEL"));
+        verifyNoInteractions(commandService);
     }
 
     private void validateBoundaries() {
@@ -321,6 +507,10 @@ class TradeFulfillmentControllerTest {
         manual.setReason("12345"); assertValid(manual);
         manual.setReason("x".repeat(500)); assertValid(manual);
         manual.setReason("x".repeat(501)); assertInvalid(manual);
+        manual = validManual(); manual.setExpectedVersion(null); assertInvalid(manual);
+
+        ShipmentVersionReqVO version = version(0);
+        version.setExpectedVersion(null); assertInvalid(version);
 
         ShipmentCreateReqVO create = validCreate();
         create.setOriginCountry("US"); assertValid(create);
@@ -328,6 +518,12 @@ class TradeFulfillmentControllerTest {
         create.setOriginCountry("CN"); assertInvalid(create);
         create.setOriginCountry("USA"); assertInvalid(create);
         create.setOriginCountry("US");
+        create.setOriginTimezone("x".repeat(64)); assertValid(create);
+        create.setOriginTimezone("x".repeat(65)); assertInvalid(create);
+        create.setOriginTimezone("America/New_York");
+        create.setDestinationTimezone("x".repeat(64)); assertValid(create);
+        create.setDestinationTimezone("x".repeat(65)); assertInvalid(create);
+        create.setDestinationTimezone("America/Toronto");
         create.getItems().get(0).setQuantity(BigDecimal.ZERO); assertInvalid(create);
         create.getItems().get(0).setQuantity(new BigDecimal("0.000001")); assertValid(create);
         create.getItems().get(0).setQuantity(new BigDecimal("1.0000001")); assertInvalid(create);
@@ -340,16 +536,43 @@ class TradeFulfillmentControllerTest {
         pkg.setTrackingNumber("x".repeat(64)); assertValid(pkg);
         pkg.setTrackingNumber("x".repeat(65)); assertInvalid(pkg);
         pkg.setTrackingNumber("TRACK-SECRET");
+        pkg.setExpectedVersion(null); assertInvalid(pkg);
+        pkg.setExpectedVersion(0);
+        pkg.setPackageType("BOX"); assertInvalid(pkg);
+        pkg.setPackageType("PARCEL");
+        pkg.setWeightUnit("OZ"); assertInvalid(pkg);
+        pkg.setWeightUnit("KG");
+        pkg.setDimensionUnit("FT"); assertInvalid(pkg);
+        pkg.setDimensionUnit("CM");
         pkg.setWeight(BigDecimal.ZERO); assertValid(pkg);
         pkg.setWeight(new BigDecimal("-0.1")); assertInvalid(pkg);
         pkg.setWeight(new BigDecimal("1.0000001")); assertInvalid(pkg);
+        pkg = validPackage(); pkg.setLength(BigDecimal.ZERO); assertValid(pkg);
+        pkg.setLength(new BigDecimal("-0.1")); assertInvalid(pkg);
+        pkg = validPackage(); pkg.setWidth(BigDecimal.ZERO); assertValid(pkg);
+        pkg.setWidth(new BigDecimal("-0.1")); assertInvalid(pkg);
+        pkg = validPackage(); pkg.setHeight(BigDecimal.ZERO); assertValid(pkg);
+        pkg.setHeight(new BigDecimal("1.0000001")); assertInvalid(pkg);
 
         ShipmentLegCreateReqVO leg = validLeg();
+        leg.setExpectedVersion(null); assertInvalid(leg);
+        leg.setExpectedVersion(0);
+        leg.setLegType("MIDDLE_MILE"); assertInvalid(leg);
+        leg.setLegType("LAST_MILE");
         leg.setServiceLevel("x".repeat(64)); assertValid(leg);
         leg.setServiceLevel("x".repeat(65)); assertInvalid(leg);
         leg.setServiceLevel("GROUND");
+        leg.setProNumber("x".repeat(64)); assertValid(leg);
+        leg.setProNumber("x".repeat(65)); assertInvalid(leg);
+        leg.setProNumber("PRO-SECRET");
+        leg.setBolNumber("x".repeat(64)); assertValid(leg);
+        leg.setBolNumber("x".repeat(65)); assertInvalid(leg);
+        leg.setBolNumber("BOL-SECRET");
         leg.setOriginLocation("x".repeat(256)); assertValid(leg);
         leg.setOriginLocation("x".repeat(257)); assertInvalid(leg);
+        leg.setOriginLocation("ORIGIN-SECRET");
+        leg.setDestinationLocation("x".repeat(256)); assertValid(leg);
+        leg.setDestinationLocation("x".repeat(257)); assertInvalid(leg);
     }
 
     private static List<Method> endpointMethods() {
@@ -367,6 +590,23 @@ class TradeFulfillmentControllerTest {
                 .andExpect(status().isOk()).andExpect(jsonPath("$.code").value(400))
                 .andReturn().getResponse().getContentAsString();
         assertFalse(response.contains(sentinel));
+    }
+
+    private MockMvc proxiedMockMvc(GlobalExceptionHandler global) {
+        ProxyFactory proxyFactory = new ProxyFactory(controller);
+        proxyFactory.setProxyTargetClass(true);
+        proxyFactory.addAdvice(new MethodValidationInterceptor(validator));
+        Object proxiedController = proxyFactory.getProxy();
+        return MockMvcBuilders.standaloneSetup(proxiedController)
+                .setControllerAdvice(new TradeFulfillmentValidationExceptionHandler(), global)
+                .build();
+    }
+
+    private static String validCreateJson() {
+        return "{\"orderId\":10,\"shipmentType\":\"PARCEL\",\"originCountry\":\"US\","
+                + "\"destinationCountry\":\"CA\",\"originTimezone\":\"America/New_York\","
+                + "\"destinationTimezone\":\"America/Toronto\",\"warehouseId\":13,\"providerId\":14,"
+                + "\"items\":[{\"orderItemId\":11,\"skuId\":12,\"quantity\":1}]}";
     }
 
     private static boolean isWrite(Method method) {
@@ -391,9 +631,8 @@ class TradeFulfillmentControllerTest {
                 .map(p -> p.getName()).collect(Collectors.toSet());
     }
 
-    private static void assertNoProperties(Class<?> type, String... names) throws Exception {
-        Set<String> properties = beanProperties(type);
-        for (String name : names) assertFalse(properties.contains(name), type.getSimpleName() + "." + name);
+    private static void assertProperties(Class<?> type, String... names) throws Exception {
+        assertEquals(Set.of(names), beanProperties(type), type.getSimpleName());
     }
 
     private void assertValid(Object value) {
