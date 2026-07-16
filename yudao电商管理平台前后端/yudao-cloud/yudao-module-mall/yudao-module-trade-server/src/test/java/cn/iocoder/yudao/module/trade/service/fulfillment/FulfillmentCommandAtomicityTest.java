@@ -5,6 +5,7 @@ import cn.iocoder.yudao.framework.security.core.util.SecurityFrameworkUtils;
 import cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder;
 import cn.iocoder.yudao.framework.test.core.ut.BaseDbUnitTest;
 import cn.iocoder.yudao.module.trade.enums.fulfillment.ShipmentTypeEnum;
+import cn.iocoder.yudao.module.trade.framework.fulfillment.config.FulfillmentFeatureGuard;
 import cn.iocoder.yudao.module.trade.framework.fulfillment.config.FulfillmentProperties;
 import cn.iocoder.yudao.module.trade.framework.fulfillment.core.LogisticsProviderRegistry;
 import cn.iocoder.yudao.module.trade.service.fulfillment.command.CreateShipmentCommand;
@@ -30,7 +31,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-@Import({FulfillmentCommandServiceImpl.class, FulfillmentProperties.class, FulfillmentNoGenerator.class,
+@Import({FulfillmentCommandServiceImpl.class, FulfillmentFeatureGuard.class, FulfillmentProperties.class,
+        FulfillmentNoGenerator.class,
         FulfillmentCommandTransactionTest.TenantDbTestConfiguration.class})
 class FulfillmentCommandAtomicityTest extends BaseDbUnitTest {
 
@@ -57,6 +59,9 @@ class FulfillmentCommandAtomicityTest extends BaseDbUnitTest {
     @BeforeEach
     void setUp() {
         jdbcTemplate = new JdbcTemplate(dataSource);
+        properties.setEnabled(true);
+        properties.setWriteNewModel(true);
+        properties.setProviderCode("mock");
         properties.setIdempotencyHmacKey("atomicity-test-hmac-secret");
         LoginUser loginUser = new LoginUser();
         loginUser.setId(110L);

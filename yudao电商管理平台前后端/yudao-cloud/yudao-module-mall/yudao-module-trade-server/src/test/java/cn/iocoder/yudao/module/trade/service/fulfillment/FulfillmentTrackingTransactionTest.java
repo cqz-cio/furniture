@@ -16,6 +16,7 @@ import cn.iocoder.yudao.module.trade.framework.fulfillment.core.dto.ProviderTrac
 import cn.iocoder.yudao.module.trade.service.fulfillment.command.ApplyTrackingEventCommand;
 import cn.iocoder.yudao.module.trade.service.fulfillment.command.ApplyManualTrackingEventCommand;
 import cn.iocoder.yudao.module.trade.framework.fulfillment.config.FulfillmentProperties;
+import cn.iocoder.yudao.module.trade.framework.fulfillment.config.FulfillmentFeatureGuard;
 import jakarta.annotation.Resource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -49,7 +50,8 @@ import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-@Import({FulfillmentTrackingServiceImpl.class, VersionedTrackingStatusMapper.class, FulfillmentProperties.class})
+@Import({FulfillmentTrackingServiceImpl.class, VersionedTrackingStatusMapper.class,
+        FulfillmentProperties.class, FulfillmentFeatureGuard.class})
 class FulfillmentTrackingTransactionTest extends BaseDbUnitTest {
 
     private static final Long TENANT_ID = 121L;
@@ -75,7 +77,26 @@ class FulfillmentTrackingTransactionTest extends BaseDbUnitTest {
         LoginUser loginUser = new LoginUser().setId(110L).setTenantId(TENANT_ID).setUserType(1);
         SecurityFrameworkUtils.setLoginUser(loginUser, new MockHttpServletRequest());
         fulfillmentProperties.setIdempotencyHmacKey("test-only-manual-idempotency-secret");
+        fulfillmentProperties.setEnabled(true);
+        fulfillmentProperties.setWriteNewModel(true);
+        fulfillmentProperties.setProviderCode("mock");
         seedAggregate("HANDED_TO_CARRIER", 1);
+    }
+
+    @Test
+    void disabledWriteRejectsProviderAndManualEventsWithoutRows() {
+        fulfillmentProperties.setWriteNewModel(false);
+        try {
+            assertThrows(IllegalStateException.class, () -> service.applyEvent(
+                    command("disabled-provider", "MOVING", Instant.parse("2026-07-15T00:00:00Z"))));
+            assertThrows(IllegalStateException.class, () -> service.applyManualEvent("disabled-manual",
+                    manualCommand(ShipmentStatusEnum.IN_TRANSIT, Instant.parse("2026-07-15T00:00:00Z"), 1)));
+            assertEquals(0, count("trade_tracking_event"));
+            assertEquals(0, count("trade_fulfillment_idempotency"));
+            assertEquals(0, count("trade_fulfillment_outbox_event"));
+        } finally {
+            fulfillmentProperties.setWriteNewModel(true);
+        }
     }
 
     @Test

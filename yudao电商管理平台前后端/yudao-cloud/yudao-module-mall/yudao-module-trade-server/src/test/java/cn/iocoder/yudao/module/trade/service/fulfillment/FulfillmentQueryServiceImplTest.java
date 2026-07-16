@@ -11,6 +11,8 @@ import cn.iocoder.yudao.module.trade.controller.admin.fulfillment.vo.ShipmentPag
 import cn.iocoder.yudao.module.trade.controller.admin.fulfillment.vo.TrackingEventRespVO;
 import cn.iocoder.yudao.module.trade.enums.fulfillment.ShipmentStatusEnum;
 import cn.iocoder.yudao.module.trade.enums.fulfillment.ShipmentTypeEnum;
+import cn.iocoder.yudao.module.trade.framework.fulfillment.config.FulfillmentFeatureGuard;
+import cn.iocoder.yudao.module.trade.framework.fulfillment.config.FulfillmentProperties;
 import jakarta.annotation.Resource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,8 +33,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
-@Import(FulfillmentQueryServiceImpl.class)
+@Import({FulfillmentQueryServiceImpl.class, FulfillmentFeatureGuard.class, FulfillmentProperties.class})
 class FulfillmentQueryServiceImplTest extends BaseDbUnitTest {
 
     private static final Long TENANT_ID = 121L;
@@ -45,16 +48,32 @@ class FulfillmentQueryServiceImplTest extends BaseDbUnitTest {
     private FulfillmentQueryService queryService;
     @Resource
     private DataSource dataSource;
+    @Resource
+    private FulfillmentProperties fulfillmentProperties;
 
     private JdbcTemplate jdbc;
 
     @BeforeEach
     void setUp() {
+        fulfillmentProperties.setEnabled(true);
+        fulfillmentProperties.setReadFromNewModel(true);
         LoginUser loginUser = new LoginUser().setId(110L).setTenantId(TENANT_ID).setUserType(1);
         SecurityFrameworkUtils.setLoginUser(loginUser, new MockHttpServletRequest());
         jdbc = new JdbcTemplate(dataSource);
         seedShipments();
         seedDetailChildren();
+    }
+
+    @Test
+    void disabledReadStopsBeforeShipmentLookup() {
+        fulfillmentProperties.setReadFromNewModel(false);
+        try {
+            IllegalStateException failure = assertThrows(IllegalStateException.class,
+                    () -> queryService.getShipment(TENANT_ID, DETAIL_SHIPMENT_ID));
+            assertEquals("fulfillment reads are disabled", failure.getMessage());
+        } finally {
+            fulfillmentProperties.setReadFromNewModel(true);
+        }
     }
 
     @AfterEach

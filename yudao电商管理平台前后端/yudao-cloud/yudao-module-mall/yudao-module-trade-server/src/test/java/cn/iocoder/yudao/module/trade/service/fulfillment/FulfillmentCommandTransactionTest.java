@@ -13,6 +13,7 @@ import cn.iocoder.yudao.module.trade.dal.dataobject.order.TradeOrderDO;
 import cn.iocoder.yudao.module.trade.dal.mysql.fulfillment.FulfillmentOutboxEventMapper;
 import cn.iocoder.yudao.module.trade.dal.mysql.order.TradeOrderMapper;
 import cn.iocoder.yudao.module.trade.enums.fulfillment.ShipmentTypeEnum;
+import cn.iocoder.yudao.module.trade.framework.fulfillment.config.FulfillmentFeatureGuard;
 import cn.iocoder.yudao.module.trade.framework.fulfillment.config.FulfillmentProperties;
 import cn.iocoder.yudao.module.trade.framework.fulfillment.core.LogisticsProviderRegistry;
 import cn.iocoder.yudao.module.trade.service.fulfillment.command.CreateShipmentCommand;
@@ -45,7 +46,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 
-@Import({FulfillmentCommandServiceImpl.class, FulfillmentProperties.class, FulfillmentNoGenerator.class,
+@Import({FulfillmentCommandServiceImpl.class, FulfillmentFeatureGuard.class, FulfillmentProperties.class,
+        FulfillmentNoGenerator.class,
         FulfillmentCommandTransactionTest.TenantDbTestConfiguration.class})
 class FulfillmentCommandTransactionTest extends BaseDbUnitTest {
 
@@ -77,6 +79,9 @@ class FulfillmentCommandTransactionTest extends BaseDbUnitTest {
     @BeforeEach
     void setUp() {
         jdbcTemplate = new JdbcTemplate(dataSource);
+        properties.setEnabled(true);
+        properties.setWriteNewModel(true);
+        properties.setProviderCode("mock");
         properties.setIdempotencyHmacKey("transaction-test-hmac-secret");
         LoginUser loginUser = new LoginUser();
         loginUser.setId(110L);

@@ -27,6 +27,7 @@ import cn.iocoder.yudao.module.trade.enums.fulfillment.OrderFulfillmentStatusEnu
 import cn.iocoder.yudao.module.trade.enums.fulfillment.ShipmentStatusEnum;
 import cn.iocoder.yudao.module.trade.enums.fulfillment.ShipmentTypeEnum;
 import cn.iocoder.yudao.module.trade.enums.order.TradeOrderStatusEnum;
+import cn.iocoder.yudao.module.trade.framework.fulfillment.config.FulfillmentFeatureGuard;
 import cn.iocoder.yudao.module.trade.framework.fulfillment.config.FulfillmentProperties;
 import cn.iocoder.yudao.module.trade.framework.fulfillment.core.LogisticsProviderClient;
 import cn.iocoder.yudao.module.trade.framework.fulfillment.core.LogisticsProviderRegistry;
@@ -129,6 +130,7 @@ public class FulfillmentCommandServiceImpl implements FulfillmentCommandService 
     private final FulfillmentIdempotencyMapper idempotencyMapper;
     private final FulfillmentOutboxEventMapper outboxMapper;
     private final FulfillmentProperties properties;
+    private final FulfillmentFeatureGuard featureGuard;
     private final FulfillmentNoGenerator noGenerator;
     private final LogisticsProviderRegistry providerRegistry;
     private final FulfillmentTrackingRegistrationFailureService registrationFailureService;
@@ -137,6 +139,7 @@ public class FulfillmentCommandServiceImpl implements FulfillmentCommandService 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Long createShipment(String idempotencyKey, CreateShipmentCommand command) {
+        featureGuard.requireWriteEnabled();
         validateRequiredCommand(command);
         String keyHash = FulfillmentHashing.hmacSha256Hex(properties.getIdempotencyHmacKey(), idempotencyKey);
         String requestHash = FulfillmentHashing.sha256Command(command);
@@ -149,6 +152,7 @@ public class FulfillmentCommandServiceImpl implements FulfillmentCommandService 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Long addPackage(String idempotencyKey, UpsertPackageCommand command) {
+        featureGuard.requireWriteEnabled();
         validatePackageCommand(command);
         return executeMutation(idempotencyKey, command.getTenantId(), OPERATION_ADD_PACKAGE, "PACKAGE",
                 FulfillmentDispatchHashing.hash(command), () -> addPackageInTenant(command));
@@ -157,6 +161,7 @@ public class FulfillmentCommandServiceImpl implements FulfillmentCommandService 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Long addLeg(String idempotencyKey, AddShipmentLegCommand command) {
+        featureGuard.requireWriteEnabled();
         validateLegCommand(command);
         return executeMutation(idempotencyKey, command.getTenantId(), OPERATION_ADD_LEG, "LEG",
                 FulfillmentDispatchHashing.hash(command), () -> addLegInTenant(command));
@@ -165,6 +170,7 @@ public class FulfillmentCommandServiceImpl implements FulfillmentCommandService 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void markReady(String idempotencyKey, Long tenantId, Long shipmentId, Integer expectedVersion) {
+        featureGuard.requireWriteEnabled();
         validateMutationIdentity(tenantId, shipmentId, expectedVersion);
         executeMutation(idempotencyKey, tenantId, OPERATION_MARK_READY, RESOURCE_SHIPMENT,
                 FulfillmentDispatchHashing.hashMarkReady(tenantId, shipmentId, expectedVersion), () -> {
@@ -182,6 +188,7 @@ public class FulfillmentCommandServiceImpl implements FulfillmentCommandService 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void dispatch(String idempotencyKey, DispatchShipmentCommand command) {
+        featureGuard.requireWriteEnabled();
         if (command == null) {
             throw exception(FULFILLMENT_SHIPMENT_NOT_FOUND);
         }

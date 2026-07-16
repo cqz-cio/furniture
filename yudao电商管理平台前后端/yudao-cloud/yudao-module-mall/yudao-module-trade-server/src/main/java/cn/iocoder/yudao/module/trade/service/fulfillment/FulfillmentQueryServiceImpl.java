@@ -20,6 +20,7 @@ import cn.iocoder.yudao.module.trade.dal.mysql.fulfillment.ShipmentPackageMapper
 import cn.iocoder.yudao.module.trade.dal.mysql.fulfillment.TrackingEventMapper;
 import cn.iocoder.yudao.module.trade.enums.fulfillment.ShipmentStatusEnum;
 import cn.iocoder.yudao.module.trade.enums.fulfillment.ShipmentTypeEnum;
+import cn.iocoder.yudao.module.trade.framework.fulfillment.config.FulfillmentFeatureGuard;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 
@@ -41,9 +42,12 @@ public class FulfillmentQueryServiceImpl implements FulfillmentQueryService {
     private ShipmentLegMapper legMapper;
     @Resource
     private TrackingEventMapper trackingEventMapper;
+    @Resource
+    private FulfillmentFeatureGuard featureGuard;
 
     @Override
     public ShipmentDetailRespVO getShipment(Long tenantId, Long shipmentId) {
+        featureGuard.requireReadEnabled();
         ShipmentDO shipment = requireShipment(tenantId, shipmentId);
         ShipmentDetailRespVO response = mapDetail(shipment);
         response.setItems(itemMapper.selectListByShipmentId(tenantId, shipmentId)
@@ -57,6 +61,7 @@ public class FulfillmentQueryServiceImpl implements FulfillmentQueryService {
 
     @Override
     public List<TrackingEventRespVO> getTimeline(Long tenantId, Long shipmentId) {
+        featureGuard.requireReadEnabled();
         requireShipment(tenantId, shipmentId);
         return trackingEventMapper.selectListByShipmentId(tenantId, shipmentId)
                 .stream().map(this::mapTrackingEvent).toList();
@@ -64,6 +69,7 @@ public class FulfillmentQueryServiceImpl implements FulfillmentQueryService {
 
     @Override
     public PageResult<ShipmentPageItemRespVO> getShipmentPage(Long tenantId, ShipmentPageReqVO reqVO) {
+        featureGuard.requireReadEnabled();
         PageResult<ShipmentDO> page = shipmentMapper.selectPage(tenantId, reqVO);
         return new PageResult<>(page.getList().stream().map(this::mapPageItem).toList(), page.getTotal());
     }

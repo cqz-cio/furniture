@@ -19,6 +19,7 @@ import cn.iocoder.yudao.module.trade.dal.mysql.fulfillment.ShipmentMapper;
 import cn.iocoder.yudao.module.trade.dal.mysql.fulfillment.ShipmentPackageMapper;
 import cn.iocoder.yudao.module.trade.dal.mysql.fulfillment.TrackingEventMapper;
 import cn.iocoder.yudao.module.trade.enums.fulfillment.ShipmentStatusEnum;
+import cn.iocoder.yudao.module.trade.framework.fulfillment.config.FulfillmentFeatureGuard;
 import cn.iocoder.yudao.module.trade.framework.fulfillment.config.FulfillmentProperties;
 import cn.iocoder.yudao.module.trade.framework.fulfillment.core.dto.ProviderTrackingEvent;
 import cn.iocoder.yudao.module.trade.service.fulfillment.command.ApplyManualTrackingEventCommand;
@@ -73,6 +74,7 @@ public class FulfillmentTrackingServiceImpl implements FulfillmentTrackingServic
     private final FulfillmentOutboxEventMapper outboxMapper;
     private final FulfillmentIdempotencyMapper idempotencyMapper;
     private final FulfillmentProperties properties;
+    private final FulfillmentFeatureGuard featureGuard;
     private final PlatformTransactionManager transactionManager;
 
     private final ShipmentStateMachine stateMachine = new ShipmentStateMachine();
@@ -80,6 +82,7 @@ public class FulfillmentTrackingServiceImpl implements FulfillmentTrackingServic
 
     @Override
     public TrackingApplyResult applyEvent(ApplyTrackingEventCommand command) {
+        featureGuard.requireWriteEnabled();
         validateCommand(command);
         for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
             try {
@@ -104,6 +107,7 @@ public class FulfillmentTrackingServiceImpl implements FulfillmentTrackingServic
 
     @Override
     public TrackingApplyResult applyManualEvent(String idempotencyKey, ApplyManualTrackingEventCommand command) {
+        featureGuard.requireWriteEnabled();
         ManualAudit audit = validateManualCommand(idempotencyKey, command);
         try {
             return inNewTransaction(() -> applyManualOnce(idempotencyKey, command, audit));
