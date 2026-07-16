@@ -53,5 +53,10 @@ public class TrackingEventDO extends BaseDO {
     @ToString.Exclude
     private String rawPayloadRef;
     private String source;
+    private Long manualOperatorId;
+    @ToString.Exclude
+    private String manualReason;
+    @ToString.Exclude
+    private String requestTraceId;
 
 }

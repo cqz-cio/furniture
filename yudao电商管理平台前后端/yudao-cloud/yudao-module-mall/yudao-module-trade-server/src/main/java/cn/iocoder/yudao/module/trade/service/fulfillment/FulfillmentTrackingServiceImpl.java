@@ -2,6 +2,7 @@ package cn.iocoder.yudao.module.trade.service.fulfillment;
 
 import cn.iocoder.yudao.framework.tenant.core.util.TenantUtils;
 import cn.iocoder.yudao.module.trade.dal.dataobject.fulfillment.CarrierDO;
+import cn.iocoder.yudao.module.trade.dal.dataobject.fulfillment.FulfillmentIdempotencyDO;
 import cn.iocoder.yudao.module.trade.dal.dataobject.fulfillment.FulfillmentOutboxEventDO;
 import cn.iocoder.yudao.module.trade.dal.dataobject.fulfillment.LogisticsProviderDO;
 import cn.iocoder.yudao.module.trade.dal.dataobject.fulfillment.OrderFulfillmentSummaryDO;
@@ -10,6 +11,7 @@ import cn.iocoder.yudao.module.trade.dal.dataobject.fulfillment.ShipmentLegDO;
 import cn.iocoder.yudao.module.trade.dal.dataobject.fulfillment.ShipmentPackageDO;
 import cn.iocoder.yudao.module.trade.dal.dataobject.fulfillment.TrackingEventDO;
 import cn.iocoder.yudao.module.trade.dal.mysql.fulfillment.CarrierMapper;
+import cn.iocoder.yudao.module.trade.dal.mysql.fulfillment.FulfillmentIdempotencyMapper;
 import cn.iocoder.yudao.module.trade.dal.mysql.fulfillment.FulfillmentOutboxEventMapper;
 import cn.iocoder.yudao.module.trade.dal.mysql.fulfillment.LogisticsProviderMapper;
 import cn.iocoder.yudao.module.trade.dal.mysql.fulfillment.OrderFulfillmentSummaryMapper;
@@ -18,10 +20,13 @@ import cn.iocoder.yudao.module.trade.dal.mysql.fulfillment.ShipmentMapper;
 import cn.iocoder.yudao.module.trade.dal.mysql.fulfillment.ShipmentPackageMapper;
 import cn.iocoder.yudao.module.trade.dal.mysql.fulfillment.TrackingEventMapper;
 import cn.iocoder.yudao.module.trade.enums.fulfillment.ShipmentStatusEnum;
+import cn.iocoder.yudao.module.trade.framework.fulfillment.config.FulfillmentProperties;
 import cn.iocoder.yudao.module.trade.framework.fulfillment.core.dto.ProviderTrackingEvent;
+import cn.iocoder.yudao.module.trade.service.fulfillment.command.ApplyManualTrackingEventCommand;
 import cn.iocoder.yudao.module.trade.service.fulfillment.command.ApplyTrackingEventCommand;
 import cn.iocoder.yudao.module.trade.service.fulfillment.domain.OrderFulfillmentSummaryCalculator;
 import cn.iocoder.yudao.module.trade.service.fulfillment.domain.ShipmentStateMachine;
+import cn.iocoder.yudao.module.trade.service.fulfillment.support.FulfillmentHashing;
 import cn.iocoder.yudao.module.trade.service.fulfillment.support.TrackingEventCanonicalizer;
 import cn.iocoder.yudao.module.trade.service.fulfillment.support.FulfillmentPersistenceTextPolicy;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +39,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -44,6 +50,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 import static cn.iocoder.yudao.framework.common.exception.util.ServiceExceptionUtil.exception;
+import static cn.iocoder.yudao.module.trade.enums.ErrorCodeConstants.FULFILLMENT_IDEMPOTENCY_CONFLICT;
 import static cn.iocoder.yudao.module.trade.enums.ErrorCodeConstants.FULFILLMENT_PROVIDER_NOT_AVAILABLE;
 import static cn.iocoder.yudao.module.trade.enums.ErrorCodeConstants.FULFILLMENT_SHIPMENT_NOT_FOUND;
 import static cn.iocoder.yudao.module.trade.enums.ErrorCodeConstants.FULFILLMENT_VERSION_CONFLICT;
@@ -54,6 +61,9 @@ public class FulfillmentTrackingServiceImpl implements FulfillmentTrackingServic
 
     private static final int MAX_ATTEMPTS = 3;
     private static final String OUTBOX_PENDING = "PENDING";
+    private static final String OPERATION_MANUAL_TRACKING = "MANUAL_TRACKING_EVENT";
+    private static final String IDEMPOTENCY_PROCESSING = "PROCESSING";
+    private static final String IDEMPOTENCY_COMPLETED = "COMPLETED";
 
     private final ShipmentMapper shipmentMapper;
     private final ShipmentPackageMapper packageMapper;
@@ -64,6 +74,8 @@ public class FulfillmentTrackingServiceImpl implements FulfillmentTrackingServic
     private final VersionedTrackingStatusMapper statusMapper;
     private final OrderFulfillmentSummaryMapper summaryMapper;
     private final FulfillmentOutboxEventMapper outboxMapper;
+    private final FulfillmentIdempotencyMapper idempotencyMapper;
+    private final FulfillmentProperties properties;
     private final PlatformTransactionManager transactionManager;
 
     private final ShipmentStateMachine stateMachine = new ShipmentStateMachine();
@@ -98,6 +110,151 @@ public class FulfillmentTrackingServiceImpl implements FulfillmentTrackingServic
             }
         }
         throw exception(FULFILLMENT_VERSION_CONFLICT);
+    }
+
+    @Override
+    public TrackingApplyResult applyManualEvent(String idempotencyKey, ApplyManualTrackingEventCommand command) {
+        String reason = validateManualCommand(idempotencyKey, command);
+        return inNewTransaction(() -> applyManualOnce(idempotencyKey, command, reason));
+    }
+
+    private TrackingApplyResult applyManualOnce(String idempotencyKey, ApplyManualTrackingEventCommand command,
+                                                 String reason) {
+        Long tenantId = command.getTenantId();
+        ShipmentLegDO leg = legMapper.selectByIdAndTenantId(command.getShipmentLegId(), tenantId);
+        if (leg == null || !command.getShipmentId().equals(leg.getShipmentId())) {
+            throw exception(FULFILLMENT_SHIPMENT_NOT_FOUND);
+        }
+        ShipmentPackageDO shipmentPackage = resolveManualPackage(command, leg);
+        if (leg.getProviderId() == null) {
+            throw exception(FULFILLMENT_PROVIDER_NOT_AVAILABLE);
+        }
+        Instant occurredInstant = TrackingEventCanonicalizer.truncateToMicros(command.getOccurredAt());
+        LocalDateTime occurredAt = LocalDateTime.ofInstant(occurredInstant, ZoneOffset.UTC);
+        String keyHash = FulfillmentHashing.hmacSha256Hex(properties.getIdempotencyHmacKey(),
+                OPERATION_MANUAL_TRACKING + ":" + idempotencyKey);
+        String requestHash = FulfillmentHashing.sha256ManualTracking(tenantId, command.getShipmentId(),
+                shipmentPackage == null ? null : shipmentPackage.getId(), leg.getId(),
+                command.getRequestedStatus().name(), occurredInstant, command.getExpectedShipmentVersion(),
+                command.getOperatorId(), reason);
+        LocalDateTime receivedAt = LocalDateTime.now(ZoneOffset.UTC).truncatedTo(ChronoUnit.MICROS);
+        FulfillmentIdempotencyDO idempotency = new FulfillmentIdempotencyDO()
+                .setTenantId(tenantId)
+                .setOperation(OPERATION_MANUAL_TRACKING)
+                .setIdempotencyKeyHash(keyHash)
+                .setRequestHash(requestHash)
+                .setResourceType("TRACKING_EVENT")
+                .setStatus(IDEMPOTENCY_PROCESSING)
+                .setExpiresAt(receivedAt.plusHours(24));
+        try {
+            idempotencyMapper.insert(idempotency);
+        } catch (DuplicateKeyException duplicate) {
+            return resolveManualDuplicate(tenantId, keyHash, requestHash);
+        }
+
+        ShipmentDO shipment = shipmentMapper.selectByIdForUpdate(tenantId, command.getShipmentId());
+        if (shipment == null) {
+            throw exception(FULFILLMENT_SHIPMENT_NOT_FOUND);
+        }
+        if (!command.getExpectedShipmentVersion().equals(shipment.getVersion())) {
+            throw exception(FULFILLMENT_VERSION_CONFLICT);
+        }
+        int manualPriority = manualPriority(command.getRequestedStatus());
+        VersionedTrackingStatusMapper.Resolution resolution = new VersionedTrackingStatusMapper.Resolution(false,
+                command.getRequestedStatus(), manualPriority, null, null, "MANUAL");
+        TrackingEventDO event = new TrackingEventDO()
+                .setTenantId(tenantId)
+                .setShipmentId(shipment.getId())
+                .setPackageId(shipmentPackage == null ? null : shipmentPackage.getId())
+                .setShipmentLegId(leg.getId())
+                .setProviderId(leg.getProviderId())
+                .setExternalEventId(keyHash)
+                .setStandardStatus(command.getRequestedStatus().name())
+                .setProviderStatus("MANUAL")
+                .setProviderStatusNormalized("MANUAL")
+                .setMappingKnown(false)
+                .setTransitionDecision(ShipmentStateMachine.TransitionDecision.TIMELINE_ONLY.name())
+                .setOccurredAt(occurredAt)
+                .setOccurredTimezone("UTC")
+                .setReceivedAt(receivedAt)
+                .setSource("MANUAL")
+                .setManualOperatorId(command.getOperatorId())
+                .setManualReason(reason)
+                .setRequestTraceId(command.getRequestTraceId().trim());
+        eventMapper.insert(event);
+
+        String shipmentPreviousStatus = shipment.getStatus();
+        int shipmentVersionBefore = shipment.getVersion();
+        boolean packageWasCanceled = shipmentPackage != null
+                && ShipmentStatusEnum.CANCELED.name().equals(shipmentPackage.getStatus());
+        TransitionOutcome packageOutcome = shipmentPackage == null ? TransitionOutcome.noop(null)
+                : applyPackageTransition(tenantId, shipmentPackage, resolution, occurredAt, event.getId());
+        TransitionOutcome legOutcome = applyLegTransition(tenantId, leg, resolution, occurredAt, event.getId());
+        TransitionOutcome shipmentDriver = shipmentPackage == null ? legOutcome
+                : packageWasCanceled ? TransitionOutcome.noop(shipmentPackage.getStatus()) : packageOutcome;
+        TransitionOutcome shipmentOutcome = applyShipmentTransition(tenantId, shipment, shipmentPackage,
+                shipmentDriver, resolution, occurredAt, event.getId());
+        if (shipment.getVersion() == shipmentVersionBefore) {
+            if (shipmentMapper.incrementVersionByIdAndVersion(tenantId, shipment.getId(), shipmentVersionBefore) != 1) {
+                throw new OptimisticTrackingConflictException();
+            }
+            shipment.setVersion(shipmentVersionBefore + 1);
+        }
+        boolean stateChanged = packageOutcome.stateChanged() || legOutcome.stateChanged()
+                || shipmentOutcome.stateChanged();
+        String shipmentResultStatus = shipmentOutcome.resultStatus() == null
+                ? shipment.getStatus() : shipmentOutcome.resultStatus();
+        event.setTransitionDecision(combinedDecision(packageOutcome, legOutcome, shipmentOutcome, stateChanged).name())
+                .setPreviousStatus(shipmentPreviousStatus)
+                .setResultStatus(shipmentResultStatus);
+        if (eventMapper.updateById(event) != 1) {
+            throw new OptimisticTrackingConflictException();
+        }
+
+        recalculateSummary(tenantId, shipment.getOrderId());
+        insertOutbox(tenantId, shipment, shipmentPackage, leg, event, "TRACKING_UPDATED", receivedAt);
+        String statusEventType = shipmentOutcome.stateChanged()
+                ? statusEventType(ShipmentStatusEnum.valueOf(shipmentOutcome.resultStatus())) : null;
+        if (statusEventType != null) {
+            insertOutbox(tenantId, shipment, shipmentPackage, leg, event, statusEventType, receivedAt);
+        }
+        if (idempotencyMapper.completeProcessingById(tenantId, idempotency.getId(), requestHash, event.getId(),
+                receivedAt.plusHours(24)) != 1) {
+            throw exception(FULFILLMENT_IDEMPOTENCY_CONFLICT);
+        }
+        return new TrackingApplyResult(true, stateChanged, shipmentPreviousStatus, shipmentResultStatus);
+    }
+
+    private ShipmentPackageDO resolveManualPackage(ApplyManualTrackingEventCommand command, ShipmentLegDO leg) {
+        if (leg.getPackageId() == null) {
+            if (command.getPackageId() != null) {
+                throw exception(FULFILLMENT_SHIPMENT_NOT_FOUND);
+            }
+            return null;
+        }
+        if (command.getPackageId() != null && !leg.getPackageId().equals(command.getPackageId())) {
+            throw exception(FULFILLMENT_SHIPMENT_NOT_FOUND);
+        }
+        ShipmentPackageDO shipmentPackage = packageMapper.selectByIdAndTenantId(leg.getPackageId(),
+                command.getTenantId());
+        if (shipmentPackage == null || !command.getShipmentId().equals(shipmentPackage.getShipmentId())) {
+            throw exception(FULFILLMENT_SHIPMENT_NOT_FOUND);
+        }
+        return shipmentPackage;
+    }
+
+    private TrackingApplyResult resolveManualDuplicate(Long tenantId, String keyHash, String requestHash) {
+        FulfillmentIdempotencyDO existing = idempotencyMapper.selectByOperationAndKeyHash(tenantId,
+                OPERATION_MANUAL_TRACKING, keyHash);
+        if (existing == null || !FulfillmentHashing.constantTimeEquals(existing.getRequestHash(), requestHash)
+                || !IDEMPOTENCY_COMPLETED.equals(existing.getStatus()) || existing.getResourceId() == null) {
+            throw exception(FULFILLMENT_IDEMPOTENCY_CONFLICT);
+        }
+        TrackingEventDO event = eventMapper.selectByIdAndTenantId(tenantId, existing.getResourceId());
+        if (event == null) {
+            throw exception(FULFILLMENT_IDEMPOTENCY_CONFLICT);
+        }
+        return duplicateResult(event, event.getResultStatus());
     }
 
     private TrackingApplyResult applyOnce(ApplyTrackingEventCommand command) {
@@ -550,6 +707,50 @@ public class FulfillmentTrackingServiceImpl implements FulfillmentTrackingServic
         FulfillmentPersistenceTextPolicy.location(event.location());
         FulfillmentPersistenceTextPolicy.description(event.description());
         FulfillmentPersistenceTextPolicy.reference(event.rawPayloadRef());
+    }
+
+    private static String validateManualCommand(String idempotencyKey, ApplyManualTrackingEventCommand command) {
+        if (idempotencyKey == null || idempotencyKey.isBlank()) {
+            throw new IllegalArgumentException("idempotencyKey is required");
+        }
+        Objects.requireNonNull(command, "command");
+        Objects.requireNonNull(command.getTenantId(), "tenantId");
+        Objects.requireNonNull(command.getShipmentId(), "shipmentId");
+        Objects.requireNonNull(command.getShipmentLegId(), "shipmentLegId");
+        Objects.requireNonNull(command.getRequestedStatus(), "requestedStatus");
+        Objects.requireNonNull(command.getOccurredAt(), "occurredAt");
+        Objects.requireNonNull(command.getExpectedShipmentVersion(), "expectedShipmentVersion");
+        Objects.requireNonNull(command.getOperatorId(), "operatorId");
+        if (command.getExpectedShipmentVersion() < 0) {
+            throw new IllegalArgumentException("expectedShipmentVersion must not be negative");
+        }
+        if (command.getRequestTraceId() == null || command.getRequestTraceId().isBlank()
+                || command.getRequestTraceId().trim().length() > 64) {
+            throw new IllegalArgumentException("requestTraceId must contain 1-64 characters");
+        }
+        String reason = command.getReason() == null ? "" : command.getReason().trim();
+        if (reason.length() < 5 || reason.length() > 500) {
+            throw new IllegalArgumentException("reason must contain 5-500 characters");
+        }
+        return reason;
+    }
+
+    private static int manualPriority(ShipmentStatusEnum status) {
+        return switch (status) {
+            case DRAFT -> 1;
+            case READY_TO_SHIP -> 10;
+            case HANDED_TO_CARRIER -> 20;
+            case IN_TRANSIT -> 30;
+            case AT_LOCAL_TERMINAL -> 40;
+            case APPOINTMENT_REQUIRED -> 45;
+            case APPOINTMENT_CONFIRMED -> 50;
+            case DELIVERY_EXCEPTION -> 60;
+            case OUT_FOR_DELIVERY -> 80;
+            case DELIVERED -> 90;
+            case RETURNING -> 95;
+            case RETURNED -> 100;
+            case CANCELED -> 110;
+        };
     }
 
     private record CarrierAndTracking(String carrierCode, String trackingNumber) {

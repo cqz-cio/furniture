@@ -5,7 +5,9 @@ import cn.iocoder.yudao.module.trade.dal.dataobject.fulfillment.TrackingStatusMa
 import cn.iocoder.yudao.module.trade.dal.mysql.fulfillment.TrackingStatusMappingMapper;
 import cn.iocoder.yudao.module.trade.enums.fulfillment.OrderFulfillmentStatusEnum;
 import cn.iocoder.yudao.module.trade.enums.fulfillment.ShipmentStatusEnum;
+import cn.iocoder.yudao.module.trade.service.fulfillment.command.ApplyManualTrackingEventCommand;
 import cn.iocoder.yudao.module.trade.service.fulfillment.domain.OrderFulfillmentSummaryCalculator;
+import cn.iocoder.yudao.module.trade.service.fulfillment.support.FulfillmentHashing;
 import cn.iocoder.yudao.module.trade.service.fulfillment.support.TrackingEventCanonicalizer;
 import org.junit.jupiter.api.Test;
 
@@ -118,6 +120,34 @@ class FulfillmentTrackingServiceImplTest {
         assertTrue(rendered.contains("UPS"));
         assertTrue(rendered.contains("REDACTED"));
         assertFalse(rendered.contains("1Z-PRIVATE-TRACKING"));
+    }
+
+    @Test
+    void manualCommandAndTrackingEventToStringExcludeFreeTextAndTrace() {
+        ApplyManualTrackingEventCommand command = new ApplyManualTrackingEventCommand()
+                .setTenantId(121L).setShipmentId(1L).setShipmentLegId(2L)
+                .setRequestedStatus(ShipmentStatusEnum.IN_TRANSIT)
+                .setReason("private manual explanation").setRequestTraceId("private-trace-id");
+        cn.iocoder.yudao.module.trade.dal.dataobject.fulfillment.TrackingEventDO event =
+                new cn.iocoder.yudao.module.trade.dal.dataobject.fulfillment.TrackingEventDO()
+                        .setManualReason("private manual explanation").setRequestTraceId("private-trace-id");
+
+        assertFalse(command.toString().contains("private manual explanation"));
+        assertFalse(command.toString().contains("private-trace-id"));
+        assertFalse(event.toString().contains("private manual explanation"));
+        assertFalse(event.toString().contains("private-trace-id"));
+    }
+
+    @Test
+    void manualRequestHashCanonicalizesMicrosecondsAndTrimmedReason() {
+        String left = FulfillmentHashing.sha256ManualTracking(121L, 1L, 2L, 3L, "IN_TRANSIT",
+                Instant.parse("2026-07-16T01:02:03.123456789Z"), 7, 110L, "  Correct scan  ");
+        String right = FulfillmentHashing.sha256ManualTracking(121L, 1L, 2L, 3L, "IN_TRANSIT",
+                Instant.parse("2026-07-16T01:02:03.123456001Z"), 7, 110L, "Correct scan");
+
+        assertEquals(left, right);
+        assertNotEquals(left, FulfillmentHashing.sha256ManualTracking(121L, 1L, 2L, 3L, "DELIVERED",
+                Instant.parse("2026-07-16T01:02:03.123456001Z"), 7, 110L, "Correct scan"));
     }
 
     private static ShipmentDO shipment(String status) {

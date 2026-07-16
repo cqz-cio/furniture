@@ -13,6 +13,7 @@ import java.util.Comparator;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
+import java.time.Instant;
 
 public final class FulfillmentHashing {
 
@@ -73,6 +74,22 @@ public final class FulfillmentHashing {
             return false;
         }
         return MessageDigest.isEqual(left.getBytes(StandardCharsets.UTF_8), right.getBytes(StandardCharsets.UTF_8));
+    }
+
+    public static String sha256ManualTracking(Long tenantId, Long shipmentId, Long packageId, Long shipmentLegId,
+                                               String requestedStatus, Instant occurredAt,
+                                               Integer expectedShipmentVersion, Long operatorId, String reason) {
+        StringBuilder canonical = new StringBuilder(256);
+        append(canonical, tenantId);
+        append(canonical, shipmentId);
+        append(canonical, packageId);
+        append(canonical, shipmentLegId);
+        append(canonical, requestedStatus);
+        append(canonical, occurredAt == null ? null : TrackingEventCanonicalizer.truncateToMicros(occurredAt));
+        append(canonical, expectedShipmentVersion);
+        append(canonical, operatorId);
+        append(canonical, reason == null ? null : reason.trim());
+        return sha256Hex(canonical.toString());
     }
 
     private static String sha256Hex(String value) {
