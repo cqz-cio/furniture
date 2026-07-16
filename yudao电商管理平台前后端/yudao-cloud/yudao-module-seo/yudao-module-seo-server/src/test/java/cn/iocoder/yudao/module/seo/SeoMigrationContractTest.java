@@ -14,9 +14,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 class SeoMigrationContractTest {
 
     private static final Path MIGRATION_RELATIVE_PATH =
-            Path.of("sql", "mysql", "migrations", "V016__seo_foundation.sql");
+            Path.of("sql", "mysql", "migrations", "V019__seo_foundation.sql");
     private static final Path ACTIVE_RECORD_MIGRATION_RELATIVE_PATH =
-            Path.of("sql", "mysql", "migrations", "V017__seo_active_record_uniqueness.sql");
+            Path.of("sql", "mysql", "migrations", "V020__seo_active_record_uniqueness.sql");
 
     @Test
     void shouldReplaceDeletedFlagUniqueIndexesWithActiveRecordMarkers() throws IOException {
