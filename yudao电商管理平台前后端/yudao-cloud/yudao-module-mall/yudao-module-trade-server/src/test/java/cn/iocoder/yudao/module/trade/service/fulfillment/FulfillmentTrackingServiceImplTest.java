@@ -11,6 +11,8 @@ import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.lang.reflect.Constructor;
+import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -101,6 +103,21 @@ class FulfillmentTrackingServiceImplTest {
         assertEquals(OrderFulfillmentStatusEnum.RETURNED, returned.status());
         assertEquals(2, returned.shipmentCount());
         assertEquals(0, returned.deliveredShipmentCount());
+    }
+
+    @Test
+    void carrierAndTrackingToStringRedactsTrackingNumber() throws Exception {
+        Class<?> factsType = Arrays.stream(FulfillmentTrackingServiceImpl.class.getDeclaredClasses())
+                .filter(type -> type.getSimpleName().equals("CarrierAndTracking"))
+                .findFirst().orElseThrow();
+        Constructor<?> constructor = factsType.getDeclaredConstructor(String.class, String.class);
+        constructor.setAccessible(true);
+
+        String rendered = constructor.newInstance("UPS", "1Z-PRIVATE-TRACKING").toString();
+
+        assertTrue(rendered.contains("UPS"));
+        assertTrue(rendered.contains("REDACTED"));
+        assertFalse(rendered.contains("1Z-PRIVATE-TRACKING"));
     }
 
     private static ShipmentDO shipment(String status) {

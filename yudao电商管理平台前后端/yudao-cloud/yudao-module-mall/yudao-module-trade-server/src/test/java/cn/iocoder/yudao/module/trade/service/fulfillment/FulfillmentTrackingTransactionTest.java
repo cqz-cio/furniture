@@ -400,6 +400,76 @@ class FulfillmentTrackingTransactionTest extends BaseDbUnitTest {
     }
 
     @Test
+    void rejectedTerminalPackageEventCannotPolluteShipmentAggregation() {
+        jdbc.update("UPDATE trade_shipment SET status = 'IN_TRANSIT', version = 2 WHERE id = ?", SHIPMENT_ID);
+        jdbc.update("UPDATE trade_shipment_package SET status = 'DELIVERED', version = 2 WHERE id = ?", PACKAGE_ID);
+        jdbc.update("UPDATE trade_shipment_leg SET status = 'DELIVERED', version = 2 WHERE id = ?", LEG_ID);
+        jdbc.update("INSERT INTO trade_shipment_package (id, tenant_id, shipment_id, package_no, package_type, "
+                + "carrier_id, tracking_number, status, version) VALUES "
+                + "(71002, ?, ?, 'PKG-2', 'PARCEL', 73, 'private-tracking-456', 'IN_TRANSIT', 2)",
+                TENANT_ID, SHIPMENT_ID);
+        mapping("EXCEPTION", "DELIVERY_EXCEPTION", "v1", 60, "2026-01-01 00:00:00.000000");
+
+        TrackingApplyResult result = service.applyEvent(command("delivered-package-exception", "EXCEPTION",
+                Instant.parse("2026-07-15T07:55:00Z")));
+
+        assertFalse(result.stateChanged());
+        assertEquals("IN_TRANSIT", value("SELECT status FROM trade_shipment WHERE id = " + SHIPMENT_ID,
+                String.class));
+        assertEquals("SHIPPED", value("SELECT status FROM trade_order_fulfillment_summary WHERE order_id = "
+                + ORDER_ID, String.class));
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM trade_fulfillment_outbox_event "
+                + "WHERE event_type = 'DELIVERY_EXCEPTION'", Integer.class));
+        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM trade_fulfillment_outbox_event "
+                + "WHERE event_type = 'TRACKING_UPDATED'", Integer.class));
+    }
+
+    @Test
+    void canceledTargetCannotBorrowRawCandidateToAdvanceShipment() {
+        jdbc.update("UPDATE trade_shipment SET status = 'HANDED_TO_CARRIER', version = 2 WHERE id = ?", SHIPMENT_ID);
+        jdbc.update("UPDATE trade_shipment_package SET status = 'CANCELED', version = 2 WHERE id = ?", PACKAGE_ID);
+        jdbc.update("UPDATE trade_shipment_leg SET status = 'CANCELED', version = 2 WHERE id = ?", LEG_ID);
+        jdbc.update("INSERT INTO trade_shipment_package (id, tenant_id, shipment_id, package_no, package_type, "
+                + "carrier_id, tracking_number, status, version) VALUES "
+                + "(71002, ?, ?, 'PKG-2', 'PARCEL', 73, 'private-tracking-456', 'IN_TRANSIT', 2)",
+                TENANT_ID, SHIPMENT_ID);
+        mapping("MOVING", "IN_TRANSIT", "v1", 30, "2026-01-01 00:00:00.000000");
+        mapping("EXCEPTION", "DELIVERY_EXCEPTION", "v1", 60, "2026-01-01 00:00:00.000000");
+
+        TrackingApplyResult moving = service.applyEvent(command("canceled-moving", "MOVING",
+                Instant.parse("2026-07-15T08:05:00Z")));
+        TrackingApplyResult exception = service.applyEvent(command("canceled-exception", "EXCEPTION",
+                Instant.parse("2026-07-15T08:06:00Z")));
+
+        assertFalse(moving.stateChanged());
+        assertFalse(exception.stateChanged());
+        assertEquals("HANDED_TO_CARRIER", value("SELECT status FROM trade_shipment WHERE id = " + SHIPMENT_ID,
+                String.class));
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM trade_fulfillment_outbox_event "
+                + "WHERE event_type IN ('DELIVERY_EXCEPTION', 'OUT_FOR_DELIVERY', 'DELIVERED')", Integer.class));
+    }
+
+    @Test
+    void rejectedShipmentLevelLegEventCannotDriveShipmentOrSummary() {
+        jdbc.update("UPDATE trade_shipment SET status = 'IN_TRANSIT', version = 2 WHERE id = ?", SHIPMENT_ID);
+        jdbc.update("UPDATE trade_shipment_leg SET package_id = NULL, status = 'DELIVERED', version = 2 WHERE id = ?",
+                LEG_ID);
+        mapping("EXCEPTION", "DELIVERY_EXCEPTION", "v1", 60, "2026-01-01 00:00:00.000000");
+
+        TrackingApplyResult result = service.applyEvent(command("shared-leg-exception", "EXCEPTION",
+                Instant.parse("2026-07-15T08:10:00Z")).setPackageId(null));
+
+        assertFalse(result.stateChanged());
+        assertEquals("DELIVERED", value("SELECT status FROM trade_shipment_leg WHERE id = " + LEG_ID, String.class));
+        assertEquals("IN_TRANSIT", value("SELECT status FROM trade_shipment WHERE id = " + SHIPMENT_ID,
+                String.class));
+        assertEquals("SHIPPED", value("SELECT status FROM trade_order_fulfillment_summary WHERE order_id = "
+                + ORDER_ID, String.class));
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM trade_fulfillment_outbox_event "
+                + "WHERE event_type = 'DELIVERY_EXCEPTION'", Integer.class));
+    }
+
+    @Test
     void outboxFailureRollsBackTimelineWatermarksStatesAndSummary() {
         mapping("MOVING", "IN_TRANSIT", "v1", 30, "2026-01-01 00:00:00.000000");
         doThrow(new IllegalStateException("outbox failed")).when(outboxMapper).insert(any(FulfillmentOutboxEventDO.class));

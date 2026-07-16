@@ -160,8 +160,9 @@ public class FulfillmentTrackingServiceImpl implements FulfillmentTrackingServic
                 : applyPackageTransition(tenantId, shipmentPackage, resolution, occurredAt, event.getId());
         TransitionOutcome legOutcome = leg == null ? TransitionOutcome.noop(null) : applyLegTransition(tenantId,
                 leg, resolution, occurredAt, event.getId());
+        TransitionOutcome shipmentDriver = shipmentPackage == null ? legOutcome : packageOutcome;
         TransitionOutcome shipmentOutcome = applyShipmentTransition(tenantId, shipment, shipmentPackage,
-                packageOutcome.resultStatus(), resolution, occurredAt, event.getId());
+                shipmentDriver, resolution, occurredAt, event.getId());
         boolean stateChanged = packageOutcome.stateChanged() || legOutcome.stateChanged()
                 || shipmentOutcome.stateChanged();
         ShipmentStateMachine.TransitionDecision eventDecision = combinedDecision(packageOutcome, legOutcome,
@@ -267,7 +268,8 @@ public class FulfillmentTrackingServiceImpl implements FulfillmentTrackingServic
                     .setLastEventStatusPriority(resolution.statusPriority()).setLastEventId(eventId)
                     .setVersion(shipmentPackage.getVersion() + 1);
         }
-        return new TransitionOutcome(decision, decision == ShipmentStateMachine.TransitionDecision.APPLY, resultStatus);
+        return new TransitionOutcome(decision, decision == ShipmentStateMachine.TransitionDecision.APPLY,
+                resultStatus, applyWatermark);
     }
 
     private TransitionOutcome applyLegTransition(Long tenantId, ShipmentLegDO leg,
@@ -294,13 +296,17 @@ public class FulfillmentTrackingServiceImpl implements FulfillmentTrackingServic
                     .setLastEventStatusPriority(resolution.statusPriority()).setLastEventId(eventId)
                     .setVersion(leg.getVersion() + 1);
         }
-        return new TransitionOutcome(decision, decision == ShipmentStateMachine.TransitionDecision.APPLY, resultStatus);
+        return new TransitionOutcome(decision, decision == ShipmentStateMachine.TransitionDecision.APPLY,
+                resultStatus, applyWatermark);
     }
 
     private TransitionOutcome applyShipmentTransition(Long tenantId, ShipmentDO shipment,
-                                                       ShipmentPackageDO targetPackage, String targetPackageStatus,
+                                                       ShipmentPackageDO targetPackage, TransitionOutcome driver,
                                                        VersionedTrackingStatusMapper.Resolution resolution,
                                                        LocalDateTime occurredAt, Long eventId) {
+        if (!driver.effective()) {
+            return TransitionOutcome.noop(shipment.getStatus());
+        }
         if (!isNewer(occurredAt, resolution.statusPriority(), eventId, shipment.getLastEventOccurredAt(),
                 shipment.getLastEventStatusPriority(), shipment.getLastEventId())) {
             return TransitionOutcome.noop(shipment.getStatus());
@@ -308,18 +314,18 @@ public class FulfillmentTrackingServiceImpl implements FulfillmentTrackingServic
         ShipmentStatusEnum current = ShipmentStatusEnum.valueOf(shipment.getStatus());
         ShipmentStatusEnum aggregateCandidate;
         if (targetPackage == null) {
-            aggregateCandidate = resolution.candidateStatus();
+            aggregateCandidate = ShipmentStatusEnum.valueOf(driver.resultStatus());
         } else {
             List<ShipmentPackageDO> packages = packageMapper.selectListByShipmentId(tenantId, shipment.getId());
             List<ShipmentStatusEnum> activeStatuses = new ArrayList<>();
             for (ShipmentPackageDO candidate : packages == null ? List.<ShipmentPackageDO>of() : packages) {
-                String status = candidate.getId().equals(targetPackage.getId())
-                        ? targetPackageStatus : candidate.getStatus();
+                String status = candidate.getStatus();
                 if (!ShipmentStatusEnum.CANCELED.name().equals(status)) {
                     activeStatuses.add(ShipmentStatusEnum.valueOf(status));
                 }
             }
-            aggregateCandidate = aggregateShipmentCandidate(activeStatuses, resolution.candidateStatus(), current);
+            aggregateCandidate = aggregateShipmentCandidate(activeStatuses,
+                    ShipmentStatusEnum.valueOf(driver.resultStatus()), current);
         }
         ShipmentStateMachine.TransitionDecision decision = stateMachine.decide(current, aggregateCandidate,
                 shipment.getLastEventOccurredAt(), occurredAt);
@@ -341,11 +347,12 @@ public class FulfillmentTrackingServiceImpl implements FulfillmentTrackingServic
                 shipment.setDeliveredAt(deliveredAt);
             }
         }
-        return new TransitionOutcome(decision, decision == ShipmentStateMachine.TransitionDecision.APPLY, resultStatus);
+        return new TransitionOutcome(decision, decision == ShipmentStateMachine.TransitionDecision.APPLY,
+                resultStatus, applyWatermark);
     }
 
     private ShipmentStatusEnum aggregateShipmentCandidate(List<ShipmentStatusEnum> statuses,
-                                                            ShipmentStatusEnum eventCandidate,
+                                                            ShipmentStatusEnum effectiveTargetStatus,
                                                             ShipmentStatusEnum current) {
         if (!statuses.isEmpty() && statuses.stream().allMatch(status -> status == ShipmentStatusEnum.DELIVERED)) {
             return ShipmentStatusEnum.DELIVERED;
@@ -360,11 +367,12 @@ public class FulfillmentTrackingServiceImpl implements FulfillmentTrackingServic
         if (statuses.stream().anyMatch(status -> status == ShipmentStatusEnum.DELIVERY_EXCEPTION)) {
             return ShipmentStatusEnum.DELIVERY_EXCEPTION;
         }
-        if (eventCandidate == ShipmentStatusEnum.DELIVERED || eventCandidate == ShipmentStatusEnum.RETURNED
-                || eventCandidate == ShipmentStatusEnum.RETURNING) {
+        if (effectiveTargetStatus == ShipmentStatusEnum.DELIVERED
+                || effectiveTargetStatus == ShipmentStatusEnum.RETURNED
+                || effectiveTargetStatus == ShipmentStatusEnum.RETURNING) {
             return current;
         }
-        return eventCandidate;
+        return effectiveTargetStatus;
     }
 
     private void recalculateSummary(Long tenantId, Long orderId) {
@@ -521,12 +529,17 @@ public class FulfillmentTrackingServiceImpl implements FulfillmentTrackingServic
     }
 
     private record CarrierAndTracking(String carrierCode, String trackingNumber) {
+        @Override
+        public String toString() {
+            return "CarrierAndTracking[carrierCode=" + carrierCode + ", trackingNumber=REDACTED]";
+        }
     }
 
     private record TransitionOutcome(ShipmentStateMachine.TransitionDecision decision, boolean stateChanged,
-                                     String resultStatus) {
+                                     String resultStatus, boolean effective) {
         private static TransitionOutcome noop(String status) {
-            return new TransitionOutcome(ShipmentStateMachine.TransitionDecision.TIMELINE_ONLY, false, status);
+            return new TransitionOutcome(ShipmentStateMachine.TransitionDecision.TIMELINE_ONLY, false, status,
+                    false);
         }
     }
 
