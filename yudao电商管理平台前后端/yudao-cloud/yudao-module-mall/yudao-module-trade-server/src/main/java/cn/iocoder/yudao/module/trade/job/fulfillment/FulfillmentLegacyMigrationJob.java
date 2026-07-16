@@ -22,6 +22,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 
+import static cn.iocoder.yudao.framework.common.exception.util.ServiceExceptionUtil.exception;
 import static cn.iocoder.yudao.module.trade.enums.ErrorCodeConstants.FULFILLMENT_FEATURE_DISABLED;
 
 @Component
@@ -52,7 +53,7 @@ public class FulfillmentLegacyMigrationJob {
                     parameters.limit(), parameters.dryRun());
         } catch (ServiceException serviceException) {
             if (Objects.equals(serviceException.getCode(), FULFILLMENT_FEATURE_DISABLED.getCode())) {
-                throw serviceException;
+                throw exception(FULFILLMENT_FEATURE_DISABLED);
             }
             throw new IllegalStateException("fulfillment legacy migration batch failed");
         } catch (RuntimeException ignored) {
