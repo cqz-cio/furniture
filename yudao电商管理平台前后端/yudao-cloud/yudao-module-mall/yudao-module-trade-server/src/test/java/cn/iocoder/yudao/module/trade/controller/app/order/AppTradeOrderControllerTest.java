@@ -6,6 +6,9 @@ import cn.iocoder.yudao.framework.test.core.ut.BaseMockitoUnitTest;
 import cn.iocoder.yudao.module.pay.api.notify.dto.PayOrderNotifyReqDTO;
 import cn.iocoder.yudao.module.trade.controller.app.order.vo.AppTradeOrderCommentCreateReqVO;
 import cn.iocoder.yudao.module.trade.controller.app.order.vo.AppTradeOrderCommentCreateRespVO;
+import cn.iocoder.yudao.module.trade.controller.app.order.vo.AppOrderExpressTrackRespDTO;
+import cn.iocoder.yudao.module.trade.framework.delivery.core.client.dto.ExpressTrackRespDTO;
+import cn.iocoder.yudao.module.trade.service.order.TradeOrderQueryService;
 import cn.iocoder.yudao.module.trade.service.order.TradeOrderUpdateService;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -13,6 +16,8 @@ import org.mockito.Mock;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
+import java.time.LocalDateTime;
 
 import static cn.iocoder.yudao.module.trade.enums.ErrorCodeConstants.ORDER_UPDATE_PAID_FAIL_PAY_ORDER_ID_ERROR;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -32,6 +37,24 @@ public class AppTradeOrderControllerTest extends BaseMockitoUnitTest {
 
     @Mock
     private TradeOrderUpdateService tradeOrderUpdateService;
+    @Mock
+    private TradeOrderQueryService tradeOrderQueryService;
+
+    @Test
+    public void testGetOrderExpressTrackList_preservesLegacyResponseContract() {
+        LocalDateTime occurredAt = LocalDateTime.of(2026, 7, 16, 10, 30);
+        ExpressTrackRespDTO event = new ExpressTrackRespDTO()
+                .setTime(occurredAt).setContent("IN_TRANSIT");
+        when(tradeOrderQueryService.getExpressTrackList(501L, null)).thenReturn(List.of(event));
+
+        CommonResult<List<AppOrderExpressTrackRespDTO>> result =
+                appTradeOrderController.getOrderExpressTrackList(501L);
+
+        assertEquals(1, result.getData().size());
+        assertEquals(occurredAt, result.getData().get(0).getTime());
+        assertEquals("IN_TRANSIT", result.getData().get(0).getContent());
+        verify(tradeOrderQueryService).getExpressTrackList(501L, null);
+    }
 
     @Test
     public void testUpdateOrderPaid_rejectsInvalidMerchantOrderId() {

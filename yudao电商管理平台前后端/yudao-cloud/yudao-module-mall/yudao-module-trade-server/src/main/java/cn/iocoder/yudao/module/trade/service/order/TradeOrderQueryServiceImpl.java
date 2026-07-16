@@ -6,6 +6,7 @@ import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.extra.spring.SpringUtil;
 import cn.iocoder.yudao.framework.common.pojo.PageResult;
+import cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder;
 import cn.iocoder.yudao.module.member.api.user.MemberUserApi;
 import cn.iocoder.yudao.module.member.api.user.dto.MemberUserRespDTO;
 import cn.iocoder.yudao.module.trade.controller.admin.order.vo.TradeOrderPageReqVO;
@@ -23,7 +24,10 @@ import cn.iocoder.yudao.module.trade.enums.order.TradeOrderTypeEnum;
 import cn.iocoder.yudao.module.trade.framework.delivery.core.client.ExpressClientFactory;
 import cn.iocoder.yudao.module.trade.framework.delivery.core.client.dto.ExpressTrackQueryReqDTO;
 import cn.iocoder.yudao.module.trade.framework.delivery.core.client.dto.ExpressTrackRespDTO;
+import cn.iocoder.yudao.module.trade.framework.fulfillment.config.FulfillmentProperties;
 import cn.iocoder.yudao.module.trade.service.delivery.DeliveryExpressService;
+import cn.iocoder.yudao.module.trade.service.fulfillment.FulfillmentLegacyProjectionResult;
+import cn.iocoder.yudao.module.trade.service.fulfillment.FulfillmentLegacyProjectionService;
 import jakarta.annotation.Resource;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -56,6 +60,10 @@ public class TradeOrderQueryServiceImpl implements TradeOrderQueryService {
 
     @Resource
     private MemberUserApi memberUserApi;
+    @Resource
+    private FulfillmentProperties fulfillmentProperties;
+    @Resource
+    private FulfillmentLegacyProjectionService fulfillmentLegacyProjectionService;
 
     // =================== Order ===================
 
@@ -194,6 +202,13 @@ public class TradeOrderQueryServiceImpl implements TradeOrderQueryService {
      * @return 物流轨迹
      */
     private List<ExpressTrackRespDTO> getExpressTrackList(TradeOrderDO order) {
+        if (fulfillmentProperties.isReadFromNewModel()) {
+            FulfillmentLegacyProjectionResult projected = fulfillmentLegacyProjectionService.project(
+                    TenantContextHolder.getRequiredTenantId(), order.getId());
+            if (projected.mode() != FulfillmentLegacyProjectionResult.Mode.FALLBACK) {
+                return projected.events();
+            }
+        }
         if (order.getLogisticsId() == null) {
             return Collections.emptyList();
         }
@@ -216,7 +231,9 @@ public class TradeOrderQueryServiceImpl implements TradeOrderQueryService {
      * @param receiverMobile 收、寄件人的电话号码
      * @return 物流轨迹
      */
-    @Cacheable(cacheNames = RedisKeyConstants.EXPRESS_TRACK, key = "#code + '-' + #logisticsNo + '-' + #receiverMobile",
+    @Cacheable(cacheNames = RedisKeyConstants.EXPRESS_TRACK,
+            condition = "@expressTrackCachePolicy.hasHmacKey()",
+            keyGenerator = "expressTrackCacheKeyGenerator",
             unless = "#result == null")
     public List<ExpressTrackRespDTO> getExpressTrackList(String code, String logisticsNo, String receiverMobile) {
         return expressClientFactory.getDefaultExpressClient().getExpressTrackList(new ExpressTrackQueryReqDTO()
