@@ -150,6 +150,16 @@ class FulfillmentTrackingServiceImplTest {
                 Instant.parse("2026-07-16T01:02:03.123456001Z"), 7, 110L, "Correct scan"));
     }
 
+    @Test
+    void manualUnicodeLengthCountsCodePointsRatherThanUtf16Units() {
+        String emoji = "\uD83D\uDE9A";
+
+        assertEquals(500, FulfillmentTrackingServiceImpl.codePointLength(emoji.repeat(500)));
+        assertEquals(501, FulfillmentTrackingServiceImpl.codePointLength(emoji.repeat(501)));
+        assertEquals(64, FulfillmentTrackingServiceImpl.codePointLength(emoji.repeat(64)));
+        assertEquals(65, FulfillmentTrackingServiceImpl.codePointLength(emoji.repeat(65)));
+    }
+
     private static ShipmentDO shipment(String status) {
         return new ShipmentDO().setStatus(status);
     }

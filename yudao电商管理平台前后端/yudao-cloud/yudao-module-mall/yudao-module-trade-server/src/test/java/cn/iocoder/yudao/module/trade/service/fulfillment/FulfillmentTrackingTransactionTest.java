@@ -9,7 +9,10 @@ import cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder;
 import cn.iocoder.yudao.framework.tenant.core.db.TenantDatabaseInterceptor;
 import cn.iocoder.yudao.framework.test.core.ut.BaseDbUnitTest;
 import cn.iocoder.yudao.module.trade.dal.dataobject.fulfillment.FulfillmentOutboxEventDO;
+import cn.iocoder.yudao.module.trade.dal.dataobject.fulfillment.OrderFulfillmentSummaryDO;
 import cn.iocoder.yudao.module.trade.dal.mysql.fulfillment.FulfillmentOutboxEventMapper;
+import cn.iocoder.yudao.module.trade.dal.mysql.fulfillment.FulfillmentIdempotencyMapper;
+import cn.iocoder.yudao.module.trade.dal.mysql.fulfillment.OrderFulfillmentSummaryMapper;
 import cn.iocoder.yudao.module.trade.dal.mysql.fulfillment.ShipmentPackageMapper;
 import cn.iocoder.yudao.module.trade.enums.fulfillment.TrackingEventSourceEnum;
 import cn.iocoder.yudao.module.trade.enums.fulfillment.ShipmentStatusEnum;
@@ -36,17 +39,21 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import javax.sql.DataSource;
 import java.time.Instant;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static cn.iocoder.yudao.framework.test.core.util.AssertUtils.assertServiceException;
+import static cn.iocoder.yudao.module.trade.enums.ErrorCodeConstants.FULFILLMENT_VERSION_CONFLICT;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doCallRealMethod;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.reset;
@@ -70,6 +77,8 @@ class FulfillmentTrackingTransactionTest extends BaseDbUnitTest {
     @Resource private FulfillmentProperties fulfillmentProperties;
     @SpyBean private FulfillmentOutboxEventMapper outboxMapper;
     @SpyBean private ShipmentPackageMapper packageMapper;
+    @SpyBean private FulfillmentIdempotencyMapper idempotencyMapper;
+    @SpyBean private OrderFulfillmentSummaryMapper summaryMapper;
 
     private JdbcTemplate jdbc;
 
@@ -197,6 +206,13 @@ class FulfillmentTrackingTransactionTest extends BaseDbUnitTest {
         assertEquals(PACKAGE_ID, value("SELECT package_id FROM trade_tracking_event", Long.class));
         assertEquals(PROVIDER_ID, value("SELECT provider_id FROM trade_tracking_event", Long.class));
         assertEquals(0, count("trade_tracking_status_mapping"));
+        assertNull(value("SELECT occurred_timezone FROM trade_tracking_event", String.class));
+        assertNull(value("SELECT mapping_version FROM trade_tracking_event", String.class));
+        assertNull(value("SELECT mapping_effective_at FROM trade_tracking_event", java.time.LocalDateTime.class));
+        assertNull(value("SELECT description FROM trade_tracking_event", String.class));
+        assertNull(value("SELECT location FROM trade_tracking_event", String.class));
+        assertNull(value("SELECT raw_payload_ref FROM trade_tracking_event", String.class));
+        assertNull(value("SELECT event_hash FROM trade_tracking_event", String.class));
         String identity = value("SELECT external_event_id FROM trade_tracking_event", String.class);
         assertEquals(64, identity.length());
         assertFalse(identity.contains("manual-key-1"));
@@ -206,6 +222,20 @@ class FulfillmentTrackingTransactionTest extends BaseDbUnitTest {
         String payload = value("SELECT payload FROM trade_fulfillment_outbox_event", String.class);
         assertFalse(payload.contains("Correct carrier scan"));
         assertFalse(payload.contains("trace-one"));
+    }
+
+    @Test
+    void manualOptimisticConflictUsesDomainErrorAndRollsBackWithoutRetry() {
+        doReturn(0).when(packageMapper).updateTrackingStateByIdAndVersion(anyLong(), anyLong(), anyInt(),
+                anyString(), any(), anyInt(), anyLong());
+
+        assertServiceException(() -> service.applyManualEvent("manual-package-cas",
+                manualCommand(ShipmentStatusEnum.IN_TRANSIT, Instant.parse("2026-07-16T01:15:00Z"), 1)),
+                FULFILLMENT_VERSION_CONFLICT);
+
+        verify(packageMapper, times(1)).updateTrackingStateByIdAndVersion(anyLong(), anyLong(), anyInt(),
+                anyString(), any(), anyInt(), anyLong());
+        assertManualAggregatePreState();
     }
 
     @Test
@@ -321,6 +351,25 @@ class FulfillmentTrackingTransactionTest extends BaseDbUnitTest {
     }
 
     @Test
+    void manualSupplementaryUnicodeUsesCodePointBoundaries() {
+        String emoji = "\uD83D\uDE9A";
+        TrackingApplyResult accepted = service.applyManualEvent("manual-unicode-max",
+                manualCommand(ShipmentStatusEnum.IN_TRANSIT, Instant.parse("2026-07-16T03:35:00Z"), 1)
+                        .setReason(emoji.repeat(5)).setRequestTraceId(emoji));
+
+        assertTrue(accepted.inserted());
+        assertEquals(5, value("SELECT manual_reason FROM trade_tracking_event", String.class)
+                .codePointCount(0, emoji.repeat(5).length()));
+        assertThrows(RuntimeException.class, () -> service.applyManualEvent("manual-unicode-reason-over",
+                manualCommand(ShipmentStatusEnum.DELIVERY_EXCEPTION, Instant.parse("2026-07-16T03:36:00Z"), 2)
+                        .setReason(emoji.repeat(501))));
+        assertThrows(RuntimeException.class, () -> service.applyManualEvent("manual-unicode-trace-over",
+                manualCommand(ShipmentStatusEnum.DELIVERY_EXCEPTION, Instant.parse("2026-07-16T03:37:00Z"), 2)
+                        .setRequestTraceId(emoji.repeat(65))));
+        assertEquals(1, count("trade_tracking_event"));
+    }
+
+    @Test
     void sameTimeManualStatusPriorityUsesServerTable() {
         Instant sameTime = Instant.parse("2026-07-16T03:45:00Z");
         service.applyManualEvent("manual-priority-low",
@@ -349,6 +398,57 @@ class FulfillmentTrackingTransactionTest extends BaseDbUnitTest {
         assertEquals("HANDED_TO_CARRIER", value("SELECT status FROM trade_shipment WHERE id = " + SHIPMENT_ID,
                 String.class));
         assertEquals(1, value("SELECT version FROM trade_shipment WHERE id = " + SHIPMENT_ID, Integer.class));
+    }
+
+    @Test
+    void manualSecondStatusOutboxFailureRollsBackEveryLateWrite() {
+        setAggregateStatuses("OUT_FOR_DELIVERY");
+        AtomicInteger attempts = new AtomicInteger();
+        doAnswer(invocation -> {
+            FulfillmentOutboxEventDO row = invocation.getArgument(0);
+            if (attempts.incrementAndGet() == 1) {
+                return jdbc.update("INSERT INTO trade_fulfillment_outbox_event (tenant_id, event_id, aggregate_type, "
+                                + "aggregate_id, event_type, payload, status, attempt_count, next_attempt_at) "
+                                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", row.getTenantId(), row.getEventId(),
+                        row.getAggregateType(), row.getAggregateId(), row.getEventType(),
+                        "{\"status\":\"DELIVERY_EXCEPTION\"}",
+                        row.getStatus(), row.getAttemptCount(), row.getNextAttemptAt());
+            }
+            throw new IllegalStateException("second manual outbox failed");
+        }).when(outboxMapper).insert(any(FulfillmentOutboxEventDO.class));
+
+        assertThrows(IllegalStateException.class, () -> service.applyManualEvent("manual-second-outbox",
+                manualCommand(ShipmentStatusEnum.DELIVERY_EXCEPTION, Instant.parse("2026-07-16T04:10:00Z"), 1)));
+
+        verify(outboxMapper, times(2)).insert(any(FulfillmentOutboxEventDO.class));
+        assertManualAggregatePreState("OUT_FOR_DELIVERY");
+    }
+
+    @Test
+    void manualIdempotencyCompletionFailureRollsBackEveryLateWrite() {
+        doReturn(0).when(idempotencyMapper).completeProcessingById(anyLong(), anyLong(), anyString(), anyLong(), any());
+
+        assertThrows(RuntimeException.class, () -> service.applyManualEvent("manual-idempotency-complete",
+                manualCommand(ShipmentStatusEnum.DELIVERED, Instant.parse("2026-07-16T04:20:00Z"), 1)));
+
+        verify(idempotencyMapper, times(1)).completeProcessingById(anyLong(), anyLong(), anyString(), anyLong(), any());
+        assertManualAggregatePreState();
+    }
+
+    @Test
+    void manualSummaryCasFailureRollsBackEveryProjectionAndAuditWrite() {
+        setAggregateStatuses("OUT_FOR_DELIVERY");
+        doReturn(new OrderFulfillmentSummaryDO().setId(9001L).setTenantId(TENANT_ID).setOrderId(ORDER_ID)
+                .setStatus("SHIPPED").setShipmentCount(1).setDeliveredShipmentCount(0).setVersion(99))
+                .when(summaryMapper).selectByOrderId(TENANT_ID, ORDER_ID);
+
+        assertServiceException(() -> service.applyManualEvent("manual-summary-cas",
+                manualCommand(ShipmentStatusEnum.DELIVERY_EXCEPTION, Instant.parse("2026-07-16T04:30:00Z"), 1)),
+                FULFILLMENT_VERSION_CONFLICT);
+
+        verify(summaryMapper, times(1)).updateCountsAndStatusByIdAndVersion(anyLong(), anyLong(), anyInt(),
+                anyString(), anyInt(), anyInt());
+        assertManualAggregatePreState("OUT_FOR_DELIVERY");
     }
 
     @Test
@@ -382,6 +482,8 @@ class FulfillmentTrackingTransactionTest extends BaseDbUnitTest {
     void clearContext() {
         reset(outboxMapper);
         reset(packageMapper);
+        reset(idempotencyMapper);
+        reset(summaryMapper);
         TenantContextHolder.clear();
         SecurityContextHolder.clearContext();
     }
@@ -893,6 +995,56 @@ class FulfillmentTrackingTransactionTest extends BaseDbUnitTest {
 
     private int count(String table) {
         return value("SELECT COUNT(*) FROM " + table, Integer.class);
+    }
+
+    private void assertManualAggregatePreState() {
+        assertManualAggregatePreState("HANDED_TO_CARRIER");
+    }
+
+    private void assertManualAggregatePreState(String expectedStatus) {
+        assertEquals(0, count("trade_tracking_event"));
+        assertEquals(0, count("trade_fulfillment_idempotency"));
+        assertEquals(0, count("trade_fulfillment_outbox_event"));
+        assertEquals(expectedStatus, value("SELECT status FROM trade_shipment_package WHERE id = " + PACKAGE_ID,
+                String.class));
+        assertEquals(1, value("SELECT version FROM trade_shipment_package WHERE id = " + PACKAGE_ID, Integer.class));
+        assertNull(value("SELECT last_event_occurred_at FROM trade_shipment_package WHERE id = " + PACKAGE_ID,
+                java.time.LocalDateTime.class));
+        assertNull(value("SELECT last_event_status_priority FROM trade_shipment_package WHERE id = " + PACKAGE_ID,
+                Integer.class));
+        assertNull(value("SELECT last_event_id FROM trade_shipment_package WHERE id = " + PACKAGE_ID, Long.class));
+        assertEquals(expectedStatus, value("SELECT status FROM trade_shipment_leg WHERE id = " + LEG_ID,
+                String.class));
+        assertEquals(1, value("SELECT version FROM trade_shipment_leg WHERE id = " + LEG_ID, Integer.class));
+        assertNull(value("SELECT last_event_occurred_at FROM trade_shipment_leg WHERE id = " + LEG_ID,
+                java.time.LocalDateTime.class));
+        assertNull(value("SELECT last_event_status_priority FROM trade_shipment_leg WHERE id = " + LEG_ID,
+                Integer.class));
+        assertNull(value("SELECT last_event_id FROM trade_shipment_leg WHERE id = " + LEG_ID, Long.class));
+        assertEquals(expectedStatus, value("SELECT status FROM trade_shipment WHERE id = " + SHIPMENT_ID,
+                String.class));
+        assertEquals(1, value("SELECT version FROM trade_shipment WHERE id = " + SHIPMENT_ID, Integer.class));
+        assertNull(value("SELECT last_event_occurred_at FROM trade_shipment WHERE id = " + SHIPMENT_ID,
+                java.time.LocalDateTime.class));
+        assertNull(value("SELECT last_event_status_priority FROM trade_shipment WHERE id = " + SHIPMENT_ID,
+                Integer.class));
+        assertNull(value("SELECT last_event_id FROM trade_shipment WHERE id = " + SHIPMENT_ID, Long.class));
+        assertNull(value("SELECT delivered_at FROM trade_shipment WHERE id = " + SHIPMENT_ID,
+                java.time.LocalDateTime.class));
+        assertEquals("SHIPPED", value("SELECT status FROM trade_order_fulfillment_summary WHERE order_id = " + ORDER_ID,
+                String.class));
+        assertEquals(1, value("SELECT shipment_count FROM trade_order_fulfillment_summary WHERE order_id = " + ORDER_ID,
+                Integer.class));
+        assertEquals(0, value("SELECT delivered_shipment_count FROM trade_order_fulfillment_summary WHERE order_id = "
+                + ORDER_ID, Integer.class));
+        assertEquals(1, value("SELECT version FROM trade_order_fulfillment_summary WHERE order_id = " + ORDER_ID,
+                Integer.class));
+    }
+
+    private void setAggregateStatuses(String status) {
+        jdbc.update("UPDATE trade_shipment SET status = ? WHERE id = ?", status, SHIPMENT_ID);
+        jdbc.update("UPDATE trade_shipment_package SET status = ? WHERE id = ?", status, PACKAGE_ID);
+        jdbc.update("UPDATE trade_shipment_leg SET status = ? WHERE id = ?", status, LEG_ID);
     }
 
     private <T> T value(String sql, Class<T> type) {

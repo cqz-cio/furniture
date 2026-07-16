@@ -115,7 +115,11 @@ public class FulfillmentTrackingServiceImpl implements FulfillmentTrackingServic
     @Override
     public TrackingApplyResult applyManualEvent(String idempotencyKey, ApplyManualTrackingEventCommand command) {
         String reason = validateManualCommand(idempotencyKey, command);
-        return inNewTransaction(() -> applyManualOnce(idempotencyKey, command, reason));
+        try {
+            return inNewTransaction(() -> applyManualOnce(idempotencyKey, command, reason));
+        } catch (OptimisticTrackingConflictException conflict) {
+            throw exception(FULFILLMENT_VERSION_CONFLICT);
+        }
     }
 
     private TrackingApplyResult applyManualOnce(String idempotencyKey, ApplyManualTrackingEventCommand command,
@@ -175,7 +179,6 @@ public class FulfillmentTrackingServiceImpl implements FulfillmentTrackingServic
                 .setMappingKnown(false)
                 .setTransitionDecision(ShipmentStateMachine.TransitionDecision.TIMELINE_ONLY.name())
                 .setOccurredAt(occurredAt)
-                .setOccurredTimezone("UTC")
                 .setReceivedAt(receivedAt)
                 .setSource("MANUAL")
                 .setManualOperatorId(command.getOperatorId())
@@ -724,15 +727,20 @@ public class FulfillmentTrackingServiceImpl implements FulfillmentTrackingServic
         if (command.getExpectedShipmentVersion() < 0) {
             throw new IllegalArgumentException("expectedShipmentVersion must not be negative");
         }
-        if (command.getRequestTraceId() == null || command.getRequestTraceId().isBlank()
-                || command.getRequestTraceId().trim().length() > 64) {
+        String traceId = command.getRequestTraceId() == null ? "" : command.getRequestTraceId().trim();
+        if (traceId.isBlank() || codePointLength(traceId) > 64) {
             throw new IllegalArgumentException("requestTraceId must contain 1-64 characters");
         }
         String reason = command.getReason() == null ? "" : command.getReason().trim();
-        if (reason.length() < 5 || reason.length() > 500) {
+        int reasonLength = codePointLength(reason);
+        if (reasonLength < 5 || reasonLength > 500) {
             throw new IllegalArgumentException("reason must contain 5-500 characters");
         }
         return reason;
+    }
+
+    static int codePointLength(String value) {
+        return value.codePointCount(0, value.length());
     }
 
     private static int manualPriority(ShipmentStatusEnum status) {
