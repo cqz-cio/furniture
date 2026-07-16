@@ -3784,6 +3784,13 @@ const frTradeFaq = {
 
 const navigationMessages = {
   en: {
+    catalogPage: {
+      eyebrow: "THE OAKVED CATALOG",
+      title: "A study in enduring rooms.",
+      introduction:
+        "Explore Oakved collections through considered interiors, natural materials and the details that define carved living.",
+      imageAlt: "Oakved catalog featuring a refined interior collection",
+    },
     navigation: {
       primary: {
         bedroomFurniture: "Bedroom Furniture",
