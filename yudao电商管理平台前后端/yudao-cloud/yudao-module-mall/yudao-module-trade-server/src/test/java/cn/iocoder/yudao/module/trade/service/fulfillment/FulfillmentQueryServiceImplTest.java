@@ -27,13 +27,13 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static cn.iocoder.yudao.framework.test.core.util.AssertUtils.assertServiceException;
+import static cn.iocoder.yudao.module.trade.enums.ErrorCodeConstants.FULFILLMENT_FEATURE_DISABLED;
 import static cn.iocoder.yudao.module.trade.enums.ErrorCodeConstants.FULFILLMENT_SHIPMENT_NOT_FOUND;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @Import({FulfillmentQueryServiceImpl.class, FulfillmentFeatureGuard.class, FulfillmentProperties.class})
 class FulfillmentQueryServiceImplTest extends BaseDbUnitTest {
@@ -68,9 +68,8 @@ class FulfillmentQueryServiceImplTest extends BaseDbUnitTest {
     void disabledReadStopsBeforeShipmentLookup() {
         fulfillmentProperties.setReadFromNewModel(false);
         try {
-            IllegalStateException failure = assertThrows(IllegalStateException.class,
-                    () -> queryService.getShipment(TENANT_ID, DETAIL_SHIPMENT_ID));
-            assertEquals("fulfillment reads are disabled", failure.getMessage());
+            assertServiceException(() -> queryService.getShipment(TENANT_ID, DETAIL_SHIPMENT_ID),
+                    FULFILLMENT_FEATURE_DISABLED);
         } finally {
             fulfillmentProperties.setReadFromNewModel(true);
         }

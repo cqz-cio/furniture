@@ -62,6 +62,10 @@ class FulfillmentPropertiesTest {
         writeRunner.run(context -> assertThat(context).hasFailed());
         writeRunner.withInitializer(context -> context.getEnvironment().setActiveProfiles("prod"))
                 .run(context -> assertThat(context).hasFailed());
+        writeRunner.withInitializer(context -> context.getEnvironment().setActiveProfiles("prod", "local"))
+                .run(context -> assertThat(context).hasFailed());
+        writeRunner.withInitializer(context -> context.getEnvironment().setActiveProfiles("prod", "unit-test"))
+                .run(context -> assertThat(context).hasFailed());
     }
 
     @Test
@@ -75,6 +79,10 @@ class FulfillmentPropertiesTest {
                         assertTrue(context.getBeansOfType(MockLogisticsProviderClient.class).size() == 1);
                     });
         }
+        contextRunner.withInitializer(context -> context.getEnvironment().setActiveProfiles("local", "unit-test"))
+                .withPropertyValues(PREFIX + "enabled=true", PREFIX + "write-new-model=true",
+                        PREFIX + "provider-code=mock", PREFIX + "idempotency-hmac-key=" + TEST_KEY)
+                .run(context -> assertTrue(context.isRunning()));
         contextRunner.withPropertyValues(PREFIX + "provider-code=mock")
                 .run(context -> {
                     assertTrue(context.isRunning());

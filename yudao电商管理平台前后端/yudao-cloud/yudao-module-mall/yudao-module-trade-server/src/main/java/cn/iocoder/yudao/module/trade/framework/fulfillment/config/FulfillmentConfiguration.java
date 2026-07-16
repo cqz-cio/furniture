@@ -21,7 +21,9 @@ public class FulfillmentConfiguration {
             if (!properties.isWriteNewModel() || !"mock".equalsIgnoreCase(properties.getProviderCode())) {
                 return;
             }
-            boolean mockAllowed = Arrays.stream(environment.getActiveProfiles()).anyMatch(MOCK_ALLOWED_PROFILES::contains);
+            String[] activeProfiles = environment.getActiveProfiles();
+            boolean mockAllowed = activeProfiles.length > 0
+                    && Arrays.stream(activeProfiles).allMatch(MOCK_ALLOWED_PROFILES::contains);
             if (!mockAllowed) {
                 throw new IllegalStateException("mock fulfillment provider requires local or unit-test profile");
             }

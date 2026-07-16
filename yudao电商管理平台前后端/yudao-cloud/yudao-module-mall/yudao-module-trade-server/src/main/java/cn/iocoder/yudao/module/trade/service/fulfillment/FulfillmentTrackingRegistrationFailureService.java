@@ -3,6 +3,7 @@ package cn.iocoder.yudao.module.trade.service.fulfillment;
 import cn.iocoder.yudao.framework.tenant.core.util.TenantUtils;
 import cn.iocoder.yudao.module.trade.dal.dataobject.fulfillment.FulfillmentOutboxEventDO;
 import cn.iocoder.yudao.module.trade.dal.mysql.fulfillment.FulfillmentOutboxEventMapper;
+import cn.iocoder.yudao.module.trade.framework.fulfillment.config.FulfillmentFeatureGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -18,9 +19,11 @@ import java.util.UUID;
 public class FulfillmentTrackingRegistrationFailureService {
 
     private final FulfillmentOutboxEventMapper outboxMapper;
+    private final FulfillmentFeatureGuard featureGuard;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW, rollbackFor = Exception.class)
     public void recordRetry(Long tenantId, Long shipmentId, Long packageId, Long providerId) {
+        featureGuard.requireWriteEnabled();
         TenantUtils.execute(tenantId, () -> outboxMapper.insert(new FulfillmentOutboxEventDO()
                 .setTenantId(tenantId)
                 .setEventId(UUID.randomUUID().toString())

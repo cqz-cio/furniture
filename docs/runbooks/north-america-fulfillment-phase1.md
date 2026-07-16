@@ -16,6 +16,10 @@ The existing admin and App legacy tracking endpoints remain the fallback contrac
 
 ## 2. Preconditions and ownership
 
+This runbook is executable only from a fully integrated revision that contains the V020 migration-fact schema,
+the legacy projection writer, and the bounded migration job. A Task 10 configuration/runbook-only revision is
+not deployable by itself; verify those integration components and their tests in the exact release revision first.
+
 Before any rollout window:
 
 1. Assign a rollout owner, database owner, security approver, operations approver, and rollback decision-maker.
@@ -216,8 +220,20 @@ GROUP BY tenant_id;
 -- Shipment exceptions by tenant and status only.
 SELECT tenant_id, status, COUNT(*) AS shipment_count
 FROM trade_shipment
-WHERE deleted = b'0' AND status IN ('EXCEPTION', 'LOST', 'DAMAGED')
+WHERE deleted = b'0' AND status = 'DELIVERY_EXCEPTION'
 GROUP BY tenant_id, status;
+
+-- Invalid shipment enum values; a healthy result is zero rows.
+SELECT status, COUNT(*) AS invalid_status_count
+FROM trade_shipment
+WHERE deleted = b'0'
+  AND status NOT IN (
+    'DRAFT', 'READY_TO_SHIP', 'HANDED_TO_CARRIER', 'IN_TRANSIT',
+    'AT_LOCAL_TERMINAL', 'APPOINTMENT_REQUIRED', 'APPOINTMENT_CONFIRMED',
+    'OUT_FOR_DELIVERY', 'DELIVERED', 'DELIVERY_EXCEPTION',
+    'RETURNING', 'RETURNED', 'CANCELED'
+  )
+GROUP BY status;
 ```
 
 Allowed log fields are fixed provider label, HTTP status, elapsed milliseconds, operation, aggregate ID where already approved, reason code, and count/cursor metadata. Do not log provider request/response bodies, raw payloads, tracking number, phone, address, signature, secret, exception body, HMAC input, or digest.

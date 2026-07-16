@@ -48,6 +48,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static cn.iocoder.yudao.framework.test.core.util.AssertUtils.assertServiceException;
+import static cn.iocoder.yudao.module.trade.enums.ErrorCodeConstants.FULFILLMENT_FEATURE_DISABLED;
 import static cn.iocoder.yudao.module.trade.enums.ErrorCodeConstants.FULFILLMENT_VERSION_CONFLICT;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -195,10 +196,12 @@ class FulfillmentTrackingTransactionTest extends BaseDbUnitTest {
     void disabledWriteRejectsProviderAndManualEventsWithoutRows() {
         fulfillmentProperties.setWriteNewModel(false);
         try {
-            assertThrows(IllegalStateException.class, () -> service.applyEvent(
-                    command("disabled-provider", "MOVING", Instant.parse("2026-07-15T00:00:00Z"))));
-            assertThrows(IllegalStateException.class, () -> service.applyManualEvent("disabled-manual",
-                    manualCommand(ShipmentStatusEnum.IN_TRANSIT, Instant.parse("2026-07-15T00:00:00Z"), 1)));
+            assertServiceException(() -> service.applyEvent(
+                    command("disabled-provider", "MOVING", Instant.parse("2026-07-15T00:00:00Z"))),
+                    FULFILLMENT_FEATURE_DISABLED);
+            assertServiceException(() -> service.applyManualEvent("disabled-manual",
+                    manualCommand(ShipmentStatusEnum.IN_TRANSIT, Instant.parse("2026-07-15T00:00:00Z"), 1)),
+                    FULFILLMENT_FEATURE_DISABLED);
             assertEquals(0, count("trade_tracking_event"));
             assertEquals(0, count("trade_fulfillment_idempotency"));
             assertEquals(0, count("trade_fulfillment_outbox_event"));

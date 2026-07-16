@@ -144,6 +144,8 @@ public interface ErrorCodeConstants {
             new ErrorCode(1_011_009_011, "Shipment dispatch is incomplete");
     ErrorCode FULFILLMENT_SENSITIVE_TEXT_NOT_ALLOWED =
             new ErrorCode(1_011_009_012, "Fulfillment text contains sensitive data");
+    ErrorCode FULFILLMENT_FEATURE_DISABLED =
+            new ErrorCode(1_011_009_013, "Fulfillment feature is disabled");
 
     ErrorCode ORDER_COMMENT_ITEM_LIST_MISMATCH = new ErrorCode(1_011_000_042, "创建交易订单评价失败，订单项集合不完整或不匹配");
 
