@@ -2,6 +2,7 @@ package cn.iocoder.yudao.module.trade.job.fulfillment;
 
 import cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder;
 import cn.iocoder.yudao.framework.tenant.core.job.TenantJob;
+import cn.iocoder.yudao.framework.common.exception.ServiceException;
 import cn.iocoder.yudao.module.trade.framework.fulfillment.config.FulfillmentFeatureGuard;
 import cn.iocoder.yudao.module.trade.service.fulfillment.migration.FulfillmentLegacyMigrationService;
 import cn.iocoder.yudao.module.trade.service.fulfillment.migration.MigrationBatchResult;
@@ -27,6 +28,7 @@ import static cn.iocoder.yudao.module.trade.enums.ErrorCodeConstants.FULFILLMENT
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.doThrow;
@@ -186,6 +188,32 @@ class FulfillmentLegacyMigrationJobTest {
     void executeShouldExposeCauseFreeSafeErrorToTenantJobXxlLogging() {
         when(migrationService.migrateActiveOrders(TENANT_ID, 0L, 100, true))
                 .thenThrow(new IllegalStateException("TRACKING_PHONE_FACT_DIGEST_CANARY"));
+
+        IllegalStateException error = assertThrows(IllegalStateException.class, () -> job.execute(""));
+
+        assertEquals("fulfillment legacy migration batch failed", error.getMessage());
+        assertEquals(null, error.getCause());
+        assertFalse(error.toString().contains("CANARY"));
+    }
+
+    @Test
+    void executeShouldPreserveFeatureDisabledErrorRaisedByMigrationService() {
+        ServiceException featureDisabled = exception(FULFILLMENT_FEATURE_DISABLED);
+        when(migrationService.migrateActiveOrders(TENANT_ID, 0L, 100, true))
+                .thenThrow(featureDisabled);
+
+        ServiceException error = assertThrows(ServiceException.class, () -> job.execute(""));
+
+        assertSame(featureDisabled, error);
+        assertEquals(FULFILLMENT_FEATURE_DISABLED.getCode(), error.getCode());
+        assertEquals(FULFILLMENT_FEATURE_DISABLED.getMsg(), error.getMessage());
+        assertEquals(null, error.getCause());
+    }
+
+    @Test
+    void executeShouldSanitizeEveryOtherServiceErrorRaisedByMigrationService() {
+        when(migrationService.migrateActiveOrders(TENANT_ID, 0L, 100, true))
+                .thenThrow(new ServiceException(599_999, "PROVIDER_RAW_PAYLOAD_CANARY"));
 
         IllegalStateException error = assertThrows(IllegalStateException.class, () -> job.execute(""));
 
