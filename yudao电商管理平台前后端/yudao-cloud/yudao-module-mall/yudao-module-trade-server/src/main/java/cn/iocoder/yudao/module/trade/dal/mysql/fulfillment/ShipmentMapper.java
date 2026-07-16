@@ -27,6 +27,11 @@ public interface ShipmentMapper extends BaseMapperX<ShipmentDO> {
                 .orderByAsc(ShipmentDO::getId));
     }
 
+    @Select("SELECT * FROM trade_shipment WHERE tenant_id = #{tenantId} AND order_id = #{orderId} "
+            + "AND deleted = FALSE ORDER BY id ASC FOR UPDATE")
+    List<ShipmentDO> selectListByOrderIdForUpdate(@Param("tenantId") Long tenantId,
+                                                  @Param("orderId") Long orderId);
+
     default ShipmentDO selectByIdAndTenantId(Long id, Long tenantId) {
         return selectOne(new LambdaQueryWrapperX<ShipmentDO>()
                 .eq(ShipmentDO::getId, id)

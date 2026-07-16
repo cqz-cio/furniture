@@ -29,7 +29,9 @@ import cn.iocoder.yudao.module.trade.service.fulfillment.domain.ShipmentStateMac
 import cn.iocoder.yudao.module.trade.service.fulfillment.support.FulfillmentHashing;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -39,6 +41,7 @@ import java.time.ZoneOffset;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
@@ -65,7 +68,8 @@ public class FulfillmentLegacyMigrationWriterImpl implements FulfillmentLegacyMi
     private final FulfillmentOutboxEventMapper outboxMapper;
 
     @Override
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED,
+            rollbackFor = Exception.class)
     public MigrationOrderResult migrateOne(Long tenantId, Long orderId) {
         requireActiveTenant(tenantId);
         if (orderId == null || orderId <= 0) {
@@ -75,19 +79,14 @@ public class FulfillmentLegacyMigrationWriterImpl implements FulfillmentLegacyMi
         String keyHash = FulfillmentHashing.hmacSha256Hex(secret,
                 "legacy-migration:key:v1|" + tenantId + "|" + orderId);
 
-        // Deliberately inspect replay state before any stale/new validation. The row is re-read after
-        // the order lock so concurrent calls cannot create a second aggregate.
-        FulfillmentIdempotencyDO replayBeforeLock = idempotencyMapper.selectByOperationAndKeyHash(
-                tenantId, OPERATION, keyHash);
+        // Order is always the first lock. READ_COMMITTED plus current/locking reads makes a commit that
+        // happens while this call waits visible; a MySQL REPEATABLE_READ snapshot must never be opened here.
         TradeOrderDO lockedOrder = orderMapper.selectByIdAndTenantIdForUpdate(tenantId, orderId);
         if (lockedOrder == null) {
             return MigrationOrderResult.of(orderId, MigrationOutcome.CONCURRENT_CHANGE);
         }
         FulfillmentIdempotencyDO existing = idempotencyMapper.selectByOperationAndKeyHashForUpdate(
                 tenantId, OPERATION, keyHash);
-        if (existing == null && replayBeforeLock != null) {
-            return MigrationOrderResult.of(orderId, MigrationOutcome.IDEMPOTENCY_CONFLICT);
-        }
         if (existing != null) {
             return resolveReplay(tenantId, lockedOrder, existing, secret);
         }
@@ -106,7 +105,7 @@ public class FulfillmentLegacyMigrationWriterImpl implements FulfillmentLegacyMi
                 .setStatus(PROCESSING)
                 .setExpiresAt(NEVER_EXPIRES);
         audit(idempotency);
-        idempotencyMapper.insert(idempotency);
+        requireInserted("idempotency", idempotencyMapper.insert(idempotency));
 
         Long shipmentId = insertAggregate(tenantId, evaluation, requestHash);
         if (idempotencyMapper.completeProcessingById(tenantId, idempotency.getId(), requestHash,
@@ -127,7 +126,7 @@ public class FulfillmentLegacyMigrationWriterImpl implements FulfillmentLegacyMi
             return MigrationOrderResult.of(order.getId(), MigrationOutcome.IDEMPOTENCY_CONFLICT);
         }
         String currentRequestHash = requestHash(secret, tenantId, current);
-        ShipmentDO resource = shipmentMapper.selectByIdAndTenantId(existing.getResourceId(), tenantId);
+        ShipmentDO resource = shipmentMapper.selectByIdForUpdate(tenantId, existing.getResourceId());
         if (!FulfillmentHashing.constantTimeEquals(existing.getRequestHash(), currentRequestHash)
                 || resource == null || !order.getId().equals(resource.getOrderId())) {
             return MigrationOrderResult.of(order.getId(), MigrationOutcome.IDEMPOTENCY_CONFLICT);
@@ -151,11 +150,9 @@ public class FulfillmentLegacyMigrationWriterImpl implements FulfillmentLegacyMi
                 .setDestinationTimezone(evaluation.facts().destinationTimezone())
                 .setWarehouseId(evaluation.facts().warehouseId())
                 .setProviderId(evaluation.provider().getId())
-                .setLastEventOccurredAt(occurredAt)
-                .setLastEventStatusPriority(HANDED_TO_CARRIER_PRIORITY)
                 .setVersion(0);
         audit(shipment);
-        shipmentMapper.insert(shipment);
+        requireInserted("shipment", shipmentMapper.insert(shipment));
 
         for (TradeOrderItemDO item : evaluation.items()) {
             ShipmentItemDO shipmentItem = new ShipmentItemDO()
@@ -165,7 +162,7 @@ public class FulfillmentLegacyMigrationWriterImpl implements FulfillmentLegacyMi
                     .setSkuId(item.getSkuId())
                     .setQuantity(BigDecimal.valueOf(item.getCount()));
             audit(shipmentItem);
-            shipmentItemMapper.insert(shipmentItem);
+            requireInserted("shipment item", shipmentItemMapper.insert(shipmentItem));
         }
         ShipmentPackageDO shipmentPackage = new ShipmentPackageDO()
                 .setTenantId(tenantId)
@@ -175,11 +172,17 @@ public class FulfillmentLegacyMigrationWriterImpl implements FulfillmentLegacyMi
                 .setCarrierId(evaluation.carrier().getId())
                 .setTrackingNumber(evaluation.trackingNumber())
                 .setStatus(status)
-                .setLastEventOccurredAt(occurredAt)
-                .setLastEventStatusPriority(HANDED_TO_CARRIER_PRIORITY)
                 .setVersion(0);
         audit(shipmentPackage);
-        packageMapper.insert(shipmentPackage);
+        try {
+            requireInserted("shipment package", packageMapper.insert(shipmentPackage));
+        } catch (DuplicateKeyException duplicate) {
+            if (isConstraintViolation(duplicate, "uk_package_tracking")) {
+                throw new LegacyMigrationWriteConflictException(evaluation.order().getId(),
+                        MigrationOutcome.TRACKING_CONFLICT, duplicate);
+            }
+            throw duplicate;
+        }
 
         ShipmentLegDO leg = new ShipmentLegDO()
                 .setTenantId(tenantId)
@@ -191,12 +194,10 @@ public class FulfillmentLegacyMigrationWriterImpl implements FulfillmentLegacyMi
                 .setProviderId(evaluation.provider().getId())
                 .setTrackingNumber(evaluation.trackingNumber())
                 .setStatus(status)
-                .setLastEventOccurredAt(occurredAt)
-                .setLastEventStatusPriority(HANDED_TO_CARRIER_PRIORITY)
                 .setStartedAt(occurredAt)
                 .setVersion(0);
         audit(leg);
-        legMapper.insert(leg);
+        requireInserted("shipment leg", legMapper.insert(leg));
 
         String eventDigest = FulfillmentHashing.hmacSha256Hex(properties.getIdempotencyHmacKey(),
                 "legacy-migration:event:v1|" + tenantId + "|" + evaluation.order().getId()
@@ -222,7 +223,15 @@ public class FulfillmentLegacyMigrationWriterImpl implements FulfillmentLegacyMi
                 .setReceivedAt(nowUtc)
                 .setSource(TrackingEventSourceEnum.MIGRATION.name());
         audit(event);
-        eventMapper.insert(event);
+        requireInserted("tracking event", eventMapper.insert(event));
+        requireUpdated("shipment event watermark", shipmentMapper.updateTrackingStateByIdAndVersion(
+                tenantId, shipment.getId(), 0, status, occurredAt, HANDED_TO_CARRIER_PRIORITY,
+                event.getId(), null));
+        requireUpdated("package event watermark", packageMapper.updateTrackingStateByIdAndVersion(
+                tenantId, shipmentPackage.getId(), 0, status, occurredAt,
+                HANDED_TO_CARRIER_PRIORITY, event.getId()));
+        requireUpdated("leg event watermark", legMapper.updateTrackingStateByIdAndVersion(
+                tenantId, leg.getId(), 0, status, occurredAt, HANDED_TO_CARRIER_PRIORITY, event.getId()));
 
         OrderFulfillmentSummaryDO summary = new OrderFulfillmentSummaryDO()
                 .setTenantId(tenantId)
@@ -232,7 +241,7 @@ public class FulfillmentLegacyMigrationWriterImpl implements FulfillmentLegacyMi
                 .setDeliveredShipmentCount(0)
                 .setVersion(0);
         audit(summary);
-        summaryMapper.insert(summary);
+        requireInserted("order fulfillment summary", summaryMapper.insert(summary));
         FulfillmentOutboxEventDO outbox = new FulfillmentOutboxEventDO()
                 .setTenantId(tenantId)
                 .setEventId(toUuid(FulfillmentHashing.hmacSha256Hex(properties.getIdempotencyHmacKey(),
@@ -247,7 +256,7 @@ public class FulfillmentLegacyMigrationWriterImpl implements FulfillmentLegacyMi
                 .setAttemptCount(0)
                 .setNextAttemptAt(nowUtc);
         audit(outbox);
-        outboxMapper.insert(outbox);
+        requireInserted("outbox event", outboxMapper.insert(outbox));
         return shipment.getId();
     }
 
@@ -303,6 +312,39 @@ public class FulfillmentLegacyMigrationWriterImpl implements FulfillmentLegacyMi
     private static void audit(cn.iocoder.yudao.framework.mybatis.core.dataobject.BaseDO value) {
         value.setCreator(SYSTEM_ACTOR);
         value.setUpdater(SYSTEM_ACTOR);
+    }
+
+    private static void requireInserted(String resource, int inserted) {
+        if (inserted != 1) {
+            throw new IllegalStateException("Legacy migration " + resource + " insert did not affect one row");
+        }
+    }
+
+    private static void requireUpdated(String resource, int updated) {
+        if (updated != 1) {
+            throw new IllegalStateException("Legacy migration " + resource + " update conflict");
+        }
+    }
+
+    private static boolean isConstraintViolation(Throwable failure, String constraint) {
+        String expected = constraint.toLowerCase(Locale.ROOT);
+        Throwable current = failure;
+        for (int depth = 0; current != null && depth < 12; depth++, current = current.getCause()) {
+            String message = current.getMessage();
+            if (message != null && message.toLowerCase(Locale.ROOT).contains(expected)) {
+                return true;
+            }
+            try {
+                Object constraintName = current.getClass().getMethod("getConstraintName").invoke(current);
+                if (constraintName != null
+                        && constraintName.toString().toLowerCase(Locale.ROOT).contains(expected)) {
+                    return true;
+                }
+            } catch (ReflectiveOperationException | SecurityException ignored) {
+                // JDBC drivers usually expose a named unique constraint only in the causal message.
+            }
+        }
+        return false;
     }
 
 }

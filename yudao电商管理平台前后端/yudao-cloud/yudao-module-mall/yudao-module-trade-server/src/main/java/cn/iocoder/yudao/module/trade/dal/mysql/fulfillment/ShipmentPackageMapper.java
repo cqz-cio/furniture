@@ -5,6 +5,8 @@ import cn.iocoder.yudao.framework.mybatis.core.query.LambdaQueryWrapperX;
 import cn.iocoder.yudao.module.trade.dal.dataobject.fulfillment.ShipmentPackageDO;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -32,6 +34,13 @@ public interface ShipmentPackageMapper extends BaseMapperX<ShipmentPackageDO> {
                 .eq(ShipmentPackageDO::getCarrierId, carrierId)
                 .eq(ShipmentPackageDO::getTrackingNumber, trackingNumber));
     }
+
+    @Select("SELECT * FROM trade_shipment_package WHERE tenant_id = #{tenantId} "
+            + "AND carrier_id = #{carrierId} AND tracking_number = #{trackingNumber} "
+            + "AND deleted = FALSE FOR UPDATE")
+    ShipmentPackageDO selectByCarrierIdAndTrackingNumberForUpdate(@Param("tenantId") Long tenantId,
+                                                                   @Param("carrierId") Long carrierId,
+                                                                   @Param("trackingNumber") String trackingNumber);
 
     default int updateStatusByIdAndVersion(Long tenantId, Long id, Integer version, String status) {
         return update(null, new LambdaUpdateWrapper<ShipmentPackageDO>()

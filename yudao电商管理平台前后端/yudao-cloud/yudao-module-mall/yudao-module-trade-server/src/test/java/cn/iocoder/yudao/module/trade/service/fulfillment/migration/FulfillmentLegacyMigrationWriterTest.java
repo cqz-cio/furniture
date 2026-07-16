@@ -72,6 +72,16 @@ class FulfillmentLegacyMigrationWriterTest extends BaseDbUnitTest {
         assertEquals("LAST_MILE", scalar("SELECT leg_type FROM trade_shipment_leg"));
         assertEquals("MIGRATION", scalar("SELECT source FROM trade_tracking_event"));
         assertEquals("TIMELINE_ONLY", scalar("SELECT transition_decision FROM trade_tracking_event"));
+        Long eventId = jdbc.queryForObject("SELECT id FROM trade_tracking_event", Long.class);
+        assertEquals(eventId, jdbc.queryForObject("SELECT last_event_id FROM trade_shipment", Long.class));
+        assertEquals(eventId, jdbc.queryForObject("SELECT last_event_id FROM trade_shipment_package", Long.class));
+        assertEquals(eventId, jdbc.queryForObject("SELECT last_event_id FROM trade_shipment_leg", Long.class));
+        assertEquals(1, jdbc.queryForObject("SELECT version FROM trade_shipment", Integer.class));
+        assertEquals(1, jdbc.queryForObject("SELECT version FROM trade_shipment_package", Integer.class));
+        assertEquals(1, jdbc.queryForObject("SELECT version FROM trade_shipment_leg", Integer.class));
+        assertEquals(2, jdbc.queryForObject("SELECT COUNT(*) FROM trade_shipment_item si "
+                + "JOIN trade_order_item oi ON oi.id = si.order_item_id "
+                + "WHERE si.sku_id = oi.sku_id AND si.quantity = oi.count", Integer.class));
         assertEquals("SHIPPED", scalar("SELECT status FROM trade_order_fulfillment_summary"));
         assertEquals("COMPLETED", scalar("SELECT status FROM trade_fulfillment_idempotency"));
         assertEquals(9999, jdbc.queryForObject(
@@ -96,6 +106,69 @@ class FulfillmentLegacyMigrationWriterTest extends BaseDbUnitTest {
 
         assertEquals(MigrationOutcome.IDEMPOTENCY_CONFLICT, result.outcome());
         assertEquals("Case-Sensitive.91001", scalar("SELECT tracking_number FROM trade_shipment_package"));
+        assertEquals(1, count("trade_shipment"));
+        assertEquals(1, count("trade_fulfillment_idempotency"));
+    }
+
+    @Test
+    void changedApprovedFactsAfterCompletionConflict() {
+        assertEquals(MigrationOutcome.MIGRATED, writer.migrateOne(TENANT_ID, ORDER_ID).outcome());
+        jdbc.update("UPDATE trade_fulfillment_legacy_migration_fact SET destination_timezone = 'America/Toronto' "
+                + "WHERE tenant_id = ? AND order_id = ?", TENANT_ID, ORDER_ID);
+
+        assertEquals(MigrationOutcome.IDEMPOTENCY_CONFLICT,
+                writer.migrateOne(TENANT_ID, ORDER_ID).outcome());
+        assertEquals(1, count("trade_shipment"));
+    }
+
+    @Test
+    void processingReplayIsNeverTreatedAsCompleted() {
+        assertEquals(MigrationOutcome.MIGRATED, writer.migrateOne(TENANT_ID, ORDER_ID).outcome());
+        jdbc.update("UPDATE trade_fulfillment_idempotency SET status = 'PROCESSING', resource_id = NULL");
+
+        assertEquals(MigrationOutcome.IDEMPOTENCY_CONFLICT,
+                writer.migrateOne(TENANT_ID, ORDER_ID).outcome());
+        assertEquals(1, count("trade_shipment"));
+    }
+
+    @Test
+    void missingOrMismatchedReplayResourceConflicts() {
+        assertEquals(MigrationOutcome.MIGRATED, writer.migrateOne(TENANT_ID, ORDER_ID).outcome());
+        jdbc.update("UPDATE trade_fulfillment_idempotency SET resource_id = 999999");
+        assertEquals(MigrationOutcome.IDEMPOTENCY_CONFLICT,
+                writer.migrateOne(TENANT_ID, ORDER_ID).outcome());
+
+        Long shipmentId = jdbc.queryForObject("SELECT id FROM trade_shipment", Long.class);
+        jdbc.update("UPDATE trade_fulfillment_idempotency SET resource_id = ?", shipmentId);
+        jdbc.update("UPDATE trade_shipment SET order_id = ? WHERE id = ?", ORDER_ID + 1, shipmentId);
+        assertEquals(MigrationOutcome.IDEMPOTENCY_CONFLICT,
+                writer.migrateOne(TENANT_ID, ORDER_ID).outcome());
+    }
+
+    @Test
+    void liveShipmentCreatedBeforeWriterLockIsReportedAsConcurrentChange() {
+        jdbc.update("INSERT INTO trade_shipment (tenant_id, order_id, shipment_no, shipment_type, status, "
+                        + "origin_country, destination_country, origin_timezone, destination_timezone, warehouse_id) "
+                        + "VALUES (?, ?, 'LIVE-91001', 'PARCEL', 'DRAFT', 'US', 'US', "
+                        + "'America/New_York', 'America/New_York', ?)",
+                TENANT_ID, ORDER_ID, ORDER_ID + 20);
+
+        assertEquals(MigrationOutcome.CONCURRENT_CHANGE, writer.migrateOne(TENANT_ID, ORDER_ID).outcome());
+        assertEquals(1, count("trade_shipment"));
+        assertEquals(0, count("trade_fulfillment_idempotency"));
+    }
+
+    @Test
+    void anotherOrderOwningSameCarrierTrackingIsReportedWithoutLeakingTracking() {
+        long secondOrderId = ORDER_ID + 1000;
+        LegacyMigrationTestData.seed(jdbc, TENANT_ID, secondOrderId, 20, "Case-Sensitive.91001");
+        jdbc.update("UPDATE trade_order SET logistics_id = ? WHERE id = ?", ORDER_ID + 40, secondOrderId);
+
+        assertEquals(MigrationOutcome.MIGRATED, writer.migrateOne(TENANT_ID, ORDER_ID).outcome());
+        MigrationOrderResult collision = writer.migrateOne(TENANT_ID, secondOrderId);
+
+        assertEquals(MigrationOutcome.TRACKING_CONFLICT, collision.outcome());
+        assertEquals("TRACKING_CONFLICT", collision.reasonCode());
         assertEquals(1, count("trade_shipment"));
         assertEquals(1, count("trade_fulfillment_idempotency"));
     }

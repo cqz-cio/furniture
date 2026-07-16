@@ -114,6 +114,20 @@ class FulfillmentLegacyMigrationServiceTest extends BaseMockitoUnitTest {
     }
 
     @Test
+    void namedTrackingConstraintConflictIsMappedAfterPerOrderRollbackSignal() {
+        TradeOrderDO order = order(43L, 20, 31L, "sensitive-tracking-value");
+        when(orderMapper.selectLegacyMigrationCandidates(TENANT_ID, 0L, 11)).thenReturn(List.of(order));
+        when(writer.migrateOne(TENANT_ID, 43L)).thenThrow(new LegacyMigrationWriteConflictException(
+                43L, MigrationOutcome.TRACKING_CONFLICT, new RuntimeException("uk_package_tracking")));
+
+        MigrationBatchResult result = service.migrateActiveOrders(TENANT_ID, 0L, 10, false);
+
+        assertEquals(MigrationOutcome.TRACKING_CONFLICT, result.orders().get(0).outcome());
+        assertEquals("TRACKING_CONFLICT", result.orders().get(0).reasonCode());
+        assertEquals(1, result.rejected());
+    }
+
+    @Test
     void statusTenIsAlwaysNotShippedWithoutInspectingMigrationFacts() {
         MigrationOrderResult result = evaluator.evaluate(TENANT_ID, order(21L, 10, 31L, "TRACK-21"));
 

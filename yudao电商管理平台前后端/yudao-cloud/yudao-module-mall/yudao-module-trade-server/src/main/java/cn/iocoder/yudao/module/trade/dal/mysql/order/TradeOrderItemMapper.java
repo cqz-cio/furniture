@@ -9,6 +9,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
 
 import java.util.Collection;
 import java.util.List;
@@ -27,6 +28,11 @@ public interface TradeOrderItemMapper extends BaseMapperX<TradeOrderItemDO> {
     default List<TradeOrderItemDO> selectListByOrderId(Long orderId) {
         return selectList(TradeOrderItemDO::getOrderId, orderId);
     }
+
+    @Select("SELECT * FROM trade_order_item WHERE tenant_id = #{tenantId} AND order_id = #{orderId} "
+            + "AND deleted = FALSE ORDER BY id ASC FOR UPDATE")
+    List<TradeOrderItemDO> selectListByOrderIdForUpdate(@Param("tenantId") Long tenantId,
+                                                        @Param("orderId") Long orderId);
 
     default List<TradeOrderItemDO> selectListByOrderId(Collection<Long> orderIds) {
         return selectList(TradeOrderItemDO::getOrderId, orderIds);
