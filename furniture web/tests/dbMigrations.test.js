@@ -12,16 +12,14 @@ describe("database migration readiness", () => {
 
   it("discovers the complete contiguous numbered catalog", () => {
     const checks = buildMigrationChecks();
-    const expectedVersions = Array.from({ length: 22 }, (_, index) => index + 1);
+    const expectedVersions = Array.from({ length: 23 }, (_, index) => index + 1);
 
     expect(checks).toHaveLength(expectedVersions.length);
     expect(checks[0].fileName).toBe("V001__module_tables.sql");
-    expect(checks.slice(-5).map((check) => check.fileName)).toEqual([
-      "V018__trade_fulfillment_active_record_uniqueness.sql",
-      "V019__seo_foundation.sql",
-      "V020__seo_active_record_uniqueness.sql",
+    expect(checks.slice(-3).map((check) => check.fileName)).toEqual([
       "V021__trade_manual_tracking_audit.sql",
       "V022__trade_fulfillment_admin_permissions.sql",
+      "V023__trade_fulfillment_legacy_migration_fact.sql",
     ]);
     expect(checks.map((check) => check.version)).toEqual(expectedVersions);
   });
@@ -32,7 +30,7 @@ describe("database migration readiness", () => {
     expect(result.ok).toBe(true);
     expect(result.errors).toEqual([]);
     expect(result.checked.map((check) => check.version)).toEqual(
-      Array.from({ length: 22 }, (_, index) => index + 1),
+      Array.from({ length: 23 }, (_, index) => index + 1),
     );
   });
 

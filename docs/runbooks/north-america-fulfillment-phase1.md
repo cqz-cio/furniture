@@ -16,7 +16,7 @@ The existing admin and App legacy tracking endpoints remain the fallback contrac
 
 ## 2. Preconditions and ownership
 
-This runbook is executable only from one fully integrated release revision that contains the V020 migration-fact
+This runbook is executable only from one fully integrated release revision that contains the V023 migration-fact
 schema, the legacy projection, the bounded migration service/job, the transactional writer, and both migration
 feature-guard checks. A configuration/runbook-only revision or a revision assembled from only some task branches is
 not deployable. Build, test, record, and deploy the same immutable revision; do not rehearse one revision and execute
@@ -26,10 +26,10 @@ Before any rollout window:
 
 1. Assign a rollout owner, database owner, security approver, operations approver, and rollback decision-maker.
 2. Back up the target database and prove that the backup can be restored in a disposable environment.
-3. Confirm the migration catalog is contiguous from V001 through V020. Published V015 through V019 files are immutable.
+3. Confirm the migration catalog is contiguous from V001 through V023. Published V015 through V022 files are immutable.
 4. Store the production HMAC secret in the deployment secret manager. Do not put it in Git, tickets, terminal transcripts, screenshots, or this runbook.
-5. Register and approve the tenant's carrier, provider, warehouse, and V020 per-order migration facts. A row is approval evidence, not a place to guess missing facts.
-6. Decide which roles receive the five V019 permissions. V019 creates permissions only; it does not assign them to roles.
+5. Register and approve the tenant's carrier, provider, warehouse, and V023 per-order migration facts. A row is approval evidence, not a place to guess missing facts.
+6. Decide which roles receive the five V022 permissions. V022 creates permissions only; it does not assign them to roles.
 7. Confirm there is no real provider adapter in this phase. `mock` is allowed only in the `local` and `unit-test` profiles and must never be selected in production.
 
 Stop the rollout if any precondition is missing.
@@ -59,7 +59,7 @@ FULFILLMENT_IDEMPOTENCY_HMAC_KEY
 
 Record only whether each variable was supplied and rotated. Never record its value.
 
-## 4. Approving or reapproving a V020 migration fact
+## 4. Approving or reapproving a V023 migration fact
 
 One absolute fact row exists for each `(tenant_id, order_id)`. Reapproval updates that row; logical deletion does not permit a second row. The approving operator must verify the order evidence, domestic route, IANA timezones, enabled tenant warehouse, and enabled tenant provider before executing the template.
 
@@ -113,7 +113,7 @@ cd 'D:\code\furniture web'
 npm.cmd run verify:db-migrations
 ```
 
-The command must report a contiguous V001-V020 catalog and deterministic baseline. Resolve any gap or checksum mismatch before touching a database.
+The command must report a contiguous V001-V023 catalog and deterministic baseline. Resolve any gap or checksum mismatch before touching a database.
 
 The local migration script is `yudao电商管理平台前后端/yudao-cloud/script/docker/invoke-local-migrations.ps1`. It has no `-DryRun` option. Do not advertise or invoke a nonexistent dry-run parameter.
 
@@ -162,7 +162,7 @@ Start with `yudao.trade.fulfillment.write-new-model=false` and
 
 The allowed range is `1..100`; defaults are cursor `0`, limit `100`, and `dryRun=true`. Record only aggregate counts, next cursor, `hasMore`, and reason counts. Dry-run must not allocate numbers, lock rows for writing, write any table, or call a provider.
 
-Review every reason category. In particular, no row may be written for missing/stale/deleted facts, cross-border facts, missing warehouse/provider references, invalid carrier mapping, conflicting tracking identity, or an existing fulfillment aggregate. Correct source data or reapprove V020 facts; do not bypass the evaluator.
+Review every reason category. In particular, no row may be written for missing/stale/deleted facts, cross-border facts, missing warehouse/provider references, invalid carrier mapping, conflicting tracking identity, or an existing fulfillment aggregate. Correct source data or reapprove V023 facts; do not bypass the evaluator.
 
 Persist the returned `nextAfterOrderId` in the approved rollout record. Do not reuse a cursor from a different tenant or code revision.
 
@@ -192,7 +192,7 @@ A failure in one order must roll back that order only; it must not roll back an 
 Perform these checks with synthetic, approved test records only:
 
 - Actuator health is `UP` and database connectivity is healthy.
-- A role without V019 permissions cannot read or mutate fulfillment; an explicitly assigned staff role can perform only its granted operations.
+- A role without V022 permissions cannot read or mutate fulfillment; an explicitly assigned staff role can perform only its granted operations.
 - One `US -> US` and one `CA -> CA` domestic shipment can be created.
 - `US -> CA`, `CA -> US`, China-to-North-America, and third-country routes are rejected.
 - Repeating an identical write with the same idempotency key returns the original outcome without duplicate rows; changing the payload conflicts.
@@ -252,7 +252,7 @@ Allowed log fields are fixed provider label, HTTP status, elapsed milliseconds, 
 
 Use this order and stop after each step for verification:
 
-1. Deploy V015-V020 and the application code; configure the managed HMAC secret and real provider code.
+1. Deploy V015-V023 and the application code; configure the managed HMAC secret and real provider code.
 2. Set `yudao.trade.fulfillment.enabled=true` while keeping `yudao.trade.fulfillment.read-from-new-model=false`, `yudao.trade.fulfillment.customer-ui-enabled=false`, and `yudao.trade.fulfillment.legacy-migration-write-enabled=false`.
 3. Set `yudao.trade.fulfillment.write-new-model=true` for a small synthetic/admin write cohort and verify idempotency/outbox health.
 4. Run migration dry-run pages. Set `yudao.trade.fulfillment.legacy-migration-write-enabled=true` only for approved bounded writes, then set `yudao.trade.fulfillment.legacy-migration-write-enabled=false`.
@@ -273,8 +273,8 @@ Retain the HMAC secret while replay, cache validation, rollback investigation, o
 
 ## 12. Rollback rules
 
-- Never edit or drop V015-V020 after publication.
-- Never delete new fulfillment, idempotency, event, outbox, mapping, or V020 fact rows to simulate rollback.
+- Never edit or drop V015-V023 after publication.
+- Never delete new fulfillment, idempotency, event, outbox, mapping, or V023 fact rows to simulate rollback.
 - Restore old reads with flags, not schema reversal.
 - Stop new writes and migration writes through their flags before disabling the master switch.
 - Preserve idempotency and audit evidence so an exact replay remains explainable.
@@ -294,7 +294,7 @@ Tenant identifier:
 Flag state before/after (booleans only):
 Provider code approval reference (no credentials):
 HMAC configured/rotated (yes/no only):
-V020 approval ticket references:
+V023 approval ticket references:
 Dry-run cursor, counts, hasMore, and reason counts:
 Write cursor, counts, hasMore, and reason counts:
 Smoke checklist result:

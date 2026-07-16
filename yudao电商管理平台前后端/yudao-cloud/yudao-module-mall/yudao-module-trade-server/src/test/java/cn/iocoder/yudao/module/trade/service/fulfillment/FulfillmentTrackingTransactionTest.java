@@ -92,6 +92,8 @@ class FulfillmentTrackingTransactionTest extends BaseDbUnitTest {
         SecurityFrameworkUtils.setLoginUser(loginUser, new MockHttpServletRequest());
         TenantContextHolder.setTenantId(TENANT_ID);
         fulfillmentProperties.setIdempotencyHmacKey("test-only-manual-idempotency-secret");
+        fulfillmentProperties.setEnabled(true);
+        fulfillmentProperties.setWriteNewModel(true);
         seedAggregate("HANDED_TO_CARRIER", 1);
     }
 

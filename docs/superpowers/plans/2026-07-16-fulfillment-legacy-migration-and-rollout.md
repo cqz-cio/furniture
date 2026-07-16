@@ -4,7 +4,7 @@
 
 **Goal:** 在不改变现有管理端/App 物流查询契约的前提下，安全接入新履约轨迹投影、消除旧物流缓存与 provider 日志中的敏感信息，并通过逐订单审批事实将可证明的美国/加拿大境内旧物流单幂等回填到新模型。
 
-**Architecture:** Task 9 分成三个边界：9A 只负责兼容读取、HMAC 缓存和旧 provider 日志脱敏；9B 只负责候选分页和完全只读的 dry-run；9C 追加 V020 逐订单权威事实表，并以“一订单一 `REQUIRES_NEW` 事务”写入完整迁移聚合。Task 10 再把已有配置开关真正接到查询、写入、迁移和 mock provider 边界，并提供默认关闭、可回滚的 YAML 与运行手册。
+**Architecture:** Task 9 分成三个边界：9A 只负责兼容读取、HMAC 缓存和旧 provider 日志脱敏；9B 只负责候选分页和完全只读的 dry-run；9C 追加 V023 逐订单权威事实表，并以“一订单一 `REQUIRES_NEW` 事务”写入完整迁移聚合。Task 10 再把已有配置开关真正接到查询、写入、迁移和 mock provider 边界，并提供默认关闭、可回滚的 YAML 与运行手册。
 
 **Tech Stack:** Java 17, Spring Boot, Spring Cache, MyBatis-Plus, MySQL 8, H2, Jakarta Validation, XXL-Job, Vitest/Node.js migration contracts, Maven.
 
@@ -13,11 +13,11 @@
 - 只支持 `US -> US` 和 `CA -> CA` 境内履约；`US <-> CA`、中国到北美和任何第三国路线都不在本阶段范围内。
 - 保留 `GET /admin-api/trade/order/get-express-track-list?id=...`、`GET /app-api/trade/order/get-express-track-list?id=...`、请求/响应结构和管理端权限 `trade:order:query`。
 - App 必须先以 `orderId + loginUserId` 验证所有权，再查询任何新模型表；不存在、跨用户和跨租户均保持 `ORDER_NOT_FOUND`。
-- V015-V019 已发布内容不可修改；本计划只能追加 V020，并同步生成基线及 H2 测试夹具。
+- V015-V022 已发布内容不可修改；本计划只能追加 V023，并同步生成基线及 H2 测试夹具。
 - 缓存 HMAC secret 为空时必须绕过缓存并继续旧 provider 查询；不得使用 SHA-256、MD5、明文参数或进程随机 key 作为降级 key。KeyGenerator 被直接调用时仍须 fail closed。
 - 任何新模型写入开启时，HMAC secret 和 provider code 都必须非空；迁移写入还必须同时满足 `enabled && writeNewModel && legacyMigrationWriteEnabled`。
 - 轨迹兼容响应只允许 `occurredAt` 和 allowlist `standardStatus`；禁止暴露 description、location、provider status、raw payload、人工原因、trace、外部事件 ID、tracking、phone 或内部 provider 身份。
-- 回填只使用逐订单 V020 审批事实；不得猜测国家、时区、仓库或 provider，不得采用租户级默认、第一条启用记录、carrier 能力或地址文本推断。
+- 回填只使用逐订单 V023 审批事实；不得猜测国家、时区、仓库或 provider，不得采用租户级默认、第一条启用记录、carrier 能力或地址文本推断。
 - dry-run 不分配有副作用的编号、不写任何表、不加写锁、不调用 provider；写模式对每个订单独立提交或完整回滚。
 - 回填不得修改 `trade_order` 的支付、订单状态、deliveryTime、logisticsId、logisticsNo 或收件信息。
 - 日志、异常、job 返回值、outbox 和迁移结果不得包含 tracking、phone、地址、签名、secret、provider 原始请求/响应、HMAC 输入或 digest。
@@ -28,8 +28,8 @@
 
 ## Parallel Execution Boundaries
 
-1. 第一波可并行：9A；9B；9C-1（V020 migration、Node contract、H2 fixture）。三者不得同时修改同一文件；V020 stream 独占 baseline 和 migration catalog tests。
-2. 第二波必须串行集成：先合并 9B 与 V020，再做 9C-2 atomic writer；writer 依赖扫描结果类型和事实 mapper。
+1. 第一波可并行：9A；9B；9C-1（V023 migration、Node contract、H2 fixture）。三者不得同时修改同一文件；V023 stream 独占 baseline 和 migration catalog tests。
+2. 第二波必须串行集成：先合并 9B 与 V023，再做 9C-2 atomic writer；writer 依赖扫描结果类型和事实 mapper。
 3. 9C-3 job 依赖完整 migration service/writer，可与 9A 的最终安全复核并行。
 4. Task 10 的 properties/config 骨架可提前独立开发；feature guard 实际接线必须等 9A/9C API 稳定后完成。
 5. Runbook 和最终全量验证最后执行；不得基于未合并的测试数量或不存在的 metrics 编写结论。
@@ -286,7 +286,7 @@ Add `selectByIdAndTenantIdForUpdate(tenantId, orderId)` now for 9C. Never use th
 
 - [ ] **Step 4: Implement shared eligibility with fail-closed facts**
 
-Trim tracking only; preserve case/punctuation. Resolve carrier with a tenant/status/deleted-filtered list by `legacyExpressId` and require exactly one row. Validate nonempty positive order-item quantities, nonnull delivery time, no existing shipment, and no tracking collision. In 9B, `LegacyMigrationFactSourceImpl` returns `Optional.empty()`, so otherwise valid orders report `MISSING_ROUTE_FACTS` and never `WOULD_MIGRATE` until V020 is integrated.
+Trim tracking only; preserve case/punctuation. Resolve carrier with a tenant/status/deleted-filtered list by `legacyExpressId` and require exactly one row. Validate nonempty positive order-item quantities, nonnull delivery time, no existing shipment, and no tracking collision. In 9B, `LegacyMigrationFactSourceImpl` returns `Optional.empty()`, so otherwise valid orders report `MISSING_ROUTE_FACTS` and never `WOULD_MIGRATE` until V023 is integrated.
 
 - [ ] **Step 5: Reject non-dry-run until writer exists**
 
@@ -301,10 +301,10 @@ git add -- 'yudao电商管理平台前后端/yudao-cloud/yudao-module-mall/yudao
 git commit -m "feat: scan legacy fulfillment migration candidates"
 ```
 
-### Task 9C-1: Append V020 authoritative per-order migration facts
+### Task 9C-1: Append V023 authoritative per-order migration facts
 
 **Files:**
-- Create: `yudao电商管理平台前后端/yudao-cloud/sql/mysql/migrations/V020__trade_fulfillment_legacy_migration_fact.sql`
+- Create: `yudao电商管理平台前后端/yudao-cloud/sql/mysql/migrations/V023__trade_fulfillment_legacy_migration_fact.sql`
 - Modify: `.../sql/mysql/oakved-baseline.sql`
 - Create: `furniture web/tests/databaseFulfillmentLegacyMigrationFact.test.js`
 - Modify: `furniture web/tests/databaseFulfillmentMigration.test.js`
@@ -319,7 +319,7 @@ git commit -m "feat: scan legacy fulfillment migration candidates"
 - Modify: `.../src/test/resources/sql/clean.sql`
 - Test: `.../dal/mysql/fulfillment/LegacyMigrationFactPersistenceTest.java`
 
-**V020 contract:** one absolute row per `(tenant_id, order_id)`, even when logically deleted. Operations update/reapprove the same row; they do not create historical duplicates.
+**V023 contract:** one absolute row per `(tenant_id, order_id)`, even when logically deleted. Operations update/reapprove the same row; they do not create historical duplicates.
 
 ```sql
 CREATE TABLE IF NOT EXISTS `trade_fulfillment_legacy_migration_fact` (
@@ -347,9 +347,9 @@ CREATE TABLE IF NOT EXISTS `trade_fulfillment_legacy_migration_fact` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
 
-- [ ] **Step 1: Write V020 RED contracts**
+- [ ] **Step 1: Write V023 RED contracts**
 
-Assert catalog is contiguous 001-020; V015-V019 bytes are unchanged; exact columns are NOT NULL; tenant/order unique does not include `deleted`; no credentials/tracking/phone/address columns; baseline V020 section is byte-equivalent; H2 table and clean order include the new table.
+Assert catalog is contiguous 001-023; V015-V022 bytes are unchanged; exact columns are NOT NULL; tenant/order unique does not include `deleted`; no credentials/tracking/phone/address columns; baseline V023 section is byte-equivalent; H2 table and clean order include the new table.
 
 - [ ] **Step 2: Run Node RED**
 
@@ -358,7 +358,7 @@ cd 'D:\code\furniture web'
 npm.cmd test -- databaseFulfillmentLegacyMigrationFact.test.js databaseFulfillmentMigration.test.js databaseFulfillmentPermissionsMigration.test.js databaseSafetyWorkflow.test.js dbMigrations.test.js
 ```
 
-Expected: FAIL because V020 and its baseline section do not exist.
+Expected: FAIL because V023 and its baseline section do not exist.
 
 - [ ] **Step 3: Add SQL, DO and tenant-explicit mappers**
 
@@ -392,7 +392,7 @@ Expected: generator reports 20 migrations; all selected tests PASS.
 - [ ] **Step 6: Commit**
 
 ```powershell
-git add -- 'furniture web/tests' 'yudao电商管理平台前后端/yudao-cloud/sql/mysql/migrations/V020__trade_fulfillment_legacy_migration_fact.sql' 'yudao电商管理平台前后端/yudao-cloud/sql/mysql/oakved-baseline.sql' 'yudao电商管理平台前后端/yudao-cloud/yudao-module-mall/yudao-module-trade-server/src/main/java/cn/iocoder/yudao/module/trade/dal/dataobject/fulfillment/LegacyMigrationFactDO.java' 'yudao电商管理平台前后端/yudao-cloud/yudao-module-mall/yudao-module-trade-server/src/main/java/cn/iocoder/yudao/module/trade/dal/mysql/fulfillment' 'yudao电商管理平台前后端/yudao-cloud/yudao-module-mall/yudao-module-trade-server/src/test/resources/sql' 'yudao电商管理平台前后端/yudao-cloud/yudao-module-mall/yudao-module-trade-server/src/test/java/cn/iocoder/yudao/module/trade/dal/mysql/fulfillment'
+git add -- 'furniture web/tests' 'yudao电商管理平台前后端/yudao-cloud/sql/mysql/migrations/V023__trade_fulfillment_legacy_migration_fact.sql' 'yudao电商管理平台前后端/yudao-cloud/sql/mysql/oakved-baseline.sql' 'yudao电商管理平台前后端/yudao-cloud/yudao-module-mall/yudao-module-trade-server/src/main/java/cn/iocoder/yudao/module/trade/dal/dataobject/fulfillment/LegacyMigrationFactDO.java' 'yudao电商管理平台前后端/yudao-cloud/yudao-module-mall/yudao-module-trade-server/src/main/java/cn/iocoder/yudao/module/trade/dal/mysql/fulfillment' 'yudao电商管理平台前后端/yudao-cloud/yudao-module-mall/yudao-module-trade-server/src/test/resources/sql' 'yudao电商管理平台前后端/yudao-cloud/yudao-module-mall/yudao-module-trade-server/src/test/java/cn/iocoder/yudao/module/trade/dal/mysql/fulfillment'
 git commit -m "feat: add approved legacy migration facts"
 ```
 
@@ -644,9 +644,9 @@ fulfillment:
 Required sections:
 
 1. Scope/non-goals: US/CA domestic only; no China-North-America or US-CA cross-border; no real provider adapter yet.
-2. Prerequisites: backup, V015-V020 contiguous, HMAC management, carrier/provider/facts approval, V019 RBAC assignment decision.
+2. Prerequisites: backup, V015-V023 contiguous, HMAC management, carrier/provider/facts approval, V022 RBAC assignment decision.
 3. Flag dependency table and separate master/write/legacy-read/customer/migration meanings.
-4. V020 fact insertion/reapproval template with no real credentials/PII and mandatory approval/source evidence.
+4. V023 fact insertion/reapproval template with no real credentials/PII and mandatory approval/source evidence.
 5. Static migration verification via `npm.cmd run verify:db-migrations`; explicitly state `invoke-local-migrations.ps1` has no `-DryRun`.
 6. Disposable MySQL rehearsal using a named temporary database and cleanup only after verification.
 7. Migration job dry-run, reason-count review, cursor persistence, then explicit bounded write invocation.
@@ -654,7 +654,7 @@ Required sections:
 9. Observation using Actuator health, safe logs and DB queries for outbox backlog, stale PROCESSING, unknown mappings and shipment exceptions; explicitly state no fulfillment Micrometer counters exist yet.
 10. Enable order: deploy schema/code/HMAC -> enabled -> small write -> migration dry-run/write -> staff read -> customer UI.
 11. Disable order: customer -> read -> migration write -> write/provider ingestion -> enabled; retain HMAC.
-12. Rollback: never drop V015-V020 or delete new data; restore old reads by flags; preserve replay/audit evidence.
+12. Rollback: never drop V015-V023 or delete new data; restore old reads by flags; preserve replay/audit evidence.
 13. Security and evidence-record template excluding secret, raw provider payload, tracking, phone and address.
 
 - [ ] **Step 4: Run YAML tests and documentation checks**
@@ -689,7 +689,7 @@ npm.cmd test -- databaseFulfillmentLegacyMigrationFact.test.js databaseFulfillme
 npm.cmd run verify:db-migrations
 ```
 
-Expected: all five files PASS; verification reports contiguous V001-V020 and a deterministic baseline.
+Expected: all five files PASS; verification reports contiguous V001-V023 and a deterministic baseline.
 
 - [ ] **Step 2: Run complete fulfillment regression**
 
@@ -723,18 +723,18 @@ Expected: no whitespace errors; only planned files plus pre-existing user change
 
 - [ ] **Step 5: Record every acceptance item**
 
-- V020 applies after immutable V019 and baseline is deterministic.
+- V023 applies after immutable V022 and baseline is deterministic.
 - App foreign-user/cross-tenant requests fail before projection/provider.
 - Blank HMAC bypasses cache without breaking old queries or creating weak/plaintext keys.
 - Configured cache key is tenant-aware HMAC and contains no source values.
 - Provider DEBUG logs contain no request/response body, tracking, phone, account ID or signature.
 - No shipment/no event falls back; unsafe existing events return authoritative empty and never call provider.
 - Dry-run writes zero rows and calls zero providers; cursor advances over invalid records.
-- Missing/stale/cross-border/unapproved V020 facts write zero rows.
+- Missing/stale/cross-border/unapproved V023 facts write zero rows.
 - Exact replay creates no duplicate; modified source facts conflict without overwrite.
 - Each migrated order is all-or-nothing; one bad order does not roll back a prior committed order.
 - Migration does not alter payment/order/logistics legacy columns.
-- All new-model reads/writes can be disabled by flags without dropping V015-V020.
+- All new-model reads/writes can be disabled by flags without dropping V015-V023.
 - Mock provider cannot register in production profile.
 
 - [ ] **Step 6: Commit any final test-only corrections, then request review**
@@ -745,7 +745,7 @@ If a correction was needed, stage only the exact file named by the failing test 
 
 ## Execution Notes
 
-- The original Task 9 statement that every legacy order can be backfilled is superseded: current `trade_order` cannot prove route countries, timezones, warehouse or provider. V020 is the required authority boundary.
+- The original Task 9 statement that every legacy order can be backfilled is superseded: current `trade_order` cannot prove route countries, timezones, warehouse or provider. V023 is the required authority boundary.
 - The empty-HMAC decision intentionally favors compatibility: old queries remain available but uncached. This is secure because no alternative key is generated; production cost/latency impact must be visible in deployment checks.
 - `AUTHORITATIVE_EMPTY` is security-significant. Do not collapse it into fallback or `Optional.empty()`.
 - Real provider selection/webhook/polling remains blocked on the separate Phase 0 provider decision record; this plan does not invent provider-specific credentials or protocol DTOs.
