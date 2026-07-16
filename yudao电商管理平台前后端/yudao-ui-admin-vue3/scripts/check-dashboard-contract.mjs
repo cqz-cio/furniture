@@ -29,6 +29,23 @@ for (const token of [
   '流量指标仅代表已同意分析的可测量访问，可能存在覆盖偏差', 'comparisonLabel',
   'trafficDataAvailableFrom', 'changeText', '对比期浏览量', '对比期净销售额'
 ]) assert.ok(page.includes(token), `missing dashboard page token: ${token}`)
+for (const token of [
+  'coreMetricCards', 'trafficMetricCards', 'qualityStatus', 'periodHighlights',
+  '经营结果', '流量与转化', '数据质量', '经营趋势', '周期经营摘要',
+  '高流量低转化', '高退款', '低毛利或负毛利', '成本缺失',
+  'trafficPreset', 'salesPreset', 'profitPreset', 'tablePreset',
+  '排名', '详情 PV', '支付订单', '净销售额', '毛利润', '风险', '操作'
+]) assert.ok(page.includes(token), `missing redesigned dashboard token: ${token}`)
+assert.equal((page.match(/class="quality-alert"/g) || []).length, 0,
+  'quality messages must be consolidated into one quality status panel')
+assert.match(page, /const\s+coreMetricCards\s*=\s*computed[\s\S]*?canProfit\.value/,
+  'profit result cards must be structurally permission guarded')
+assert.match(page, /<el-table-column\s+type="index"\s+label="排名"\s+width="66"\s+fixed="left"/,
+  'ranking must remain the first fixed product-table column')
+assert.match(page, /<el-table[^>]*empty-text="当前筛选范围暂无商品经营数据"/,
+  'product table must own one concise empty state')
+assert.ok(!page.includes('<el-empty v-if="!products.length"'),
+  'product table must not render a second empty state below the table')
 assert.match(page, /canProfitExport\s*=\s*computed\(\(\)\s*=>\s*canProfit\.value\s*&&\s*checkPermi\(\['statistics:dashboard:profit-export'\]\)\)/, 'profit export UI must also require profit query permission')
 assert.ok(!/from\s+['"](?:react|@radix|shadcn\/)/i.test(page), 'dashboard must use the existing Vue stack')
 console.log('dashboard contract: OK')
