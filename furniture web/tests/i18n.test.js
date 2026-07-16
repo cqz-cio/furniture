@@ -116,6 +116,30 @@ describe("i18n locale helper", () => {
     expect(t("navigation.primary.newSale")).toBe("新品特惠");
   });
 
+  it("resolves every English storefront navigation label and falls back for untranslated locales", async () => {
+    const { getMessage, setLocale, t } = await loadI18n();
+    const keys = [
+      "navigation.storefront.primary.new",
+      "navigation.storefront.primary.collections",
+      "navigation.storefront.primary.bedroom",
+      "navigation.storefront.primary.living",
+      "navigation.storefront.primary.dining",
+      "navigation.storefront.primary.bespoke",
+      "navigation.storefront.primary.decor",
+      "navigation.storefront.primary.sale",
+      "navigation.storefront.submenu.catalog",
+      "navigation.storefront.submenu.rectangularTables",
+      "navigation.storefront.submenu.upholsterySwatches",
+    ];
+
+    keys.forEach((key) => expect(getMessage(key, "en")).toBeTruthy());
+    setLocale("zh-CN");
+    expect(t("navigation.storefront.primary.collections")).toBe("SHOP BY COLLECTIONS");
+    setLocale("fr");
+    expect(t("navigation.storefront.submenu.catalog")).toBe("OAKVED catalog");
+    setLocale("en");
+  });
+
   it("translates French messages and falls back to the key", async () => {
     const { setLocale, t } = await loadI18n();
 

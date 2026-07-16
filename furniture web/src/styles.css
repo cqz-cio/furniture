@@ -992,8 +992,10 @@ button {
   width: max-content;
   min-width: 100%;
   display: flex;
+  align-items: center;
   justify-content: center;
-  gap: clamp(18px, 2.6vw, 38px);
+  gap: clamp(18px, 2.1vw, 34px);
+  padding: 0 32px;
 }
 
 .nav-link {
@@ -1008,7 +1010,9 @@ button {
   cursor: pointer;
   padding: 0 0 4px;
   font-size: 14px;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .nav-link.active,
@@ -1232,6 +1236,50 @@ button {
 
 .mobile-drawer-layer {
   display: none;
+}
+
+.mobile-drawer-section {
+  padding: 20px 28px;
+  border-bottom: 1px solid var(--line);
+}
+
+.mobile-drawer-section h2 {
+  margin: 0 0 14px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.mobile-nav-group > a {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: space-between;
+  color: inherit;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.mobile-nav-group > a.accent {
+  color: #ca2022;
+}
+
+.mobile-nav-children {
+  display: grid;
+  gap: 10px;
+  padding: 4px 0 14px 18px;
+}
+
+.mobile-nav-children a {
+  display: flex;
+  min-height: 36px;
+  align-items: center;
+  color: var(--soft-ink);
+  font-size: 12px;
+  letter-spacing: 0.06em;
 }
 
 .app-main {

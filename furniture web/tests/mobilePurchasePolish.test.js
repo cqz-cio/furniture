@@ -74,10 +74,12 @@ describe("mobile purchase polish", () => {
 
     expect(source).toContain(".icon-button,\n.header-actions button {\n  min-width: 40px;");
     expect(source).toContain(".menu-icon {\n  width: 40px;\n  height: 40px;");
-    expect(source).toContain("gap: clamp(18px, 2.6vw, 38px);");
+    expect(source).toContain("gap: clamp(18px, 2.1vw, 34px);");
     expect(source).toContain(".nav-link {\n  display: inline-flex;");
     expect(source).toContain("min-height: 36px;");
-    expect(source).toContain("font-size: 14px;\n  text-transform: uppercase;");
+    expect(source).toContain("font-size: 14px;");
+    expect(source).toContain("letter-spacing: 0.08em;");
+    expect(source).toContain("text-transform: uppercase;");
     expect(source).toContain(".sale-links {\n    display: grid;");
     expect(source).toContain("grid-template-columns: repeat(2, minmax(0, 1fr));");
     expect(source).toContain(".sale-links a {\n    min-height: 44px;");
