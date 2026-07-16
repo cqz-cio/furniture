@@ -1,0 +1,19 @@
+package cn.iocoder.yudao.module.trade.service.fulfillment.migration;
+
+public enum MigrationOutcome {
+    WOULD_MIGRATE,
+    MIGRATED,
+    ALREADY_MIGRATED,
+    NOT_SHIPPED,
+    BLANK_TRACKING,
+    INVALID_CARRIER,
+    TRACKING_CONFLICT,
+    EXISTING_FULFILLMENT,
+    MISSING_ROUTE_FACTS,
+    MISSING_WAREHOUSE,
+    MISSING_PROVIDER,
+    MISSING_DELIVERY_TIME,
+    INVALID_ORDER_ITEMS,
+    IDEMPOTENCY_CONFLICT,
+    CONCURRENT_CHANGE
+}

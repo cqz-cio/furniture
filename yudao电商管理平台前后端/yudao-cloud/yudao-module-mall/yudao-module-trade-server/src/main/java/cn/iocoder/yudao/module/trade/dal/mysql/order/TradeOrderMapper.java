@@ -27,6 +27,20 @@ public interface TradeOrderMapper extends BaseMapperX<TradeOrderDO> {
     @Select("SELECT * FROM trade_order WHERE id = #{orderId} AND deleted = FALSE FOR UPDATE")
     TradeOrderDO selectByIdForUpdate(@Param("orderId") Long orderId);
 
+    @Select("SELECT * FROM trade_order WHERE tenant_id = #{tenantId} AND id = #{orderId} "
+            + "AND deleted = FALSE FOR UPDATE")
+    TradeOrderDO selectByIdAndTenantIdForUpdate(@Param("tenantId") Long tenantId,
+                                                 @Param("orderId") Long orderId);
+
+    @Select("SELECT * FROM trade_order WHERE tenant_id = #{tenantId} AND id > #{afterOrderId} "
+            + "AND status IN (10, 20) "
+            + "AND ((logistics_id IS NOT NULL AND logistics_id <> 0) "
+            + "OR (logistics_no IS NOT NULL AND TRIM(logistics_no) <> '')) "
+            + "AND deleted = FALSE ORDER BY id ASC LIMIT #{limitPlusOne}")
+    List<TradeOrderDO> selectLegacyMigrationCandidates(@Param("tenantId") Long tenantId,
+                                                        @Param("afterOrderId") Long afterOrderId,
+                                                        @Param("limitPlusOne") int limitPlusOne);
+
     default int updateByIdAndStatus(Long id, Integer status, TradeOrderDO update) {
         return update(update, new LambdaUpdateWrapper<TradeOrderDO>()
                 .eq(TradeOrderDO::getId, id).eq(TradeOrderDO::getStatus, status));
