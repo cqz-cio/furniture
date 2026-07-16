@@ -73,6 +73,9 @@ public class FulfillmentTrackingServiceImpl implements FulfillmentTrackingServic
             try {
                 return inNewTransaction(() -> applyOnce(command));
             } catch (DuplicateKeyException duplicate) {
+                if (!isTrackingIdentityDuplicate(duplicate)) {
+                    throw duplicate;
+                }
                 TrackingApplyResult existing = inNewTransaction(() -> loadDuplicateResult(command));
                 if (existing != null) {
                     return existing;
@@ -93,11 +96,8 @@ public class FulfillmentTrackingServiceImpl implements FulfillmentTrackingServic
         if (shipment == null) {
             throw exception(FULFILLMENT_SHIPMENT_NOT_FOUND);
         }
-        ShipmentPackageDO shipmentPackage = packageMapper.selectByIdAndTenantId(command.getPackageId(), tenantId);
-        if (shipmentPackage == null || !shipment.getId().equals(shipmentPackage.getShipmentId())) {
-            throw exception(FULFILLMENT_SHIPMENT_NOT_FOUND);
-        }
-        ShipmentLegDO leg = resolveLeg(command, shipment, shipmentPackage);
+        ShipmentLegDO leg = resolveLeg(command, shipment);
+        ShipmentPackageDO shipmentPackage = resolvePackage(command, shipment, leg);
         LogisticsProviderDO provider = providerMapper.selectByIdAndTenantId(command.getProviderId(), tenantId);
         if (provider == null || !Integer.valueOf(0).equals(provider.getStatus())) {
             throw exception(FULFILLMENT_PROVIDER_NOT_AVAILABLE);
@@ -105,7 +105,8 @@ public class FulfillmentTrackingServiceImpl implements FulfillmentTrackingServic
         if (leg != null && !provider.getId().equals(leg.getProviderId())) {
             throw exception(FULFILLMENT_PROVIDER_NOT_AVAILABLE);
         }
-        if (leg == null && shipment.getProviderId() != null && !provider.getId().equals(shipment.getProviderId())) {
+        if (leg == null && (shipment.getProviderId() == null
+                || !provider.getId().equals(shipment.getProviderId()))) {
             throw exception(FULFILLMENT_PROVIDER_NOT_AVAILABLE);
         }
         CarrierAndTracking carrierAndTracking = resolveCarrierAndTracking(tenantId, shipmentPackage, leg);
@@ -116,9 +117,11 @@ public class FulfillmentTrackingServiceImpl implements FulfillmentTrackingServic
         LocalDateTime occurredAt = LocalDateTime.ofInstant(occurredInstant, ZoneOffset.UTC);
         LocalDateTime receivedAt = LocalDateTime.ofInstant(receivedInstant, ZoneOffset.UTC);
         String externalEventId = TrackingEventCanonicalizer.normalize(providerEvent.externalEventId());
-        String eventHash = TrackingEventCanonicalizer.stableHash(carrierAndTracking.carrierCode(),
-                carrierAndTracking.trackingNumber(), providerEvent.providerStatus(), occurredInstant,
-                providerEvent.location(), providerEvent.description());
+        String eventHash = externalEventId == null
+                ? TrackingEventCanonicalizer.stableHash(carrierAndTracking.carrierCode(),
+                        carrierAndTracking.trackingNumber(), providerEvent.providerStatus(), occurredInstant,
+                        providerEvent.location(), providerEvent.description())
+                : null;
 
         TrackingEventDO preexisting = findExistingEvent(tenantId, provider.getId(), externalEventId, eventHash);
         if (preexisting != null) {
@@ -131,7 +134,7 @@ public class FulfillmentTrackingServiceImpl implements FulfillmentTrackingServic
         TrackingEventDO event = new TrackingEventDO()
                 .setTenantId(tenantId)
                 .setShipmentId(shipment.getId())
-                .setPackageId(shipmentPackage.getId())
+                .setPackageId(shipmentPackage == null ? null : shipmentPackage.getId())
                 .setShipmentLegId(leg == null ? null : leg.getId())
                 .setProviderId(provider.getId())
                 .setExternalEventId(externalEventId)
@@ -153,8 +156,8 @@ public class FulfillmentTrackingServiceImpl implements FulfillmentTrackingServic
         eventMapper.insert(event);
 
         String shipmentPreviousStatus = shipment.getStatus();
-        TransitionOutcome packageOutcome = applyPackageTransition(tenantId, shipmentPackage, resolution,
-                occurredAt, event.getId());
+        TransitionOutcome packageOutcome = shipmentPackage == null ? TransitionOutcome.noop(null)
+                : applyPackageTransition(tenantId, shipmentPackage, resolution, occurredAt, event.getId());
         TransitionOutcome legOutcome = leg == null ? TransitionOutcome.noop(null) : applyLegTransition(tenantId,
                 leg, resolution, occurredAt, event.getId());
         TransitionOutcome shipmentOutcome = applyShipmentTransition(tenantId, shipment, shipmentPackage,
@@ -178,24 +181,47 @@ public class FulfillmentTrackingServiceImpl implements FulfillmentTrackingServic
             insertOutbox(tenantId, shipment, shipmentPackage, leg, event,
                     "TRACKING_STATUS_MAPPING_UNKNOWN", receivedAt);
         }
-        String statusEventType = stateChanged ? statusEventType(resolution.candidateStatus()) : null;
+        String statusEventType = shipmentOutcome.stateChanged()
+                ? statusEventType(ShipmentStatusEnum.valueOf(shipmentOutcome.resultStatus())) : null;
         if (statusEventType != null) {
             insertOutbox(tenantId, shipment, shipmentPackage, leg, event, statusEventType, receivedAt);
         }
         return new TrackingApplyResult(true, stateChanged, shipmentPreviousStatus, shipmentResultStatus);
     }
 
-    private ShipmentLegDO resolveLeg(ApplyTrackingEventCommand command, ShipmentDO shipment,
-                                     ShipmentPackageDO shipmentPackage) {
+    private ShipmentLegDO resolveLeg(ApplyTrackingEventCommand command, ShipmentDO shipment) {
         if (command.getShipmentLegId() == null) {
             return null;
         }
         ShipmentLegDO leg = legMapper.selectByIdAndTenantId(command.getShipmentLegId(), command.getTenantId());
-        if (leg == null || !shipment.getId().equals(leg.getShipmentId())
-                || leg.getPackageId() != null && !shipmentPackage.getId().equals(leg.getPackageId())) {
+        if (leg == null || !shipment.getId().equals(leg.getShipmentId())) {
             throw exception(FULFILLMENT_SHIPMENT_NOT_FOUND);
         }
         return leg;
+    }
+
+    private ShipmentPackageDO resolvePackage(ApplyTrackingEventCommand command, ShipmentDO shipment,
+                                               ShipmentLegDO leg) {
+        Long effectivePackageId;
+        if (leg == null) {
+            effectivePackageId = Objects.requireNonNull(command.getPackageId(), "packageId");
+        } else if (leg.getPackageId() == null) {
+            if (command.getPackageId() != null) {
+                throw exception(FULFILLMENT_SHIPMENT_NOT_FOUND);
+            }
+            return null;
+        } else {
+            if (command.getPackageId() != null && !leg.getPackageId().equals(command.getPackageId())) {
+                throw exception(FULFILLMENT_SHIPMENT_NOT_FOUND);
+            }
+            effectivePackageId = leg.getPackageId();
+        }
+        ShipmentPackageDO shipmentPackage = packageMapper.selectByIdAndTenantId(effectivePackageId,
+                command.getTenantId());
+        if (shipmentPackage == null || !shipment.getId().equals(shipmentPackage.getShipmentId())) {
+            throw exception(FULFILLMENT_SHIPMENT_NOT_FOUND);
+        }
+        return shipmentPackage;
     }
 
     private CarrierAndTracking resolveCarrierAndTracking(Long tenantId, ShipmentPackageDO shipmentPackage,
@@ -207,7 +233,8 @@ public class FulfillmentTrackingServiceImpl implements FulfillmentTrackingServic
         }
         String trackingNumber = leg == null ? TrackingEventCanonicalizer.normalize(shipmentPackage.getTrackingNumber())
                 : TrackingEventCanonicalizer.normalize(leg.getTrackingNumber());
-        if (trackingNumber == null && leg != null && Objects.equals(leg.getCarrierId(), shipmentPackage.getCarrierId())) {
+        if (trackingNumber == null && leg != null && shipmentPackage != null
+                && Objects.equals(leg.getCarrierId(), shipmentPackage.getCarrierId())) {
             trackingNumber = TrackingEventCanonicalizer.normalize(shipmentPackage.getTrackingNumber());
         }
         if (trackingNumber == null) {
@@ -222,16 +249,6 @@ public class FulfillmentTrackingServiceImpl implements FulfillmentTrackingServic
         ShipmentStatusEnum current = ShipmentStatusEnum.valueOf(shipmentPackage.getStatus());
         if (!isNewer(occurredAt, resolution.statusPriority(), eventId, shipmentPackage.getLastEventOccurredAt(),
                 shipmentPackage.getLastEventStatusPriority(), shipmentPackage.getLastEventId())) {
-            return TransitionOutcome.noop(current.name());
-        }
-        if (isSameRank(occurredAt, resolution.statusPriority(), shipmentPackage.getLastEventOccurredAt(),
-                shipmentPackage.getLastEventStatusPriority())) {
-            if (packageMapper.updateTrackingStateByIdAndVersion(tenantId, shipmentPackage.getId(),
-                    shipmentPackage.getVersion(), current.name(), occurredAt, resolution.statusPriority(), eventId) != 1) {
-                throw new OptimisticTrackingConflictException();
-            }
-            shipmentPackage.setLastEventOccurredAt(occurredAt).setLastEventStatusPriority(resolution.statusPriority())
-                    .setLastEventId(eventId).setVersion(shipmentPackage.getVersion() + 1);
             return TransitionOutcome.noop(current.name());
         }
         ShipmentStateMachine.TransitionDecision decision = stateMachine.decide(current,
@@ -259,16 +276,6 @@ public class FulfillmentTrackingServiceImpl implements FulfillmentTrackingServic
         ShipmentStatusEnum current = ShipmentStatusEnum.valueOf(leg.getStatus());
         if (!isNewer(occurredAt, resolution.statusPriority(), eventId, leg.getLastEventOccurredAt(),
                 leg.getLastEventStatusPriority(), leg.getLastEventId())) {
-            return TransitionOutcome.noop(current.name());
-        }
-        if (isSameRank(occurredAt, resolution.statusPriority(), leg.getLastEventOccurredAt(),
-                leg.getLastEventStatusPriority())) {
-            if (legMapper.updateTrackingStateByIdAndVersion(tenantId, leg.getId(), leg.getVersion(), current.name(),
-                    occurredAt, resolution.statusPriority(), eventId) != 1) {
-                throw new OptimisticTrackingConflictException();
-            }
-            leg.setLastEventOccurredAt(occurredAt).setLastEventStatusPriority(resolution.statusPriority())
-                    .setLastEventId(eventId).setVersion(leg.getVersion() + 1);
             return TransitionOutcome.noop(current.name());
         }
         ShipmentStateMachine.TransitionDecision decision = stateMachine.decide(current,
@@ -299,26 +306,21 @@ public class FulfillmentTrackingServiceImpl implements FulfillmentTrackingServic
             return TransitionOutcome.noop(shipment.getStatus());
         }
         ShipmentStatusEnum current = ShipmentStatusEnum.valueOf(shipment.getStatus());
-        if (isSameRank(occurredAt, resolution.statusPriority(), shipment.getLastEventOccurredAt(),
-                shipment.getLastEventStatusPriority())) {
-            if (shipmentMapper.updateTrackingStateByIdAndVersion(tenantId, shipment.getId(), shipment.getVersion(),
-                    current.name(), occurredAt, resolution.statusPriority(), eventId, null) != 1) {
-                throw new OptimisticTrackingConflictException();
+        ShipmentStatusEnum aggregateCandidate;
+        if (targetPackage == null) {
+            aggregateCandidate = resolution.candidateStatus();
+        } else {
+            List<ShipmentPackageDO> packages = packageMapper.selectListByShipmentId(tenantId, shipment.getId());
+            List<ShipmentStatusEnum> activeStatuses = new ArrayList<>();
+            for (ShipmentPackageDO candidate : packages == null ? List.<ShipmentPackageDO>of() : packages) {
+                String status = candidate.getId().equals(targetPackage.getId())
+                        ? targetPackageStatus : candidate.getStatus();
+                if (!ShipmentStatusEnum.CANCELED.name().equals(status)) {
+                    activeStatuses.add(ShipmentStatusEnum.valueOf(status));
+                }
             }
-            shipment.setLastEventOccurredAt(occurredAt).setLastEventStatusPriority(resolution.statusPriority())
-                    .setLastEventId(eventId).setVersion(shipment.getVersion() + 1);
-            return TransitionOutcome.noop(current.name());
+            aggregateCandidate = aggregateShipmentCandidate(activeStatuses, resolution.candidateStatus(), current);
         }
-        List<ShipmentPackageDO> packages = packageMapper.selectListByShipmentId(tenantId, shipment.getId());
-        List<ShipmentStatusEnum> activeStatuses = new ArrayList<>();
-        for (ShipmentPackageDO candidate : packages == null ? List.<ShipmentPackageDO>of() : packages) {
-            String status = candidate.getId().equals(targetPackage.getId()) ? targetPackageStatus : candidate.getStatus();
-            if (!ShipmentStatusEnum.CANCELED.name().equals(status)) {
-                activeStatuses.add(ShipmentStatusEnum.valueOf(status));
-            }
-        }
-        ShipmentStatusEnum aggregateCandidate = aggregateShipmentCandidate(activeStatuses,
-                resolution.candidateStatus(), current);
         ShipmentStateMachine.TransitionDecision decision = stateMachine.decide(current, aggregateCandidate,
                 shipment.getLastEventOccurredAt(), occurredAt);
         boolean applyWatermark = decision == ShipmentStateMachine.TransitionDecision.APPLY
@@ -392,7 +394,9 @@ public class FulfillmentTrackingServiceImpl implements FulfillmentTrackingServic
         payload.put("tenantId", tenantId);
         payload.put("orderId", shipment.getOrderId());
         payload.put("shipmentId", shipment.getId());
-        payload.put("packageId", shipmentPackage.getId());
+        if (shipmentPackage != null) {
+            payload.put("packageId", shipmentPackage.getId());
+        }
         if (leg != null) {
             payload.put("shipmentLegId", leg.getId());
         }
@@ -414,15 +418,17 @@ public class FulfillmentTrackingServiceImpl implements FulfillmentTrackingServic
     private TrackingApplyResult loadDuplicateResult(ApplyTrackingEventCommand command) {
         ProviderTrackingEvent providerEvent = command.getProviderEvent();
         String externalId = TrackingEventCanonicalizer.normalize(providerEvent.externalEventId());
-        ShipmentPackageDO shipmentPackage = packageMapper.selectByIdAndTenantId(command.getPackageId(),
-                command.getTenantId());
         ShipmentLegDO leg = command.getShipmentLegId() == null ? null
                 : legMapper.selectByIdAndTenantId(command.getShipmentLegId(), command.getTenantId());
-        CarrierAndTracking facts = shipmentPackage == null ? null
+        Long effectivePackageId = leg != null && leg.getPackageId() != null ? leg.getPackageId() : command.getPackageId();
+        ShipmentPackageDO shipmentPackage = effectivePackageId == null ? null
+                : packageMapper.selectByIdAndTenantId(effectivePackageId, command.getTenantId());
+        CarrierAndTracking facts = leg == null && shipmentPackage == null ? null
                 : resolveCarrierAndTracking(command.getTenantId(), shipmentPackage, leg);
-        String hash = facts == null ? null : TrackingEventCanonicalizer.stableHash(facts.carrierCode(),
-                facts.trackingNumber(), providerEvent.providerStatus(), providerEvent.occurredAt(),
-                providerEvent.location(), providerEvent.description());
+        String hash = externalId != null || facts == null ? null
+                : TrackingEventCanonicalizer.stableHash(facts.carrierCode(), facts.trackingNumber(),
+                        providerEvent.providerStatus(), providerEvent.occurredAt(), providerEvent.location(),
+                        providerEvent.description());
         TrackingEventDO existing = findExistingEvent(command.getTenantId(), command.getProviderId(), externalId, hash);
         if (existing == null) {
             return null;
@@ -475,10 +481,15 @@ public class FulfillmentTrackingServiceImpl implements FulfillmentTrackingServic
         return incomingId != null && (currentId == null || incomingId > currentId);
     }
 
-    private static boolean isSameRank(LocalDateTime incomingAt, int incomingPriority,
-                                      LocalDateTime currentAt, Integer currentPriority) {
-        return currentAt != null && incomingAt.equals(currentAt)
-                && currentPriority != null && incomingPriority == currentPriority;
+    private static boolean isTrackingIdentityDuplicate(DuplicateKeyException duplicate) {
+        Throwable cause = duplicate.getMostSpecificCause();
+        String message = cause == null ? duplicate.getMessage() : cause.getMessage();
+        if (message == null) {
+            return false;
+        }
+        String normalized = message.toUpperCase(java.util.Locale.ROOT);
+        return normalized.contains("UK_TRACKING_EVENT_EXTERNAL")
+                || normalized.contains("UK_TRACKING_EVENT_HASH");
     }
 
     private static String statusEventType(ShipmentStatusEnum status) {
@@ -502,7 +513,6 @@ public class FulfillmentTrackingServiceImpl implements FulfillmentTrackingServic
         Objects.requireNonNull(command, "command");
         Objects.requireNonNull(command.getTenantId(), "tenantId");
         Objects.requireNonNull(command.getShipmentId(), "shipmentId");
-        Objects.requireNonNull(command.getPackageId(), "packageId");
         Objects.requireNonNull(command.getProviderId(), "providerId");
         Objects.requireNonNull(command.getProviderEvent(), "providerEvent");
         Objects.requireNonNull(command.getProviderEvent().occurredAt(), "occurredAt");

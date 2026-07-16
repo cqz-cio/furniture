@@ -426,6 +426,7 @@ CREATE TABLE IF NOT EXISTS "trade_tracking_event"
     "package_id"         bigint,
     "shipment_leg_id"    bigint,
     "provider_id"        bigint        NOT NULL,
+    -- H2 VARCHAR equality is binary/case-sensitive, matching MySQL utf8mb4_bin in V017.
     "external_event_id"  varchar(128),
     "event_hash"         char(64),
     "standard_status"    varchar(32)   NOT NULL,

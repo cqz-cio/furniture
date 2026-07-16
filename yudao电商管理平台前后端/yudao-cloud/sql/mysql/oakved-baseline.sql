@@ -7761,6 +7761,9 @@ ALTER TABLE `trade_shipment_leg`
 ALTER TABLE `trade_tracking_status_mapping`
   ADD COLUMN `status_priority` int NOT NULL DEFAULT 0 AFTER `standard_status`;
 
+ALTER TABLE `trade_tracking_event`
+  MODIFY COLUMN `external_event_id` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL;
+
 ALTER TABLE `trade_shipment`
   ADD COLUMN `last_event_status_priority` int DEFAULT NULL AFTER `last_event_occurred_at`,
   ADD COLUMN `last_event_id` bigint DEFAULT NULL AFTER `last_event_status_priority`;
@@ -7957,5 +7960,5 @@ INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256)
 INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('014','statistics commerce dashboard backfill','V014__statistics_commerce_dashboard_backfill.sql','382b67883bb7a3d4694ef6591ea9f4049194f649ad3410e5da7be9758186d04a') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
 INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('015','trade fulfillment core','V015__trade_fulfillment_core.sql','683687685b5b4943949d965f3b3df86eaa2e4dfcdbf50641fb4fc05db8d80ec4') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
 INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('016','trade tracking status mapping','V016__trade_tracking_status_mapping.sql','21dbb820f0e1099b73154bcc2d6011cdc1ea98556f580aaa0e5ccdd7ed7951da') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
-INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('017','trade tracking event watermarks','V017__trade_tracking_event_watermarks.sql','f8ee3b72f077b54e0b0101953630953901ff206e377531cfbd28f2253995062c') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
+INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('017','trade tracking event watermarks','V017__trade_tracking_event_watermarks.sql','4bddf6d0d0833138a45a6c4b52a6634e67a2798d66b7bf43cee8908a02bed46b') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
 SET FOREIGN_KEY_CHECKS = 1;

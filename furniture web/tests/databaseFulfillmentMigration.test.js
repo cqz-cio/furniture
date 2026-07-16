@@ -55,6 +55,7 @@ describe("V017 deterministic tracking watermarks", () => {
     expect(sql).toContain("ALTER TABLE `trade_shipment`");
     expect(sql).toContain("ALTER TABLE `trade_shipment_package`");
     expect(sql).toContain("ALTER TABLE `trade_shipment_leg`");
+    expect(sql).toContain("MODIFY COLUMN `external_event_id` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL");
     expect(sql).not.toContain("V016");
   });
 

@@ -97,22 +97,39 @@ class FulfillmentTrackingTransactionTest extends BaseDbUnitTest {
     }
 
     @Test
-    void duplicateExternalIdAndCanonicalHashAreSuccessfulNoOpsWithoutOutbox() {
+    void externalIdAndCanonicalHashUseMutuallyExclusiveIdentities() {
         mapping("MOVING", "IN_TRANSIT", "v1", 30, "2026-01-01 00:00:00.000000");
         Instant occurredAt = Instant.parse("2026-07-15T02:03:04.123456789Z");
         service.applyEvent(command("duplicate-1", "moving", occurredAt));
         int outboxCount = count("trade_fulfillment_outbox_event");
 
         TrackingApplyResult externalDuplicate = service.applyEvent(command(" duplicate-1 ", " MOVING ", occurredAt));
-        TrackingApplyResult hashDuplicate = service.applyEvent(command(null, "moving", occurredAt));
+        TrackingApplyResult firstHashIdentity = service.applyEvent(command(null, "moving", occurredAt));
         TrackingApplyResult hashDuplicateNormalized = service.applyEvent(command(null, "  MOVING  ",
                 Instant.parse("2026-07-15T02:03:04.123456001Z")));
 
         assertFalse(externalDuplicate.inserted());
+        assertTrue(firstHashIdentity.inserted());
         assertFalse(hashDuplicateNormalized.inserted());
-        assertEquals(hashDuplicate.currentStatus(), hashDuplicateNormalized.currentStatus());
-        assertEquals(1, count("trade_tracking_event"));
-        assertEquals(outboxCount, count("trade_fulfillment_outbox_event"));
+        assertEquals(firstHashIdentity.currentStatus(), hashDuplicateNormalized.currentStatus());
+        assertEquals(2, count("trade_tracking_event"));
+        assertEquals(outboxCount + 1, count("trade_fulfillment_outbox_event"));
+        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM trade_tracking_event "
+                + "WHERE external_event_id = 'duplicate-1' AND event_hash IS NULL", Integer.class));
+    }
+
+    @Test
+    void externalEventIdsAreCaseSensitiveAndDifferentIdsMayDescribeTheSameFact() {
+        mapping("MOVING", "IN_TRANSIT", "v1", 30, "2026-01-01 00:00:00.000000");
+        Instant occurredAt = Instant.parse("2026-07-15T02:30:00Z");
+
+        assertTrue(service.applyEvent(command("Evt-A", "MOVING", occurredAt)).inserted());
+        assertTrue(service.applyEvent(command("evt-a", "MOVING", occurredAt)).inserted());
+        assertTrue(service.applyEvent(command("Evt-B", "MOVING", occurredAt)).inserted());
+
+        assertEquals(3, count("trade_tracking_event"));
+        assertEquals(3, jdbc.queryForObject("SELECT COUNT(*) FROM trade_tracking_event WHERE event_hash IS NULL",
+                Integer.class));
     }
 
     @Test
@@ -217,8 +234,8 @@ class FulfillmentTrackingTransactionTest extends BaseDbUnitTest {
         TrackingApplyResult second = service.applyEvent(command("tie-2", "SAME RANK EXCEPTION", occurredAt));
 
         Long secondEventId = value("SELECT id FROM trade_tracking_event WHERE external_event_id = 'tie-2'", Long.class);
-        assertFalse(second.stateChanged());
-        assertEquals("IN_TRANSIT", second.currentStatus());
+        assertTrue(second.stateChanged());
+        assertEquals("DELIVERY_EXCEPTION", second.currentStatus());
         assertEquals(secondEventId, value("SELECT last_event_id FROM trade_shipment_package WHERE id = "
                 + PACKAGE_ID, Long.class));
         assertEquals(secondEventId, value("SELECT last_event_id FROM trade_shipment_leg WHERE id = "
@@ -273,6 +290,113 @@ class FulfillmentTrackingTransactionTest extends BaseDbUnitTest {
                 + ORDER_ID, String.class));
         assertEquals(1, value("SELECT delivered_shipment_count FROM trade_order_fulfillment_summary WHERE order_id = "
                 + ORDER_ID, Integer.class));
+    }
+
+    @Test
+    void sameTimeDeliveredEventsOnlyEmitShipmentDeliveredWhenLastPackageTransitions() {
+        jdbc.update("UPDATE trade_shipment SET status = 'OUT_FOR_DELIVERY', version = 2 WHERE id = ?", SHIPMENT_ID);
+        jdbc.update("UPDATE trade_shipment_package SET status = 'OUT_FOR_DELIVERY', version = 2 WHERE id = ?", PACKAGE_ID);
+        jdbc.update("UPDATE trade_shipment_leg SET status = 'OUT_FOR_DELIVERY', version = 2 WHERE id = ?", LEG_ID);
+        jdbc.update("INSERT INTO trade_shipment_package (id, tenant_id, shipment_id, package_no, package_type, "
+                + "carrier_id, tracking_number, status, version) VALUES "
+                + "(71002, ?, ?, 'PKG-2', 'PARCEL', 73, 'private-tracking-456', 'OUT_FOR_DELIVERY', 2)",
+                TENANT_ID, SHIPMENT_ID);
+        jdbc.update("INSERT INTO trade_shipment_leg (id, tenant_id, shipment_id, package_id, sequence_no, leg_type, "
+                + "carrier_id, provider_id, tracking_number, status, version) VALUES "
+                + "(72002, ?, ?, 71002, 2, 'LAST_MILE', 73, 83, 'private-tracking-456', 'OUT_FOR_DELIVERY', 2)",
+                TENANT_ID, SHIPMENT_ID);
+        mapping("DONE", "DELIVERED", "v1", 90, "2026-01-01 00:00:00.000000");
+        Instant sameTime = Instant.parse("2026-07-15T07:10:00Z");
+
+        service.applyEvent(command("same-done-1", "DONE", sameTime));
+
+        assertEquals("OUT_FOR_DELIVERY", value("SELECT status FROM trade_shipment WHERE id = " + SHIPMENT_ID,
+                String.class));
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM trade_fulfillment_outbox_event "
+                + "WHERE event_type = 'DELIVERED'", Integer.class));
+
+        service.applyEvent(command("same-done-2", "DONE", sameTime)
+                .setPackageId(71002L).setShipmentLegId(72002L));
+
+        assertEquals("DELIVERED", value("SELECT status FROM trade_shipment WHERE id = " + SHIPMENT_ID, String.class));
+        assertEquals("DELIVERED", value("SELECT status FROM trade_order_fulfillment_summary WHERE order_id = "
+                + ORDER_ID, String.class));
+        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM trade_fulfillment_outbox_event "
+                + "WHERE event_type = 'DELIVERED'", Integer.class));
+    }
+
+    @Test
+    void returnedOutboxAlsoWaitsForWholeShipmentTransition() {
+        jdbc.update("UPDATE trade_shipment SET status = 'RETURNING', version = 2 WHERE id = ?", SHIPMENT_ID);
+        jdbc.update("UPDATE trade_shipment_package SET status = 'RETURNING', version = 2 WHERE id = ?", PACKAGE_ID);
+        jdbc.update("UPDATE trade_shipment_leg SET status = 'RETURNING', version = 2 WHERE id = ?", LEG_ID);
+        jdbc.update("INSERT INTO trade_shipment_package (id, tenant_id, shipment_id, package_no, package_type, "
+                + "carrier_id, tracking_number, status, version) VALUES "
+                + "(71002, ?, ?, 'PKG-2', 'PARCEL', 73, 'private-tracking-456', 'RETURNING', 2)",
+                TENANT_ID, SHIPMENT_ID);
+        jdbc.update("INSERT INTO trade_shipment_leg (id, tenant_id, shipment_id, package_id, sequence_no, leg_type, "
+                + "carrier_id, provider_id, tracking_number, status, version) VALUES "
+                + "(72002, ?, ?, 71002, 2, 'LAST_MILE', 73, 83, 'private-tracking-456', 'RETURNING', 2)",
+                TENANT_ID, SHIPMENT_ID);
+        mapping("RETURNED", "RETURNED", "v1", 100, "2026-01-01 00:00:00.000000");
+        Instant sameTime = Instant.parse("2026-07-15T07:20:00Z");
+
+        service.applyEvent(command("same-return-1", "RETURNED", sameTime));
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM trade_fulfillment_outbox_event "
+                + "WHERE event_type = 'RETURNED'", Integer.class));
+
+        service.applyEvent(command("same-return-2", "RETURNED", sameTime)
+                .setPackageId(71002L).setShipmentLegId(72002L));
+
+        assertEquals("RETURNED", value("SELECT status FROM trade_shipment WHERE id = " + SHIPMENT_ID, String.class));
+        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM trade_fulfillment_outbox_event "
+                + "WHERE event_type = 'RETURNED'", Integer.class));
+    }
+
+    @Test
+    void shipmentLevelLegRequiresNoPackageAndOnlyUpdatesLegAndShipment() {
+        mapping("MOVING", "IN_TRANSIT", "v1", 30, "2026-01-01 00:00:00.000000");
+        jdbc.update("UPDATE trade_shipment_leg SET package_id = NULL WHERE id = ?", LEG_ID);
+
+        TrackingApplyResult result = service.applyEvent(command("shipment-leg-1", "MOVING",
+                Instant.parse("2026-07-15T07:30:00Z")).setPackageId(null));
+
+        assertTrue(result.stateChanged());
+        assertEquals("IN_TRANSIT", value("SELECT status FROM trade_shipment_leg WHERE id = " + LEG_ID, String.class));
+        assertEquals("IN_TRANSIT", value("SELECT status FROM trade_shipment WHERE id = " + SHIPMENT_ID, String.class));
+        assertEquals("HANDED_TO_CARRIER", value("SELECT status FROM trade_shipment_package WHERE id = " + PACKAGE_ID,
+                String.class));
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM trade_tracking_event WHERE package_id IS NOT NULL",
+                Integer.class));
+    }
+
+    @Test
+    void boundLegDerivesPackageAndRejectsMismatchedCommandPackage() {
+        mapping("MOVING", "IN_TRANSIT", "v1", 30, "2026-01-01 00:00:00.000000");
+
+        TrackingApplyResult derived = service.applyEvent(command("derived-package-1", "MOVING",
+                Instant.parse("2026-07-15T07:40:00Z")).setPackageId(null));
+
+        assertTrue(derived.stateChanged());
+        assertEquals(PACKAGE_ID, value("SELECT package_id FROM trade_tracking_event "
+                + "WHERE external_event_id = 'derived-package-1'", Long.class));
+        assertThrows(RuntimeException.class, () -> service.applyEvent(command("wrong-package-1", "MOVING",
+                Instant.parse("2026-07-15T07:41:00Z")).setPackageId(999999L)));
+        assertEquals(1, count("trade_tracking_event"));
+    }
+
+    @Test
+    void packageOnlyEventRequiresShipmentProviderToMatchCommand() {
+        mapping("MOVING", "IN_TRANSIT", "v1", 30, "2026-01-01 00:00:00.000000");
+        jdbc.update("UPDATE trade_shipment SET provider_id = NULL WHERE id = ?", SHIPMENT_ID);
+
+        assertThrows(RuntimeException.class, () -> service.applyEvent(command("no-provider-1", "MOVING",
+                Instant.parse("2026-07-15T07:50:00Z")).setShipmentLegId(null)));
+
+        jdbc.update("UPDATE trade_shipment SET provider_id = 999 WHERE id = ?", SHIPMENT_ID);
+        assertThrows(RuntimeException.class, () -> service.applyEvent(command("wrong-provider-1", "MOVING",
+                Instant.parse("2026-07-15T07:51:00Z")).setShipmentLegId(null)));
+        assertEquals(0, count("trade_tracking_event"));
     }
 
     @Test
