@@ -37,6 +37,7 @@ const GiftRegistryFindPage = defineAsyncComponent(() => import("./pages/GiftRegi
 const GiftRegistryManagePage = defineAsyncComponent(() => import("./pages/GiftRegistryManagePage.vue"));
 const GiftRegistryPage = defineAsyncComponent(() => import("./pages/GiftRegistryPage.vue"));
 const HomePage = defineAsyncComponent(() => import("./pages/HomePage.vue"));
+const CatalogPage = defineAsyncComponent(() => import("./pages/CatalogPage.vue"));
 const MembershipEnrollmentPage = defineAsyncComponent(() => import("./pages/MembershipEnrollmentPage.vue"));
 const MembershipFaqPage = defineAsyncComponent(() => import("./pages/MembershipFaqPage.vue"));
 const MembershipPage = defineAsyncComponent(() => import("./pages/MembershipPage.vue"));
@@ -54,6 +55,7 @@ const TradeSignInPage = defineAsyncComponent(() => import("./pages/TradeSignInPa
 
 const pageRoutes = {
   home: "/",
+  catalog: "/catalog",
   sale: "/sale",
   outdoor: "/outdoor",
   "sofas-plp": "/products",
@@ -135,6 +137,7 @@ let remoteCartRequestId = 0;
 
 const pageComponent = computed(() => {
   if (currentPage.value === "home") return HomePage;
+  if (currentPage.value === "catalog") return CatalogPage;
   if (currentPage.value === "sale") return SalePage;
   if (currentPage.value === "outdoor") return OutdoorPage;
   if (currentPage.value === "sofas-plp") return SofasPlpPage;
@@ -170,6 +173,10 @@ const pageSeo = {
   home: {
     title: "Oakved | Luxury Furniture, Lighting & Home Decor",
     description: "Explore Oakved furniture, lighting, textiles and room inspiration for refined living.",
+  },
+  catalog: {
+    title: "Oakved Catalog | Oakved",
+    description: "Explore the Oakved catalog through considered interiors, natural materials and enduring craftsmanship.",
   },
   "sofas-plp": {
     title: "Furniture Collection | Oakved",
