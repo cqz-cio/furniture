@@ -40,15 +40,17 @@ All production flags default to `false`.
 
 | Full property | Production default | Local profile | Purpose and dependencies |
 |---|---:|---:|---|
-| `yudao.trade.fulfillment.enabled` | `false` | `true` | Master switch for the new admin fulfillment model |
-| `yudao.trade.fulfillment.write-new-model` | `false` | `true` | Allows command and tracking mutations; requires `yudao.trade.fulfillment.enabled=true`, a nonblank HMAC secret, and a nonblank provider code |
-| `yudao.trade.fulfillment.read-from-new-model` | `false` | `false` | Allows legacy endpoints to project safe events from the new model; requires `yudao.trade.fulfillment.enabled=true` |
+| `yudao.trade.fulfillment.enabled` | `false` | `true` | Master switch for every new admin fulfillment read and write API |
+| `yudao.trade.fulfillment.write-new-model` | `false` | `true` | Allows command and tracking mutations; requires `yudao.trade.fulfillment.enabled=true`, a nonblank HMAC secret, and a provider code that resolves to a registered client at startup |
+| `yudao.trade.fulfillment.read-from-new-model` | `false` | `false` | Controls only whether legacy order-tracking endpoints try the safe new-model projection before their old-provider fallback; new admin fulfillment reads depend on `enabled`, not this flag |
 | `yudao.trade.fulfillment.customer-ui-enabled` | `false` | `false` | Reserved for a future customer UI; requires both `yudao.trade.fulfillment.enabled=true` and `yudao.trade.fulfillment.read-from-new-model=true` |
 | `yudao.trade.fulfillment.legacy-migration-write-enabled` | `false` | `false` | Allows non-dry-run legacy migration; requires both `yudao.trade.fulfillment.enabled=true` and `yudao.trade.fulfillment.write-new-model=true` |
 | `yudao.trade.fulfillment.provider-code` | `${FULFILLMENT_PROVIDER_CODE:}` | `mock` | Provider selection; production must use an approved real provider code |
 | `yudao.trade.fulfillment.idempotency-hmac-key` | `${FULFILLMENT_IDEMPOTENCY_HMAC_KEY:}` | local-only value | HMAC secret for cache/idempotency domains; production value must come from the secret manager |
 
 The HMAC secret may be blank only while all new-model writes are disabled. In that state, old express queries remain available and deliberately bypass the cache. Do not replace the missing secret with a weak, random-process, MD5, SHA-256, or plaintext-derived cache key.
+
+When writes are enabled, startup resolves `provider-code` through the provider registry and fails closed if the registry or client is absent. The mock client is registered only when the active-profile set is nonempty and every active profile is either `local` or `unit-test`; mixed sets such as `prod,local` and `prod,unit-test` never register it, even when another provider is selected.
 
 The environment variables used by shared configuration are:
 
@@ -136,10 +138,30 @@ SELECT COUNT(*) AS fact_table_present
 FROM information_schema.tables
 WHERE table_schema = DATABASE()
   AND table_name = 'trade_fulfillment_legacy_migration_fact';
-SELECT COUNT(*) AS permission_count
-FROM system_menu
-WHERE permission LIKE 'trade:fulfillment:%' AND deleted = b'0';
+WITH expected(permission) AS (
+    SELECT 'trade:fulfillment:shipment:query' UNION ALL
+    SELECT 'trade:fulfillment:shipment:create' UNION ALL
+    SELECT 'trade:fulfillment:shipment:update' UNION ALL
+    SELECT 'trade:fulfillment:shipment:dispatch' UNION ALL
+    SELECT 'trade:fulfillment:tracking:manual'
+), actual AS (
+    SELECT DISTINCT permission
+    FROM system_menu
+    WHERE permission LIKE 'trade:fulfillment:%' AND deleted = b'0'
+)
+SELECT expected.permission,
+       CASE WHEN actual.permission IS NULL THEN 'MISSING' ELSE 'PRESENT' END AS verification
+FROM expected
+LEFT JOIN actual ON actual.permission = expected.permission
+UNION ALL
+SELECT actual.permission, 'UNEXPECTED'
+FROM actual
+LEFT JOIN expected ON expected.permission = actual.permission
+WHERE expected.permission IS NULL
+ORDER BY permission;
 ```
+
+The permission query must return exactly five rows and every row must be `PRESENT`. Any `MISSING` or `UNEXPECTED` row fails the rehearsal; do not continue with a broad `LIKE` count as evidence.
 
 Run the migration catalog tests and the fulfillment regression suite against the code revision being deployed. Clean up the temporary database only after the owner has recorded the successful commands, exit codes, migration count, and test totals:
 
@@ -200,7 +222,7 @@ Perform these checks with synthetic, approved test records only:
 - With an existing subject event that is unsafe or unmapped, the legacy endpoint returns authoritative empty and performs no provider call.
 - A manual event records the approved audit fields and does not expose the reason or trace through the legacy projection.
 - A migrated order replay creates no duplicate shipment, item, package, leg, event, idempotency, or outbox row.
-- Setting `yudao.trade.fulfillment.read-from-new-model=false` restores the old legacy read path without deleting new data.
+- Setting `yudao.trade.fulfillment.read-from-new-model=false` restores the old legacy read path without deleting new data; while `enabled=true`, the three new admin read APIs remain available.
 
 ## 9. Observation and safe diagnostics
 

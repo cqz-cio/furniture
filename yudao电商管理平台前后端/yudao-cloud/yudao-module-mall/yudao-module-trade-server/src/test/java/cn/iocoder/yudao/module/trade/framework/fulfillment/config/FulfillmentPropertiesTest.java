@@ -1,11 +1,23 @@
 package cn.iocoder.yudao.module.trade.framework.fulfillment.config;
 
 import cn.iocoder.yudao.module.trade.framework.fulfillment.core.impl.MockLogisticsProviderClient;
+import cn.iocoder.yudao.module.trade.framework.fulfillment.core.LogisticsProviderClient;
+import cn.iocoder.yudao.module.trade.framework.fulfillment.core.LogisticsProviderRegistry;
+import cn.iocoder.yudao.module.trade.framework.fulfillment.core.ProviderCapability;
+import cn.iocoder.yudao.module.trade.framework.fulfillment.core.dto.TrackingQuery;
+import cn.iocoder.yudao.module.trade.framework.fulfillment.core.dto.TrackingRegistrationCommand;
+import cn.iocoder.yudao.module.trade.framework.fulfillment.core.dto.TrackingRegistrationResult;
+import cn.iocoder.yudao.module.trade.framework.fulfillment.core.dto.TrackingSnapshot;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.autoconfigure.validation.ValidationAutoConfiguration;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
 
+import java.util.Set;
+
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -17,7 +29,8 @@ class FulfillmentPropertiesTest {
 
     private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
             .withConfiguration(AutoConfigurations.of(ValidationAutoConfiguration.class))
-            .withUserConfiguration(FulfillmentConfiguration.class, MockLogisticsProviderClient.class);
+            .withUserConfiguration(FulfillmentConfiguration.class, MockLogisticsProviderClient.class,
+                    LogisticsProviderRegistry.class);
 
     @Test
     void registersPropertiesExactlyOnceWithSafeDefaults() {
@@ -91,6 +104,51 @@ class FulfillmentPropertiesTest {
     }
 
     @Test
+    void mixedProfilesNeverRegisterMockEvenWhenARealProviderIsSelected() {
+        for (String allowedProfile : new String[]{"local", "unit-test"}) {
+            contextRunner.withUserConfiguration(RealProviderConfiguration.class)
+                    .withInitializer(context -> context.getEnvironment().setActiveProfiles("prod", allowedProfile))
+                    .withPropertyValues(PREFIX + "enabled=true", PREFIX + "write-new-model=true",
+                            PREFIX + "provider-code=real", PREFIX + "idempotency-hmac-key=" + TEST_KEY)
+                    .run(context -> {
+                        assertTrue(context.isRunning());
+                        assertTrue(context.getBeansOfType(MockLogisticsProviderClient.class).isEmpty());
+                        LogisticsProviderRegistry registry = context.getBean(LogisticsProviderRegistry.class);
+                        assertThatThrownBy(() -> registry.getClient("mock"));
+                    });
+        }
+    }
+
+    @Test
+    void rejectsWriteProviderThatCannotBeResolvedFromRegistry() {
+        contextRunner.withPropertyValues(PREFIX + "enabled=true", PREFIX + "write-new-model=true",
+                        PREFIX + "provider-code=real", PREFIX + "idempotency-hmac-key=" + TEST_KEY)
+                .run(context -> assertThat(context).hasFailed());
+    }
+
+    @Test
+    void rejectsWritesWhenProviderRegistryIsMissing() {
+        new ApplicationContextRunner()
+                .withConfiguration(AutoConfigurations.of(ValidationAutoConfiguration.class))
+                .withUserConfiguration(FulfillmentConfiguration.class)
+                .withPropertyValues(PREFIX + "enabled=true", PREFIX + "write-new-model=true",
+                        PREFIX + "provider-code=real", PREFIX + "idempotency-hmac-key=" + TEST_KEY)
+                .run(context -> assertThat(context).hasFailed());
+    }
+
+    @Test
+    void acceptsWriteProviderThatResolvesToRegisteredClient() {
+        contextRunner.withUserConfiguration(RealProviderConfiguration.class)
+                .withPropertyValues(PREFIX + "enabled=true", PREFIX + "write-new-model=true",
+                        PREFIX + "provider-code=real", PREFIX + "idempotency-hmac-key=" + TEST_KEY)
+                .run(context -> {
+                    assertTrue(context.isRunning());
+                    assertTrue(context.getBean(LogisticsProviderRegistry.class).getClient("real")
+                            instanceof RealProviderClient);
+                });
+    }
+
+    @Test
     void neverRendersHmacSecretInPropertiesString() {
         contextRunner.withPropertyValues(PREFIX + "idempotency-hmac-key=" + TEST_KEY)
                 .run(context -> assertFalse(context.getBean(FulfillmentProperties.class)
@@ -99,6 +157,40 @@ class FulfillmentPropertiesTest {
 
     private void assertStartupFails(String... propertyValues) {
         contextRunner.withPropertyValues(propertyValues).run(context -> assertThat(context).hasFailed());
+    }
+
+    @TestConfiguration(proxyBeanMethods = false)
+    static class RealProviderConfiguration {
+
+        @Bean
+        LogisticsProviderClient realProviderClient() {
+            return new RealProviderClient();
+        }
+
+    }
+
+    static class RealProviderClient implements LogisticsProviderClient {
+
+        @Override
+        public String getProviderCode() {
+            return "real";
+        }
+
+        @Override
+        public Set<ProviderCapability> getCapabilities() {
+            return Set.of();
+        }
+
+        @Override
+        public TrackingRegistrationResult registerTracking(TrackingRegistrationCommand command) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public TrackingSnapshot queryTracking(TrackingQuery query) {
+            throw new UnsupportedOperationException();
+        }
+
     }
 
 }

@@ -13,7 +13,7 @@ public class FulfillmentFeatureGuard {
     private final FulfillmentProperties properties;
 
     public void requireReadEnabled() {
-        require(properties.isEnabled() && properties.isReadFromNewModel());
+        require(properties.isEnabled());
     }
 
     public void requireWriteEnabled() {

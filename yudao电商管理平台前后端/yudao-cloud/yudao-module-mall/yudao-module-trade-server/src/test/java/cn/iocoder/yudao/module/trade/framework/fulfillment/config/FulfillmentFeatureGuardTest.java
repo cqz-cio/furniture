@@ -31,11 +31,19 @@ class FulfillmentFeatureGuardTest {
     }
 
     @Test
-    void enabledBoundariesPass() {
+    void adminReadRequiresOnlyGlobalFeatureEnablement() {
         FulfillmentProperties properties = enabledProperties();
+        properties.setReadFromNewModel(false);
         FulfillmentFeatureGuard guard = new FulfillmentFeatureGuard(properties);
 
         assertDoesNotThrow(guard::requireReadEnabled);
+    }
+
+    @Test
+    void enabledWriteBoundaryPasses() {
+        FulfillmentProperties properties = enabledProperties();
+        FulfillmentFeatureGuard guard = new FulfillmentFeatureGuard(properties);
+
         assertDoesNotThrow(guard::requireWriteEnabled);
     }
 
