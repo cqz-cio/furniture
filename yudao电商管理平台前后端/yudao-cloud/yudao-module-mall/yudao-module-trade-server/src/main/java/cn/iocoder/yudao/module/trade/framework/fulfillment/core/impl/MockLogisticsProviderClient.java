@@ -7,8 +7,9 @@ import cn.iocoder.yudao.module.trade.framework.fulfillment.core.dto.TrackingQuer
 import cn.iocoder.yudao.module.trade.framework.fulfillment.core.dto.TrackingRegistrationCommand;
 import cn.iocoder.yudao.module.trade.framework.fulfillment.core.dto.TrackingRegistrationResult;
 import cn.iocoder.yudao.module.trade.framework.fulfillment.core.dto.TrackingSnapshot;
+import cn.iocoder.yudao.module.trade.framework.fulfillment.config.SafeFulfillmentMockProfileCondition;
+import org.springframework.context.annotation.Conditional;
 import org.springframework.stereotype.Component;
-import org.springframework.context.annotation.Profile;
 
 import java.util.List;
 import java.util.Map;
@@ -20,7 +21,7 @@ import static cn.iocoder.yudao.framework.common.exception.util.ServiceExceptionU
 import static cn.iocoder.yudao.module.trade.enums.ErrorCodeConstants.FULFILLMENT_PROVIDER_CAPABILITY_UNSUPPORTED;
 
 @Component
-@Profile({"local", "unit-test"})
+@Conditional(SafeFulfillmentMockProfileCondition.class)
 public class MockLogisticsProviderClient implements LogisticsProviderClient {
 
     private static final String PROVIDER_CODE = "mock";

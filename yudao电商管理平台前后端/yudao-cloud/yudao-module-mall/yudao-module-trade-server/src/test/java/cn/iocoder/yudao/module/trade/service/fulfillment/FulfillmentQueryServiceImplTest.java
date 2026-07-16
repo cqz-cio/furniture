@@ -65,11 +65,12 @@ class FulfillmentQueryServiceImplTest extends BaseDbUnitTest {
     }
 
     @Test
-    void disabledReadStopsBeforeShipmentLookup() {
+    void adminQueriesRemainAvailableWhenLegacyProjectionReadIsDisabled() {
         fulfillmentProperties.setReadFromNewModel(false);
         try {
-            assertServiceException(() -> queryService.getShipment(TENANT_ID, DETAIL_SHIPMENT_ID),
-                    FULFILLMENT_FEATURE_DISABLED);
+            assertEquals(DETAIL_SHIPMENT_ID, queryService.getShipment(TENANT_ID, DETAIL_SHIPMENT_ID).getId());
+            assertEquals(3, queryService.getTimeline(TENANT_ID, DETAIL_SHIPMENT_ID).size());
+            assertEquals(2L, queryService.getShipmentPage(TENANT_ID, pageRequest()).getTotal());
         } finally {
             fulfillmentProperties.setReadFromNewModel(true);
         }
