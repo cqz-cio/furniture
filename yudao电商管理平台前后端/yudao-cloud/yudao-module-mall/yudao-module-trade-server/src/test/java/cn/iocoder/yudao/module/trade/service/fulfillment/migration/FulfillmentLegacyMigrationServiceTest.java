@@ -122,7 +122,7 @@ class FulfillmentLegacyMigrationServiceTest extends BaseMockitoUnitTest {
     void approvedDomesticFactsProduceWouldMigrateOnlyAfterReferenceValidation() {
         TradeOrderDO order = order(23L, 20, 31L, "TRACK-23");
         stubValidPreFactState(order);
-        LegacyMigrationFacts facts = new LegacyMigrationFacts("us", "US", "America/New_York",
+        LegacyMigrationFacts facts = new LegacyMigrationFacts("US", "US", "America/New_York",
                 "America/Los_Angeles", 501L, 601L, 701L,
                 LocalDateTime.of(2026, 7, 16, 10, 0), "approval-ticket-23");
         when(factSource.findApprovedFacts(TENANT_ID, 23L)).thenReturn(Optional.of(facts));
@@ -134,6 +134,18 @@ class FulfillmentLegacyMigrationServiceTest extends BaseMockitoUnitTest {
 
         assertEquals(MigrationOutcome.WOULD_MIGRATE, result.outcome());
         assertEquals("WOULD_MIGRATE", result.reasonCode());
+    }
+
+    @Test
+    void rejectsNonCanonicalCountryFactsInsteadOfNormalizingThem() {
+        assertRouteFactsRejected(29L, "us", "US", "America/New_York", "America/Los_Angeles");
+        assertRouteFactsRejected(30L, "US ", "US", "America/New_York", "America/Los_Angeles");
+    }
+
+    @Test
+    void rejectsTimezoneFactsUnlessOriginalValueIsAnExactIanaIdentifier() {
+        assertRouteFactsRejected(31L, "US", "US", " America/New_York", "America/Los_Angeles");
+        assertRouteFactsRejected(32L, "US", "US", "america/New_York", "America/Los_Angeles");
     }
 
     @Test
@@ -206,6 +218,20 @@ class FulfillmentLegacyMigrationServiceTest extends BaseMockitoUnitTest {
         when(shipmentMapper.selectListByOrderId(TENANT_ID, order.getId())).thenReturn(List.of());
         when(packageMapper.selectByCarrierIdAndTrackingNumber(TENANT_ID, 401L, order.getLogisticsNo().trim()))
                 .thenReturn(null);
+    }
+
+    private void assertRouteFactsRejected(Long orderId, String originCountry, String destinationCountry,
+                                          String originTimezone, String destinationTimezone) {
+        TradeOrderDO order = order(orderId, 20, 31L, "TRACK-" + orderId);
+        stubValidPreFactState(order);
+        when(factSource.findApprovedFacts(TENANT_ID, orderId)).thenReturn(Optional.of(new LegacyMigrationFacts(
+                originCountry, destinationCountry, originTimezone, destinationTimezone, 501L, 601L, 701L,
+                LocalDateTime.of(2026, 7, 16, 10, 0), "approval-ticket-" + orderId)));
+
+        MigrationOrderResult result = evaluator.evaluate(TENANT_ID, order);
+
+        assertEquals(MigrationOutcome.MISSING_ROUTE_FACTS, result.outcome());
+        verify(referenceMapper, never()).countEnabledWarehouse(anyLong(), anyLong());
     }
 
     private static TradeOrderDO order(Long id, int status, Long logisticsId, String tracking) {

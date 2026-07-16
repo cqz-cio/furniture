@@ -18,7 +18,6 @@ import java.time.DateTimeException;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.List;
-import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 
@@ -107,29 +106,23 @@ public class LegacyMigrationEligibilityEvaluator {
                 || trimToNull(facts.sourceReference()) == null) {
             return false;
         }
-        String origin = normalizeCountry(facts.originCountry());
-        String destination = normalizeCountry(facts.destinationCountry());
+        String origin = facts.originCountry();
+        String destination = facts.destinationCountry();
         return SUPPORTED_COUNTRIES.contains(origin) && origin.equals(destination)
                 && validIanaTimezone(facts.originTimezone()) && validIanaTimezone(facts.destinationTimezone());
     }
 
     private static boolean validIanaTimezone(String value) {
-        String timezone = trimToNull(value);
-        if (timezone == null) {
+        if (value == null || value.isEmpty()) {
             return false;
         }
         try {
-            ZoneId zone = ZoneId.of(timezone);
-            return !(zone instanceof ZoneOffset) && ("UTC".equals(timezone)
-                    || timezone.contains("/") && IANA_TIMEZONE_IDS.contains(timezone));
+            ZoneId zone = ZoneId.of(value);
+            return !(zone instanceof ZoneOffset) && ("UTC".equals(value)
+                    || value.contains("/") && IANA_TIMEZONE_IDS.contains(value));
         } catch (DateTimeException invalid) {
             return false;
         }
-    }
-
-    private static String normalizeCountry(String value) {
-        String normalized = trimToNull(value);
-        return normalized == null ? null : normalized.toUpperCase(Locale.ROOT);
     }
 
     private static String trimToNull(String value) {
