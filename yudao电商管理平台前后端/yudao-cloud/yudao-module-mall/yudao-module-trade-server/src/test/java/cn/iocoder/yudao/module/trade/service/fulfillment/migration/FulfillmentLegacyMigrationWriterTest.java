@@ -2,6 +2,7 @@ package cn.iocoder.yudao.module.trade.service.fulfillment.migration;
 
 import cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder;
 import cn.iocoder.yudao.framework.test.core.ut.BaseDbUnitTest;
+import cn.iocoder.yudao.module.trade.framework.fulfillment.config.FulfillmentFeatureGuard;
 import cn.iocoder.yudao.module.trade.framework.fulfillment.config.FulfillmentProperties;
 import jakarta.annotation.Resource;
 import org.junit.jupiter.api.AfterEach;
@@ -23,7 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Import({FulfillmentLegacyMigrationWriterImpl.class, LegacyMigrationEligibilityEvaluator.class,
-        LegacyMigrationFactSourceImpl.class, FulfillmentProperties.class})
+        LegacyMigrationFactSourceImpl.class, FulfillmentFeatureGuard.class, FulfillmentProperties.class})
 class FulfillmentLegacyMigrationWriterTest extends BaseDbUnitTest {
 
     private static final long TENANT_ID = 121L;
@@ -37,6 +38,9 @@ class FulfillmentLegacyMigrationWriterTest extends BaseDbUnitTest {
     @BeforeEach
     void setUp() {
         TenantContextHolder.setTenantId(TENANT_ID);
+        properties.setEnabled(true);
+        properties.setWriteNewModel(true);
+        properties.setLegacyMigrationWriteEnabled(true);
         properties.setIdempotencyHmacKey("migration-writer-test-hmac-key-32-chars-minimum");
         jdbc = new JdbcTemplate(dataSource);
         LegacyMigrationTestData.seed(jdbc, TENANT_ID, ORDER_ID, 20, "  Case-Sensitive.91001  ");

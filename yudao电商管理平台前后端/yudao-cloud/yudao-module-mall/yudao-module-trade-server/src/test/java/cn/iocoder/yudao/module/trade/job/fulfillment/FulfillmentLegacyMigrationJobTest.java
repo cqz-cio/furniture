@@ -2,7 +2,7 @@ package cn.iocoder.yudao.module.trade.job.fulfillment;
 
 import cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder;
 import cn.iocoder.yudao.framework.tenant.core.job.TenantJob;
-import cn.iocoder.yudao.module.trade.framework.fulfillment.config.FulfillmentProperties;
+import cn.iocoder.yudao.module.trade.framework.fulfillment.config.FulfillmentFeatureGuard;
 import cn.iocoder.yudao.module.trade.service.fulfillment.migration.FulfillmentLegacyMigrationService;
 import cn.iocoder.yudao.module.trade.service.fulfillment.migration.MigrationBatchResult;
 import cn.iocoder.yudao.module.trade.service.fulfillment.migration.MigrationOrderResult;
@@ -21,13 +21,16 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import static cn.iocoder.yudao.framework.common.exception.util.ServiceExceptionUtil.exception;
+import static cn.iocoder.yudao.framework.test.core.util.AssertUtils.assertServiceException;
+import static cn.iocoder.yudao.module.trade.enums.ErrorCodeConstants.FULFILLMENT_FEATURE_DISABLED;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -40,14 +43,14 @@ class FulfillmentLegacyMigrationJobTest {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private FulfillmentLegacyMigrationService migrationService;
-    private FulfillmentProperties properties;
+    private FulfillmentFeatureGuard featureGuard;
     private FulfillmentLegacyMigrationJob job;
 
     @BeforeEach
     void setUp() {
         migrationService = mock(FulfillmentLegacyMigrationService.class);
-        properties = new FulfillmentProperties();
-        job = new FulfillmentLegacyMigrationJob(migrationService, properties, OBJECT_MAPPER);
+        featureGuard = mock(FulfillmentFeatureGuard.class);
+        job = new FulfillmentLegacyMigrationJob(migrationService, featureGuard, OBJECT_MAPPER);
         TenantContextHolder.setTenantId(TENANT_ID);
     }
 
@@ -124,21 +127,30 @@ class FulfillmentLegacyMigrationJobTest {
         job.execute("{\"dryRun\":true}");
 
         verify(migrationService).migrateActiveOrders(TENANT_ID, 0L, 100, true);
+        verifyNoInteractions(featureGuard);
     }
 
     @Test
-    void executeShouldRejectWriteUnlessAllRequiredFlagsAreTrue() {
-        assertWriteDisabled();
-        properties.setEnabled(true);
-        assertWriteDisabled();
-        properties.setWriteNewModel(true);
-        assertWriteDisabled();
-
-        properties.setLegacyMigrationWriteEnabled(true);
+    void executeShouldGuardWriteExactlyOnceBeforeCallingMigrationService() {
         MigrationBatchResult result = result(false, false);
         when(migrationService.migrateActiveOrders(TENANT_ID, 0L, 100, false)).thenReturn(result);
+
         job.execute("{\"dryRun\":false}");
+
+        verify(featureGuard, times(1)).requireMigrationWriteEnabled();
         verify(migrationService).migrateActiveOrders(TENANT_ID, 0L, 100, false);
+    }
+
+    @Test
+    void executeShouldExposeStableFeatureDisabledErrorBeforeMigrationService() {
+        doThrow(exception(FULFILLMENT_FEATURE_DISABLED))
+                .when(featureGuard).requireMigrationWriteEnabled();
+
+        assertServiceException(() -> job.execute("{\"dryRun\":false}"),
+                FULFILLMENT_FEATURE_DISABLED);
+
+        verify(featureGuard).requireMigrationWriteEnabled();
+        verifyNoInteractions(migrationService);
     }
 
     @Test
@@ -180,13 +192,6 @@ class FulfillmentLegacyMigrationJobTest {
         assertEquals("fulfillment legacy migration batch failed", error.getMessage());
         assertEquals(null, error.getCause());
         assertFalse(error.toString().contains("CANARY"));
-    }
-
-    private void assertWriteDisabled() {
-        IllegalStateException error = assertThrows(IllegalStateException.class,
-                () -> job.execute("{\"dryRun\":false}"));
-        assertEquals("fulfillment legacy migration write is disabled", error.getMessage());
-        verify(migrationService, never()).migrateActiveOrders(TENANT_ID, 0L, 100, false);
     }
 
     private static MigrationBatchResult result(boolean dryRun, boolean hasMore) {

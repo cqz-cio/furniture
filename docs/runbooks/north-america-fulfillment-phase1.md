@@ -16,9 +16,11 @@ The existing admin and App legacy tracking endpoints remain the fallback contrac
 
 ## 2. Preconditions and ownership
 
-This runbook is executable only from a fully integrated revision that contains the V020 migration-fact schema,
-the legacy projection writer, and the bounded migration job. A Task 10 configuration/runbook-only revision is
-not deployable by itself; verify those integration components and their tests in the exact release revision first.
+This runbook is executable only from one fully integrated release revision that contains the V020 migration-fact
+schema, the legacy projection, the bounded migration service/job, the transactional writer, and both migration
+feature-guard checks. A configuration/runbook-only revision or a revision assembled from only some task branches is
+not deployable. Build, test, record, and deploy the same immutable revision; do not rehearse one revision and execute
+another.
 
 Before any rollout window:
 
@@ -36,13 +38,15 @@ Stop the rollout if any precondition is missing.
 
 All production flags default to `false`.
 
-| Property | Purpose | Dependencies |
-|---|---|---|
-| `enabled` | Master switch for the new admin fulfillment model | none |
-| `write-new-model` | Allows command and tracking mutations | `enabled=true`, nonblank HMAC secret, nonblank real provider code |
-| `read-from-new-model` | Allows the legacy endpoints to project safe events from the new model | `enabled=true` |
-| `customer-ui-enabled` | Reserved switch for a future customer UI | `enabled=true` and `read-from-new-model=true` |
-| `legacy-migration-write-enabled` | Allows non-dry-run legacy migration | `enabled=true` and `write-new-model=true` |
+| Full property | Production default | Local profile | Purpose and dependencies |
+|---|---:|---:|---|
+| `yudao.trade.fulfillment.enabled` | `false` | `true` | Master switch for the new admin fulfillment model |
+| `yudao.trade.fulfillment.write-new-model` | `false` | `true` | Allows command and tracking mutations; requires `enabled=true`, a nonblank HMAC secret, and a nonblank provider code |
+| `yudao.trade.fulfillment.read-from-new-model` | `false` | `false` | Allows legacy endpoints to project safe events from the new model; requires `enabled=true` |
+| `yudao.trade.fulfillment.customer-ui-enabled` | `false` | `false` | Reserved for a future customer UI; requires both `enabled=true` and `read-from-new-model=true` |
+| `yudao.trade.fulfillment.legacy-migration-write-enabled` | `false` | `false` | Allows non-dry-run legacy migration; requires both `enabled=true` and `write-new-model=true` |
+| `yudao.trade.fulfillment.provider-code` | `${FULFILLMENT_PROVIDER_CODE:}` | `mock` | Provider selection; production must use an approved real provider code |
+| `yudao.trade.fulfillment.idempotency-hmac-key` | `${FULFILLMENT_IDEMPOTENCY_HMAC_KEY:}` | local-only value | HMAC secret for cache/idempotency domains; production value must come from the secret manager |
 
 The HMAC secret may be blank only while all new-model writes are disabled. In that state, old express queries remain available and deliberately bypass the cache. Do not replace the missing secret with a weak, random-process, MD5, SHA-256, or plaintext-derived cache key.
 
@@ -174,6 +178,11 @@ After the dry-run has been approved:
 4. Verify aggregate counts and replay the exact page. Exact replay must not create duplicates.
 5. Continue one cursor page at a time only while error and reason counts remain within the approved threshold.
 6. Set `legacy-migration-write-enabled=false` immediately after the window.
+
+Every non-dry-run invocation is checked twice: once before the tenant job calls the migration service and again at
+the first line of the transactional writer, before HMAC calculation, row locks, or writes. Either disabled boundary
+returns the stable `FULFILLMENT_FEATURE_DISABLED` service error. Do not catch, translate, or bypass that error in an
+operator wrapper.
 
 A failure in one order must roll back that order only; it must not roll back an earlier committed order or leave a partial aggregate.
 

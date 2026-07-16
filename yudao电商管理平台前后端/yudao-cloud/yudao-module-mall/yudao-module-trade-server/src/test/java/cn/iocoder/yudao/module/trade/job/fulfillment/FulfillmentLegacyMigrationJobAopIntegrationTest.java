@@ -3,7 +3,7 @@ package cn.iocoder.yudao.module.trade.job.fulfillment;
 import cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder;
 import cn.iocoder.yudao.framework.tenant.core.job.TenantJobAspect;
 import cn.iocoder.yudao.framework.tenant.core.service.TenantFrameworkService;
-import cn.iocoder.yudao.module.trade.framework.fulfillment.config.FulfillmentProperties;
+import cn.iocoder.yudao.module.trade.framework.fulfillment.config.FulfillmentFeatureGuard;
 import cn.iocoder.yudao.module.trade.service.fulfillment.migration.FulfillmentLegacyMigrationService;
 import cn.iocoder.yudao.module.trade.service.fulfillment.migration.MigrationBatchResult;
 import cn.iocoder.yudao.module.trade.service.fulfillment.migration.MigrationOrderResult;
@@ -32,6 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @SpringJUnitConfig(FulfillmentLegacyMigrationJobAopIntegrationTest.TestConfig.class)
@@ -47,12 +48,14 @@ class FulfillmentLegacyMigrationJobAopIntegrationTest {
     private FulfillmentLegacyMigrationService migrationService;
     @Autowired
     private TenantFrameworkService tenantFrameworkService;
+    @Autowired
+    private FulfillmentFeatureGuard featureGuard;
 
     private Path logFile;
 
     @BeforeEach
     void setUp() {
-        reset(migrationService, tenantFrameworkService);
+        reset(migrationService, tenantFrameworkService, featureGuard);
         when(tenantFrameworkService.getTenantIds()).thenReturn(List.of(TENANT_ID));
     }
 
@@ -90,6 +93,7 @@ class FulfillmentLegacyMigrationJobAopIntegrationTest {
         assertFalse(Files.exists(logFile));
         assertNull(TenantContextHolder.getTenantId());
         verify(migrationService).migrateActiveOrders(TENANT_ID, 0L, 100, true);
+        verifyNoInteractions(featureGuard);
     }
 
     @Test
@@ -113,6 +117,7 @@ class FulfillmentLegacyMigrationJobAopIntegrationTest {
         assertFalse(log.contains(PHONE_CANARY));
         assertNull(TenantContextHolder.getTenantId());
         verify(migrationService).migrateActiveOrders(TENANT_ID, 0L, 100, true);
+        verifyNoInteractions(featureGuard);
     }
 
     private Path installXxlContext() {
@@ -141,8 +146,8 @@ class FulfillmentLegacyMigrationJobAopIntegrationTest {
         }
 
         @Bean
-        FulfillmentProperties fulfillmentProperties() {
-            return new FulfillmentProperties();
+        FulfillmentFeatureGuard fulfillmentFeatureGuard() {
+            return mock(FulfillmentFeatureGuard.class);
         }
 
         @Bean
@@ -153,8 +158,8 @@ class FulfillmentLegacyMigrationJobAopIntegrationTest {
         @Bean
         FulfillmentLegacyMigrationJob fulfillmentLegacyMigrationJob(
                 FulfillmentLegacyMigrationService migrationService,
-                FulfillmentProperties properties, ObjectMapper objectMapper) {
-            return new FulfillmentLegacyMigrationJob(migrationService, properties, objectMapper);
+                FulfillmentFeatureGuard featureGuard, ObjectMapper objectMapper) {
+            return new FulfillmentLegacyMigrationJob(migrationService, featureGuard, objectMapper);
         }
 
         @Bean

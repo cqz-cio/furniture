@@ -4,6 +4,7 @@ import cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder;
 import cn.iocoder.yudao.framework.test.core.ut.BaseDbUnitTest;
 import cn.iocoder.yudao.module.trade.dal.dataobject.fulfillment.*;
 import cn.iocoder.yudao.module.trade.dal.mysql.fulfillment.*;
+import cn.iocoder.yudao.module.trade.framework.fulfillment.config.FulfillmentFeatureGuard;
 import cn.iocoder.yudao.module.trade.framework.fulfillment.config.FulfillmentProperties;
 import jakarta.annotation.Resource;
 import org.junit.jupiter.api.AfterEach;
@@ -28,7 +29,7 @@ import static org.mockito.Mockito.doThrow;
 
 @Import({FulfillmentLegacyMigrationServiceImpl.class, FulfillmentLegacyMigrationWriterImpl.class,
         LegacyMigrationEligibilityEvaluator.class,
-        LegacyMigrationFactSourceImpl.class, FulfillmentProperties.class})
+        LegacyMigrationFactSourceImpl.class, FulfillmentFeatureGuard.class, FulfillmentProperties.class})
 class FulfillmentLegacyMigrationTransactionTest extends BaseDbUnitTest {
 
     private static final long TENANT_ID = 121L;
@@ -52,6 +53,9 @@ class FulfillmentLegacyMigrationTransactionTest extends BaseDbUnitTest {
     @BeforeEach
     void setUp() {
         TenantContextHolder.setTenantId(TENANT_ID);
+        properties.setEnabled(true);
+        properties.setWriteNewModel(true);
+        properties.setLegacyMigrationWriteEnabled(true);
         properties.setIdempotencyHmacKey("migration-transaction-test-hmac-key-32-chars");
         jdbc = new JdbcTemplate(dataSource);
     }
