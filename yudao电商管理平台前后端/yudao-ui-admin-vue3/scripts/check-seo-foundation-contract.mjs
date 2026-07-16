@@ -62,6 +62,7 @@ const metadataApi = readRequired('../src/api/seo/metadata/index.ts')
 const sitePage = readRequired('../src/views/seo/site-config/index.vue')
 const metadataPage = readRequired('../src/views/seo/metadata/index.vue')
 const metadataForm = readRequired('../src/views/seo/metadata/MetadataForm.vue')
+const packageJson = JSON.parse(readRequired('../package.json'))
 
 for (const path of ['/seo/site-config/get', '/seo/site-config/save']) {
   assert.ok(siteApi.includes(path), `missing site-config API path: ${path}`)
@@ -201,6 +202,23 @@ for (const property of ['username', 'password', 'search', 'hash']) {
 assert.match(siteUrlValidator, /\['http:', 'https:'\]\.includes\(url\.protocol\)/, 'site URL must restrict protocols')
 assert.ok(siteUrlValidator.includes('Boolean(url.hostname)'), 'site URL must require a hostname')
 
+assert.match(sitePage, /const loadRequestId = ref\(0\)/, 'site loads must use a monotonically increasing request token')
+const loadConfig = extractFunction(sitePage, 'loadConfig')
+assert.match(loadConfig, /const requestId = \+\+loadRequestId\.value/, 'each site load must claim a new request token')
+assert.match(loadConfig, /formData\.value = createDefaultForm\(siteId\)[\s\S]*?await getSeoSiteConfig\(siteId\)/, 'site data must clear before loading a new site')
+assert.match(loadConfig, /requestId !== loadRequestId\.value \|\| formData\.value\.siteId !== siteId/, 'site loads must discard stale token or site responses')
+assert.match(loadConfig, /catch[\s\S]*?loadError\.value\s*=/, 'site load failure must expose an actionable error state')
+assert.match(sitePage, /@click="loadConfig\(\)"/, 'site load failure must expose a retry action')
+assert.match(sitePage, /const editorDisabled = computed\(\(\) => loading\.value \|\| Boolean\(loadError\.value\)\)/, 'site editor must disable while loading or failed')
+for (const field of siteSaveFields.filter((field) => field !== 'siteId')) {
+  const editor = extractOpeningTag(sitePage, field === 'defaultRobots' ? 'el-select' : 'el-input', `v-model="formData.${field}"`)
+  assert.ok(editor.includes(':disabled="editorDisabled"'), `${field} must disable while site data is unavailable`)
+}
+const siteSubmit = extractFunction(sitePage, 'submitForm')
+assert.match(siteSubmit, /if \(editorDisabled\.value \|\| saving\.value\) return/, 'site save must be blocked while loading, failed, or already saving')
+const siteSubmitButton = extractOpeningTag(sitePage, 'el-button', '@click="submitForm"')
+assert.ok(siteSubmitButton.includes(':disabled="saving || editorDisabled"'), 'site save button must disable while loading or failed')
+
 const canonicalValidator = extractFunction(metadataForm, 'validateCanonicalUrl')
 assert.match(canonicalValidator, /if \(!value\.trim\(\)\)/, 'Canonical URL must explicitly allow blank input')
 const canonicalUrlParser = extractFunction(metadataForm, 'isAbsoluteHttpUrl')
@@ -216,5 +234,15 @@ assert.ok(!metadataForm.includes('VERSION_CONFLICT_CODE'), 'UI must not claim ac
 assert.ok(!metadataForm.includes('isVersionConflict'), 'dead numeric version-conflict detection must be removed')
 assert.match(submitCatch, /isEdit\.value[\s\S]*?版本冲突[\s\S]*?重新加载/, 'any update failure must truthfully warn about possible conflict and request reload')
 assert.ok(!metadataForm.includes('v-html'), 'metadata user input must not be rendered as HTML')
+
+const metadataOpen = extractFunction(metadataForm, 'open')
+const metadataOpenCatchIndex = metadataOpen.search(/catch(?:\s*\([^)]*\))?\s*\{/)
+assert.notEqual(metadataOpenCatchIndex, -1, 'metadata edit load must catch get-by-id failures')
+const metadataOpenCatch = metadataOpen.slice(metadataOpenCatchIndex)
+assert.match(metadataOpenCatch, /message\.error\([^)]*重试[^)]*\)/, 'metadata edit load failure must show a retry message')
+assert.match(metadataOpenCatch, /dialogVisible\.value = false/, 'failed metadata edit load must close the unusable dialog')
+
+assert.equal(packageJson.packageManager, 'pnpm@8.15.9', 'packageManager must pin the supported pnpm 8 release')
+assert.equal(packageJson.engines?.pnpm, '>=8.6.0 <9', 'pnpm engine must reject incompatible major releases')
 
 console.log('seo foundation contract: OK')

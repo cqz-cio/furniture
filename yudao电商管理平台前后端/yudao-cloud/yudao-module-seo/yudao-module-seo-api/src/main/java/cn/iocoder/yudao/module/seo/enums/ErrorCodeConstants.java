@@ -7,6 +7,8 @@ import cn.iocoder.yudao.framework.common.exception.ErrorCode;
  */
 public interface ErrorCodeConstants {
 
+    ErrorCode LOCALE_INVALID = new ErrorCode(1_070_000_000, "Locale 必须是有效的 BCP 47 语言标签");
+
     ErrorCode SITE_CONFIG_NOT_EXISTS = new ErrorCode(1_070_001_000, "SEO 站点配置不存在");
     ErrorCode SITE_CONFIG_URL_INVALID = new ErrorCode(1_070_001_001, "SEO 站点地址必须是有效的 HTTP(S) 绝对地址");
 

@@ -200,6 +200,9 @@ const open = async (type: 'create' | 'update', id?: number) => {
     try {
       const data: SeoMetadataRespVO = await getSeoMetadata(id)
       formData.value = { ...data, relatedKeyphrases: data.relatedKeyphrases || [] }
+    } catch {
+      message.error('加载 SEO 元数据失败，请重试')
+      dialogVisible.value = false
     } finally {
       formLoading.value = false
     }

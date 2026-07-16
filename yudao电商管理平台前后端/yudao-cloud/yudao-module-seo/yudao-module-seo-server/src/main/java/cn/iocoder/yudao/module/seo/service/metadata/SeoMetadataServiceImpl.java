@@ -10,6 +10,7 @@ import cn.iocoder.yudao.module.seo.dal.dataobject.metadata.SeoMetadataDO;
 import cn.iocoder.yudao.module.seo.dal.mysql.metadata.SeoMetadataMapper;
 import cn.iocoder.yudao.module.seo.enums.SeoEntityTypeEnum;
 import cn.iocoder.yudao.module.seo.enums.SeoPublishStatusEnum;
+import cn.iocoder.yudao.module.seo.service.SeoLocaleUtils;
 import jakarta.annotation.Resource;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
@@ -18,9 +19,8 @@ import org.springframework.validation.annotation.Validated;
 
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.Locale;
+import java.util.List;
 import java.util.Objects;
-import java.util.regex.Pattern;
 
 import static cn.iocoder.yudao.framework.common.exception.util.ServiceExceptionUtil.exception;
 import static cn.iocoder.yudao.module.seo.enums.ErrorCodeConstants.ENTITY_TYPE_INVALID;
@@ -33,9 +33,6 @@ import static cn.iocoder.yudao.module.seo.enums.ErrorCodeConstants.METADATA_VERS
 @Service
 @Validated
 public class SeoMetadataServiceImpl implements SeoMetadataService {
-
-    private static final Pattern LANGUAGE_TAG_PATTERN =
-            Pattern.compile("^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$");
 
     @Resource
     private SeoMetadataMapper metadataMapper;
@@ -111,13 +108,16 @@ public class SeoMetadataServiceImpl implements SeoMetadataService {
         if (StrUtil.isNotBlank(reqVO.getLocale())) {
             reqVO.setLocale(normalizeLocale(reqVO.getLocale()));
         }
-        return metadataMapper.selectPage(reqVO);
+        PageResult<SeoMetadataDO> page = metadataMapper.selectPage(reqVO);
+        page.getList().forEach(SeoMetadataServiceImpl::normalizeResponse);
+        return page;
     }
 
     @Override
     public SeoMetadataDO getPublishedMetadata(Long siteId, String entityType, Long entityId, String locale) {
         validateEntityType(entityType);
-        return metadataMapper.selectPublished(siteId, entityType, entityId, normalizeLocale(locale));
+        return normalizeResponse(metadataMapper.selectPublished(
+                siteId, entityType, entityId, normalizeLocale(locale)));
     }
 
     private SeoMetadataDO getRequiredMetadata(Long id) {
@@ -125,7 +125,7 @@ public class SeoMetadataServiceImpl implements SeoMetadataService {
         if (metadata == null) {
             throw exception(METADATA_NOT_EXISTS);
         }
-        return metadata;
+        return normalizeResponse(metadata);
     }
 
     private void classifyAtomicFailure(Long id) {
@@ -151,7 +151,7 @@ public class SeoMetadataServiceImpl implements SeoMetadataService {
                 .setSeoTitle(defaultString(reqVO.getSeoTitle()))
                 .setMetaDescription(defaultString(reqVO.getMetaDescription()))
                 .setFocusKeyphrase(defaultString(reqVO.getFocusKeyphrase()))
-                .setRelatedKeyphrases(reqVO.getRelatedKeyphrases())
+                .setRelatedKeyphrases(reqVO.getRelatedKeyphrases() == null ? List.of() : reqVO.getRelatedKeyphrases())
                 .setCanonicalUrl(validateCanonicalUrl(reqVO.getCanonicalUrl()))
                 .setRobotsIndex(reqVO.getRobotsIndex() == null || reqVO.getRobotsIndex())
                 .setRobotsFollow(reqVO.getRobotsFollow() == null || reqVO.getRobotsFollow())
@@ -168,19 +168,7 @@ public class SeoMetadataServiceImpl implements SeoMetadataService {
     }
 
     static String normalizeLocale(String locale) {
-        String candidate = locale == null ? "" : locale.trim();
-        if (candidate.contains("_") || !LANGUAGE_TAG_PATTERN.matcher(candidate).matches()) {
-            throw new IllegalArgumentException("Invalid language tag: " + locale);
-        }
-        try {
-            String normalized = new Locale.Builder().setLanguageTag(candidate).build().toLanguageTag();
-            if ("und".equals(normalized)) {
-                throw new IllegalArgumentException("Invalid language tag: " + locale);
-            }
-            return normalized;
-        } catch (java.util.IllformedLocaleException ex) {
-            throw new IllegalArgumentException("Invalid language tag: " + locale, ex);
-        }
+        return SeoLocaleUtils.normalize(locale);
     }
 
     static String validateCanonicalUrl(String canonicalUrl) {
@@ -207,6 +195,13 @@ public class SeoMetadataServiceImpl implements SeoMetadataService {
 
     private static String defaultString(String value) {
         return value == null ? "" : value;
+    }
+
+    private static SeoMetadataDO normalizeResponse(SeoMetadataDO metadata) {
+        if (metadata != null && metadata.getRelatedKeyphrases() == null) {
+            metadata.setRelatedKeyphrases(List.of());
+        }
+        return metadata;
     }
 
 }

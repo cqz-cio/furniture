@@ -107,6 +107,29 @@ class SeoSiteConfigServiceImplTest extends BaseDbUnitTest {
     }
 
     @Test
+    void saveSiteConfig_shouldNormalizeDefaultLocaleWithMetadataRules() {
+        SeoSiteConfigSaveReqVO reqVO = newRequest(21L, "https://shop.example.com");
+        reqVO.setDefaultLocale(" zh-hans-cn ");
+
+        siteConfigService.saveSiteConfig(reqVO);
+
+        assertThat(siteConfigMapper.selectBySiteId(21L).getDefaultLocale()).isEqualTo("zh-Hans-CN");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"zh_CN", "not a locale", "-en", "en-"})
+    void saveSiteConfig_shouldRejectInvalidDefaultLocaleWithStableBusinessError(String locale) {
+        SeoSiteConfigSaveReqVO reqVO = newRequest(22L, "https://shop.example.com");
+        reqVO.setDefaultLocale(locale);
+
+        assertThatThrownBy(() -> siteConfigService.saveSiteConfig(reqVO))
+                .isInstanceOf(ServiceException.class)
+                .extracting("code")
+                .isEqualTo(1_070_000_000);
+        assertThat(siteConfigMapper.selectCount()).isZero();
+    }
+
+    @Test
     void getSiteConfig_shouldReturnNullForAnotherTenant() {
         TenantContextHolder.setTenantId(TENANT_TWO);
         siteConfigService.saveSiteConfig(newRequest(30L, "https://tenant-two.example.com"));
