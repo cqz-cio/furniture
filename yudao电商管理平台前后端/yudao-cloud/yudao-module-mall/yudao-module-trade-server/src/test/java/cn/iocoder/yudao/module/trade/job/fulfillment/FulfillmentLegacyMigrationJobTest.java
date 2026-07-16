@@ -28,7 +28,6 @@ import static cn.iocoder.yudao.module.trade.enums.ErrorCodeConstants.FULFILLMENT
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.doThrow;
@@ -197,17 +196,19 @@ class FulfillmentLegacyMigrationJobTest {
     }
 
     @Test
-    void executeShouldPreserveFeatureDisabledErrorRaisedByMigrationService() {
-        ServiceException featureDisabled = exception(FULFILLMENT_FEATURE_DISABLED);
+    void executeShouldCanonicalizeFeatureDisabledErrorRaisedByMigrationService() {
+        ServiceException featureDisabled = new ServiceException(FULFILLMENT_FEATURE_DISABLED.getCode(),
+                "FEATURE_DISABLED_MESSAGE_CANARY");
+        featureDisabled.initCause(new IllegalStateException("FEATURE_DISABLED_CAUSE_CANARY"));
         when(migrationService.migrateActiveOrders(TENANT_ID, 0L, 100, true))
                 .thenThrow(featureDisabled);
 
         ServiceException error = assertThrows(ServiceException.class, () -> job.execute(""));
 
-        assertSame(featureDisabled, error);
         assertEquals(FULFILLMENT_FEATURE_DISABLED.getCode(), error.getCode());
         assertEquals(FULFILLMENT_FEATURE_DISABLED.getMsg(), error.getMessage());
         assertEquals(null, error.getCause());
+        assertFalse(error.toString().contains("CANARY"));
     }
 
     @Test
