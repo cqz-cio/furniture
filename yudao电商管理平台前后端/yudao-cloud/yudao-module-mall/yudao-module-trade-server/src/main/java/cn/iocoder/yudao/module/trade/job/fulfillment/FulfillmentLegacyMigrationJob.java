@@ -59,6 +59,7 @@ public class FulfillmentLegacyMigrationJob {
         try {
             JsonNode root = objectMapper.reader()
                     .with(DeserializationFeature.FAIL_ON_READING_DUP_TREE_KEY)
+                    .with(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
                     .readTree(param);
             if (root == null || !root.isObject() || containsUnknownField(root)) {
                 throw invalidParameters();
