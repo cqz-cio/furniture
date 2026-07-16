@@ -10,14 +10,14 @@
 
 ## Global Constraints
 
-- 工作分支固定为 `codex/agent-rag`；不得修改、合并或推送 `main`。
+- 工作分支固定为 `codex/seo-foundation`，最终集成目标为 `main`；本计划执行期间不得自行合并或 push。
 - 每个实现任务都遵循红灯—绿灯—重构：先新增失败测试，再写最小实现，再运行相关测试。
 - 只暂存并提交当前任务的文件；保留现有 `pnpm-lock.yaml` 修改和所有无关未跟踪文件。
 - 不复制 Yoast GPL 源码。本阶段只建立 ERP 自有的数据模型和元数据管理闭环。
 - 所有表都继承 Yudao 的审计、逻辑删除和租户字段约定；所有管理端接口都要求权限校验。
 - `siteId` 必须显式传入，`tenantId` 必须从租户上下文取得，禁止接受客户端提交的 `tenantId`。
 - 第一阶段实体类型固定为 `PRODUCT`、`CATEGORY`、`ARTICLE`、`PAGE`，语言使用 BCP 47 风格字符串，默认 `zh-CN`。
-- 元数据唯一键为 `(tenant_id, site_id, entity_type, entity_id, locale, deleted)`；公开接口只返回 `PUBLISHED` 状态。
+- V016 中依赖 `deleted` 的唯一键只是过渡结构；最终唯一性契约由 V017 的 nullable generated `active_record` 实现，只允许一个 active 业务键，同时允许任意条 deleted 历史。公开接口只返回 `PUBLISHED` 状态。
 - 标题、描述等用户输入按纯文本保存；Canonical URL 必须是绝对 HTTP(S) URL；不允许将任意 HTML 直接回显到管理页面。
 - 后续计划的稳定扩展点是 `SeoMetadataService#getPublishedMetadata(Long, String, Long, String)` 和 `SeoPublicMetadataRespVO`，本计划完成后不得随意破坏其字段语义。
 
@@ -42,6 +42,7 @@
 - Create: `yudao-cloud/yudao-module-seo/yudao-module-seo-api/src/main/java/cn/iocoder/yudao/module/seo/enums/SeoPublishStatusEnum.java`
 - Create: `yudao-cloud/yudao-module-seo/yudao-module-seo-api/src/main/java/cn/iocoder/yudao/module/seo/enums/ErrorCodeConstants.java`
 - Create: `yudao-cloud/sql/mysql/migrations/V016__seo_foundation.sql`
+- Create: `yudao-cloud/sql/mysql/migrations/V017__seo_active_record_uniqueness.sql` (append-only forward migration; V016 remains immutable)
 - Create: `yudao-cloud/yudao-module-seo/yudao-module-seo-server/src/test/resources/sql/create_tables.sql`
 - Create: `yudao-cloud/yudao-module-seo/yudao-module-seo-server/src/test/resources/sql/clean.sql`
 
@@ -76,7 +77,7 @@
 - Create: `yudao-ui-admin-vue3/scripts/check-seo-foundation-contract.mjs`
 - Create: `yudao-ui-admin-vue3/src/api/seo/siteConfig/index.ts`
 - Create: `yudao-ui-admin-vue3/src/api/seo/metadata/index.ts`
-- Create: `yudao-ui-admin-vue3/src/views/seo/siteConfig/index.vue`
+- Create: `yudao-ui-admin-vue3/src/views/seo/site-config/index.vue`
 - Create: `yudao-ui-admin-vue3/src/views/seo/metadata/index.vue`
 - Create: `yudao-ui-admin-vue3/src/views/seo/metadata/MetadataForm.vue`
 
@@ -195,6 +196,7 @@ git commit -m "feat(seo): scaffold seo module"
 - Create: `yudao-cloud/yudao-module-seo/yudao-module-seo-api/src/main/java/cn/iocoder/yudao/module/seo/enums/ErrorCodeConstants.java`
 - Create: `yudao-cloud/yudao-module-seo/yudao-module-seo-api/src/test/java/cn/iocoder/yudao/module/seo/enums/SeoEnumTest.java`
 - Create: `yudao-cloud/sql/mysql/migrations/V016__seo_foundation.sql`
+- Create in Task 4: `yudao-cloud/sql/mysql/migrations/V017__seo_active_record_uniqueness.sql` (append-only; do not rewrite committed V016)
 - Create: `yudao-cloud/yudao-module-seo/yudao-module-seo-server/src/test/resources/sql/create_tables.sql`
 - Create: `yudao-cloud/yudao-module-seo/yudao-module-seo-server/src/test/resources/sql/clean.sql`
 
@@ -237,7 +239,7 @@ Enums expose `getCode()` and null-safe `isValid(String)`.
 
 - [ ] **Step 4: Create MySQL and H2 schemas**
 
-`V016__seo_foundation.sql` creates. `V015` is reserved by the fulfillment migration, so SEO must not reuse it:
+`V016__seo_foundation.sql` creates the base schema. `V015` is reserved by the fulfillment migration, so SEO must not reuse it. After V016 is committed it remains immutable; Task 4 adds V017 as an append-only forward correction:
 
 ```sql
 CREATE TABLE seo_site_config (
@@ -293,6 +295,8 @@ CREATE TABLE seo_metadata (
         (tenant_id, site_id, entity_type, entity_id, locale, publish_status)
 );
 ```
+
+The V016 `uk_tenant_site_deleted` and `uk_entity_locale_deleted` indexes are transitional. V017 drops them, adds a nullable generated `active_record` column to each SEO table, and creates `uk_tenant_site_active` and `uk_entity_locale_active`. Active rows generate the indexed marker while deleted rows generate `NULL`, enforcing one active business key without limiting deleted-history rows.
 
 Add menu rows under a top-level `SEO 管理` menu for `内容优化` and `站点设置`, plus button permissions:
 
@@ -460,6 +464,7 @@ git commit -m "feat(seo): add site configuration"
 - Create: `yudao-cloud/yudao-module-seo/yudao-module-seo-server/src/main/java/cn/iocoder/yudao/module/seo/controller/admin/metadata/SeoMetadataController.java`
 - Create: `yudao-cloud/yudao-module-seo/yudao-module-seo-server/src/main/java/cn/iocoder/yudao/module/seo/controller/app/metadata/AppSeoMetadataController.java`
 - Create: `yudao-cloud/yudao-module-seo/yudao-module-seo-server/src/test/java/cn/iocoder/yudao/module/seo/service/metadata/SeoMetadataServiceImplTest.java`
+- Create: `yudao-cloud/sql/mysql/migrations/V017__seo_active_record_uniqueness.sql` (append-only forward migration; V016 remains immutable)
 
 - [ ] **Step 1: Write service tests for the state machine and tenant boundary**
 
@@ -512,6 +517,8 @@ PageResult<SeoMetadataDO> selectPage(SeoMetadataPageReqVO reqVO);
 ```
 
 All query wrappers include `siteId` and applicable entity filters. Tenant interception supplies the tenant predicate.
+
+Add V017 without editing V016: drop the two transitional `deleted` unique indexes, add nullable generated `active_record` columns, and create the replacement active-only unique indexes. Keep the H2 final-schema fixture aligned so both tables reject a second active duplicate while allowing delete -> recreate -> delete -> recreate.
 
 - [ ] **Step 4: Define request and response contracts**
 
@@ -630,7 +637,7 @@ git commit -m "feat(seo): add metadata publishing workflow"
 - Create: `yudao-ui-admin-vue3/scripts/check-seo-foundation-contract.mjs`
 - Create: `yudao-ui-admin-vue3/src/api/seo/siteConfig/index.ts`
 - Create: `yudao-ui-admin-vue3/src/api/seo/metadata/index.ts`
-- Create: `yudao-ui-admin-vue3/src/views/seo/siteConfig/index.vue`
+- Create: `yudao-ui-admin-vue3/src/views/seo/site-config/index.vue`
 - Create: `yudao-ui-admin-vue3/src/views/seo/metadata/index.vue`
 - Create: `yudao-ui-admin-vue3/src/views/seo/metadata/MetadataForm.vue`
 
@@ -774,7 +781,7 @@ pnpm.cmd ts:check
 pnpm.cmd build:local
 ```
 
-Expected: contract script prints a success line, TypeScript exits `0`, and Vite build completes. Do not run `pnpm install`; do not modify `pnpm-lock.yaml`.
+Expected: contract script prints a success line and Vite build completes. TypeScript follows the approved baseline-delta rule: the repository's existing 996 diagnostics may remain, but `src/api/seo` and `src/views/seo` must have 0 diagnostics and the normalized diagnostic multiset must not regress. Do not run `pnpm install`; do not modify `pnpm-lock.yaml`.
 
 - [ ] **Step 7: Commit UI files without the pre-existing lockfile change**
 
@@ -822,23 +829,26 @@ pnpm.cmd ts:check
 pnpm.cmd build:local
 ```
 
-Expected: all three commands exit `0`.
+Expected: the contract and Vite build exit `0`. TypeScript may retain the approved nonzero repository baseline of 996 diagnostics, but SEO API/view paths must remain at 0 and the normalized diagnostic multiset must not regress.
 
 - [ ] **Step 4: Audit migration and API boundaries**
 
 Verify:
 
 ```powershell
-Select-String -Path sql/mysql/migrations/V016__seo_foundation.sql -Pattern "uk_tenant_site_deleted","uk_entity_locale_deleted","idx_public_resolve"
+Select-String -Path sql/mysql/migrations/V016__seo_foundation.sql -Pattern "seo_site_config","seo_metadata","uk_tenant_site_deleted","uk_entity_locale_deleted","idx_public_resolve"
+Select-String -Path sql/mysql/migrations/V017__seo_active_record_uniqueness.sql -Pattern "DROP INDEX","uk_tenant_site_deleted","uk_entity_locale_deleted","active_record","uk_tenant_site_active","uk_entity_locale_active"
 rg "tenantId" yudao-module-seo/yudao-module-seo-server/src/main/java/cn/iocoder/yudao/module/seo/controller
 rg "focusKeyphrase|relatedKeyphrases|tenantId" yudao-module-seo/yudao-module-seo-server/src/main/java/cn/iocoder/yudao/module/seo/controller/app/metadata/vo/SeoPublicMetadataRespVO.java
 ```
 
 Expected:
 
-- all three database indexes exist;
+- V016 contains the base tables/transitional indexes, while V017 drops both transitional indexes and supplies both generated columns and replacement active-only unique indexes; `SeoMigrationContractTest` and `SeoSchemaSqlTest` verify the SQL contract and both tables' duplicate-active/delete-recreate behavior;
 - request/response controller VOs do not expose a writable `tenantId`;
 - the public response contains none of the private analysis or tenant fields.
+
+The isolated branch currently lacks the V015 migration reserved by another feature line. The repository's custom ordered migration runner therefore stops at the catalog gap and cannot apply V016/V017 until V015 is integrated. This verification is a SQL-contract/order audit, not a real MySQL/Flyway end-to-end migration pass; these files are run by the custom migration script rather than Flyway.
 
 - [ ] **Step 5: Inspect scope before the final foundation commit**
 
@@ -867,7 +877,7 @@ If no correction was required, do not create an empty commit.
 - [ ] Public resolution returns only exact-locale, published metadata in the current tenant.
 - [ ] The public DTO does not expose keyphrases, audit details, tenant ID or draft fields.
 - [ ] Admin navigation and buttons are protected by the seven defined permissions.
-- [ ] Backend module tests, aggregate package, UI contract test, type check and local build all pass.
+- [ ] Backend module tests, aggregate package, UI contract test and local build pass; TypeScript retains only the approved 996-diagnostic baseline with 0 SEO-path diagnostics and no diagnostic-set regression.
 - [ ] Existing unrelated workspace changes, especially `pnpm-lock.yaml`, remain uncommitted.
 
 ## Follow-on Plan Boundaries
