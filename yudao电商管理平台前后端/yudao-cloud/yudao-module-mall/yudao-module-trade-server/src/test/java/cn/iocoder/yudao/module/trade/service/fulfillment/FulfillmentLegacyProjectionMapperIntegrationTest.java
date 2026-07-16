@@ -2,6 +2,8 @@ package cn.iocoder.yudao.module.trade.service.fulfillment;
 
 import cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder;
 import cn.iocoder.yudao.framework.test.core.ut.BaseDbUnitTest;
+import cn.iocoder.yudao.module.trade.dal.mysql.fulfillment.ShipmentLegMapper;
+import cn.iocoder.yudao.module.trade.dal.mysql.fulfillment.TrackingEventMapper;
 import jakarta.annotation.Resource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -33,12 +35,19 @@ class FulfillmentLegacyProjectionMapperIntegrationTest extends BaseDbUnitTest {
     private FulfillmentLegacyProjectionService projectionService;
     @Resource
     private DataSource dataSource;
+    @Resource
+    private ShipmentLegMapper legMapper;
+    @Resource
+    private TrackingEventMapper eventMapper;
 
     private JdbcTemplate jdbc;
 
     @BeforeEach
     void setUp() {
         TenantContextHolder.setTenantId(TENANT_ID);
+        // Exercise every explicit mapper boundary without the tenant interceptor masking a missing
+        // tenant predicate. Production still gets both the mapper predicate and interceptor defense.
+        TenantContextHolder.setIgnore(true);
         jdbc = new JdbcTemplate(dataSource);
     }
 
@@ -96,10 +105,24 @@ class FulfillmentLegacyProjectionMapperIntegrationTest extends BaseDbUnitTest {
         seedEvent(87600L, TENANT_ID, SHIPMENT_ID, null, targetLegId, "IN_TRANSIT", EARLY);
         seedEvent(87601L, TENANT_ID, SHIPMENT_ID, null, targetLegId, "OUT_FOR_DELIVERY", LATE);
 
-        // Each adversary is valid-looking in isolation, but differs on one required subject boundary.
-        seedEvent(87610L, OTHER_TENANT_ID, SHIPMENT_ID, null, crossTenantLegId, "EXCEPTION", EARLY);
-        seedEvent(87611L, TENANT_ID, otherShipmentId, null, crossShipmentLegId, "EXCEPTION", EARLY);
-        seedEvent(87612L, TENANT_ID, SHIPMENT_ID, null, wrongLegId, "EXCEPTION", EARLY);
+        // Event-query adversaries reuse the selected target leg. Removing only the event tenant or
+        // shipment predicate must therefore expose an EXCEPTION row despite the leg predicate.
+        seedEvent(87610L, OTHER_TENANT_ID, SHIPMENT_ID, null, targetLegId, "EXCEPTION", EARLY);
+        seedEvent(87611L, TENANT_ID, otherShipmentId, null, targetLegId, "EXCEPTION", EARLY);
+
+        // Leg-query adversaries are made observable from the target event subject. Removing only the
+        // leg tenant or shipment predicate selects the foreign leg first and exposes its event.
+        seedEvent(87612L, TENANT_ID, SHIPMENT_ID, null, crossTenantLegId, "EXCEPTION", EARLY);
+        seedEvent(87613L, TENANT_ID, SHIPMENT_ID, null, crossShipmentLegId, "EXCEPTION", EARLY);
+
+        // An unrelated leg in the correct tenant/shipment kills removal of the event leg predicate.
+        seedEvent(87614L, TENANT_ID, SHIPMENT_ID, null, wrongLegId, "EXCEPTION", EARLY);
+
+        assertEquals(List.of(targetLegId), legMapper.selectListByShipmentId(TENANT_ID, SHIPMENT_ID)
+                .stream().map(leg -> leg.getId()).toList());
+        assertEquals(List.of(87600L, 87601L), eventMapper.selectLegacySubjectEvents(
+                        TENANT_ID, SHIPMENT_ID, null, targetLegId)
+                .stream().map(event -> event.getId()).toList());
 
         FulfillmentLegacyProjectionResult result = projectionService.project(TENANT_ID, ORDER_ID);
 
