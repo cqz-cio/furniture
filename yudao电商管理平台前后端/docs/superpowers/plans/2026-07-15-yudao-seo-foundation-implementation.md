@@ -17,7 +17,7 @@
 - 所有表都继承 Yudao 的审计、逻辑删除和租户字段约定；所有管理端接口都要求权限校验。
 - `siteId` 必须显式传入，`tenantId` 必须从租户上下文取得，禁止接受客户端提交的 `tenantId`。
 - 第一阶段实体类型固定为 `PRODUCT`、`CATEGORY`、`ARTICLE`、`PAGE`，语言使用 BCP 47 风格字符串，默认 `zh-CN`。
-- 元数据唯一键为 `(tenant_id, site_id, entity_type, entity_id, locale, deleted)`；公开接口只返回 `PUBLISHED` 状态。
+- V019 中依赖 `deleted` 的唯一键只是过渡结构；最终唯一性契约由 V020 的 nullable generated `active_record` 实现，只允许一个 active 业务键，同时允许任意条 deleted 历史。公开接口只返回 `PUBLISHED` 状态。
 - 标题、描述等用户输入按纯文本保存；Canonical URL 必须是绝对 HTTP(S) URL；不允许将任意 HTML 直接回显到管理页面。
 - 后续计划的稳定扩展点是 `SeoMetadataService#getPublishedMetadata(Long, String, Long, String)` 和 `SeoPublicMetadataRespVO`，本计划完成后不得随意破坏其字段语义。
 
@@ -41,7 +41,8 @@
 - Create: `yudao-cloud/yudao-module-seo/yudao-module-seo-api/src/main/java/cn/iocoder/yudao/module/seo/enums/SeoEntityTypeEnum.java`
 - Create: `yudao-cloud/yudao-module-seo/yudao-module-seo-api/src/main/java/cn/iocoder/yudao/module/seo/enums/SeoPublishStatusEnum.java`
 - Create: `yudao-cloud/yudao-module-seo/yudao-module-seo-api/src/main/java/cn/iocoder/yudao/module/seo/enums/ErrorCodeConstants.java`
-- Create: `yudao-cloud/sql/mysql/migrations/V015__seo_foundation.sql`
+- Create: `yudao-cloud/sql/mysql/migrations/V019__seo_foundation.sql`
+- Create: `yudao-cloud/sql/mysql/migrations/V020__seo_active_record_uniqueness.sql` (append-only forward migration; V019 remains immutable)
 - Create: `yudao-cloud/yudao-module-seo/yudao-module-seo-server/src/test/resources/sql/create_tables.sql`
 - Create: `yudao-cloud/yudao-module-seo/yudao-module-seo-server/src/test/resources/sql/clean.sql`
 
@@ -194,7 +195,8 @@ git commit -m "feat(seo): scaffold seo module"
 - Create: `yudao-cloud/yudao-module-seo/yudao-module-seo-api/src/main/java/cn/iocoder/yudao/module/seo/enums/SeoPublishStatusEnum.java`
 - Create: `yudao-cloud/yudao-module-seo/yudao-module-seo-api/src/main/java/cn/iocoder/yudao/module/seo/enums/ErrorCodeConstants.java`
 - Create: `yudao-cloud/yudao-module-seo/yudao-module-seo-api/src/test/java/cn/iocoder/yudao/module/seo/enums/SeoEnumTest.java`
-- Create: `yudao-cloud/sql/mysql/migrations/V015__seo_foundation.sql`
+- Create: `yudao-cloud/sql/mysql/migrations/V019__seo_foundation.sql`
+- Create in Task 4: `yudao-cloud/sql/mysql/migrations/V020__seo_active_record_uniqueness.sql` (append-only; do not rewrite committed V019)
 - Create: `yudao-cloud/yudao-module-seo/yudao-module-seo-server/src/test/resources/sql/create_tables.sql`
 - Create: `yudao-cloud/yudao-module-seo/yudao-module-seo-server/src/test/resources/sql/clean.sql`
 
@@ -237,7 +239,7 @@ Enums expose `getCode()` and null-safe `isValid(String)`.
 
 - [ ] **Step 4: Create MySQL and H2 schemas**
 
-`V015__seo_foundation.sql` creates:
+`V019__seo_foundation.sql` creates the base schema. Fulfillment owns V015-V017 and reserves V018 for its append-only active-record uniqueness correction, so fulfillment V015-V018 must be integrated before SEO V019-V020. After V019 is committed it remains immutable; Task 4 adds V020 as an append-only forward correction:
 
 ```sql
 CREATE TABLE seo_site_config (
@@ -294,6 +296,8 @@ CREATE TABLE seo_metadata (
 );
 ```
 
+The V019 `uk_tenant_site_deleted` and `uk_entity_locale_deleted` indexes are transitional. V020 drops them, adds a nullable generated `active_record` column to each SEO table, and creates `uk_tenant_site_active` and `uk_entity_locale_active`. Active rows generate the indexed marker while deleted rows generate `NULL`, enforcing one active business key without limiting deleted-history rows.
+
 Add menu rows under a top-level `SEO 管理` menu for `内容优化` and `站点设置`, plus button permissions:
 
 - `seo:metadata:query`
@@ -310,7 +314,7 @@ Follow current migration conventions for deterministic menu IDs and `system_menu
 
 ```powershell
 mvn -pl yudao-module-seo/yudao-module-seo-api -am -Dtest=SeoEnumTest -Dsurefire.failIfNoSpecifiedTests=false test
-Select-String -Path sql/mysql/migrations/V015__seo_foundation.sql -Pattern "seo_site_config","seo_metadata","seo:metadata:publish"
+Select-String -Path sql/mysql/migrations/V019__seo_foundation.sql -Pattern "seo_site_config","seo_metadata","seo:metadata:publish"
 ```
 
 Expected: enum test passes; each required schema/menu token appears.
@@ -318,7 +322,8 @@ Expected: enum test passes; each required schema/menu token appears.
 - [ ] **Step 6: Commit schema contracts**
 
 ```powershell
-git add -- yudao电商管理平台前后端/yudao-cloud/yudao-module-seo/yudao-module-seo-api yudao电商管理平台前后端/yudao-cloud/yudao-module-seo/yudao-module-seo-server/src/test/resources/sql yudao电商管理平台前后端/yudao-cloud/sql/mysql/migrations/V015__seo_foundation.sql
+git add -- yudao电商管理平台前后端/yudao-cloud/yudao-module-seo/yudao-module-seo-api yudao电商管理平台前后端/yudao-cloud/yudao-module-seo/yudao-module-seo-server/src/test/resources/sql
+git add -f -- yudao电商管理平台前后端/yudao-cloud/sql/mysql/migrations/V019__seo_foundation.sql
 git commit -m "feat(seo): define foundation schema contracts"
 ```
 
@@ -459,6 +464,7 @@ git commit -m "feat(seo): add site configuration"
 - Create: `yudao-cloud/yudao-module-seo/yudao-module-seo-server/src/main/java/cn/iocoder/yudao/module/seo/controller/admin/metadata/SeoMetadataController.java`
 - Create: `yudao-cloud/yudao-module-seo/yudao-module-seo-server/src/main/java/cn/iocoder/yudao/module/seo/controller/app/metadata/AppSeoMetadataController.java`
 - Create: `yudao-cloud/yudao-module-seo/yudao-module-seo-server/src/test/java/cn/iocoder/yudao/module/seo/service/metadata/SeoMetadataServiceImplTest.java`
+- Create: `yudao-cloud/sql/mysql/migrations/V020__seo_active_record_uniqueness.sql` (append-only forward migration; V019 remains immutable)
 
 - [ ] **Step 1: Write service tests for the state machine and tenant boundary**
 
@@ -511,6 +517,8 @@ PageResult<SeoMetadataDO> selectPage(SeoMetadataPageReqVO reqVO);
 ```
 
 All query wrappers include `siteId` and applicable entity filters. Tenant interception supplies the tenant predicate.
+
+Add V020 without editing V019: drop the two transitional `deleted` unique indexes, add nullable generated `active_record` columns, and create the replacement active-only unique indexes. Keep the H2 final-schema fixture aligned so both tables reject a second active duplicate while allowing delete -> recreate -> delete -> recreate.
 
 - [ ] **Step 4: Define request and response contracts**
 
@@ -828,16 +836,19 @@ Expected: all three commands exit `0`.
 Verify:
 
 ```powershell
-Select-String -Path sql/mysql/migrations/V015__seo_foundation.sql -Pattern "uk_tenant_site_deleted","uk_entity_locale_deleted","idx_public_resolve"
+Select-String -Path sql/mysql/migrations/V019__seo_foundation.sql -Pattern "seo_site_config","seo_metadata","uk_tenant_site_deleted","uk_entity_locale_deleted","idx_public_resolve"
+Select-String -Path sql/mysql/migrations/V020__seo_active_record_uniqueness.sql -Pattern "DROP INDEX","uk_tenant_site_deleted","uk_entity_locale_deleted","active_record","uk_tenant_site_active","uk_entity_locale_active"
 rg "tenantId" yudao-module-seo/yudao-module-seo-server/src/main/java/cn/iocoder/yudao/module/seo/controller
 rg "focusKeyphrase|relatedKeyphrases|tenantId" yudao-module-seo/yudao-module-seo-server/src/main/java/cn/iocoder/yudao/module/seo/controller/app/metadata/vo/SeoPublicMetadataRespVO.java
 ```
 
 Expected:
 
-- all three database indexes exist;
+- V019 contains the base tables/transitional indexes, while V020 drops both transitional indexes and supplies both generated columns and replacement active-only unique indexes; `SeoMigrationContractTest` and `SeoSchemaSqlTest` verify the SQL contract and both tables' duplicate-active/delete-recreate behavior;
 - request/response controller VOs do not expose a writable `tenantId`;
 - the public response contains none of the private analysis or tenant fields.
+
+The isolated branch currently lacks the fulfillment-owned V015-V017 migrations and the reserved V018 forward uniqueness correction. The repository's custom ordered migration runner therefore stops at the catalog gap and cannot apply SEO V019/V020 until fulfillment V015-V018 are integrated first. This verification is a SQL-contract/order audit, not a real MySQL/Flyway end-to-end migration pass; these files are run by the custom migration script rather than Flyway.
 
 - [ ] **Step 5: Inspect scope before the final foundation commit**
 
