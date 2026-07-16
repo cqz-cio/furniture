@@ -1,9 +1,11 @@
 package cn.iocoder.yudao.module.trade.service.fulfillment.migration;
 
+import cn.iocoder.yudao.framework.common.util.json.JsonUtils;
 import cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder;
 import cn.iocoder.yudao.framework.test.core.ut.BaseDbUnitTest;
 import cn.iocoder.yudao.module.trade.framework.fulfillment.config.FulfillmentFeatureGuard;
 import cn.iocoder.yudao.module.trade.framework.fulfillment.config.FulfillmentProperties;
+import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.annotation.Resource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -12,6 +14,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import javax.sql.DataSource;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
@@ -20,6 +23,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -93,12 +97,29 @@ class FulfillmentLegacyMigrationWriterTest extends BaseDbUnitTest {
         assertNull(scalar("SELECT description FROM trade_tracking_event"));
         assertNull(scalar("SELECT location FROM trade_tracking_event"));
         assertNull(scalar("SELECT raw_payload_ref FROM trade_tracking_event"));
-        String payload = String.valueOf(scalar("SELECT payload FROM trade_fulfillment_outbox_event"));
-        assertTrue(payload.contains("tenantId"));
-        assertTrue(payload.contains("orderId"));
-        assertTrue(payload.contains("shipmentId"));
-        assertTrue(!payload.contains("Case-Sensitive.91001") && !payload.contains("5550000000")
-                && !payload.contains("controlled-test-address"));
+        JsonNode payload = JsonUtils.parseTree(
+                String.valueOf(scalar("SELECT payload FROM trade_fulfillment_outbox_event")));
+        Set<String> payloadKeys = new HashSet<>();
+        payload.fieldNames().forEachRemaining(payloadKeys::add);
+        assertEquals(Set.of("tenantId", "orderId", "shipmentId", "shipmentStatus", "fulfillmentStatus"),
+                payloadKeys);
+        assertTrue(payload.get("tenantId").isIntegralNumber());
+        assertTrue(payload.get("orderId").isIntegralNumber());
+        assertTrue(payload.get("shipmentId").isIntegralNumber());
+        assertTrue(payload.get("shipmentStatus").isTextual());
+        assertTrue(payload.get("fulfillmentStatus").isTextual());
+        assertEquals(TENANT_ID, payload.get("tenantId").longValue());
+        assertEquals(ORDER_ID, payload.get("orderId").longValue());
+        assertEquals("HANDED_TO_CARRIER", payload.get("shipmentStatus").textValue());
+        assertEquals("SHIPPED", payload.get("fulfillmentStatus").textValue());
+        for (String forbidden : Set.of("providerId", "providerCode", "warehouseId", "sourceReference",
+                "trackingDigest", "requestDigest")) {
+            assertFalse(payload.has(forbidden), forbidden);
+        }
+        String renderedPayload = payload.toString();
+        assertFalse(renderedPayload.contains("Case-Sensitive.91001"));
+        assertFalse(renderedPayload.contains("5550000000"));
+        assertFalse(renderedPayload.contains("controlled-test-address"));
     }
 
     @Test

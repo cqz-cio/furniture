@@ -3,6 +3,7 @@ package cn.iocoder.yudao.module.trade.framework.delivery.core.client.impl;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.classic.spi.ThrowableProxyUtil;
 import ch.qos.logback.core.read.ListAppender;
 import cn.iocoder.yudao.framework.common.exception.ServiceException;
 import cn.iocoder.yudao.module.trade.framework.delivery.config.TradeExpressProperties;
@@ -20,6 +21,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -45,6 +47,26 @@ class ExpressProviderLogRedactionTest {
     private static final String RESPONSE = "RESPONSE_BODY_CANARY";
 
     @Test
+    void redactionAssertionRejectsCanaryHiddenOnlyInThrowableProxy() {
+        Logger probe = (Logger) LoggerFactory.getLogger(ExpressProviderLogRedactionTest.class.getName() + ".probe");
+
+        List<ILoggingEvent> logs = capture(probe,
+                () -> probe.warn("safe-message", new RestClientException(RESPONSE)));
+
+        assertThrows(AssertionError.class, () -> assertSafe(logs));
+    }
+
+    @Test
+    void redactionAssertionRejectsCanaryHiddenOnlyInArgumentArray() {
+        Logger probe = (Logger) LoggerFactory.getLogger(ExpressProviderLogRedactionTest.class.getName() + ".probe");
+
+        List<ILoggingEvent> logs = capture(probe, () -> probe.warn("safe-message", RESPONSE));
+
+        assertEquals("safe-message", logs.get(0).getFormattedMessage());
+        assertThrows(AssertionError.class, () -> assertSafe(logs));
+    }
+
+    @Test
     void kd100DebugLogsContainOnlySafeMetadata() {
         RestTemplate restTemplate = restTemplate(
                 "{\"result\":\"true\",\"nu\":\"" + RESPONSE + "\",\"data\":[]}");
@@ -52,11 +74,11 @@ class ExpressProviderLogRedactionTest {
                 .setCustomer(ACCOUNT).setKey(SECRET);
         Kd100ExpressClient client = new Kd100ExpressClient(restTemplate, config);
 
-        List<String> logs = capture(Kd100ExpressClient.class,
+        List<ILoggingEvent> logs = capture(Kd100ExpressClient.class,
                 () -> client.getExpressTrackList(query()));
 
         assertSafe(logs);
-        assertTrue(logs.stream().anyMatch(message -> message.contains("provider=kd100")));
+        assertTrue(logs.stream().anyMatch(event -> event.getFormattedMessage().contains("provider=kd100")));
     }
 
     @Test
@@ -68,11 +90,11 @@ class ExpressProviderLogRedactionTest {
                 .setBusinessId(ACCOUNT).setApiKey(SECRET).setRequestType("1002");
         KdNiaoExpressClient client = new KdNiaoExpressClient(restTemplate, config);
 
-        List<String> logs = capture(KdNiaoExpressClient.class,
+        List<ILoggingEvent> logs = capture(KdNiaoExpressClient.class,
                 () -> client.getExpressTrackList(query()));
 
         assertSafe(logs);
-        assertTrue(logs.stream().anyMatch(message -> message.contains("provider=kdniao")));
+        assertTrue(logs.stream().anyMatch(event -> event.getFormattedMessage().contains("provider=kdniao")));
     }
 
     @Test
@@ -172,11 +194,11 @@ class ExpressProviderLogRedactionTest {
         return new ExpressTrackQueryReqDTO().setExpressCode("sf").setLogisticsNo(TRACKING).setPhone(PHONE);
     }
 
-    private static List<String> capture(Class<?> loggerType, Runnable action) {
+    private static List<ILoggingEvent> capture(Class<?> loggerType, Runnable action) {
         return capture(LoggerFactory.getLogger(loggerType), action);
     }
 
-    private static List<String> capture(org.slf4j.Logger slf4jLogger, Runnable action) {
+    private static List<ILoggingEvent> capture(org.slf4j.Logger slf4jLogger, Runnable action) {
         Logger logger = (Logger) slf4jLogger;
         Level previous = logger.getLevel();
         ListAppender<ILoggingEvent> appender = new ListAppender<>();
@@ -185,7 +207,7 @@ class ExpressProviderLogRedactionTest {
         logger.setLevel(Level.DEBUG);
         try {
             action.run();
-            return appender.list.stream().map(ILoggingEvent::getFormattedMessage).toList();
+            return List.copyOf(appender.list);
         } finally {
             logger.detachAppender(appender);
             logger.setLevel(previous);
@@ -195,14 +217,14 @@ class ExpressProviderLogRedactionTest {
 
     private static FailureCapture captureFailure(Class<?> loggerType, Runnable action) {
         AtomicReference<ServiceException> exception = new AtomicReference<>();
-        List<String> logs = capture(loggerType,
+        List<ILoggingEvent> logs = capture(loggerType,
                 () -> exception.set(assertThrows(ServiceException.class, action::run)));
         return new FailureCapture(exception.get(), logs);
     }
 
     private static FailureCapture captureRootFailure(Runnable action) {
         AtomicReference<ServiceException> exception = new AtomicReference<>();
-        List<String> logs = capture(LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME),
+        List<ILoggingEvent> logs = capture(LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME),
                 () -> exception.set(assertThrows(ServiceException.class, action::run)));
         return new FailureCapture(exception.get(), logs);
     }
@@ -220,8 +242,9 @@ class ExpressProviderLogRedactionTest {
         assertFalse(rendered.contains(ACCOUNT));
     }
 
-    private static void assertSafe(List<String> logs) {
-        String joined = String.join("\n", logs);
+    private static void assertSafe(List<ILoggingEvent> logs) {
+        String joined = logs.stream().map(ExpressProviderLogRedactionTest::renderCompleteEvent)
+                .reduce("", (left, right) -> left + "\n" + right);
         assertFalse(joined.contains(TRACKING));
         assertFalse(joined.contains(PHONE));
         assertFalse(joined.contains(SECRET));
@@ -232,7 +255,17 @@ class ExpressProviderLogRedactionTest {
         assertFalse(joined.contains("DataSign"));
     }
 
-    private record FailureCapture(ServiceException exception, List<String> logs) {
+    private static String renderCompleteEvent(ILoggingEvent event) {
+        String throwable = event.getThrowableProxy() == null
+                ? "" : ThrowableProxyUtil.asString(event.getThrowableProxy());
+        return event.getLoggerName() + "\n"
+                + event.getMessage() + "\n"
+                + event.getFormattedMessage() + "\n"
+                + Arrays.deepToString(event.getArgumentArray()) + "\n"
+                + throwable;
+    }
+
+    private record FailureCapture(ServiceException exception, List<ILoggingEvent> logs) {
     }
 
 }
