@@ -92,6 +92,8 @@ describe("header language menu", () => {
     expect(source).toContain("storefrontDropdownMenus[activeDropdown.value]");
     expect(source).toContain('const navItemLabel = (item) => t(item.labelKey)');
     expect(source).toContain('const menuItemLabel = (item) => t(item.labelKey)');
+    expect(source).toContain('t("navigation.storefront.mobile.shopFurniture")');
+    expect(source).toContain('labelKey: "navigation.storefront.mobile.membershipFaq"');
     expect(source).toContain('@click="handleNavClick(item)"');
     expect(source).toContain('v-for="child in item.items"');
     expect(source).toContain(':href="child.href"');

@@ -116,8 +116,8 @@ describe("i18n locale helper", () => {
     expect(t("navigation.primary.newSale")).toBe("新品特惠");
   });
 
-  it("resolves every English storefront navigation label and falls back for untranslated locales", async () => {
-    const { getMessage, setLocale, t } = await loadI18n();
+  it("translates the shared storefront navigation in English, Chinese, and French", async () => {
+    const { availableLocales, getMessage, setLocale, t } = await loadI18n();
     const keys = [
       "navigation.storefront.primary.new",
       "navigation.storefront.primary.collections",
@@ -130,13 +130,44 @@ describe("i18n locale helper", () => {
       "navigation.storefront.submenu.catalog",
       "navigation.storefront.submenu.rectangularTables",
       "navigation.storefront.submenu.upholsterySwatches",
+      "navigation.storefront.mobile.shopFurniture",
+      "navigation.storefront.mobile.service",
+      "navigation.storefront.mobile.membershipFaq",
+      "navigation.storefront.mobile.giftRegistry",
+      "navigation.storefront.mobile.tradeProgram",
     ];
 
-    keys.forEach((key) => expect(getMessage(key, "en")).toBeTruthy());
+    for (const locale of availableLocales) {
+      keys.forEach((key) => expect(getMessage(key, locale.lang), `${key} missing for ${locale.lang}`).toBeTruthy());
+    }
+
     setLocale("zh-CN");
-    expect(t("navigation.storefront.primary.collections")).toBe("SHOP BY COLLECTIONS");
+    expect(t("navigation.storefront.primary.collections")).toBe("按系列选购");
+    expect(t("navigation.storefront.primary.dining")).toBe("餐厅");
+    expect(t("navigation.storefront.submenu.catalog")).toBe("OAKVED 画册");
+    expect(t("navigation.storefront.mobile.shopFurniture")).toBe("选购家具");
     setLocale("fr");
-    expect(t("navigation.storefront.submenu.catalog")).toBe("OAKVED catalog");
+    expect(t("navigation.storefront.primary.collections")).toBe("PAR COLLECTION");
+    expect(t("navigation.storefront.primary.dining")).toBe("SALLE À MANGER");
+    expect(t("navigation.storefront.submenu.catalog")).toBe("Catalogue OAKVED");
+    expect(t("navigation.storefront.mobile.shopFurniture")).toBe("MOBILIER");
+    setLocale("en");
+  });
+
+  it("translates the shared catalog page in every supported locale", async () => {
+    const { availableLocales, getMessage, setLocale, t } = await loadI18n();
+    const keys = ["catalogPage.eyebrow", "catalogPage.title", "catalogPage.introduction", "catalogPage.imageAlt"];
+
+    for (const locale of availableLocales) {
+      keys.forEach((key) => expect(getMessage(key, locale.lang), `${key} missing for ${locale.lang}`).toBeTruthy());
+    }
+
+    setLocale("zh-CN");
+    expect(t("catalogPage.eyebrow")).toBe("OAKVED 品牌画册");
+    expect(t("catalogPage.title")).toBe("隽永空间的细致研究。");
+    setLocale("fr");
+    expect(t("catalogPage.eyebrow")).toBe("LE CATALOGUE OAKVED");
+    expect(t("catalogPage.title")).toBe("Une étude des intérieurs intemporels.");
     setLocale("en");
   });
 
