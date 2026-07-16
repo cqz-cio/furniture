@@ -15,6 +15,21 @@ class SeoMigrationContractTest {
 
     private static final Path MIGRATION_RELATIVE_PATH =
             Path.of("sql", "mysql", "migrations", "V016__seo_foundation.sql");
+    private static final Path ACTIVE_RECORD_MIGRATION_RELATIVE_PATH =
+            Path.of("sql", "mysql", "migrations", "V017__seo_active_record_uniqueness.sql");
+
+    @Test
+    void shouldReplaceDeletedFlagUniqueIndexesWithActiveRecordMarkers() throws IOException {
+        String sql = migrationSql(ACTIVE_RECORD_MIGRATION_RELATIVE_PATH);
+
+        assertCoherentActiveRecordAlter(sql, "seo_site_config", "uk_tenant_site_deleted",
+                "UNIQUE KEY `uk_tenant_site_active` (`tenant_id`, `site_id`, `active_record`)");
+        assertCoherentActiveRecordAlter(sql, "seo_metadata", "uk_entity_locale_deleted",
+                "UNIQUE KEY `uk_entity_locale_active` (`tenant_id`, `site_id`, `entity_type`, `entity_id`, `locale`, `active_record`)");
+        assertThat(countMatches(sql, "ADD\\s+COLUMN\\s+`active_record`\\s+tinyint\\s+GENERATED\\s+ALWAYS"))
+                .as("one generated active_record column per SEO table")
+                .isEqualTo(2);
+    }
 
     @Test
     void shouldFailWhenReservedMenuIdsBelongToUnrelatedRows() throws IOException {
@@ -74,21 +89,51 @@ class SeoMigrationContractTest {
     }
 
     private static String migrationSql() throws IOException {
+        return migrationSql(MIGRATION_RELATIVE_PATH);
+    }
+
+    private static String migrationSql(Path relativePath) throws IOException {
         Path directory = Path.of("").toAbsolutePath();
         while (directory != null) {
-            Path migration = directory.resolve(MIGRATION_RELATIVE_PATH);
+            Path migration = directory.resolve(relativePath);
             if (Files.isRegularFile(migration)) {
                 return Files.readString(migration, StandardCharsets.UTF_8).replace("\r\n", "\n");
             }
             directory = directory.getParent();
         }
-        throw new IOException("Cannot find " + MIGRATION_RELATIVE_PATH + " from " + Path.of("").toAbsolutePath());
+        throw new IOException("Cannot find " + relativePath + " from " + Path.of("").toAbsolutePath());
     }
 
     private static String selectRow(String sql, int id) {
         Matcher matcher = Pattern.compile("(?m)^SELECT " + id + ",.*$").matcher(sql);
         assertThat(matcher.find()).as("menu SELECT for id %s", id).isTrue();
         return matcher.group();
+    }
+
+    private static void assertCoherentActiveRecordAlter(String sql, String tableName, String oldIndexName,
+                                                         String replacementUniqueKey) {
+        Matcher matcher = Pattern.compile("(?is)ALTER\\s+TABLE\\s+`" + Pattern.quote(tableName)
+                + "`\\s+(.*?);").matcher(sql);
+        assertThat(matcher.find()).as("ALTER TABLE for %s", tableName).isTrue();
+        String operations = matcher.group(1);
+        assertThat(matcher.find()).as("exactly one ALTER TABLE for %s", tableName).isFalse();
+        assertThat(operations).contains(
+                "DROP INDEX `" + oldIndexName + "`",
+                "ADD COLUMN `active_record` tinyint GENERATED ALWAYS AS "
+                        + "(CASE WHEN `deleted` = b'0' THEN 1 ELSE NULL END) STORED",
+                replacementUniqueKey);
+        assertThat(countMatches(operations, "ADD\\s+COLUMN\\s+`active_record`"))
+                .as("generated active_record column for %s", tableName)
+                .isEqualTo(1);
+    }
+
+    private static int countMatches(String value, String regex) {
+        Matcher matcher = Pattern.compile(regex, Pattern.CASE_INSENSITIVE).matcher(value);
+        int count = 0;
+        while (matcher.find()) {
+            count++;
+        }
+        return count;
     }
 
     private static void assertPostResolutionReservedIdGuard(String sql, int reservedId,

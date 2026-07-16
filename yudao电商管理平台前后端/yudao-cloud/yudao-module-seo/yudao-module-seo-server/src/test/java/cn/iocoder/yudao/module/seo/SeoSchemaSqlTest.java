@@ -9,6 +9,7 @@ import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -28,9 +29,10 @@ class SeoSchemaSqlTest {
             DatabaseMetaData metadata = connection.getMetaData();
             assertThat(tableNames(metadata)).contains("seo_site_config", "seo_metadata");
             assertThat(columnNames(metadata, "seo_site_config"))
-                    .contains("site_id", "site_url", "default_locale", "tenant_id", "deleted");
+                    .contains("site_id", "site_url", "default_locale", "tenant_id", "deleted", "active_record");
             assertThat(columnNames(metadata, "seo_metadata"))
-                    .contains("entity_type", "entity_id", "locale", "related_keyphrases", "publish_status", "version");
+                    .contains("entity_type", "entity_id", "locale", "related_keyphrases", "publish_status", "version",
+                            "active_record");
 
             assertColumn(metadata, "seo_site_config", "id", Types.BIGINT, 64, false, null);
             assertColumn(metadata, "seo_site_config", "site_id", Types.BIGINT, 64, false, null);
@@ -54,13 +56,54 @@ class SeoSchemaSqlTest {
             assertColumn(metadata, "seo_metadata", "deleted", Types.BOOLEAN, 1, false, "FALSE");
             assertColumn(metadata, "seo_metadata", "tenant_id", Types.BIGINT, 64, false, "0");
 
-            assertIndex(metadata, "seo_site_config", "uk_tenant_site_deleted", true,
-                    "tenant_id", "site_id", "deleted");
-            assertIndex(metadata, "seo_metadata", "uk_entity_locale_deleted", true,
-                    "tenant_id", "site_id", "entity_type", "entity_id", "locale", "deleted");
+            assertIndex(metadata, "seo_site_config", "uk_tenant_site_active", true,
+                    "tenant_id", "site_id", "active_record");
+            assertIndex(metadata, "seo_metadata", "uk_entity_locale_active", true,
+                    "tenant_id", "site_id", "entity_type", "entity_id", "locale", "active_record");
             assertIndex(metadata, "seo_metadata", "idx_public_resolve", false,
                     "tenant_id", "site_id", "entity_type", "entity_id", "locale", "publish_status");
+
+            assertActiveRecordLifecycle(connection);
         }
+    }
+
+    private static void assertActiveRecordLifecycle(Connection connection) throws SQLException {
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate("INSERT INTO seo_site_config (site_id, site_name, site_url, tenant_id) "
+                    + "VALUES (11, 'one', 'https://one.example', 1)");
+            assertThatThrownBySql(() -> statement.executeUpdate(
+                    "INSERT INTO seo_site_config (site_id, site_name, site_url, tenant_id) "
+                            + "VALUES (11, 'duplicate', 'https://duplicate.example', 1)"));
+            statement.executeUpdate("UPDATE seo_site_config SET deleted = TRUE WHERE site_id = 11 AND deleted = FALSE");
+            statement.executeUpdate("INSERT INTO seo_site_config (site_id, site_name, site_url, tenant_id) "
+                    + "VALUES (11, 'two', 'https://two.example', 1)");
+            statement.executeUpdate("UPDATE seo_site_config SET deleted = TRUE WHERE site_id = 11 AND deleted = FALSE");
+            statement.executeUpdate("INSERT INTO seo_site_config (site_id, site_name, site_url, tenant_id) "
+                    + "VALUES (11, 'three', 'https://three.example', 1)");
+
+            statement.executeUpdate("INSERT INTO seo_metadata (site_id, entity_type, entity_id, locale, tenant_id) "
+                    + "VALUES (11, 'PRODUCT', 101, 'zh-CN', 1)");
+            assertThatThrownBySql(() -> statement.executeUpdate(
+                    "INSERT INTO seo_metadata (site_id, entity_type, entity_id, locale, tenant_id) "
+                            + "VALUES (11, 'PRODUCT', 101, 'zh-CN', 1)"));
+            statement.executeUpdate("UPDATE seo_metadata SET deleted = TRUE "
+                    + "WHERE site_id = 11 AND entity_id = 101 AND deleted = FALSE");
+            statement.executeUpdate("INSERT INTO seo_metadata (site_id, entity_type, entity_id, locale, tenant_id) "
+                    + "VALUES (11, 'PRODUCT', 101, 'zh-CN', 1)");
+            statement.executeUpdate("UPDATE seo_metadata SET deleted = TRUE "
+                    + "WHERE site_id = 11 AND entity_id = 101 AND deleted = FALSE");
+            statement.executeUpdate("INSERT INTO seo_metadata (site_id, entity_type, entity_id, locale, tenant_id) "
+                    + "VALUES (11, 'PRODUCT', 101, 'zh-CN', 1)");
+        }
+    }
+
+    private static void assertThatThrownBySql(SqlRunnable action) {
+        org.assertj.core.api.Assertions.assertThatThrownBy(action::run).isInstanceOf(SQLException.class);
+    }
+
+    @FunctionalInterface
+    private interface SqlRunnable {
+        void run() throws SQLException;
     }
 
     private static Set<String> tableNames(DatabaseMetaData metadata) throws SQLException {
