@@ -6,4 +6,6 @@ public interface LegacyMigrationFactSource {
 
     Optional<LegacyMigrationFacts> findApprovedFacts(Long tenantId, Long orderId);
 
+    Optional<LegacyMigrationFacts> findApprovedFactsForUpdate(Long tenantId, Long orderId);
+
 }

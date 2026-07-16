@@ -50,6 +50,7 @@ class FulfillmentLegacyMigrationDryRunIntegrationTest extends BaseDbUnitTest {
     @Resource private FulfillmentLegacyMigrationService migrationService;
     @Resource private DataSource dataSource;
     @MockBean private LogisticsProviderRegistry providerRegistry;
+    @MockBean private FulfillmentLegacyMigrationWriter writer;
 
     private JdbcTemplate jdbc;
 

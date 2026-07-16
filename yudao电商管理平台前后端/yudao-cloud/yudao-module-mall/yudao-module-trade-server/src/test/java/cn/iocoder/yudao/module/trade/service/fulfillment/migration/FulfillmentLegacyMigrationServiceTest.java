@@ -44,6 +44,7 @@ class FulfillmentLegacyMigrationServiceTest extends BaseMockitoUnitTest {
     @Mock private LogisticsProviderMapper providerMapper;
     @Mock private LegacyMigrationReferenceMapper referenceMapper;
     @Mock private LegacyMigrationFactSource factSource;
+    @Mock private FulfillmentLegacyMigrationWriter writer;
 
     private LegacyMigrationEligibilityEvaluator evaluator;
     private FulfillmentLegacyMigrationService service;
@@ -53,7 +54,7 @@ class FulfillmentLegacyMigrationServiceTest extends BaseMockitoUnitTest {
         TenantContextHolder.setTenantId(TENANT_ID);
         evaluator = new LegacyMigrationEligibilityEvaluator(itemMapper, carrierMapper, shipmentMapper, packageMapper,
                 providerMapper, referenceMapper, factSource);
-        service = new FulfillmentLegacyMigrationServiceImpl(orderMapper, evaluator);
+        service = new FulfillmentLegacyMigrationServiceImpl(orderMapper, evaluator, writer);
     }
 
     @AfterEach
@@ -83,17 +84,33 @@ class FulfillmentLegacyMigrationServiceTest extends BaseMockitoUnitTest {
     }
 
     @Test
-    void rejectsTenantMismatchInvalidBoundsAndWriteModeBeforeScanning() {
+    void rejectsTenantMismatchAndInvalidBoundsBeforeScanning() {
         assertThrows(IllegalArgumentException.class,
                 () -> service.migrateActiveOrders(999L, 0L, 10, true));
         assertThrows(IllegalArgumentException.class,
                 () -> service.migrateActiveOrders(TENANT_ID, 0L, 0, true));
         assertThrows(IllegalArgumentException.class,
                 () -> service.migrateActiveOrders(TENANT_ID, 0L, 101, true));
-        assertThrows(IllegalStateException.class,
-                () -> service.migrateActiveOrders(TENANT_ID, 0L, 10, false));
-
         verify(orderMapper, never()).selectLegacyMigrationCandidates(anyLong(), anyLong(), org.mockito.ArgumentMatchers.anyInt());
+    }
+
+    @Test
+    void writeModeInvokesWriterOncePerScannedOrderAndCountsOutcomes() {
+        TradeOrderDO first = order(41L, 20, 31L, "TRACK-41");
+        TradeOrderDO second = order(42L, 20, 31L, "TRACK-42");
+        when(orderMapper.selectLegacyMigrationCandidates(TENANT_ID, 0L, 11)).thenReturn(List.of(first, second));
+        when(writer.migrateOne(TENANT_ID, 41L)).thenReturn(MigrationOrderResult.of(41L, MigrationOutcome.MIGRATED));
+        when(writer.migrateOne(TENANT_ID, 42L))
+                .thenReturn(MigrationOrderResult.of(42L, MigrationOutcome.ALREADY_MIGRATED));
+
+        MigrationBatchResult result = service.migrateActiveOrders(TENANT_ID, 0L, 10, false);
+
+        assertFalse(result.dryRun());
+        assertEquals(1, result.migrated());
+        assertEquals(1, result.alreadyMigrated());
+        assertEquals(0, result.rejected());
+        verify(writer).migrateOne(TENANT_ID, 41L);
+        verify(writer).migrateOne(TENANT_ID, 42L);
     }
 
     @Test

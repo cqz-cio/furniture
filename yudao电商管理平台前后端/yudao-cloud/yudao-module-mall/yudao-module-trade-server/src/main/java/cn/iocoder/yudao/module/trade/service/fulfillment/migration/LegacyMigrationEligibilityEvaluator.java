@@ -37,63 +37,70 @@ public class LegacyMigrationEligibilityEvaluator {
     private final LegacyMigrationFactSource factSource;
 
     public MigrationOrderResult evaluate(Long tenantId, TradeOrderDO order) {
+        return inspect(tenantId, order, false, false).result();
+    }
+
+    LegacyMigrationEvaluation inspect(Long tenantId, TradeOrderDO order, boolean replay, boolean lockFacts) {
         if (order == null || order.getId() == null) {
             throw new IllegalArgumentException("order is required");
         }
         if (TradeOrderStatusEnum.UNDELIVERED.getStatus().equals(order.getStatus())) {
-            return result(order, MigrationOutcome.NOT_SHIPPED);
+            return rejected(order, MigrationOutcome.NOT_SHIPPED);
         }
         if (!TradeOrderStatusEnum.DELIVERED.getStatus().equals(order.getStatus())) {
-            return result(order, MigrationOutcome.CONCURRENT_CHANGE);
+            return rejected(order, MigrationOutcome.CONCURRENT_CHANGE);
         }
 
         String tracking = trimToNull(order.getLogisticsNo());
         if (tracking == null) {
-            return result(order, MigrationOutcome.BLANK_TRACKING);
+            return rejected(order, MigrationOutcome.BLANK_TRACKING);
         }
         if (order.getLogisticsId() == null || TradeOrderDO.LOGISTICS_ID_NULL.equals(order.getLogisticsId())) {
-            return result(order, MigrationOutcome.INVALID_CARRIER);
+            return rejected(order, MigrationOutcome.INVALID_CARRIER);
         }
         List<CarrierDO> carriers = carrierMapper.selectEnabledByLegacyExpressId(tenantId, order.getLogisticsId());
         if (carriers == null || carriers.size() != 1) {
-            return result(order, MigrationOutcome.INVALID_CARRIER);
+            return rejected(order, MigrationOutcome.INVALID_CARRIER);
         }
         CarrierDO carrier = carriers.get(0);
         if (order.getDeliveryTime() == null) {
-            return result(order, MigrationOutcome.MISSING_DELIVERY_TIME);
+            return rejected(order, MigrationOutcome.MISSING_DELIVERY_TIME);
         }
 
         List<TradeOrderItemDO> items = itemMapper.selectListByOrderId(order.getId());
         if (!validItems(items)) {
-            return result(order, MigrationOutcome.INVALID_ORDER_ITEMS);
+            return rejected(order, MigrationOutcome.INVALID_ORDER_ITEMS);
         }
-        if (!shipmentMapper.selectListByOrderId(tenantId, order.getId()).isEmpty()) {
-            return result(order, MigrationOutcome.EXISTING_FULFILLMENT);
+        if (!replay && !shipmentMapper.selectListByOrderId(tenantId, order.getId()).isEmpty()) {
+            return rejected(order, MigrationOutcome.EXISTING_FULFILLMENT);
         }
-        if (packageMapper.selectByCarrierIdAndTrackingNumber(tenantId, carrier.getId(), tracking) != null) {
-            return result(order, MigrationOutcome.TRACKING_CONFLICT);
+        if (!replay && packageMapper.selectByCarrierIdAndTrackingNumber(tenantId, carrier.getId(), tracking) != null) {
+            return rejected(order, MigrationOutcome.TRACKING_CONFLICT);
         }
 
-        Optional<LegacyMigrationFacts> maybeFacts = factSource.findApprovedFacts(tenantId, order.getId());
+        Optional<LegacyMigrationFacts> maybeFacts = lockFacts
+                ? factSource.findApprovedFactsForUpdate(tenantId, order.getId())
+                : factSource.findApprovedFacts(tenantId, order.getId());
         if (maybeFacts.isEmpty()) {
-            return result(order, MigrationOutcome.MISSING_ROUTE_FACTS);
+            return rejected(order, MigrationOutcome.MISSING_ROUTE_FACTS);
         }
         LegacyMigrationFacts facts = maybeFacts.get();
         if (!validRouteFacts(facts)) {
-            return result(order, MigrationOutcome.MISSING_ROUTE_FACTS);
+            return rejected(order, MigrationOutcome.MISSING_ROUTE_FACTS);
         }
         if (facts.warehouseId() == null || facts.warehouseId() <= 0
                 || referenceMapper.countEnabledWarehouse(tenantId, facts.warehouseId()) != 1L) {
-            return result(order, MigrationOutcome.MISSING_WAREHOUSE);
+            return rejected(order, MigrationOutcome.MISSING_WAREHOUSE);
         }
         if (facts.migrationProviderId() == null || facts.migrationProviderId() <= 0) {
-            return result(order, MigrationOutcome.MISSING_PROVIDER);
+            return rejected(order, MigrationOutcome.MISSING_PROVIDER);
         }
         LogisticsProviderDO provider = providerMapper.selectByIdAndTenantId(facts.migrationProviderId(), tenantId);
         if (provider == null || !Integer.valueOf(0).equals(provider.getStatus())) {
-            return result(order, MigrationOutcome.MISSING_PROVIDER);
+            return rejected(order, MigrationOutcome.MISSING_PROVIDER);
         }
-        return result(order, MigrationOutcome.WOULD_MIGRATE);
+        return new LegacyMigrationEvaluation(result(order, MigrationOutcome.WOULD_MIGRATE), order,
+                List.copyOf(items), carrier, facts, provider, tracking);
     }
 
     private static boolean validItems(List<TradeOrderItemDO> items) {
@@ -135,5 +142,9 @@ public class LegacyMigrationEligibilityEvaluator {
 
     private static MigrationOrderResult result(TradeOrderDO order, MigrationOutcome outcome) {
         return MigrationOrderResult.of(order.getId(), outcome);
+    }
+
+    private static LegacyMigrationEvaluation rejected(TradeOrderDO order, MigrationOutcome outcome) {
+        return new LegacyMigrationEvaluation(result(order, outcome), order, List.of(), null, null, null, null);
     }
 }
