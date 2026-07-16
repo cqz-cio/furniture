@@ -5,6 +5,8 @@ import cn.iocoder.yudao.framework.mybatis.core.query.LambdaQueryWrapperX;
 import cn.iocoder.yudao.module.trade.dal.dataobject.fulfillment.FulfillmentIdempotencyDO;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
 
 import java.time.LocalDateTime;
 
@@ -17,6 +19,13 @@ public interface FulfillmentIdempotencyMapper extends BaseMapperX<FulfillmentIde
                 .eq(FulfillmentIdempotencyDO::getOperation, operation)
                 .eq(FulfillmentIdempotencyDO::getIdempotencyKeyHash, keyHash));
     }
+
+    @Select("SELECT * FROM trade_fulfillment_idempotency WHERE tenant_id = #{tenantId} "
+            + "AND operation = #{operation} AND idempotency_key_hash = #{keyHash} "
+            + "AND deleted = FALSE FOR UPDATE")
+    FulfillmentIdempotencyDO selectByOperationAndKeyHashForUpdate(@Param("tenantId") Long tenantId,
+                                                                   @Param("operation") String operation,
+                                                                   @Param("keyHash") String keyHash);
 
     default int completeProcessingById(Long tenantId, Long id, String requestHash,
                                         Long resourceId, LocalDateTime expiresAt) {

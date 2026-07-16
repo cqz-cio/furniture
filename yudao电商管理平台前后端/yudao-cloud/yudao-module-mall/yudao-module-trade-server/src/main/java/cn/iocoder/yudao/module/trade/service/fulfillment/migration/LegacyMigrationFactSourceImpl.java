@@ -15,7 +15,15 @@ public class LegacyMigrationFactSourceImpl implements LegacyMigrationFactSource 
 
     @Override
     public Optional<LegacyMigrationFacts> findApprovedFacts(Long tenantId, Long orderId) {
-        LegacyMigrationFactDO fact = factMapper.selectActiveByOrderId(tenantId, orderId);
+        return map(factMapper.selectActiveByOrderId(tenantId, orderId));
+    }
+
+    @Override
+    public Optional<LegacyMigrationFacts> findApprovedFactsForUpdate(Long tenantId, Long orderId) {
+        return map(factMapper.selectActiveByOrderIdForUpdate(tenantId, orderId));
+    }
+
+    private static Optional<LegacyMigrationFacts> map(LegacyMigrationFactDO fact) {
         if (fact == null) {
             return Optional.empty();
         }

@@ -14,4 +14,9 @@ public interface LegacyMigrationFactMapper extends BaseMapperX<LegacyMigrationFa
     LegacyMigrationFactDO selectActiveByOrderId(@Param("tenantId") Long tenantId,
                                                  @Param("orderId") Long orderId);
 
+    @Select("SELECT * FROM trade_fulfillment_legacy_migration_fact "
+            + "WHERE tenant_id = #{tenantId} AND order_id = #{orderId} AND deleted = FALSE FOR UPDATE")
+    LegacyMigrationFactDO selectActiveByOrderIdForUpdate(@Param("tenantId") Long tenantId,
+                                                          @Param("orderId") Long orderId);
+
 }
