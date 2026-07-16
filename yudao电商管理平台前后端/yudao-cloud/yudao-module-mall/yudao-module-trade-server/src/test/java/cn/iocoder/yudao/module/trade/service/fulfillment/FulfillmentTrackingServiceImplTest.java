@@ -141,7 +141,7 @@ class FulfillmentTrackingServiceImplTest {
     @Test
     void manualRequestHashCanonicalizesMicrosecondsAndTrimmedReason() {
         String left = FulfillmentHashing.sha256ManualTracking(121L, 1L, 2L, 3L, "IN_TRANSIT",
-                Instant.parse("2026-07-16T01:02:03.123456789Z"), 7, 110L, "  Correct scan  ");
+                Instant.parse("2026-07-16T01:02:03.123456789Z"), 7, 110L, "\u3000Correct scan\u3000");
         String right = FulfillmentHashing.sha256ManualTracking(121L, 1L, 2L, 3L, "IN_TRANSIT",
                 Instant.parse("2026-07-16T01:02:03.123456001Z"), 7, 110L, "Correct scan");
 

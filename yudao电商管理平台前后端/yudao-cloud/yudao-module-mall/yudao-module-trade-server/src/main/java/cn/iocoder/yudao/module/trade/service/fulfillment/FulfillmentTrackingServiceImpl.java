@@ -104,16 +104,16 @@ public class FulfillmentTrackingServiceImpl implements FulfillmentTrackingServic
 
     @Override
     public TrackingApplyResult applyManualEvent(String idempotencyKey, ApplyManualTrackingEventCommand command) {
-        String reason = validateManualCommand(idempotencyKey, command);
+        ManualAudit audit = validateManualCommand(idempotencyKey, command);
         try {
-            return inNewTransaction(() -> applyManualOnce(idempotencyKey, command, reason));
+            return inNewTransaction(() -> applyManualOnce(idempotencyKey, command, audit));
         } catch (OptimisticTrackingConflictException conflict) {
             throw exception(FULFILLMENT_VERSION_CONFLICT);
         }
     }
 
     private TrackingApplyResult applyManualOnce(String idempotencyKey, ApplyManualTrackingEventCommand command,
-                                                 String reason) {
+                                                 ManualAudit audit) {
         Long tenantId = command.getTenantId();
         ShipmentLegDO leg = legMapper.selectByIdAndTenantId(command.getShipmentLegId(), tenantId);
         if (leg == null || !command.getShipmentId().equals(leg.getShipmentId())) {
@@ -130,7 +130,7 @@ public class FulfillmentTrackingServiceImpl implements FulfillmentTrackingServic
         String requestHash = FulfillmentHashing.sha256ManualTracking(tenantId, command.getShipmentId(),
                 shipmentPackage == null ? null : shipmentPackage.getId(), leg.getId(),
                 command.getRequestedStatus().name(), occurredInstant, command.getExpectedShipmentVersion(),
-                command.getOperatorId(), reason);
+                command.getOperatorId(), audit.reason());
         LocalDateTime receivedAt = LocalDateTime.now(ZoneOffset.UTC).truncatedTo(ChronoUnit.MICROS);
         FulfillmentIdempotencyDO idempotency = new FulfillmentIdempotencyDO()
                 .setTenantId(tenantId)
@@ -172,8 +172,8 @@ public class FulfillmentTrackingServiceImpl implements FulfillmentTrackingServic
                 .setReceivedAt(receivedAt)
                 .setSource("MANUAL")
                 .setManualOperatorId(command.getOperatorId())
-                .setManualReason(reason)
-                .setRequestTraceId(command.getRequestTraceId().trim());
+                .setManualReason(audit.reason())
+                .setRequestTraceId(audit.traceId());
         eventMapper.insert(event);
 
         String shipmentPreviousStatus = shipment.getStatus();
@@ -695,7 +695,8 @@ public class FulfillmentTrackingServiceImpl implements FulfillmentTrackingServic
         Objects.requireNonNull(command.getSource(), "source");
     }
 
-    private static String validateManualCommand(String idempotencyKey, ApplyManualTrackingEventCommand command) {
+    private static ManualAudit validateManualCommand(String idempotencyKey,
+                                                      ApplyManualTrackingEventCommand command) {
         if (idempotencyKey == null || idempotencyKey.isBlank()) {
             throw new IllegalArgumentException("idempotencyKey is required");
         }
@@ -710,16 +711,16 @@ public class FulfillmentTrackingServiceImpl implements FulfillmentTrackingServic
         if (command.getExpectedShipmentVersion() < 0) {
             throw new IllegalArgumentException("expectedShipmentVersion must not be negative");
         }
-        String traceId = command.getRequestTraceId() == null ? "" : command.getRequestTraceId().trim();
+        String traceId = command.getRequestTraceId() == null ? "" : command.getRequestTraceId().strip();
         if (traceId.isBlank() || codePointLength(traceId) > 64) {
             throw new IllegalArgumentException("requestTraceId must contain 1-64 characters");
         }
-        String reason = command.getReason() == null ? "" : command.getReason().trim();
+        String reason = command.getReason() == null ? "" : command.getReason().strip();
         int reasonLength = codePointLength(reason);
-        if (reasonLength < 5 || reasonLength > 500) {
+        if (reason.isBlank() || reasonLength < 5 || reasonLength > 500) {
             throw new IllegalArgumentException("reason must contain 5-500 characters");
         }
-        return reason;
+        return new ManualAudit(reason, traceId);
     }
 
     static int codePointLength(String value) {
@@ -749,6 +750,9 @@ public class FulfillmentTrackingServiceImpl implements FulfillmentTrackingServic
         public String toString() {
             return "CarrierAndTracking[carrierCode=" + carrierCode + ", trackingNumber=REDACTED]";
         }
+    }
+
+    private record ManualAudit(String reason, String traceId) {
     }
 
     private record TransitionOutcome(ShipmentStateMachine.TransitionDecision decision, boolean stateChanged,

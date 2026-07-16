@@ -240,6 +240,46 @@ class FulfillmentTrackingTransactionTest extends BaseDbUnitTest {
     }
 
     @Test
+    void manualUnicodeWhitespaceOnlyReasonAndTraceAreRejectedWithoutWrites() {
+        String ideographicSpaces = "\u3000".repeat(5);
+
+        assertThrows(RuntimeException.class, () -> service.applyManualEvent("manual-unicode-blank-reason",
+                manualCommand(ShipmentStatusEnum.IN_TRANSIT, Instant.parse("2026-07-16T03:31:00Z"), 1)
+                        .setReason(ideographicSpaces)));
+        assertThrows(RuntimeException.class, () -> service.applyManualEvent("manual-unicode-blank-trace",
+                manualCommand(ShipmentStatusEnum.IN_TRANSIT, Instant.parse("2026-07-16T03:32:00Z"), 1)
+                        .setRequestTraceId(ideographicSpaces)));
+
+        assertEquals(0, count("trade_tracking_event"));
+        assertEquals(0, count("trade_fulfillment_idempotency"));
+        assertEquals(0, count("trade_fulfillment_outbox_event"));
+    }
+
+    @Test
+    void manualUnicodeStrippedReasonIsHashedPersistedAndReplayedCanonically() {
+        String paddedReason = "\u3000Correct carrier scan\u3000";
+        String paddedTrace = "\u3000trace-unicode-one\u3000";
+        ApplyManualTrackingEventCommand firstCommand = manualCommand(ShipmentStatusEnum.IN_TRANSIT,
+                Instant.parse("2026-07-16T03:33:00Z"), 1)
+                .setReason(paddedReason).setRequestTraceId(paddedTrace);
+
+        TrackingApplyResult first = service.applyManualEvent("manual-unicode-strip-key", firstCommand);
+        TrackingApplyResult replay = service.applyManualEvent("manual-unicode-strip-key",
+                manualCommand(ShipmentStatusEnum.IN_TRANSIT, Instant.parse("2026-07-16T03:33:00Z"), 1)
+                        .setReason("Correct carrier scan")
+                        .setRequestTraceId("\u3000trace-unicode-retry\u3000"));
+
+        assertTrue(first.inserted());
+        assertFalse(replay.inserted());
+        assertEquals("Correct carrier scan", value("SELECT manual_reason FROM trade_tracking_event", String.class));
+        assertEquals("trace-unicode-one", value("SELECT request_trace_id FROM trade_tracking_event", String.class));
+        assertEquals(1, count("trade_tracking_event"));
+        assertEquals(1, count("trade_fulfillment_idempotency"));
+        assertEquals(1, count("trade_fulfillment_outbox_event"));
+        assertEquals(2, value("SELECT version FROM trade_shipment WHERE id = " + SHIPMENT_ID, Integer.class));
+    }
+
+    @Test
     void manualSupplementaryUnicodeUsesCodePointBoundaries() {
         String emoji = "\uD83D\uDE9A";
         TrackingApplyResult accepted = service.applyManualEvent("manual-unicode-max",

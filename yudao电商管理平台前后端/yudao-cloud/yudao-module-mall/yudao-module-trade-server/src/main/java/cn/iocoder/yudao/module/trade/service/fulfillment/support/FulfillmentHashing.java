@@ -88,7 +88,7 @@ public final class FulfillmentHashing {
         append(canonical, occurredAt == null ? null : TrackingEventCanonicalizer.truncateToMicros(occurredAt));
         append(canonical, expectedShipmentVersion);
         append(canonical, operatorId);
-        append(canonical, reason == null ? null : reason.trim());
+        append(canonical, reason == null ? null : reason.strip());
         return sha256Hex(canonical.toString());
     }
 
