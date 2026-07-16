@@ -205,6 +205,14 @@ yudao:
   security:
     mock-enable: true
   trade:
+    fulfillment:
+      enabled: true
+      write-new-model: true
+      read-from-new-model: false
+      customer-ui-enabled: false
+      legacy-migration-write-enabled: false
+      provider-code: mock
+      idempotency-hmac-key: local-only-fulfillment-hmac-key-never-use-outside-local
     express:
       # Local development does not call a real express provider. Non-empty
       # placeholders satisfy configuration validation without exposing secrets.

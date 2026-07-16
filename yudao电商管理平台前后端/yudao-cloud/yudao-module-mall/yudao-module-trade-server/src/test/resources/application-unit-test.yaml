@@ -47,6 +47,14 @@ yudao:
   info:
     base-package: cn.iocoder.yudao.module
   trade:
+    fulfillment:
+      enabled: false
+      write-new-model: false
+      read-from-new-model: false
+      customer-ui-enabled: false
+      legacy-migration-write-enabled: false
+      provider-code: mock
+      idempotency-hmac-key: unit-test-only-fulfillment-hmac-key-never-use-outside-tests
     order:
       app-id: 1
       merchant-order-id: 1
