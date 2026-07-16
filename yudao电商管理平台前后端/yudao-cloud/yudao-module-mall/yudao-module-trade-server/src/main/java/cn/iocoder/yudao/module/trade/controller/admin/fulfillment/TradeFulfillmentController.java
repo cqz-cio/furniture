@@ -12,14 +12,11 @@ import cn.iocoder.yudao.module.trade.service.fulfillment.command.*;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
 import jakarta.validation.Valid;
-import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.validation.BindException;
-import org.springframework.web.bind.MethodArgumentNotValidException;
 
 import java.util.List;
 import java.util.UUID;
@@ -38,18 +35,6 @@ public class TradeFulfillmentController {
     private FulfillmentTrackingService trackingService;
     @Resource
     private FulfillmentQueryService queryService;
-
-    /**
-     * Validation exceptions on fulfillment writes can retain rejected logistics identifiers and
-     * manual audit text. Handle them locally without accepting the exception object, so those
-     * values cannot be copied into logs or responses by the global exception handler.
-     */
-    @ExceptionHandler({MethodArgumentNotValidException.class, BindException.class,
-            ConstraintViolationException.class})
-    public CommonResult<?> handleSensitiveValidationFailure() {
-        return CommonResult.error(
-                cn.iocoder.yudao.framework.common.exception.enums.GlobalErrorCodeConstants.BAD_REQUEST);
-    }
 
     @PostMapping
     @PreAuthorize("@ss.hasPermission('trade:fulfillment:shipment:create')")
