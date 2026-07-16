@@ -144,9 +144,19 @@ describe("mobile purchase polish", () => {
     const generalBlock = source.slice(generalMobileMedia);
 
     expect(phoneBlock).toContain(".mobile-drawer-layer {\n    position: fixed;\n    left: 0;\n    right: 0;\n    top: 76px;");
-    expect(phoneBlock).toContain("min-height: calc(100vh - 76px);");
+    expect(phoneBlock).toContain("height: calc(100vh - 76px);");
+    expect(phoneBlock).toContain("height: calc(100dvh - 76px);");
+    expect(phoneBlock).toContain("max-height: calc(100dvh - 76px);");
+    expect(phoneBlock).toContain("overflow-y: auto;");
+    expect(phoneBlock).toContain("overscroll-behavior: contain;");
+    expect(phoneBlock).toContain("-webkit-overflow-scrolling: touch;");
     expect(tabletBlock).toContain(".mobile-drawer-layer {\n    position: fixed;\n    left: 0;\n    right: 0;\n    top: 82px;");
-    expect(tabletBlock).toContain("min-height: calc(100vh - 82px);");
+    expect(tabletBlock).toContain("height: calc(100vh - 82px);");
+    expect(tabletBlock).toContain("height: calc(100dvh - 82px);");
+    expect(tabletBlock).toContain("max-height: calc(100dvh - 82px);");
+    expect(tabletBlock).toContain("overflow-y: auto;");
+    expect(tabletBlock).toContain("overscroll-behavior: contain;");
+    expect(tabletBlock).toContain("-webkit-overflow-scrolling: touch;");
     expect(generalBlock).not.toContain(".mobile-drawer-layer {\n    position: fixed;");
   });
 

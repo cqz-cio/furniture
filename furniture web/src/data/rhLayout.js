@@ -179,69 +179,6 @@ export const babyChildPageSpecs = {
   groups: Array.from({ length: 17 }, (_, index) => ({ key: `group-${index + 1}` })),
 };
 
-export const woodFurnitureMegaMenus = {
-  "Bedroom Furniture": [
-    { label: "\u5e8a\u5934\u67dc", href: "/products?category=nightstand" },
-    { label: "\u5e8a\u5c3e\u957f\u51f3", href: "/products?category=bed-bench" },
-    { label: "\u6597\u67dc", href: "/products?category=dresser" },
-    { label: "\u5316\u5986\u684c", href: "/products?category=vanity" },
-    { label: "\u5367\u5ba4\u5957\u88c5", href: "/products?collection=bedroom-set" },
-    { label: "\u67e5\u770b\u5168\u90e8\u5367\u5ba4\u5bb6\u5177", href: "/products?room=bedroom", accent: true },
-  ],
-  "Storage Cabinets": [
-    { label: "\u6597\u67dc", href: "/products?category=dresser" },
-    { label: "\u62bd\u5c49\u67dc", href: "/products?category=drawer-chest" },
-    { label: "\u8fb9\u67dc", href: "/products?category=side-cabinet" },
-    { label: "\u9ad8\u67dc", href: "/products?category=tall-cabinet" },
-    { label: "\u5367\u5ba4\u6536\u7eb3\u7ec4\u5408", href: "/products?collection=storage-set" },
-    { label: "\u67e5\u770b\u5168\u90e8\u67dc\u7c7b\u6536\u7eb3", href: "/products?category=storage", accent: true },
-  ],
-  "Desks & Tables": [
-    { label: "\u4e66\u684c", href: "/products?category=desk" },
-    { label: "\u5316\u5986\u684c", href: "/products?category=vanity" },
-    { label: "\u5706\u684c", href: "/products?category=round-table" },
-    { label: "\u4e66\u684c\u6905", href: "/products?category=desk-chair" },
-    { label: "\u4e66\u623f\u7ec4\u5408", href: "/products?collection=study-set" },
-    { label: "\u67e5\u770b\u5168\u90e8\u684c\u6905\u4e66\u623f", href: "/products?category=desk-table", accent: true },
-  ],
-  "Seating & Benches": [
-    { label: "\u5355\u4eba\u5ea7\u6c99\u53d1", href: "/products?category=single-sofa" },
-    { label: "\u4f11\u95f2\u6905", href: "/products?category=accent-chair" },
-    { label: "\u5e8a\u5c3e\u51f3", href: "/products?category=bed-bench" },
-    { label: "\u5316\u5986\u6905", href: "/products?category=vanity-chair" },
-    { label: "\u6362\u978b\u51f3", href: "/products?category=bench" },
-    { label: "\u67e5\u770b\u5168\u90e8\u6905\u51f3\u6c99\u53d1", href: "/products?category=seating", accent: true },
-  ],
-  "Room Sets": [
-    { label: "\u4e3b\u5367\u6574\u5c4b", href: "/products?collection=master-bedroom" },
-    { label: "\u5ba2\u5367\u6574\u5c4b", href: "/products?collection=guest-bedroom" },
-    { label: "\u9152\u5e97\u98ce\u5367\u5ba4", href: "/products?style=hotel-bedroom" },
-    { label: "\u6cd5\u5f0f\u6728\u8d28\u5367\u5ba4", href: "/products?style=french-wood" },
-    { label: "\u80e1\u6843\u6728\u5367\u5ba4", href: "/products?material=walnut" },
-    { label: "\u67e5\u770b\u5168\u90e8\u6574\u5c4b\u65b9\u6848", href: "/products?collection=room", accent: true },
-  ],
-  Woodcraft: [
-    { label: "\u80e1\u6843\u6728", href: "/products?material=walnut" },
-    { label: "\u6a61\u6728", href: "/products?material=oak" },
-    { label: "\u6a31\u6843\u6728", href: "/products?material=cherry" },
-    { label: "\u767d\u8721\u6728", href: "/products?material=ash" },
-    { label: "\u96d5\u523b\u5de5\u827a", href: "/products?craft=carved" },
-    { label: "\u67e5\u770b\u5168\u90e8\u6728\u6750\u5de5\u827a", href: "/products?material=wood", accent: true },
-  ],
-  "New & Sale": [
-    { label: "\u65b0\u54c1\u4e0a\u67b6", href: "/products?tag=new" },
-    { label: "\u70ed\u9500\u5355\u54c1", href: "/products?tag=best-seller" },
-    { label: "\u73b0\u8d27\u5bb6\u5177", href: "/products?tag=in-stock" },
-    { label: "\u9650\u65f6\u7279\u60e0", href: "/sale" },
-    { label: "\u67e5\u770b\u5168\u90e8\u7279\u60e0", href: "/sale", accent: true },
-  ],
-};
-
-export const woodFurnitureDropdownLabels = primaryNavigation.map((item) => item.label);
-export const livingMegaMenu = woodFurnitureMegaMenus["Bedroom Furniture"];
-export const livingSeatingMegaMenu = [];
-export const livingMegaSubmenus = {};
-export const saleMegaMenu = woodFurnitureMegaMenus["New & Sale"];
 export const mobileDrawerNavigation = primaryNavigation.map((item) => ({
   ...item,
   items: storefrontDropdownMenus[item.key] || [],

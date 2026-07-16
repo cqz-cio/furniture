@@ -130,11 +130,17 @@ describe("storefront launch polish", () => {
 
   it("groups mobile navigation into product and service sections", () => {
     const source = readSource("../src/components/RhHeader.vue");
+    const styles = readSource("../src/styles.css").replace(/\r\n/g, "\n");
 
     expect(source).toContain("mobileDrawerSections");
     expect(source).toContain('class="mobile-drawer-section"');
     expect(source).toContain('t("navigation.storefront.mobile.shopFurniture")');
     expect(source).toContain('t("navigation.storefront.mobile.service")');
+    expect(styles).toContain("body.rh-menu-open {\n  overflow: hidden;");
+    expect(styles).toContain("max-height: calc(100dvh - 76px);");
+    expect(styles).toContain("max-height: calc(100dvh - 82px);");
+    expect(styles).toContain("overflow-y: auto;");
+    expect(styles).toContain("-webkit-overflow-scrolling: touch;");
   });
 
   it("shows loading skeletons and quick-add feedback on the PLP", () => {
