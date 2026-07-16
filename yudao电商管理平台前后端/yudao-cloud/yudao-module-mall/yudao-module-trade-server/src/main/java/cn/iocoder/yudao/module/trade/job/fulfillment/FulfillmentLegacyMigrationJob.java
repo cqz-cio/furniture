@@ -1,6 +1,7 @@
 package cn.iocoder.yudao.module.trade.job.fulfillment;
 
 import cn.hutool.core.util.StrUtil;
+import cn.iocoder.yudao.framework.common.exception.ServiceException;
 import cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder;
 import cn.iocoder.yudao.framework.tenant.core.job.TenantJob;
 import cn.iocoder.yudao.module.trade.framework.fulfillment.config.FulfillmentFeatureGuard;
@@ -17,8 +18,11 @@ import org.springframework.stereotype.Component;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
+
+import static cn.iocoder.yudao.module.trade.enums.ErrorCodeConstants.FULFILLMENT_FEATURE_DISABLED;
 
 @Component
 @RequiredArgsConstructor
@@ -46,6 +50,11 @@ public class FulfillmentLegacyMigrationJob {
         try {
             result = migrationService.migrateActiveOrders(tenantId, parameters.afterOrderId(),
                     parameters.limit(), parameters.dryRun());
+        } catch (ServiceException serviceException) {
+            if (Objects.equals(serviceException.getCode(), FULFILLMENT_FEATURE_DISABLED.getCode())) {
+                throw serviceException;
+            }
+            throw new IllegalStateException("fulfillment legacy migration batch failed");
         } catch (RuntimeException ignored) {
             throw new IllegalStateException("fulfillment legacy migration batch failed");
         }

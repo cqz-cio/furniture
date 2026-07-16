@@ -41,10 +41,10 @@ All production flags default to `false`.
 | Full property | Production default | Local profile | Purpose and dependencies |
 |---|---:|---:|---|
 | `yudao.trade.fulfillment.enabled` | `false` | `true` | Master switch for the new admin fulfillment model |
-| `yudao.trade.fulfillment.write-new-model` | `false` | `true` | Allows command and tracking mutations; requires `enabled=true`, a nonblank HMAC secret, and a nonblank provider code |
-| `yudao.trade.fulfillment.read-from-new-model` | `false` | `false` | Allows legacy endpoints to project safe events from the new model; requires `enabled=true` |
-| `yudao.trade.fulfillment.customer-ui-enabled` | `false` | `false` | Reserved for a future customer UI; requires both `enabled=true` and `read-from-new-model=true` |
-| `yudao.trade.fulfillment.legacy-migration-write-enabled` | `false` | `false` | Allows non-dry-run legacy migration; requires both `enabled=true` and `write-new-model=true` |
+| `yudao.trade.fulfillment.write-new-model` | `false` | `true` | Allows command and tracking mutations; requires `yudao.trade.fulfillment.enabled=true`, a nonblank HMAC secret, and a nonblank provider code |
+| `yudao.trade.fulfillment.read-from-new-model` | `false` | `false` | Allows legacy endpoints to project safe events from the new model; requires `yudao.trade.fulfillment.enabled=true` |
+| `yudao.trade.fulfillment.customer-ui-enabled` | `false` | `false` | Reserved for a future customer UI; requires both `yudao.trade.fulfillment.enabled=true` and `yudao.trade.fulfillment.read-from-new-model=true` |
+| `yudao.trade.fulfillment.legacy-migration-write-enabled` | `false` | `false` | Allows non-dry-run legacy migration; requires both `yudao.trade.fulfillment.enabled=true` and `yudao.trade.fulfillment.write-new-model=true` |
 | `yudao.trade.fulfillment.provider-code` | `${FULFILLMENT_PROVIDER_CODE:}` | `mock` | Provider selection; production must use an approved real provider code |
 | `yudao.trade.fulfillment.idempotency-hmac-key` | `${FULFILLMENT_IDEMPOTENCY_HMAC_KEY:}` | local-only value | HMAC secret for cache/idempotency domains; production value must come from the secret manager |
 
@@ -153,7 +153,8 @@ Never run the cleanup command against a computed or unverified database name.
 
 The XXL-Job handler is `fulfillmentLegacyMigrationJob`. Each invocation processes one bounded page and never loops internally. Tenant identity comes from the server's tenant job context; do not include a tenant-like field in the parameter.
 
-Start with all write flags disabled and submit one dry-run page:
+Start with `yudao.trade.fulfillment.write-new-model=false` and
+`yudao.trade.fulfillment.legacy-migration-write-enabled=false`, then submit one dry-run page:
 
 ```json
 {"afterOrderId":0,"limit":25,"dryRun":true}
@@ -167,8 +168,8 @@ Persist the returned `nextAfterOrderId` in the approved rollout record. Do not r
 
 After the dry-run has been approved:
 
-1. Set `enabled=true` and `write-new-model=true` with the real provider code and managed HMAC secret.
-2. Set `legacy-migration-write-enabled=true` for the bounded write window.
+1. Set `yudao.trade.fulfillment.enabled=true` and `yudao.trade.fulfillment.write-new-model=true` with the real provider code and managed HMAC secret.
+2. Set `yudao.trade.fulfillment.legacy-migration-write-enabled=true` for the bounded write window.
 3. Invoke one small write page, for example:
 
 ```json
@@ -177,7 +178,7 @@ After the dry-run has been approved:
 
 4. Verify aggregate counts and replay the exact page. Exact replay must not create duplicates.
 5. Continue one cursor page at a time only while error and reason counts remain within the approved threshold.
-6. Set `legacy-migration-write-enabled=false` immediately after the window.
+6. Set `yudao.trade.fulfillment.legacy-migration-write-enabled=false` immediately after the window.
 
 Every non-dry-run invocation is checked twice: once before the tenant job calls the migration service and again at
 the first line of the transactional writer, before HMAC calculation, row locks, or writes. Either disabled boundary
@@ -199,7 +200,7 @@ Perform these checks with synthetic, approved test records only:
 - With an existing subject event that is unsafe or unmapped, the legacy endpoint returns authoritative empty and performs no provider call.
 - A manual event records the approved audit fields and does not expose the reason or trace through the legacy projection.
 - A migrated order replay creates no duplicate shipment, item, package, leg, event, idempotency, or outbox row.
-- Disabling new-model reads restores the old legacy read path without deleting new data.
+- Setting `yudao.trade.fulfillment.read-from-new-model=false` restores the old legacy read path without deleting new data.
 
 ## 9. Observation and safe diagnostics
 
@@ -252,21 +253,21 @@ Allowed log fields are fixed provider label, HTTP status, elapsed milliseconds, 
 Use this order and stop after each step for verification:
 
 1. Deploy V015-V020 and the application code; configure the managed HMAC secret and real provider code.
-2. Set `enabled=true` while read, customer, and migration flags remain off.
-3. Set `write-new-model=true` for a small synthetic/admin write cohort and verify idempotency/outbox health.
-4. Run migration dry-run pages. Briefly enable `legacy-migration-write-enabled` only for approved bounded writes, then disable it.
-5. Set `read-from-new-model=true` for staff-facing legacy projection and verify fallback/authoritative-empty behavior.
-6. Keep `customer-ui-enabled=false` in Phase 1. A later approved customer UI release may enable it only after reads are enabled.
+2. Set `yudao.trade.fulfillment.enabled=true` while keeping `yudao.trade.fulfillment.read-from-new-model=false`, `yudao.trade.fulfillment.customer-ui-enabled=false`, and `yudao.trade.fulfillment.legacy-migration-write-enabled=false`.
+3. Set `yudao.trade.fulfillment.write-new-model=true` for a small synthetic/admin write cohort and verify idempotency/outbox health.
+4. Run migration dry-run pages. Set `yudao.trade.fulfillment.legacy-migration-write-enabled=true` only for approved bounded writes, then set `yudao.trade.fulfillment.legacy-migration-write-enabled=false`.
+5. Set `yudao.trade.fulfillment.read-from-new-model=true` for staff-facing legacy projection and verify fallback/authoritative-empty behavior.
+6. Keep `yudao.trade.fulfillment.customer-ui-enabled=false` in Phase 1. A later approved customer UI release may set `yudao.trade.fulfillment.customer-ui-enabled=true` only after `yudao.trade.fulfillment.read-from-new-model=true`.
 
 ## 11. Disable sequence
 
 Disable in the reverse risk order:
 
-1. Set `customer-ui-enabled=false`.
-2. Set `read-from-new-model=false` to restore legacy reads.
-3. Set `legacy-migration-write-enabled=false`.
-4. Stop provider ingestion and set `write-new-model=false`.
-5. Set `enabled=false` after confirming no in-flight approved write remains.
+1. Set `yudao.trade.fulfillment.customer-ui-enabled=false`.
+2. Set `yudao.trade.fulfillment.read-from-new-model=false` to restore legacy reads.
+3. Set `yudao.trade.fulfillment.legacy-migration-write-enabled=false`.
+4. Stop provider ingestion and set `yudao.trade.fulfillment.write-new-model=false`.
+5. Set `yudao.trade.fulfillment.enabled=false` after confirming no in-flight approved write remains.
 
 Retain the HMAC secret while replay, cache validation, rollback investigation, or audit evidence may still depend on it. Rotate through the secret manager; never blank or publish it as an emergency action.
 
