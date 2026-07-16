@@ -24,6 +24,7 @@ import cn.iocoder.yudao.module.trade.enums.fulfillment.OrderFulfillmentStatusEnu
 import cn.iocoder.yudao.module.trade.enums.fulfillment.ShipmentStatusEnum;
 import cn.iocoder.yudao.module.trade.enums.fulfillment.ShipmentTypeEnum;
 import cn.iocoder.yudao.module.trade.enums.fulfillment.TrackingEventSourceEnum;
+import cn.iocoder.yudao.module.trade.framework.fulfillment.config.FulfillmentFeatureGuard;
 import cn.iocoder.yudao.module.trade.framework.fulfillment.config.FulfillmentProperties;
 import cn.iocoder.yudao.module.trade.service.fulfillment.domain.ShipmentStateMachine;
 import cn.iocoder.yudao.module.trade.service.fulfillment.support.FulfillmentHashing;
@@ -58,6 +59,7 @@ public class FulfillmentLegacyMigrationWriterImpl implements FulfillmentLegacyMi
     private final TradeOrderMapper orderMapper;
     private final LegacyMigrationEligibilityEvaluator evaluator;
     private final FulfillmentProperties properties;
+    private final FulfillmentFeatureGuard featureGuard;
     private final FulfillmentIdempotencyMapper idempotencyMapper;
     private final ShipmentMapper shipmentMapper;
     private final ShipmentItemMapper shipmentItemMapper;
@@ -71,6 +73,7 @@ public class FulfillmentLegacyMigrationWriterImpl implements FulfillmentLegacyMi
     @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED,
             rollbackFor = Exception.class)
     public MigrationOrderResult migrateOne(Long tenantId, Long orderId) {
+        featureGuard.requireMigrationWriteEnabled();
         requireActiveTenant(tenantId);
         if (orderId == null || orderId <= 0) {
             throw new IllegalArgumentException("orderId is required");

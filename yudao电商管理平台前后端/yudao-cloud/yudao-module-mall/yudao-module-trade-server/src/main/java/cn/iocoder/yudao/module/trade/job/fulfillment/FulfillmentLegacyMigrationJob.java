@@ -3,7 +3,7 @@ package cn.iocoder.yudao.module.trade.job.fulfillment;
 import cn.hutool.core.util.StrUtil;
 import cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder;
 import cn.iocoder.yudao.framework.tenant.core.job.TenantJob;
-import cn.iocoder.yudao.module.trade.framework.fulfillment.config.FulfillmentProperties;
+import cn.iocoder.yudao.module.trade.framework.fulfillment.config.FulfillmentFeatureGuard;
 import cn.iocoder.yudao.module.trade.service.fulfillment.migration.FulfillmentLegacyMigrationService;
 import cn.iocoder.yudao.module.trade.service.fulfillment.migration.MigrationBatchResult;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -31,7 +31,7 @@ public class FulfillmentLegacyMigrationJob {
     private static final String INVALID_PARAMETERS = "invalid fulfillment legacy migration job parameters";
 
     private final FulfillmentLegacyMigrationService migrationService;
-    private final FulfillmentProperties properties;
+    private final FulfillmentFeatureGuard featureGuard;
     private final ObjectMapper objectMapper;
 
     @XxlJob("fulfillmentLegacyMigrationJob")
@@ -39,7 +39,7 @@ public class FulfillmentLegacyMigrationJob {
     public String execute(String param) {
         MigrationJobParameters parameters = parseParameters(param);
         if (!parameters.dryRun()) {
-            requireMigrationWriteEnabled();
+            featureGuard.requireMigrationWriteEnabled();
         }
         Long tenantId = TenantContextHolder.getRequiredTenantId();
         MigrationBatchResult result;
@@ -117,13 +117,6 @@ public class FulfillmentLegacyMigrationJob {
             throw invalidParameters();
         }
         return value.booleanValue();
-    }
-
-    private void requireMigrationWriteEnabled() {
-        if (!properties.isEnabled() || !properties.isWriteNewModel()
-                || !properties.isLegacyMigrationWriteEnabled()) {
-            throw new IllegalStateException("fulfillment legacy migration write is disabled");
-        }
     }
 
     private String serializeSummary(MigrationBatchResult result) {
