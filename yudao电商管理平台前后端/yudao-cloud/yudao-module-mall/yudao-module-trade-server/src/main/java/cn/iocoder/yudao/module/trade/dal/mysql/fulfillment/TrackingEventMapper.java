@@ -32,4 +32,10 @@ public interface TrackingEventMapper extends BaseMapperX<TrackingEventDO> {
                 .eq(TrackingEventDO::getEventHash, eventHash));
     }
 
+    default TrackingEventDO selectByIdAndTenantId(Long tenantId, Long id) {
+        return selectOne(new LambdaQueryWrapperX<TrackingEventDO>()
+                .eq(TrackingEventDO::getTenantId, tenantId)
+                .eq(TrackingEventDO::getId, id));
+    }
+
 }

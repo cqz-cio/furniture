@@ -7,6 +7,7 @@ const root = join(import.meta.dirname, "../../yudao电商管理平台前后端/y
 const migrationPath = join(root, "migrations/V015__trade_fulfillment_core.sql");
 const trackingMappingMigrationPath = join(root, "migrations/V016__trade_tracking_status_mapping.sql");
 const trackingWatermarkMigrationPath = join(root, "migrations/V017__trade_tracking_event_watermarks.sql");
+const manualTrackingAuditMigrationPath = join(root, "migrations/V018__trade_manual_tracking_audit.sql");
 
 describe("V015 trade fulfillment core migration", () => {
   it("creates the complete Phase 1 persistence contract", () => {
@@ -63,6 +64,43 @@ describe("V017 deterministic tracking watermarks", () => {
     const migration = readFileSync(trackingWatermarkMigrationPath, "utf8").replace(/\r\n/g, "\n").trimEnd();
     const baseline = readFileSync(join(root, "oakved-baseline.sql"), "utf8").replace(/\r\n/g, "\n");
     const marker = "-- BEGIN V017__trade_tracking_event_watermarks.sql\n";
+    const start = baseline.indexOf(marker);
+    const end = baseline.indexOf("\n-- BEGIN V018__trade_manual_tracking_audit.sql", start);
+
+    expect(start).toBeGreaterThanOrEqual(0);
+    expect(end).toBeGreaterThan(start);
+    expect(baseline.slice(start + marker.length, end).trimEnd()).toBe(migration);
+  });
+});
+
+describe("V018 manual tracking audit", () => {
+  it("appends only the structured manual audit columns", () => {
+    const sql = readFileSync(manualTrackingAuditMigrationPath, "utf8");
+
+    expect(sql).toContain("ALTER TABLE `trade_tracking_event`");
+    expect(sql).toContain("ADD COLUMN `manual_operator_id` bigint DEFAULT NULL");
+    expect(sql).toContain("ADD COLUMN `manual_reason` varchar(500) DEFAULT NULL");
+    expect(sql).toContain("ADD COLUMN `request_trace_id` varchar(64) DEFAULT NULL");
+    expect(sql.match(/ADD COLUMN/g)).toHaveLength(3);
+    expect(sql).not.toMatch(/api[_-]?key|secret|credential|tracking_number|raw_payload/i);
+  });
+
+  it("keeps V015 through V017 immutable and baseline V018 byte-equivalent", () => {
+    const hashes = new Map([
+      ["V015__trade_fulfillment_core.sql", "683687685b5b4943949d965f3b3df86eaa2e4dfcdbf50641fb4fc05db8d80ec4"],
+      ["V016__trade_tracking_status_mapping.sql", "21dbb820f0e1099b73154bcc2d6011cdc1ea98556f580aaa0e5ccdd7ed7951da"],
+      ["V017__trade_tracking_event_watermarks.sql", "4bddf6d0d0833138a45a6c4b52a6634e67a2798d66b7bf43cee8908a02bed46b"],
+    ]);
+    for (const [name, expected] of hashes) {
+      const normalized = readFileSync(join(root, "migrations", name), "utf8")
+        .replace(/\r\n/g, "\n")
+        .replace(/\s+$/, "") + "\n";
+      expect(createHash("sha256").update(normalized).digest("hex")).toBe(expected);
+    }
+
+    const migration = readFileSync(manualTrackingAuditMigrationPath, "utf8").replace(/\r\n/g, "\n").trimEnd();
+    const baseline = readFileSync(join(root, "oakved-baseline.sql"), "utf8").replace(/\r\n/g, "\n");
+    const marker = "-- BEGIN V018__trade_manual_tracking_audit.sql\n";
     const start = baseline.indexOf(marker);
     const end = baseline.indexOf("\n-- BEGIN Oakved demo catalog", start);
 

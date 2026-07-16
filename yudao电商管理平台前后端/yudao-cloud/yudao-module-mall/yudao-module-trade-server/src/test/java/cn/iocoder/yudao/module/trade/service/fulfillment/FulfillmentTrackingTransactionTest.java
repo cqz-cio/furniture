@@ -8,8 +8,11 @@ import cn.iocoder.yudao.module.trade.dal.dataobject.fulfillment.FulfillmentOutbo
 import cn.iocoder.yudao.module.trade.dal.mysql.fulfillment.FulfillmentOutboxEventMapper;
 import cn.iocoder.yudao.module.trade.dal.mysql.fulfillment.ShipmentPackageMapper;
 import cn.iocoder.yudao.module.trade.enums.fulfillment.TrackingEventSourceEnum;
+import cn.iocoder.yudao.module.trade.enums.fulfillment.ShipmentStatusEnum;
 import cn.iocoder.yudao.module.trade.framework.fulfillment.core.dto.ProviderTrackingEvent;
 import cn.iocoder.yudao.module.trade.service.fulfillment.command.ApplyTrackingEventCommand;
+import cn.iocoder.yudao.module.trade.service.fulfillment.command.ApplyManualTrackingEventCommand;
+import cn.iocoder.yudao.module.trade.framework.fulfillment.config.FulfillmentProperties;
 import jakarta.annotation.Resource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -38,7 +41,7 @@ import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-@Import({FulfillmentTrackingServiceImpl.class, VersionedTrackingStatusMapper.class})
+@Import({FulfillmentTrackingServiceImpl.class, VersionedTrackingStatusMapper.class, FulfillmentProperties.class})
 class FulfillmentTrackingTransactionTest extends BaseDbUnitTest {
 
     private static final Long TENANT_ID = 121L;
@@ -50,6 +53,7 @@ class FulfillmentTrackingTransactionTest extends BaseDbUnitTest {
 
     @Resource private FulfillmentTrackingService service;
     @Resource private DataSource dataSource;
+    @Resource private FulfillmentProperties fulfillmentProperties;
     @SpyBean private FulfillmentOutboxEventMapper outboxMapper;
     @SpyBean private ShipmentPackageMapper packageMapper;
 
@@ -60,7 +64,206 @@ class FulfillmentTrackingTransactionTest extends BaseDbUnitTest {
         jdbc = new JdbcTemplate(dataSource);
         LoginUser loginUser = new LoginUser().setId(110L).setTenantId(TENANT_ID).setUserType(1);
         SecurityFrameworkUtils.setLoginUser(loginUser, new MockHttpServletRequest());
+        fulfillmentProperties.setIdempotencyHmacKey("test-only-manual-idempotency-secret");
         seedAggregate("HANDED_TO_CARRIER", 1);
+    }
+
+    @Test
+    void manualEventPersistsStructuredAuditWithoutProviderMapping() {
+        TrackingApplyResult result = service.applyManualEvent("manual-key-1", manualCommand(
+                ShipmentStatusEnum.IN_TRANSIT, Instant.parse("2026-07-16T01:02:03.123456789Z"), 1));
+
+        assertTrue(result.inserted());
+        assertTrue(result.stateChanged());
+        assertEquals("IN_TRANSIT", value("SELECT status FROM trade_shipment WHERE id = " + SHIPMENT_ID,
+                String.class));
+        assertEquals("MANUAL", value("SELECT source FROM trade_tracking_event", String.class));
+        assertEquals("MANUAL", value("SELECT provider_status FROM trade_tracking_event", String.class));
+        assertEquals(110L, value("SELECT manual_operator_id FROM trade_tracking_event", Long.class));
+        assertEquals("Correct carrier scan", value("SELECT manual_reason FROM trade_tracking_event", String.class));
+        assertEquals("trace-one", value("SELECT request_trace_id FROM trade_tracking_event", String.class));
+        assertEquals(PACKAGE_ID, value("SELECT package_id FROM trade_tracking_event", Long.class));
+        assertEquals(PROVIDER_ID, value("SELECT provider_id FROM trade_tracking_event", Long.class));
+        assertEquals(0, count("trade_tracking_status_mapping"));
+        String identity = value("SELECT external_event_id FROM trade_tracking_event", String.class);
+        assertEquals(64, identity.length());
+        assertFalse(identity.contains("manual-key-1"));
+        assertEquals(1, count("trade_fulfillment_idempotency"));
+        assertFalse(value("SELECT idempotency_key_hash FROM trade_fulfillment_idempotency", String.class)
+                .contains("manual-key-1"));
+        String payload = value("SELECT payload FROM trade_fulfillment_outbox_event", String.class);
+        assertFalse(payload.contains("Correct carrier scan"));
+        assertFalse(payload.contains("trace-one"));
+    }
+
+    @Test
+    void manualEventUsesLegOwnershipWithoutProviderCarrierOrTrackingAvailabilityChecks() {
+        jdbc.update("UPDATE trade_logistics_provider SET status = 1 WHERE id = ?", PROVIDER_ID);
+        jdbc.update("UPDATE trade_carrier SET status = 1 WHERE id = 73");
+        jdbc.update("UPDATE trade_shipment_leg SET tracking_number = NULL WHERE id = ?", LEG_ID);
+
+        TrackingApplyResult result = service.applyManualEvent("manual-disabled-provider",
+                manualCommand(ShipmentStatusEnum.IN_TRANSIT, Instant.parse("2026-07-16T01:30:00Z"), 1));
+
+        assertTrue(result.inserted());
+        assertTrue(result.stateChanged());
+        assertEquals(PROVIDER_ID, value("SELECT provider_id FROM trade_tracking_event", Long.class));
+    }
+
+    @Test
+    void terminalProtectedManualTimelineStillConsumesShipmentVersionOnlyOnce() {
+        jdbc.update("UPDATE trade_shipment_package SET status = 'DELIVERED', version = 2 WHERE id = ?", PACKAGE_ID);
+        jdbc.update("UPDATE trade_shipment_leg SET status = 'DELIVERED', version = 2 WHERE id = ?", LEG_ID);
+
+        TrackingApplyResult result = service.applyManualEvent("manual-rejected",
+                manualCommand(ShipmentStatusEnum.DELIVERY_EXCEPTION, Instant.parse("2026-07-16T02:30:00Z"), 1));
+
+        assertTrue(result.inserted());
+        assertFalse(result.stateChanged());
+        assertEquals(2, value("SELECT version FROM trade_shipment WHERE id = " + SHIPMENT_ID, Integer.class));
+        assertEquals("HANDED_TO_CARRIER", value("SELECT status FROM trade_shipment WHERE id = " + SHIPMENT_ID,
+                String.class));
+        assertEquals("TIMELINE_ONLY", value("SELECT transition_decision FROM trade_tracking_event", String.class));
+        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM trade_fulfillment_outbox_event "
+                + "WHERE event_type = 'TRACKING_UPDATED'", Integer.class));
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM trade_fulfillment_outbox_event "
+                + "WHERE event_type = 'DELIVERY_EXCEPTION'", Integer.class));
+        TrackingApplyResult replay = service.applyManualEvent("manual-rejected",
+                manualCommand(ShipmentStatusEnum.DELIVERY_EXCEPTION, Instant.parse("2026-07-16T02:30:00Z"), 1)
+                        .setRequestTraceId("retry-trace"));
+        assertFalse(replay.inserted());
+        assertEquals(2, value("SELECT version FROM trade_shipment WHERE id = " + SHIPMENT_ID, Integer.class));
+    }
+
+    @Test
+    void manuallyCancelingTargetPackageDoesNotCancelShipmentWhileAnotherPackageIsActive() {
+        jdbc.update("INSERT INTO trade_shipment_package (id, tenant_id, shipment_id, package_no, package_type, "
+                + "carrier_id, tracking_number, status, version) VALUES "
+                + "(71002, ?, ?, 'PKG-2', 'PARCEL', 73, 'private-tracking-456', 'IN_TRANSIT', 2)",
+                TENANT_ID, SHIPMENT_ID);
+
+        TrackingApplyResult result = service.applyManualEvent("manual-cancel-one",
+                manualCommand(ShipmentStatusEnum.CANCELED, Instant.parse("2026-07-16T02:45:00Z"), 1));
+
+        assertTrue(result.stateChanged());
+        assertEquals("CANCELED", value("SELECT status FROM trade_shipment_package WHERE id = " + PACKAGE_ID,
+                String.class));
+        assertEquals("HANDED_TO_CARRIER", value("SELECT status FROM trade_shipment WHERE id = " + SHIPMENT_ID,
+                String.class));
+        assertEquals(2, value("SELECT version FROM trade_shipment WHERE id = " + SHIPMENT_ID, Integer.class));
+    }
+
+    @Test
+    void manualReplayResolvesBeforeStaleVersionAndConflictingReuseFailsClosed() {
+        ApplyManualTrackingEventCommand original = manualCommand(ShipmentStatusEnum.IN_TRANSIT,
+                Instant.parse("2026-07-16T02:00:00Z"), 1);
+        TrackingApplyResult first = service.applyManualEvent("manual-replay", original);
+        ApplyManualTrackingEventCommand retryWithNewTrace = manualCommand(ShipmentStatusEnum.IN_TRANSIT,
+                Instant.parse("2026-07-16T02:00:00Z"), 1).setRequestTraceId("trace-retry");
+
+        TrackingApplyResult replay = service.applyManualEvent("manual-replay", retryWithNewTrace);
+
+        assertTrue(first.inserted());
+        assertFalse(replay.inserted());
+        assertEquals(1, count("trade_tracking_event"));
+        assertEquals(1, count("trade_fulfillment_outbox_event"));
+        assertEquals(2, value("SELECT version FROM trade_shipment WHERE id = " + SHIPMENT_ID, Integer.class));
+        assertThrows(RuntimeException.class, () -> service.applyManualEvent("manual-replay",
+                manualCommand(ShipmentStatusEnum.DELIVERY_EXCEPTION,
+                        Instant.parse("2026-07-16T02:00:00Z"), 1)));
+        assertEquals(1, count("trade_tracking_event"));
+    }
+
+    @Test
+    void manualStaleVersionAndParentMismatchWriteNothing() {
+        assertThrows(RuntimeException.class, () -> service.applyManualEvent("manual-stale",
+                manualCommand(ShipmentStatusEnum.IN_TRANSIT, Instant.parse("2026-07-16T03:00:00Z"), 9)));
+        assertThrows(RuntimeException.class, () -> service.applyManualEvent("manual-wrong-package",
+                manualCommand(ShipmentStatusEnum.IN_TRANSIT, Instant.parse("2026-07-16T03:01:00Z"), 1)
+                        .setPackageId(99999L)));
+
+        assertEquals(0, count("trade_tracking_event"));
+        assertEquals(0, count("trade_fulfillment_idempotency"));
+        assertEquals(1, value("SELECT version FROM trade_shipment WHERE id = " + SHIPMENT_ID, Integer.class));
+    }
+
+    @Test
+    void manualCommandValidationRejectsMissingAuditAndReasonBoundariesBeforeWriting() {
+        Instant occurredAt = Instant.parse("2026-07-16T03:30:00Z");
+        assertThrows(RuntimeException.class, () -> service.applyManualEvent(" ",
+                manualCommand(ShipmentStatusEnum.IN_TRANSIT, occurredAt, 1)));
+        assertThrows(RuntimeException.class, () -> service.applyManualEvent("manual-short",
+                manualCommand(ShipmentStatusEnum.IN_TRANSIT, occurredAt, 1).setReason(" four ")));
+        assertThrows(RuntimeException.class, () -> service.applyManualEvent("manual-long",
+                manualCommand(ShipmentStatusEnum.IN_TRANSIT, occurredAt, 1).setReason("x".repeat(501))));
+        assertThrows(RuntimeException.class, () -> service.applyManualEvent("manual-no-operator",
+                manualCommand(ShipmentStatusEnum.IN_TRANSIT, occurredAt, 1).setOperatorId(null)));
+        assertThrows(RuntimeException.class, () -> service.applyManualEvent("manual-no-trace",
+                manualCommand(ShipmentStatusEnum.IN_TRANSIT, occurredAt, 1).setRequestTraceId(" ")));
+        assertThrows(RuntimeException.class, () -> service.applyManualEvent("manual-no-leg",
+                manualCommand(ShipmentStatusEnum.IN_TRANSIT, occurredAt, 1).setShipmentLegId(null)));
+        assertThrows(RuntimeException.class, () -> service.applyManualEvent("manual-no-version",
+                manualCommand(ShipmentStatusEnum.IN_TRANSIT, occurredAt, 1).setExpectedShipmentVersion(null)));
+        assertEquals(0, count("trade_tracking_event"));
+        assertEquals(0, count("trade_fulfillment_idempotency"));
+    }
+
+    @Test
+    void sameTimeManualStatusPriorityUsesServerTable() {
+        Instant sameTime = Instant.parse("2026-07-16T03:45:00Z");
+        service.applyManualEvent("manual-priority-low",
+                manualCommand(ShipmentStatusEnum.IN_TRANSIT, sameTime, 1));
+
+        TrackingApplyResult higher = service.applyManualEvent("manual-priority-high",
+                manualCommand(ShipmentStatusEnum.DELIVERY_EXCEPTION, sameTime, 2));
+
+        assertTrue(higher.stateChanged());
+        assertEquals("DELIVERY_EXCEPTION", value("SELECT status FROM trade_shipment WHERE id = " + SHIPMENT_ID,
+                String.class));
+        assertEquals(60, value("SELECT last_event_status_priority FROM trade_shipment WHERE id = " + SHIPMENT_ID,
+                Integer.class));
+    }
+
+    @Test
+    void manualOutboxFailureRollsBackAuditIdempotencyAndState() {
+        doThrow(new IllegalStateException("manual outbox failed"))
+                .when(outboxMapper).insert(any(FulfillmentOutboxEventDO.class));
+
+        assertThrows(IllegalStateException.class, () -> service.applyManualEvent("manual-rollback",
+                manualCommand(ShipmentStatusEnum.IN_TRANSIT, Instant.parse("2026-07-16T04:00:00Z"), 1)));
+
+        assertEquals(0, count("trade_tracking_event"));
+        assertEquals(0, count("trade_fulfillment_idempotency"));
+        assertEquals("HANDED_TO_CARRIER", value("SELECT status FROM trade_shipment WHERE id = " + SHIPMENT_ID,
+                String.class));
+        assertEquals(1, value("SELECT version FROM trade_shipment WHERE id = " + SHIPMENT_ID, Integer.class));
+    }
+
+    @Test
+    void manualShipmentLevelLegAndBoundLegEnforceDatabasePackageOwnership() {
+        TrackingApplyResult bound = service.applyManualEvent("manual-bound",
+                manualCommand(ShipmentStatusEnum.IN_TRANSIT, Instant.parse("2026-07-16T05:00:00Z"), 1)
+                        .setPackageId(null));
+        assertTrue(bound.stateChanged());
+        assertEquals(PACKAGE_ID, value("SELECT package_id FROM trade_tracking_event", Long.class));
+
+        jdbc.update("DELETE FROM trade_fulfillment_outbox_event");
+        jdbc.update("DELETE FROM trade_tracking_event");
+        jdbc.update("DELETE FROM trade_fulfillment_idempotency");
+        jdbc.update("UPDATE trade_shipment SET status = 'HANDED_TO_CARRIER', version = 1, "
+                + "last_event_occurred_at = NULL, last_event_status_priority = NULL, last_event_id = NULL WHERE id = ?",
+                SHIPMENT_ID);
+        jdbc.update("UPDATE trade_shipment_leg SET package_id = NULL, status = 'HANDED_TO_CARRIER', version = 1, "
+                + "last_event_occurred_at = NULL, last_event_status_priority = NULL, last_event_id = NULL WHERE id = ?",
+                LEG_ID);
+        TrackingApplyResult shared = service.applyManualEvent("manual-shared",
+                manualCommand(ShipmentStatusEnum.IN_TRANSIT, Instant.parse("2026-07-16T05:01:00Z"), 1)
+                        .setPackageId(null));
+        assertTrue(shared.stateChanged());
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM trade_tracking_event WHERE package_id IS NOT NULL",
+                Integer.class));
+        assertThrows(RuntimeException.class, () -> service.applyManualEvent("manual-shared-invalid",
+                manualCommand(ShipmentStatusEnum.IN_TRANSIT, Instant.parse("2026-07-16T05:02:00Z"), 2)));
     }
 
     @AfterEach
@@ -538,6 +741,14 @@ class FulfillmentTrackingTransactionTest extends BaseDbUnitTest {
                 .setReceivedAt(occurredAt.plusSeconds(5)).setSource(TrackingEventSourceEnum.WEBHOOK)
                 .setProviderEvent(new ProviderTrackingEvent(externalId, rawStatus, occurredAt, "UTC",
                         "Toronto ON", "private description", "private-payload-ref"));
+    }
+
+    private ApplyManualTrackingEventCommand manualCommand(ShipmentStatusEnum status, Instant occurredAt,
+                                                           int expectedVersion) {
+        return new ApplyManualTrackingEventCommand().setTenantId(TENANT_ID).setShipmentId(SHIPMENT_ID)
+                .setPackageId(PACKAGE_ID).setShipmentLegId(LEG_ID).setRequestedStatus(status)
+                .setOccurredAt(occurredAt).setExpectedShipmentVersion(expectedVersion).setOperatorId(110L)
+                .setReason("  Correct carrier scan  ").setRequestTraceId("trace-one");
     }
 
     private void seedAggregate(String status, int version) {
