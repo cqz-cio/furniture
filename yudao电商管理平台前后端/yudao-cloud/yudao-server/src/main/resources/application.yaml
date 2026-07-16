@@ -373,6 +373,14 @@ yudao:
     begin-code: 9999 # 这里配置 9999 的原因是，测试方便。
     end-code: 9999 # 这里配置 9999 的原因是，测试方便。
   trade:
+    fulfillment:
+      enabled: false
+      write-new-model: false
+      read-from-new-model: false
+      customer-ui-enabled: false
+      legacy-migration-write-enabled: false
+      provider-code: ${FULFILLMENT_PROVIDER_CODE:}
+      idempotency-hmac-key: ${FULFILLMENT_IDEMPOTENCY_HMAC_KEY:}
     order:
       pay-expire-time: 2h # 支付的过期时间
       receive-expire-time: 14d # 收货的过期时间
