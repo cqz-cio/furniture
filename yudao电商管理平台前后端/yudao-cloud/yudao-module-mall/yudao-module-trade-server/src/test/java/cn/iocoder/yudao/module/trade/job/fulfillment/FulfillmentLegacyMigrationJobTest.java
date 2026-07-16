@@ -17,7 +17,9 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.lang.reflect.Method;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -29,6 +31,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 class FulfillmentLegacyMigrationJobTest {
@@ -86,6 +89,7 @@ class FulfillmentLegacyMigrationJobTest {
 
         assertTrue(output.get("hasMore").asBoolean());
         verify(migrationService, times(1)).migrateActiveOrders(TENANT_ID, 41L, 7, true);
+        verifyNoMoreInteractions(migrationService);
     }
 
     @ParameterizedTest
@@ -96,6 +100,8 @@ class FulfillmentLegacyMigrationJobTest {
             "[]",
             "null",
             "not-json",
+            "{} {}",
+            "{} trailing-garbage",
             "{\"tenantId\":999}",
             "{\"tenant_id\":999}",
             "{\"unknown\":true}",
@@ -136,7 +142,7 @@ class FulfillmentLegacyMigrationJobTest {
     }
 
     @Test
-    void executeShouldReturnOnlySafeCountsCursorAndReasonCounts() throws Exception {
+    void executeShouldReturnOnlySafeFieldsForTenantJobXxlSummary() throws Exception {
         MigrationBatchResult result = new MigrationBatchResult(true, 3, 1, 0, 1, 1,
                 987654321L, true, List.of(
                 new MigrationOrderResult(111111L, MigrationOutcome.WOULD_MIGRATE, "TRACKING_CANARY"),
@@ -147,6 +153,10 @@ class FulfillmentLegacyMigrationJobTest {
         String serialized = job.execute("");
         JsonNode output = OBJECT_MAPPER.readTree(serialized);
 
+        Set<String> outputFields = new HashSet<>();
+        output.fieldNames().forEachRemaining(outputFields::add);
+        assertEquals(Set.of("dryRun", "scanned", "wouldMigrate", "migrated", "alreadyMigrated",
+                "rejected", "nextAfterOrderId", "hasMore", "reasonCounts"), outputFields);
         assertEquals(987654321L, output.get("nextAfterOrderId").asLong());
         assertEquals(1, output.get("reasonCounts").get("WOULD_MIGRATE").asInt());
         assertEquals(1, output.get("reasonCounts").get("ALREADY_MIGRATED").asInt());
@@ -161,7 +171,7 @@ class FulfillmentLegacyMigrationJobTest {
     }
 
     @Test
-    void executeShouldReplaceServiceExceptionWithStableSafeError() {
+    void executeShouldExposeCauseFreeSafeErrorToTenantJobXxlLogging() {
         when(migrationService.migrateActiveOrders(TENANT_ID, 0L, 100, true))
                 .thenThrow(new IllegalStateException("TRACKING_PHONE_FACT_DIGEST_CANARY"));
 
