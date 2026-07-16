@@ -7863,6 +7863,31 @@ AND NOT EXISTS (
     WHERE `permission` = 'trade:fulfillment:tracking:manual' AND `deleted` = b'0'
 );
 
+-- BEGIN V020__trade_fulfillment_legacy_migration_fact.sql
+CREATE TABLE IF NOT EXISTS `trade_fulfillment_legacy_migration_fact` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `tenant_id` bigint NOT NULL,
+  `order_id` bigint NOT NULL,
+  `origin_country` char(2) NOT NULL,
+  `destination_country` char(2) NOT NULL,
+  `origin_timezone` varchar(64) NOT NULL,
+  `destination_timezone` varchar(64) NOT NULL,
+  `warehouse_id` bigint NOT NULL,
+  `migration_provider_id` bigint NOT NULL,
+  `approved_by` bigint NOT NULL,
+  `approved_at` datetime(6) NOT NULL,
+  `source_reference` varchar(255) NOT NULL,
+  `creator` varchar(64) NOT NULL DEFAULT '',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updater` varchar(64) NOT NULL DEFAULT '',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` bit(1) NOT NULL DEFAULT b'0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_legacy_migration_fact_order` (`tenant_id`,`order_id`),
+  KEY `idx_legacy_migration_fact_provider` (`tenant_id`,`migration_provider_id`),
+  KEY `idx_legacy_migration_fact_warehouse` (`tenant_id`,`warehouse_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- BEGIN Oakved demo catalog
 -- Oakved demo catalog: tenant 121, 26 mall products, ERP products, stock and mappings.
 SET @tenant_id = 121;
@@ -8050,4 +8075,5 @@ INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256)
 INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('017','trade tracking event watermarks','V017__trade_tracking_event_watermarks.sql','4bddf6d0d0833138a45a6c4b52a6634e67a2798d66b7bf43cee8908a02bed46b') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
 INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('018','trade manual tracking audit','V018__trade_manual_tracking_audit.sql','002dad8815da46261f6a361ac9bf36850a345287844c0ea6e3295b53fdc8812d') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
 INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('019','trade fulfillment admin permissions','V019__trade_fulfillment_admin_permissions.sql','2b7094e055a3ab0fce335a96fcf0f539d4cb337a7190efa50fc7c7f538778e18') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
+INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('020','trade fulfillment legacy migration fact','V020__trade_fulfillment_legacy_migration_fact.sql','f7f89c40f7ac14eb1b4dce008fc41aa553810261e5185602a677701370c0d40e') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
 SET FOREIGN_KEY_CHECKS = 1;
