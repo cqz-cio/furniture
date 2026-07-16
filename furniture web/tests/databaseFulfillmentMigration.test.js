@@ -193,7 +193,7 @@ describe("V018 active-record uniqueness correction", () => {
     const baseline = readFileSync(join(root, "oakved-baseline.sql"), "utf8").replace(/\r\n/g, "\n");
     const marker = "-- BEGIN V018__trade_fulfillment_active_record_uniqueness.sql\n";
     const start = baseline.indexOf(marker);
-    const end = baseline.indexOf("\n-- BEGIN Oakved demo catalog", start);
+    const end = baseline.indexOf("\n-- BEGIN V019__seo_foundation.sql", start);
 
     expect(start).toBeGreaterThanOrEqual(0);
     expect(end).toBeGreaterThan(start);
