@@ -1,12 +1,69 @@
 ﻿export const primaryNavigation = [
-  { label: "Bedroom Furniture", href: "/products?room=bedroom" },
-  { label: "Storage Cabinets", href: "/products?category=storage" },
-  { label: "Desks & Tables", href: "/products?category=desk-table" },
-  { label: "Seating & Benches", href: "/products?category=seating" },
-  { label: "Room Sets", href: "/products?collection=bedroom-room" },
-  { label: "Woodcraft", href: "/products?material=wood" },
-  { label: "New & Sale", href: "/sale" },
+  { key: "new", labelKey: "navigation.storefront.primary.new", href: "/products?tag=new" },
+  { key: "collections", labelKey: "navigation.storefront.primary.collections", href: "/products?collection=all" },
+  { key: "bedroom", labelKey: "navigation.storefront.primary.bedroom", href: "/products?room=bedroom" },
+  { key: "living", labelKey: "navigation.storefront.primary.living", href: "/products?room=living" },
+  { key: "dining", labelKey: "navigation.storefront.primary.dining", href: "/products?room=dining" },
+  { key: "bespoke", labelKey: "navigation.storefront.primary.bespoke", href: "/products?collection=bespoke" },
+  { key: "decor", labelKey: "navigation.storefront.primary.decor", href: "/products?category=decor" },
+  { key: "sale", labelKey: "navigation.storefront.primary.sale", href: "/sale", accent: true },
 ];
+
+export const CATALOG_HREF = "/catalog";
+
+const storefrontItem = (key, href) => ({
+  key,
+  labelKey: `navigation.storefront.submenu.${key}`,
+  href,
+});
+
+const catalogItem = () => storefrontItem("catalog", CATALOG_HREF);
+const withCatalog = (items) => [catalogItem(), ...items];
+
+export const storefrontDropdownMenus = {
+  collections: withCatalog([
+    storefrontItem("solstice", "/products?collection=solstice"),
+    storefrontItem("halcyon", "/products?collection=halcyon"),
+    storefrontItem("kindred", "/products?collection=kindred"),
+  ]),
+  bedroom: withCatalog([
+    storefrontItem("beds", "/products?category=bed"),
+    storefrontItem("headboard", "/products?category=headboard"),
+    storefrontItem("nightstands", "/products?category=nightstand"),
+    storefrontItem("benches", "/products?category=bench"),
+    storefrontItem("dressers", "/products?category=dresser"),
+    storefrontItem("chairs", "/products?category=chair"),
+    storefrontItem("sideTables", "/products?category=side-table"),
+    storefrontItem("fabricCare", "/products?group=fabric-care"),
+    storefrontItem("materialsCraftsmanship", "/products?group=materials-craftsmanship"),
+    storefrontItem("sales", "/sale"),
+  ]),
+  living: withCatalog([
+    storefrontItem("sofas", "/products?category=sofa"),
+    storefrontItem("tables", "/products?category=table"),
+    storefrontItem("consoles", "/products?category=console"),
+    storefrontItem("sideboards", "/products?category=sideboard"),
+    storefrontItem("cabinets", "/products?category=cabinet"),
+    storefrontItem("benches", "/products?category=bench"),
+    storefrontItem("chairs", "/products?category=chair"),
+    storefrontItem("stools", "/products?category=stool"),
+    storefrontItem("fabricCare", "/products?group=fabric-care"),
+    storefrontItem("materialsCraftsmanship", "/products?group=materials-craftsmanship"),
+    storefrontItem("sales", "/sale"),
+  ]),
+  dining: withCatalog([
+    storefrontItem("rectangularTables", "/products?category=rectangular-table"),
+    storefrontItem("roundOvalTables", "/products?category=round-oval-table"),
+    storefrontItem("bistroTables", "/products?category=bistro-table"),
+    storefrontItem("fabricChairs", "/products?category=fabric-chair"),
+    storefrontItem("woodWovenChairs", "/products?category=wood-woven-chair"),
+    storefrontItem("barCounterStools", "/products?category=bar-counter-stool"),
+    storefrontItem("upholsterySwatches", "/products?group=upholstery-swatches"),
+    storefrontItem("sales", "/sale"),
+  ]),
+};
+
+export const storefrontDropdownKeys = Object.keys(storefrontDropdownMenus);
 
 export const babyChildNavigation = [
   { label: "Furniture", href: "/baby-child/furniture" },
@@ -185,7 +242,10 @@ export const livingMegaMenu = woodFurnitureMegaMenus["Bedroom Furniture"];
 export const livingSeatingMegaMenu = [];
 export const livingMegaSubmenus = {};
 export const saleMegaMenu = woodFurnitureMegaMenus["New & Sale"];
-export const mobileDrawerNavigation = primaryNavigation.map((item) => ({ ...item, accent: item.label === "New & Sale" }));
+export const mobileDrawerNavigation = primaryNavigation.map((item) => ({
+  ...item,
+  items: storefrontDropdownMenus[item.key] || [],
+}));
 
 export const globalMenuPanels = [
   {

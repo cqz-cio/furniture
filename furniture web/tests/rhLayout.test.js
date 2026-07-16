@@ -1,6 +1,7 @@
 ﻿import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
+  CATALOG_HREF,
   babyChildCollections,
   babyChildNavigation,
   babyChildPageSpecs,
@@ -10,13 +11,10 @@ import {
   footerLinkHref,
   globalMenuLinkHref,
   globalMenuPanels,
-  livingMegaMenu,
-  livingSeatingMegaMenu,
-  livingMegaSubmenus,
   mobileDrawerNavigation,
   primaryNavigation,
-  woodFurnitureDropdownLabels,
-  woodFurnitureMegaMenus,
+  storefrontDropdownKeys,
+  storefrontDropdownMenus,
   rhFooter,
   outdoorCollectionSpecs,
   sofaPdpSpecs,
@@ -32,15 +30,26 @@ import {
 } from "../src/data/rhLayout.js";
 
 describe("RH layout extraction data", () => {
-  it("keeps the focused wood furniture navigation order used by the header", () => {
-    expect(primaryNavigation.map((item) => item.label)).toEqual([
-      "Bedroom Furniture",
-      "Storage Cabinets",
-      "Desks & Tables",
-      "Seating & Benches",
-      "Room Sets",
-      "Woodcraft",
-      "New & Sale",
+  it("defines the approved storefront navigation order", () => {
+    expect(primaryNavigation.map((item) => item.key)).toEqual([
+      "new",
+      "collections",
+      "bedroom",
+      "living",
+      "dining",
+      "bespoke",
+      "decor",
+      "sale",
+    ]);
+    expect(primaryNavigation.map((item) => item.labelKey)).toEqual([
+      "navigation.storefront.primary.new",
+      "navigation.storefront.primary.collections",
+      "navigation.storefront.primary.bedroom",
+      "navigation.storefront.primary.living",
+      "navigation.storefront.primary.dining",
+      "navigation.storefront.primary.bespoke",
+      "navigation.storefront.primary.decor",
+      "navigation.storefront.primary.sale",
     ]);
     expect(primaryNavigation.every((item) => item.href.startsWith("/products") || item.href === "/sale")).toBe(true);
   });
@@ -63,34 +72,36 @@ describe("RH layout extraction data", () => {
     expect(globalMenuPanels[3].links).toContain("Sale");
   });
 
-  it("defines local dropdown menus for the focused storefront navigation", () => {
-    expect(woodFurnitureDropdownLabels).toEqual(primaryNavigation.map((item) => item.label));
-    expect(woodFurnitureMegaMenus["Bedroom Furniture"].map((item) => item.label)).toEqual([
-      "\u5e8a\u5934\u67dc",
-      "\u5e8a\u5c3e\u957f\u51f3",
-      "\u6597\u67dc",
-      "\u5316\u5986\u684c",
-      "\u5367\u5ba4\u5957\u88c5",
-      "\u67e5\u770b\u5168\u90e8\u5367\u5ba4\u5bb6\u5177",
-    ]);
-    expect(woodFurnitureMegaMenus["Bedroom Furniture"].at(-1)).toMatchObject({
-      href: "/products?room=bedroom",
-      accent: true,
+  it("prepends the same catalog destination to every configured dropdown", () => {
+    expect(storefrontDropdownKeys).toEqual(["collections", "bedroom", "living", "dining"]);
+
+    storefrontDropdownKeys.forEach((key) => {
+      expect(storefrontDropdownMenus[key][0]).toEqual({
+        key: "catalog",
+        labelKey: "navigation.storefront.submenu.catalog",
+        href: CATALOG_HREF,
+      });
     });
-    expect(woodFurnitureMegaMenus["New & Sale"].map((item) => item.href)).toEqual([
-      "/products?tag=new",
-      "/products?tag=best-seller",
-      "/products?tag=in-stock",
-      "/sale",
-      "/sale",
+
+    expect(CATALOG_HREF).toBe("/catalog");
+    expect(storefrontDropdownMenus.dining.map((item) => item.key)).toEqual([
+      "catalog",
+      "rectangularTables",
+      "roundOvalTables",
+      "bistroTables",
+      "fabricChairs",
+      "woodWovenChairs",
+      "barCounterStools",
+      "upholsterySwatches",
+      "sales",
     ]);
-    const allDropdownLinks = Object.values(woodFurnitureMegaMenus).flat();
-    expect(allDropdownLinks.every((item) => item.href.startsWith("/products") || item.href === "/sale")).toBe(true);
-    expect(livingMegaMenu).toBe(woodFurnitureMegaMenus["Bedroom Furniture"]);
-    expect(livingSeatingMegaMenu).toEqual([]);
-    expect(livingMegaSubmenus).toEqual({});
-    expect(mobileDrawerNavigation.at(-1).label).toBe("New & Sale");
-    expect(mobileDrawerNavigation.find((item) => item.label === "New & Sale").accent).toBe(true);
+  });
+
+  it("derives mobile navigation from the same dropdown model", () => {
+    expect(mobileDrawerNavigation.map((item) => item.key)).toEqual(primaryNavigation.map((item) => item.key));
+    expect(mobileDrawerNavigation.find((item) => item.key === "dining").items)
+      .toBe(storefrontDropdownMenus.dining);
+    expect(mobileDrawerNavigation.find((item) => item.key === "sale").accent).toBe(true);
   });
 
   it("defines Baby & Child navigation and collection modules", () => {
