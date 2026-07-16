@@ -123,18 +123,28 @@ const allowedMenuBlock =
 const deniedFixedRoutePrefixesBlock =
   furnitureLiteConfig.match(/const deniedFixedRoutePrefixes = \[[\s\S]*?\]/)?.[0] || ''
 
-for (const route of ['/ai', '/ai/chat', '/ai/model', '/ai/knowledge', '/ai/workflow']) {
+const requiredAiRoutes = ['/ai', '/ai/chat', '/ai/model', '/ai/knowledge', '/ai/workflow']
+
+for (const route of requiredAiRoutes) {
   assert.ok(
-    !allowedMenuBlock.includes(`'${route}'`) && !allowedMenuBlock.includes(`"${route}"`),
-    `furniture-lite mode must hide generic AI menu route ${route}`
+    allowedMenuBlock.includes(`'${route}'`) || allowedMenuBlock.includes(`"${route}"`),
+    `furniture-lite mode must allow AI menu route ${route}`
   )
 }
 
 assert.ok(
-  deniedFixedRoutePrefixesBlock.includes("'/ai'") ||
-    deniedFixedRoutePrefixesBlock.includes('"/ai"'),
-  'src/config/furnitureLite.ts must deny /ai fixed routes in furniture-lite mode'
+  !deniedFixedRoutePrefixesBlock.includes("'/ai'") &&
+    !deniedFixedRoutePrefixesBlock.includes('"/ai"'),
+  'src/config/furnitureLite.ts must not deny /ai fixed routes in furniture-lite mode'
 )
+
+for (const route of ['/bpm', '/crm', '/iot', '/mes', '/diy', '/codegen', '/job']) {
+  assert.ok(
+    deniedFixedRoutePrefixesBlock.includes(`'${route}'`) ||
+      deniedFixedRoutePrefixesBlock.includes(`"${route}"`),
+    `src/config/furnitureLite.ts must continue to deny ${route} fixed routes`
+  )
+}
 
 for (const token of ['filterFurnitureLiteMenus', 'filterFurnitureLiteFixedRoutes']) {
   assert.ok(

@@ -6,7 +6,7 @@ $yaml = [IO.File]::ReadAllText($localConfig)
 
 foreach ($required in @(
     'client: not_provide',
-    'api-key: local-disabled',
+    'api-key: ${YUDAO_EXPRESS_KDNIAO_API_KEY:local-disabled}',
     'business-id: local-disabled',
     'key: local-disabled',
     'customer: local-disabled'

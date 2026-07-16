@@ -5,6 +5,7 @@
 **/logs/
 _git-backups/
 **/sql/**/*.sql
+!**/src/test/resources/sql/**/*.sql
 .pnpm-store/
 .worktrees/
 .codex/

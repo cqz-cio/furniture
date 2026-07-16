@@ -1,19 +1,26 @@
 <template>
-  <div class="absolute top-0 left-0 right-0 bottom-0 flex">
-    <Left
-      :is-writing="isWriting"
-      class="h-full"
-      @submit="submit"
-      @reset="reset"
-      @example="handleExampleClick"
+  <div class="absolute top-0 left-0 right-0 bottom-0 flex flex-col">
+    <AiModelConfigurationAlert
+      class="m-5 mb-0"
+      :model-type="AiModelTypeEnum.CHAT"
+      @loaded="handleModelConfigurationLoaded"
     />
-    <Right
-      :is-writing="isWriting"
-      @stop-stream="stopStream"
-      ref="rightRef"
-      class="flex-grow"
-      v-model:content="writeResult"
-    />
+    <div class="flex flex-1 min-h-0">
+      <Left
+        :is-writing="isWriting"
+        class="h-full"
+        @submit="submit"
+        @reset="reset"
+        @example="handleExampleClick"
+      />
+      <Right
+        :is-writing="isWriting"
+        @stop-stream="stopStream"
+        ref="rightRef"
+        class="flex-grow"
+        v-model:content="writeResult"
+      />
+    </div>
   </div>
 </template>
 
@@ -21,13 +28,19 @@
 import Left from './components/Left.vue'
 import Right from './components/Right.vue'
 import { WriteApi, WriteVO } from '@/api/ai/write'
-import { WriteExample } from '@/views/ai/utils/constants'
+import { AiModelTypeEnum, WriteExample } from '@/views/ai/utils/constants'
+import AiModelConfigurationAlert from '@/views/ai/components/AiModelConfigurationAlert.vue'
 
 const message = useMessage()
 
 const writeResult = ref('') // 写作结果
 const isWriting = ref(false) // 是否正在写作中
 const abortController = ref<AbortController>() // // 写作进行中 abort 控制器(控制 stream 写作)
+const modelConfigured = ref(false)
+
+const handleModelConfigurationLoaded = (configured: boolean) => {
+  modelConfigured.value = configured
+}
 
 /** 停止 stream 生成 */
 const stopStream = () => {
@@ -38,6 +51,10 @@ const stopStream = () => {
 /** 执行写作 */
 const rightRef = ref<InstanceType<typeof Right>>()
 const submit = (data: WriteVO) => {
+  if (!modelConfigured.value) {
+    message.warning('请先配置 AI 模型和 API Key，再使用写作功能')
+    return
+  }
   abortController.value = new AbortController()
   writeResult.value = ''
   isWriting.value = true

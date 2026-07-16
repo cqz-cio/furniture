@@ -1,70 +1,151 @@
 <template>
-  <div class="flex items-center justify-between px-2 h-72px bg-[var(--el-bg-color-overlay)] b-solid b-1 b-[var(--el-border-color)] b-l-none">
-    <!-- 歌曲信息 -->
+  <div
+    class="flex items-center justify-between px-2 h-72px bg-[var(--el-bg-color-overlay)] b-solid b-1 b-[var(--el-border-color)] b-l-none"
+  >
     <div class="flex gap-[10px]">
-      <el-image src="https://zos.alipayobjects.com/rmsportal/jkjgkEfvpUPVyRjUImniVslZfWPnJuuZ.png" class="w-[45px]" />
+      <el-image
+        :src="coverUrl"
+        class="w-[45px] h-[45px]"
+        fit="cover"
+        @error="useFallbackCover"
+      />
       <div>
-        <div>{{ currentSong.name }}</div>
-        <div class="text-[12px] text-gray-400">{{ currentSong.singer }}</div>
+        <div>{{ currentSong.title || currentSong.name || '示例音乐' }}</div>
+        <div class="text-[12px] text-gray-400">{{ currentSong.singer || 'AI 音乐' }}</div>
       </div>
-    </div>
-      
-    <!-- 音频controls -->
-    <div class="flex gap-[12px] items-center">
-      <Icon icon="majesticons:back-circle" :size="20" class="text-gray-300 cursor-pointer" />
-      <Icon :icon="audioProps.paused ? 'mdi:arrow-right-drop-circle' : 'solar:pause-circle-bold'" :size="30" class=" cursor-pointer" @click="toggleStatus('paused')" />
-      <Icon icon="majesticons:next-circle" :size="20" class="text-gray-300 cursor-pointer" />
-      <div class="flex gap-[16px] items-center">
-        <span>{{ audioProps.currentTime }}</span>
-        <el-slider v-model="audioProps.duration" color="#409eff" class="w-[160px!important] " />
-        <span>{{ audioProps.duration }}</span>
-      </div>
-      <!-- 音频 -->
-      <audio v-bind="audioProps" ref="audioRef" controls v-show="!audioProps" @timeupdate="audioTimeUpdate">
-        <source :src="audioUrl" />
-      </audio>
     </div>
 
-    <!-- 音量控制器 -->
+    <div class="flex gap-[12px] items-center">
+      <Icon icon="majesticons:back-circle" :size="20" class="text-gray-300" />
+      <Icon
+        :icon="isPaused ? 'mdi:arrow-right-drop-circle' : 'solar:pause-circle-bold'"
+        :size="30"
+        class="cursor-pointer"
+        @click="togglePlayback"
+      />
+      <Icon icon="majesticons:next-circle" :size="20" class="text-gray-300" />
+      <div class="flex gap-[16px] items-center">
+        <span>{{ formatAudioTime(currentTime) }}</span>
+        <el-slider
+          v-model="currentTime"
+          :max="duration"
+          :disabled="duration <= 0"
+          class="w-[160px!important]"
+          @change="seek"
+        />
+        <span>{{ formatAudioTime(duration) }}</span>
+      </div>
+      <audio
+        ref="audioRef"
+        :src="currentAudioUrl"
+        :muted="muted"
+        class="hidden"
+        preload="metadata"
+        @loadedmetadata="syncDuration"
+        @durationchange="syncDuration"
+        @timeupdate="syncCurrentTime"
+        @play="isPaused = false"
+        @pause="isPaused = true"
+        @ended="handleEnded"
+      />
+    </div>
+
     <div class="flex gap-[16px] items-center">
-      <Icon :icon="audioProps.muted ? 'tabler:volume-off' : 'tabler:volume'" :size="20" class="cursor-pointer" @click="toggleStatus('muted')" />
-      <el-slider v-model="audioProps.volume" color="#409eff" class="w-[160px!important] " />
+      <Icon
+        :icon="muted ? 'tabler:volume-off' : 'tabler:volume'"
+        :size="20"
+        class="cursor-pointer"
+        @click="toggleMuted"
+      />
+      <el-slider
+        v-model="volumePercent"
+        :min="0"
+        :max="100"
+        class="w-[160px!important]"
+        @input="updateVolume"
+      />
     </div>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { formatPast } from '@/utils/formatTime'
 import audioUrl from '@/assets/audio/response.mp3'
+import fallbackCover from '@/assets/imgs/logo.png'
 
-defineOptions({ name: 'Index' })
+defineOptions({ name: 'AiMusicAudioBar' })
 
-const currentSong = inject('currentSong', {})
+const currentSong = inject<Ref<Recordable>>('currentSong', ref({}))
+const audioRef = ref<HTMLAudioElement | null>(null)
+const currentTime = ref(0)
+const duration = ref(0)
+const volumePercent = ref(50)
+const isPaused = ref(true)
+const muted = ref(false)
+const coverUrl = ref(fallbackCover)
+const currentAudioUrl = computed(() => currentSong.value.audioUrl || audioUrl)
 
-const audioRef = ref<Nullable<HTMLElement>>(null)
-  // 音频相关属性https://www.runoob.com/tags/ref-av-dom.html
-const audioProps = reactive({
-  autoplay: true,
-  paused: false,
-  currentTime: '00:00',
-  duration: '00:00',
-  muted:  false,
-  volume: 50,
+watch(
+  () => currentSong.value.imageUrl,
+  (value) => {
+    coverUrl.value = value || fallbackCover
+  },
+  { immediate: true }
+)
+
+watch(currentAudioUrl, () => {
+  currentTime.value = 0
+  duration.value = 0
+  isPaused.value = true
 })
 
-function toggleStatus (type: string) {
-  audioProps[type] = !audioProps[type]
-  if (type === 'paused' && audioRef.value) {
-    if (audioProps[type]) {
-      audioRef.value.pause()
-    } else {
-      audioRef.value.play()
-    }
+const useFallbackCover = () => {
+  coverUrl.value = fallbackCover
+}
+
+const togglePlayback = async () => {
+  if (!audioRef.value) return
+  if (audioRef.value.paused) {
+    await audioRef.value.play()
+  } else {
+    audioRef.value.pause()
   }
 }
 
-// 更新播放位置
-function audioTimeUpdate (args) {
-  audioProps.currentTime = formatPast(new Date(args.timeStamp), 'mm:ss')
+const toggleMuted = () => {
+  muted.value = !muted.value
+  if (audioRef.value) audioRef.value.muted = muted.value
+}
+
+const syncDuration = () => {
+  const value = audioRef.value?.duration ?? 0
+  duration.value = Number.isFinite(value) ? value : 0
+}
+
+const syncCurrentTime = () => {
+  currentTime.value = audioRef.value?.currentTime ?? 0
+}
+
+const seek = (value: number) => {
+  if (audioRef.value) audioRef.value.currentTime = value
+}
+
+const updateVolume = (value: number) => {
+  if (audioRef.value) {
+    audioRef.value.volume = Math.min(1, Math.max(0, value / 100))
+  }
+}
+
+const handleEnded = () => {
+  isPaused.value = true
+  currentTime.value = 0
+}
+
+const formatAudioTime = (seconds: number) => {
+  if (!Number.isFinite(seconds) || seconds < 0) return '00:00'
+  const minutes = Math.floor(seconds / 60)
+  const remainingSeconds = Math.floor(seconds % 60)
+  return `${minutes.toString().padStart(2, '0')}:${remainingSeconds
+    .toString()
+    .padStart(2, '0')}`
 }
 </script>

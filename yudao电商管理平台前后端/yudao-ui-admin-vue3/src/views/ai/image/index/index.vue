@@ -1,7 +1,13 @@
 <!-- image -->
 <template>
-  <div class="absolute inset-0 flex flex-row wh-full">
-    <div class="flex flex-col p-5 w-[390px]">
+  <div class="absolute inset-0 flex flex-col wh-full">
+    <AiModelConfigurationAlert
+      class="mx-5 mt-5"
+      :model-type="AiModelTypeEnum.IMAGE"
+      @loaded="handleModelConfigurationLoaded"
+    />
+    <div class="flex flex-row flex-1 min-h-0">
+      <div class="flex flex-col p-5 w-[390px]">
       <div class="mb-[30px]">
         <el-segmented
           v-model="selectPlatform"
@@ -35,23 +41,24 @@
           @on-draw-complete="handleDrawComplete"
         />
       </div>
-    </div>
-    <div class="flex-1 bg-white">
-      <ImageList ref="imageListRef" @on-regeneration="handleRegeneration" />
+      </div>
+      <div class="flex-1 bg-white">
+        <ImageList ref="imageListRef" @on-regeneration="handleRegeneration" />
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import ImageList from './components/ImageList.vue'
-import { AiPlatformEnum } from '@/views/ai/utils/constants'
+import { AiModelTypeEnum, AiPlatformEnum } from '@/views/ai/utils/constants'
 import { ImageVO } from '@/api/ai/image'
 import Dall3 from './components/dall3/index.vue'
 import Midjourney from './components/midjourney/index.vue'
 import StableDiffusion from './components/stableDiffusion/index.vue'
 import Common from './components/common/index.vue'
-import { ModelApi, ModelVO } from '@/api/ai/model/model'
-import { AiModelTypeEnum } from '@/views/ai/utils/constants'
+import { ModelVO } from '@/api/ai/model/model'
+import AiModelConfigurationAlert from '@/views/ai/components/AiModelConfigurationAlert.vue'
 
 const imageListRef = ref<any>() // image 列表 ref
 const dall3Ref = ref<any>() // dall3(openai) ref
@@ -81,6 +88,9 @@ const platformOptions = [
 ]
 
 const models = ref<ModelVO[]>([]) // 模型列表
+const handleModelConfigurationLoaded = (_configured: boolean, loadedModels: ModelVO[]) => {
+  models.value = loadedModels
+}
 
 /** 绘画 start  */
 const handleDrawStart = async (_platform: string) => {}
@@ -106,9 +116,4 @@ const handleRegeneration = async (image: ImageVO) => {
   // TODO @fan：貌似 other 重新设置不行？
 }
 
-/** 组件挂载的时候 */
-onMounted(async () => {
-  // 获取模型列表
-  models.value = await ModelApi.getModelSimpleList(AiModelTypeEnum.IMAGE)
-})
 </script>

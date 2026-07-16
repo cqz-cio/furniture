@@ -41,12 +41,24 @@ for (const token of [
 }
 
 for (const route of ['/ai', '/ai/chat', '/ai/model', '/ai/knowledge', '/ai/workflow']) {
-  assert.ok(!allowedMenuBlock.includes(`'${route}'`), `furniture-lite menu must not allow ${route}`)
+  assert.ok(
+    allowedMenuBlock.includes(`'${route}'`) || allowedMenuBlock.includes(`"${route}"`),
+    `furniture-lite menu must allow ${route}`
+  )
 }
 
 assert.ok(
-  deniedFixedRoutePrefixesBlock.includes("'/ai'"),
-  'furniture-lite fixed routes must deny /ai'
+  !deniedFixedRoutePrefixesBlock.includes("'/ai'") &&
+    !deniedFixedRoutePrefixesBlock.includes('"/ai"'),
+  'furniture-lite fixed routes must not deny /ai'
 )
+
+for (const route of ['/bpm', '/crm', '/iot', '/mes', '/diy', '/codegen', '/job']) {
+  assert.ok(
+    deniedFixedRoutePrefixesBlock.includes(`'${route}'`) ||
+      deniedFixedRoutePrefixesBlock.includes(`"${route}"`),
+    `furniture-lite fixed routes must continue to deny ${route}`
+  )
+}
 
 console.log('Furniture admin design checks passed')

@@ -210,7 +210,7 @@ yudao:
       # placeholders satisfy configuration validation without exposing secrets.
       client: not_provide
       kd-niao:
-        api-key: local-disabled
+        api-key: ${YUDAO_EXPRESS_KDNIAO_API_KEY:local-disabled}
         business-id: local-disabled
       kd100:
         key: local-disabled

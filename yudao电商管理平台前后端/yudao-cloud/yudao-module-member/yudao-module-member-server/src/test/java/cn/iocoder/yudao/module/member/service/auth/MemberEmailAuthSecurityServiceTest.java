@@ -72,9 +72,13 @@ public class MemberEmailAuthSecurityServiceTest extends BaseMockitoUnitTest {
 
         org.junit.jupiter.api.Assertions.assertNotNull(challenge.getChallengeId());
         org.junit.jupiter.api.Assertions.assertTrue(challenge.getImageBase64().startsWith("data:image/"));
-        org.junit.jupiter.api.Assertions.assertTrue(challenge.getInstruction().contains("验证码"));
         org.junit.jupiter.api.Assertions.assertTrue(java.util.Arrays.asList("LINE", "CIRCLE", "SHEAR", "MATH")
                 .contains(challenge.getCaptchaType()));
+        if ("MATH".equals(challenge.getCaptchaType())) {
+            org.junit.jupiter.api.Assertions.assertTrue(challenge.getInstruction().contains("计算结果"));
+        } else {
+            org.junit.jupiter.api.Assertions.assertTrue(challenge.getInstruction().contains("验证码"));
+        }
         org.mockito.Mockito.verify(valueOperations).set(eq("member:email-auth:captcha:challenge:" + challenge.getChallengeId()),
                 anyString(), org.mockito.ArgumentMatchers.anyLong(), eq(java.util.concurrent.TimeUnit.MILLISECONDS));
     }

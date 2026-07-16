@@ -17,6 +17,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.Mockito.when;
 
@@ -53,6 +54,13 @@ class MallErpProductSyncServiceImplTest {
     @Test
     void getMappedMallSkuIdsReturnsEmptyForEmptyInput() {
         assertEquals(new HashSet<>(), service.getMappedMallSkuIds(Collections.emptyList()));
+    }
+
+    @Test
+    void getByMallSkuIdReturnsNullWhenSkuIsNotMapped() {
+        when(mappingMapper.selectByMallSkuId(999L)).thenReturn(null);
+
+        assertNull(service.getByMallSkuId(999L));
     }
 
     private static MallErpProductMappingDO mapping(Long mallSkuId, Long erpProductId) {

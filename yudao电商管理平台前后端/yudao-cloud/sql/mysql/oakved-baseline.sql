@@ -7489,6 +7489,353 @@ SET @after_id = @batch_end;
 SELECT @tenant_id AS tenant_id, @after_id AS after_id, @batch_size AS batch_size, @updated_rows AS updated_rows;
 COMMIT;
 
+-- BEGIN V015__trade_fulfillment_core.sql
+CREATE TABLE IF NOT EXISTS `trade_carrier` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `tenant_id` bigint NOT NULL,
+  `code` varchar(32) NOT NULL,
+  `name` varchar(128) NOT NULL,
+  `country_codes` varchar(32) NOT NULL,
+  `legacy_express_id` bigint DEFAULT NULL,
+  `status` tinyint NOT NULL DEFAULT 0,
+  `creator` varchar(64) NOT NULL DEFAULT '',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updater` varchar(64) NOT NULL DEFAULT '',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` bit(1) NOT NULL DEFAULT b'0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_carrier_code` (`tenant_id`,`code`,`deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `trade_logistics_provider` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `tenant_id` bigint NOT NULL,
+  `code` varchar(32) NOT NULL,
+  `name` varchar(128) NOT NULL,
+  `capabilities` varchar(512) NOT NULL,
+  `status` tinyint NOT NULL DEFAULT 0,
+  `creator` varchar(64) NOT NULL DEFAULT '',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updater` varchar(64) NOT NULL DEFAULT '',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` bit(1) NOT NULL DEFAULT b'0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_provider_code` (`tenant_id`,`code`,`deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `trade_shipment` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `tenant_id` bigint NOT NULL,
+  `order_id` bigint NOT NULL,
+  `shipment_no` varchar(32) NOT NULL,
+  `shipment_type` varchar(20) NOT NULL,
+  `status` varchar(32) NOT NULL,
+  `origin_country` char(2) NOT NULL,
+  `destination_country` char(2) NOT NULL,
+  `origin_timezone` varchar(64) NOT NULL,
+  `destination_timezone` varchar(64) NOT NULL,
+  `warehouse_id` bigint NOT NULL,
+  `provider_id` bigint DEFAULT NULL,
+  `estimated_delivery_at` datetime DEFAULT NULL,
+  `delivered_at` datetime DEFAULT NULL,
+  `last_event_occurred_at` datetime DEFAULT NULL,
+  `version` int NOT NULL DEFAULT 0,
+  `creator` varchar(64) NOT NULL DEFAULT '',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updater` varchar(64) NOT NULL DEFAULT '',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` bit(1) NOT NULL DEFAULT b'0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_shipment_no` (`tenant_id`,`shipment_no`,`deleted`),
+  KEY `idx_shipment_order` (`tenant_id`,`order_id`,`deleted`),
+  KEY `idx_shipment_status` (`tenant_id`,`status`,`update_time`),
+  CONSTRAINT `chk_shipment_origin_country` CHECK (`origin_country` IN ('US','CA')),
+  CONSTRAINT `chk_shipment_destination_country` CHECK (`destination_country` IN ('US','CA')),
+  CONSTRAINT `chk_shipment_domestic` CHECK (`destination_country` = `origin_country`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `trade_shipment_item` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `tenant_id` bigint NOT NULL,
+  `shipment_id` bigint NOT NULL,
+  `order_item_id` bigint NOT NULL,
+  `sku_id` bigint NOT NULL,
+  `quantity` decimal(24,6) NOT NULL,
+  `creator` varchar(64) NOT NULL DEFAULT '',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updater` varchar(64) NOT NULL DEFAULT '',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` bit(1) NOT NULL DEFAULT b'0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_shipment_item` (`tenant_id`,`shipment_id`,`order_item_id`,`deleted`),
+  KEY `idx_shipment_item_order_item` (`tenant_id`,`order_item_id`,`deleted`),
+  CONSTRAINT `chk_shipment_item_quantity` CHECK (`quantity` > 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `trade_shipment_package` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `tenant_id` bigint NOT NULL,
+  `shipment_id` bigint NOT NULL,
+  `package_no` varchar(32) NOT NULL,
+  `package_type` varchar(20) NOT NULL,
+  `carrier_id` bigint DEFAULT NULL,
+  `tracking_number` varchar(64) DEFAULT NULL,
+  `weight` decimal(18,6) DEFAULT NULL,
+  `weight_unit` varchar(4) DEFAULT NULL,
+  `length` decimal(18,6) DEFAULT NULL,
+  `width` decimal(18,6) DEFAULT NULL,
+  `height` decimal(18,6) DEFAULT NULL,
+  `dimension_unit` varchar(4) DEFAULT NULL,
+  `status` varchar(32) NOT NULL,
+  `version` int NOT NULL DEFAULT 0,
+  `creator` varchar(64) NOT NULL DEFAULT '',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updater` varchar(64) NOT NULL DEFAULT '',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` bit(1) NOT NULL DEFAULT b'0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_shipment_package_no` (`tenant_id`,`shipment_id`,`package_no`,`deleted`),
+  UNIQUE KEY `uk_package_tracking` (`tenant_id`,`carrier_id`,`tracking_number`,`deleted`),
+  CONSTRAINT `chk_package_weight` CHECK (`weight` IS NULL OR `weight` >= 0),
+  CONSTRAINT `chk_package_dimensions` CHECK ((`length` IS NULL OR `length` >= 0) AND (`width` IS NULL OR `width` >= 0) AND (`height` IS NULL OR `height` >= 0))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `trade_shipment_leg` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `tenant_id` bigint NOT NULL,
+  `shipment_id` bigint NOT NULL,
+  `package_id` bigint DEFAULT NULL,
+  `sequence_no` int NOT NULL,
+  `leg_type` varchar(20) NOT NULL,
+  `carrier_id` bigint NOT NULL,
+  `provider_id` bigint NOT NULL,
+  `service_level` varchar(64) DEFAULT NULL,
+  `tracking_number` varchar(64) DEFAULT NULL,
+  `pro_number` varchar(64) DEFAULT NULL,
+  `bol_number` varchar(64) DEFAULT NULL,
+  `origin_location` varchar(256) DEFAULT NULL,
+  `destination_location` varchar(256) DEFAULT NULL,
+  `status` varchar(32) NOT NULL,
+  `started_at` datetime DEFAULT NULL,
+  `completed_at` datetime DEFAULT NULL,
+  `version` int NOT NULL DEFAULT 0,
+  `creator` varchar(64) NOT NULL DEFAULT '',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updater` varchar(64) NOT NULL DEFAULT '',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` bit(1) NOT NULL DEFAULT b'0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_shipment_leg_sequence` (`tenant_id`,`shipment_id`,`sequence_no`,`deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `trade_tracking_event` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `tenant_id` bigint NOT NULL,
+  `shipment_id` bigint NOT NULL,
+  `package_id` bigint DEFAULT NULL,
+  `shipment_leg_id` bigint DEFAULT NULL,
+  `provider_id` bigint NOT NULL,
+  `external_event_id` varchar(128) DEFAULT NULL,
+  `event_hash` char(64) DEFAULT NULL,
+  `standard_status` varchar(32) NOT NULL,
+  `provider_status` varchar(128) NOT NULL,
+  `description` varchar(1024) DEFAULT NULL,
+  `location` varchar(256) DEFAULT NULL,
+  `occurred_at` datetime NOT NULL,
+  `occurred_timezone` varchar(64) DEFAULT NULL,
+  `received_at` datetime NOT NULL,
+  `raw_payload_ref` varchar(256) DEFAULT NULL,
+  `source` varchar(20) NOT NULL,
+  `creator` varchar(64) NOT NULL DEFAULT '',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updater` varchar(64) NOT NULL DEFAULT '',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` bit(1) NOT NULL DEFAULT b'0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_tracking_event_external` (`tenant_id`,`provider_id`,`external_event_id`,`deleted`),
+  UNIQUE KEY `uk_tracking_event_hash` (`tenant_id`,`provider_id`,`event_hash`,`deleted`),
+  KEY `idx_tracking_event_timeline` (`tenant_id`,`shipment_id`,`occurred_at`,`id`),
+  CONSTRAINT `chk_tracking_event_identity` CHECK (`external_event_id` IS NOT NULL OR `event_hash` IS NOT NULL)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `trade_order_fulfillment_summary` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `tenant_id` bigint NOT NULL,
+  `order_id` bigint NOT NULL,
+  `status` varchar(32) NOT NULL,
+  `shipment_count` int NOT NULL DEFAULT 0,
+  `delivered_shipment_count` int NOT NULL DEFAULT 0,
+  `version` int NOT NULL DEFAULT 0,
+  `creator` varchar(64) NOT NULL DEFAULT '',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updater` varchar(64) NOT NULL DEFAULT '',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` bit(1) NOT NULL DEFAULT b'0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_order_fulfillment_summary` (`tenant_id`,`order_id`,`deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `trade_fulfillment_idempotency` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `tenant_id` bigint NOT NULL,
+  `operation` varchar(64) NOT NULL,
+  `idempotency_key_hash` char(64) NOT NULL,
+  `request_hash` char(64) NOT NULL,
+  `resource_type` varchar(32) NOT NULL,
+  `resource_id` bigint DEFAULT NULL,
+  `status` varchar(16) NOT NULL,
+  `expires_at` datetime NOT NULL,
+  `creator` varchar(64) NOT NULL DEFAULT '',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updater` varchar(64) NOT NULL DEFAULT '',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` bit(1) NOT NULL DEFAULT b'0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_fulfillment_idempotency` (`tenant_id`,`operation`,`idempotency_key_hash`,`deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `trade_fulfillment_outbox_event` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `tenant_id` bigint NOT NULL,
+  `event_id` char(36) NOT NULL,
+  `aggregate_type` varchar(32) NOT NULL,
+  `aggregate_id` bigint NOT NULL,
+  `event_type` varchar(64) NOT NULL,
+  `payload` json NOT NULL,
+  `status` varchar(16) NOT NULL,
+  `attempt_count` int NOT NULL DEFAULT 0,
+  `next_attempt_at` datetime NOT NULL,
+  `published_at` datetime DEFAULT NULL,
+  `last_error_code` varchar(64) DEFAULT NULL,
+  `creator` varchar(64) NOT NULL DEFAULT '',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updater` varchar(64) NOT NULL DEFAULT '',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` bit(1) NOT NULL DEFAULT b'0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_fulfillment_outbox_event_id` (`tenant_id`,`event_id`,`deleted`),
+  KEY `idx_fulfillment_outbox_due` (`tenant_id`,`status`,`next_attempt_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- BEGIN V016__trade_tracking_status_mapping.sql
+CREATE TABLE IF NOT EXISTS `trade_tracking_status_mapping` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `tenant_id` bigint NOT NULL,
+  `provider_code` varchar(32) NOT NULL,
+  `carrier_code` varchar(32) NOT NULL,
+  `provider_status_normalized` varchar(128) NOT NULL,
+  `standard_status` varchar(32) NOT NULL,
+  `mapping_version` varchar(32) NOT NULL,
+  `effective_at` datetime(6) NOT NULL,
+  `creator` varchar(64) NOT NULL DEFAULT '',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updater` varchar(64) NOT NULL DEFAULT '',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` bit(1) NOT NULL DEFAULT b'0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_tracking_status_mapping` (`tenant_id`,`provider_code`,`carrier_code`,`provider_status_normalized`,`mapping_version`,`deleted`),
+  KEY `idx_tracking_status_mapping_effective` (`tenant_id`,`provider_code`,`carrier_code`,`effective_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE `trade_tracking_event`
+  ADD COLUMN `provider_status_normalized` varchar(128) NOT NULL DEFAULT '' AFTER `provider_status`,
+  ADD COLUMN `mapping_version` varchar(32) DEFAULT NULL AFTER `provider_status_normalized`,
+  ADD COLUMN `mapping_effective_at` datetime(6) DEFAULT NULL AFTER `mapping_version`,
+  ADD COLUMN `mapping_known` bit(1) NOT NULL DEFAULT b'0' AFTER `mapping_effective_at`,
+  ADD COLUMN `transition_decision` varchar(20) NOT NULL DEFAULT 'TIMELINE_ONLY' AFTER `mapping_known`,
+  ADD COLUMN `previous_status` varchar(32) DEFAULT NULL AFTER `transition_decision`,
+  ADD COLUMN `result_status` varchar(32) DEFAULT NULL AFTER `previous_status`,
+  MODIFY COLUMN `occurred_at` datetime(6) NOT NULL,
+  MODIFY COLUMN `received_at` datetime(6) NOT NULL;
+
+ALTER TABLE `trade_shipment`
+  MODIFY COLUMN `last_event_occurred_at` datetime(6) DEFAULT NULL;
+
+ALTER TABLE `trade_shipment_package`
+  ADD COLUMN `last_event_occurred_at` datetime(6) DEFAULT NULL AFTER `status`;
+
+ALTER TABLE `trade_shipment_leg`
+  ADD COLUMN `last_event_occurred_at` datetime(6) DEFAULT NULL AFTER `status`;
+
+-- BEGIN V017__trade_tracking_event_watermarks.sql
+ALTER TABLE `trade_tracking_status_mapping`
+  ADD COLUMN `status_priority` int NOT NULL DEFAULT 0 AFTER `standard_status`;
+
+ALTER TABLE `trade_tracking_event`
+  MODIFY COLUMN `external_event_id` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL;
+
+ALTER TABLE `trade_shipment`
+  ADD COLUMN `last_event_status_priority` int DEFAULT NULL AFTER `last_event_occurred_at`,
+  ADD COLUMN `last_event_id` bigint DEFAULT NULL AFTER `last_event_status_priority`;
+
+ALTER TABLE `trade_shipment_package`
+  ADD COLUMN `last_event_status_priority` int DEFAULT NULL AFTER `last_event_occurred_at`,
+  ADD COLUMN `last_event_id` bigint DEFAULT NULL AFTER `last_event_status_priority`;
+
+ALTER TABLE `trade_shipment_leg`
+  ADD COLUMN `last_event_status_priority` int DEFAULT NULL AFTER `last_event_occurred_at`,
+  ADD COLUMN `last_event_id` bigint DEFAULT NULL AFTER `last_event_status_priority`;
+
+-- BEGIN V018__trade_fulfillment_active_record_uniqueness.sql
+ALTER TABLE `trade_carrier`
+  ADD COLUMN `active_record` tinyint GENERATED ALWAYS AS (CASE WHEN `deleted` = b'0' THEN 1 ELSE NULL END) STORED,
+  DROP INDEX `uk_carrier_code`,
+  ADD UNIQUE KEY `uk_carrier_code` (`tenant_id`,`code`,`active_record`);
+
+ALTER TABLE `trade_logistics_provider`
+  ADD COLUMN `active_record` tinyint GENERATED ALWAYS AS (CASE WHEN `deleted` = b'0' THEN 1 ELSE NULL END) STORED,
+  DROP INDEX `uk_provider_code`,
+  ADD UNIQUE KEY `uk_provider_code` (`tenant_id`,`code`,`active_record`);
+
+ALTER TABLE `trade_shipment`
+  ADD COLUMN `active_record` tinyint GENERATED ALWAYS AS (CASE WHEN `deleted` = b'0' THEN 1 ELSE NULL END) STORED,
+  DROP INDEX `uk_shipment_no`,
+  ADD UNIQUE KEY `uk_shipment_no` (`tenant_id`,`shipment_no`,`active_record`);
+
+ALTER TABLE `trade_shipment_item`
+  ADD COLUMN `active_record` tinyint GENERATED ALWAYS AS (CASE WHEN `deleted` = b'0' THEN 1 ELSE NULL END) STORED,
+  DROP INDEX `uk_shipment_item`,
+  ADD UNIQUE KEY `uk_shipment_item` (`tenant_id`,`shipment_id`,`order_item_id`,`active_record`);
+
+ALTER TABLE `trade_shipment_package`
+  ADD COLUMN `active_record` tinyint GENERATED ALWAYS AS (CASE WHEN `deleted` = b'0' THEN 1 ELSE NULL END) STORED,
+  DROP INDEX `uk_shipment_package_no`,
+  DROP INDEX `uk_package_tracking`,
+  ADD UNIQUE KEY `uk_shipment_package_no` (`tenant_id`,`shipment_id`,`package_no`,`active_record`),
+  ADD UNIQUE KEY `uk_package_tracking` (`tenant_id`,`carrier_id`,`tracking_number`,`active_record`);
+
+ALTER TABLE `trade_shipment_leg`
+  ADD COLUMN `active_record` tinyint GENERATED ALWAYS AS (CASE WHEN `deleted` = b'0' THEN 1 ELSE NULL END) STORED,
+  DROP INDEX `uk_shipment_leg_sequence`,
+  ADD UNIQUE KEY `uk_shipment_leg_sequence` (`tenant_id`,`shipment_id`,`sequence_no`,`active_record`);
+
+ALTER TABLE `trade_tracking_event`
+  ADD COLUMN `active_record` tinyint GENERATED ALWAYS AS (CASE WHEN `deleted` = b'0' THEN 1 ELSE NULL END) STORED,
+  DROP INDEX `uk_tracking_event_external`,
+  DROP INDEX `uk_tracking_event_hash`,
+  ADD UNIQUE KEY `uk_tracking_event_external` (`tenant_id`,`provider_id`,`external_event_id`,`active_record`),
+  ADD UNIQUE KEY `uk_tracking_event_hash` (`tenant_id`,`provider_id`,`event_hash`,`active_record`);
+
+ALTER TABLE `trade_order_fulfillment_summary`
+  ADD COLUMN `active_record` tinyint GENERATED ALWAYS AS (CASE WHEN `deleted` = b'0' THEN 1 ELSE NULL END) STORED,
+  DROP INDEX `uk_order_fulfillment_summary`,
+  ADD UNIQUE KEY `uk_order_fulfillment_summary` (`tenant_id`,`order_id`,`active_record`);
+
+ALTER TABLE `trade_fulfillment_idempotency`
+  ADD COLUMN `active_record` tinyint GENERATED ALWAYS AS (CASE WHEN `deleted` = b'0' THEN 1 ELSE NULL END) STORED,
+  DROP INDEX `uk_fulfillment_idempotency`,
+  ADD UNIQUE KEY `uk_fulfillment_idempotency` (`tenant_id`,`operation`,`idempotency_key_hash`,`active_record`);
+
+ALTER TABLE `trade_fulfillment_outbox_event`
+  ADD COLUMN `active_record` tinyint GENERATED ALWAYS AS (CASE WHEN `deleted` = b'0' THEN 1 ELSE NULL END) STORED,
+  DROP INDEX `uk_fulfillment_outbox_event_id`,
+  ADD UNIQUE KEY `uk_fulfillment_outbox_event_id` (`tenant_id`,`event_id`,`active_record`);
+
+ALTER TABLE `trade_tracking_status_mapping`
+  ADD COLUMN `active_record` tinyint GENERATED ALWAYS AS (CASE WHEN `deleted` = b'0' THEN 1 ELSE NULL END) STORED,
+  DROP INDEX `uk_tracking_status_mapping`,
+  ADD UNIQUE KEY `uk_tracking_status_mapping` (`tenant_id`,`provider_code`,`carrier_code`,`provider_status_normalized`,`mapping_version`,`active_record`);
+
 -- BEGIN Oakved demo catalog
 -- Oakved demo catalog: tenant 121, 26 mall products, ERP products, stock and mappings.
 SET @tenant_id = 121;
@@ -7671,4 +8018,8 @@ INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256)
 INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('012','trade order address verification','V012__trade_order_address_verification.sql','19b0f40504ff630ce00051cef8aef64cd9619978f934585bb3c7145dcafacd0b') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
 INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('013','statistics commerce dashboard','V013__statistics_commerce_dashboard.sql','6f32a961948ffa9cd77cf46edbdbc9a58ea4319c39f120df5fd84357147d5881') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
 INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('014','statistics commerce dashboard backfill','V014__statistics_commerce_dashboard_backfill.sql','382b67883bb7a3d4694ef6591ea9f4049194f649ad3410e5da7be9758186d04a') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
+INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('015','trade fulfillment core','V015__trade_fulfillment_core.sql','683687685b5b4943949d965f3b3df86eaa2e4dfcdbf50641fb4fc05db8d80ec4') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
+INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('016','trade tracking status mapping','V016__trade_tracking_status_mapping.sql','21dbb820f0e1099b73154bcc2d6011cdc1ea98556f580aaa0e5ccdd7ed7951da') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
+INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('017','trade tracking event watermarks','V017__trade_tracking_event_watermarks.sql','4bddf6d0d0833138a45a6c4b52a6634e67a2798d66b7bf43cee8908a02bed46b') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
+INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('018','trade fulfillment active record uniqueness','V018__trade_fulfillment_active_record_uniqueness.sql','2bf0b39fbda389e3d14cbc8b99b60a29a09556f9a37870fd50f640d2cb008bfc') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
 SET FOREIGN_KEY_CHECKS = 1;

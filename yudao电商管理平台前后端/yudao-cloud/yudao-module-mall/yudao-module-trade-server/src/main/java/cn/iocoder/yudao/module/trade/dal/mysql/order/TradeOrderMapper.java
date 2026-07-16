@@ -10,8 +10,11 @@ import cn.iocoder.yudao.module.trade.controller.admin.order.vo.TradeOrderPageReq
 import cn.iocoder.yudao.module.trade.controller.app.order.vo.AppTradeOrderPageReqVO;
 import cn.iocoder.yudao.module.trade.dal.dataobject.order.TradeOrderDO;
 import cn.iocoder.yudao.module.trade.enums.order.TradeOrderTypeEnum;
+import cn.iocoder.yudao.module.trade.enums.order.TradeOrderStatusEnum;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -21,9 +24,24 @@ import java.util.Set;
 @Mapper
 public interface TradeOrderMapper extends BaseMapperX<TradeOrderDO> {
 
+    @Select("SELECT * FROM trade_order WHERE id = #{orderId} AND deleted = FALSE FOR UPDATE")
+    TradeOrderDO selectByIdForUpdate(@Param("orderId") Long orderId);
+
     default int updateByIdAndStatus(Long id, Integer status, TradeOrderDO update) {
         return update(update, new LambdaUpdateWrapper<TradeOrderDO>()
                 .eq(TradeOrderDO::getId, id).eq(TradeOrderDO::getStatus, status));
+    }
+
+    default int updateFulfillmentProjectionByIdAndStatus(Long id, Integer expectedStatus, Long logisticsId,
+                                                          String logisticsNo, boolean markDelivered,
+                                                          LocalDateTime deliveryTime) {
+        return update(null, new LambdaUpdateWrapper<TradeOrderDO>()
+                .eq(TradeOrderDO::getId, id)
+                .eq(TradeOrderDO::getStatus, expectedStatus)
+                .set(TradeOrderDO::getLogisticsId, logisticsId)
+                .set(TradeOrderDO::getLogisticsNo, logisticsNo)
+                .set(markDelivered, TradeOrderDO::getStatus, TradeOrderStatusEnum.DELIVERED.getStatus())
+                .set(markDelivered, TradeOrderDO::getDeliveryTime, deliveryTime));
     }
 
     default TradeOrderDO selectByIdAndUserId(Long id, Long userId) {

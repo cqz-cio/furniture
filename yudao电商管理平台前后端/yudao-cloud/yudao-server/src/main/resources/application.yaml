@@ -209,6 +209,8 @@ spring:
       api-key: ${STABILITY_AI_API_KEY:}
     dashscope: # 通义千问
       api-key: ${DASHSCOPE_API_KEY:}
+      agent:
+        enabled: ${DASHSCOPE_AGENT_ENABLED:false}
     minimax: # Minimax：https://www.minimaxi.com/
       api-key: ${MINIMAX_API_KEY:}
     moonshot: # 月之暗面（KIMI）
@@ -219,7 +221,19 @@ spring:
         options:
           model: deepseek-chat
     model:
+      chat: ${SPRING_AI_MODEL_CHAT:none}
+      embedding: ${SPRING_AI_MODEL_EMBEDDING:none}
+      image: ${SPRING_AI_MODEL_IMAGE:none}
+      moderation: ${SPRING_AI_MODEL_MODERATION:none}
+      audio:
+        speech: ${SPRING_AI_MODEL_AUDIO_SPEECH:none}
+        transcription: ${SPRING_AI_MODEL_AUDIO_TRANSCRIPTION:none}
+      video: ${SPRING_AI_MODEL_VIDEO:none}
       rerank: false # 是否开启“通义千问”的 Rerank 模型，填写 dashscope 开启
+    alibaba:
+      tool:
+        async:
+          enabled: ${SPRING_AI_ALIBABA_TOOL_ASYNC_ENABLED:false}
     mcp:
       server:
         enabled: false

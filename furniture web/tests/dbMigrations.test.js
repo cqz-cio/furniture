@@ -12,11 +12,12 @@ describe("database migration readiness", () => {
 
   it("discovers the complete contiguous numbered catalog", () => {
     const checks = buildMigrationChecks();
+    const expectedVersions = Array.from({ length: 18 }, (_, index) => index + 1);
 
-    expect(checks).toHaveLength(14);
+    expect(checks).toHaveLength(expectedVersions.length);
     expect(checks[0].fileName).toBe("V001__module_tables.sql");
-    expect(checks.at(-1).fileName).toBe("V014__statistics_commerce_dashboard_backfill.sql");
-    expect(checks.map((check) => check.version)).toEqual(Array.from({ length: 14 }, (_, index) => index + 1));
+    expect(checks.at(-1).fileName).toBe("V018__trade_fulfillment_active_record_uniqueness.sql");
+    expect(checks.map((check) => check.version)).toEqual(expectedVersions);
   });
 
   it("verifies migrations, baseline, runner, reset and compose wiring", () => {
@@ -24,7 +25,9 @@ describe("database migration readiness", () => {
 
     expect(result.ok).toBe(true);
     expect(result.errors).toEqual([]);
-    expect(result.checked).toHaveLength(14);
+    expect(result.checked.map((check) => check.version)).toEqual(
+      Array.from({ length: 18 }, (_, index) => index + 1),
+    );
   });
 
   it("lets launch readiness include the database migration gate", async () => {

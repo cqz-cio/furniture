@@ -1,20 +1,27 @@
 <template>
-  <div class="absolute top-0 left-0 right-0 bottom-0 flex">
-    <!--表单区域-->
-    <Left
-      ref="leftRef"
-      :is-generating="isGenerating"
-      @submit="submit"
-      @direct-generate="directGenerate"
+  <div class="absolute top-0 left-0 right-0 bottom-0 flex flex-col">
+    <AiModelConfigurationAlert
+      class="m-5 mb-0"
+      :model-type="AiModelTypeEnum.CHAT"
+      @loaded="handleModelConfigurationLoaded"
     />
-    <!--右边生成思维导图区域-->
-    <Right
-      ref="rightRef"
-      :generatedContent="generatedContent"
-      :isEnd="isEnd"
-      :isGenerating="isGenerating"
-      :isStart="isStart"
-    />
+    <div class="flex flex-1 min-h-0">
+      <!--表单区域-->
+      <Left
+        ref="leftRef"
+        :is-generating="isGenerating"
+        @submit="submit"
+        @direct-generate="directGenerate"
+      />
+      <!--右边生成思维导图区域-->
+      <Right
+        ref="rightRef"
+        :generatedContent="generatedContent"
+        :isEnd="isEnd"
+        :isGenerating="isGenerating"
+        :isStart="isStart"
+      />
+    </div>
   </div>
 </template>
 
@@ -22,7 +29,8 @@
 import Left from './components/Left.vue'
 import Right from './components/Right.vue'
 import { AiMindMapApi, AiMindMapGenerateReqVO } from '@/api/ai/mindmap'
-import { MindMapContentExample } from '@/views/ai/utils/constants'
+import { AiModelTypeEnum, MindMapContentExample } from '@/views/ai/utils/constants'
+import AiModelConfigurationAlert from '@/views/ai/components/AiModelConfigurationAlert.vue'
 
 defineOptions({
   name: 'AiMindMap'
@@ -34,6 +42,11 @@ const isEnd = ref(true) // 用来判断结束的时候渲染思维导图
 const message = useMessage() // 消息提示
 
 const generatedContent = ref('') // 生成思维导图结果
+const modelConfigured = ref(false)
+
+const handleModelConfigurationLoaded = (configured: boolean) => {
+  modelConfigured.value = configured
+}
 
 const leftRef = ref<InstanceType<typeof Left>>() // 左边组件
 const rightRef = ref<InstanceType<typeof Right>>() // 右边组件
@@ -54,6 +67,10 @@ const stopStream = () => {
 
 /** 提交生成 */
 const submit = (data: AiMindMapGenerateReqVO) => {
+  if (!modelConfigured.value) {
+    message.warning('请先配置 AI 模型和 API Key，再生成思维导图')
+    return
+  }
   isGenerating.value = true
   isStart.value = true
   isEnd.value = false

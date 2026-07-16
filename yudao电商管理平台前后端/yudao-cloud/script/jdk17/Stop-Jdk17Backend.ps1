@@ -1,5 +1,8 @@
 [CmdletBinding()]
-param([string]$RunDirectory)
+param(
+    [string]$RunDirectory,
+    [string[]]$Services = @()
+)
 
 $ErrorActionPreference = 'Stop'
 
@@ -14,7 +17,21 @@ if (-not (Test-Path -LiteralPath $RunDirectory -PathType Container)) {
     exit 0
 }
 
-foreach ($stateFile in Get-ChildItem -LiteralPath $RunDirectory -Filter '*.json' -File) {
+$stateFiles = @(Get-ChildItem -LiteralPath $RunDirectory -Filter '*.json' -File)
+if ($Services.Count -gt 0) {
+    $selectedServices = [System.Collections.Generic.HashSet[string]]::new(
+        [string[]]$Services,
+        [StringComparer]::OrdinalIgnoreCase
+    )
+    $stateFiles = @($stateFiles | Where-Object { $selectedServices.Contains($_.BaseName) })
+}
+
+if ($stateFiles.Count -eq 0) {
+    Write-Output 'No matching recorded JDK 17 backend processes.'
+    exit 0
+}
+
+foreach ($stateFile in $stateFiles) {
     $state = Get-Content -LiteralPath $stateFile.FullName -Raw | ConvertFrom-Json
     $processId = [int]$state.Pid
     $jarPath = [IO.Path]::GetFullPath([string]$state.JarPath)
@@ -30,10 +47,21 @@ foreach ($stateFile in Get-ChildItem -LiteralPath $RunDirectory -Filter '*.json'
         continue
     }
 
-    $processInfo = Get-CimInstance Win32_Process -Filter "ProcessId = $processId" -ErrorAction Stop
-    if (-not $processInfo.CommandLine -or
-        $processInfo.CommandLine.IndexOf($jarPath, [StringComparison]::OrdinalIgnoreCase) -lt 0) {
-        Write-Warning "$($state.Service): PID $processId was not stopped because its command line does not match the recorded jar; state record retained."
+    if ($process.ProcessName -ne 'java') {
+        Write-Warning "$($state.Service): PID $processId was not stopped because it is not a Java process; state record retained."
+        continue
+    }
+
+    try {
+        $recordedStartTime = [DateTimeOffset]::Parse([string]$state.StartedAt)
+        $processStartTime = [DateTimeOffset]$process.StartTime
+        $startTimeDifference = [Math]::Abs(($processStartTime - $recordedStartTime).TotalSeconds)
+    } catch {
+        Write-Warning "$($state.Service): PID $processId was not stopped because its start time could not be verified; state record retained."
+        continue
+    }
+    if ($startTimeDifference -gt 120) {
+        Write-Warning "$($state.Service): PID $processId was not stopped because its start time does not match the recorded process; state record retained."
         continue
     }
 
