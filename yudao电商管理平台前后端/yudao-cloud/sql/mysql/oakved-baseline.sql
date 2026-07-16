@@ -7776,6 +7776,66 @@ ALTER TABLE `trade_shipment_leg`
   ADD COLUMN `last_event_status_priority` int DEFAULT NULL AFTER `last_event_occurred_at`,
   ADD COLUMN `last_event_id` bigint DEFAULT NULL AFTER `last_event_status_priority`;
 
+-- BEGIN V018__trade_fulfillment_active_record_uniqueness.sql
+ALTER TABLE `trade_carrier`
+  ADD COLUMN `active_record` tinyint GENERATED ALWAYS AS (CASE WHEN `deleted` = b'0' THEN 1 ELSE NULL END) STORED,
+  DROP INDEX `uk_carrier_code`,
+  ADD UNIQUE KEY `uk_carrier_code` (`tenant_id`,`code`,`active_record`);
+
+ALTER TABLE `trade_logistics_provider`
+  ADD COLUMN `active_record` tinyint GENERATED ALWAYS AS (CASE WHEN `deleted` = b'0' THEN 1 ELSE NULL END) STORED,
+  DROP INDEX `uk_provider_code`,
+  ADD UNIQUE KEY `uk_provider_code` (`tenant_id`,`code`,`active_record`);
+
+ALTER TABLE `trade_shipment`
+  ADD COLUMN `active_record` tinyint GENERATED ALWAYS AS (CASE WHEN `deleted` = b'0' THEN 1 ELSE NULL END) STORED,
+  DROP INDEX `uk_shipment_no`,
+  ADD UNIQUE KEY `uk_shipment_no` (`tenant_id`,`shipment_no`,`active_record`);
+
+ALTER TABLE `trade_shipment_item`
+  ADD COLUMN `active_record` tinyint GENERATED ALWAYS AS (CASE WHEN `deleted` = b'0' THEN 1 ELSE NULL END) STORED,
+  DROP INDEX `uk_shipment_item`,
+  ADD UNIQUE KEY `uk_shipment_item` (`tenant_id`,`shipment_id`,`order_item_id`,`active_record`);
+
+ALTER TABLE `trade_shipment_package`
+  ADD COLUMN `active_record` tinyint GENERATED ALWAYS AS (CASE WHEN `deleted` = b'0' THEN 1 ELSE NULL END) STORED,
+  DROP INDEX `uk_shipment_package_no`,
+  DROP INDEX `uk_package_tracking`,
+  ADD UNIQUE KEY `uk_shipment_package_no` (`tenant_id`,`shipment_id`,`package_no`,`active_record`),
+  ADD UNIQUE KEY `uk_package_tracking` (`tenant_id`,`carrier_id`,`tracking_number`,`active_record`);
+
+ALTER TABLE `trade_shipment_leg`
+  ADD COLUMN `active_record` tinyint GENERATED ALWAYS AS (CASE WHEN `deleted` = b'0' THEN 1 ELSE NULL END) STORED,
+  DROP INDEX `uk_shipment_leg_sequence`,
+  ADD UNIQUE KEY `uk_shipment_leg_sequence` (`tenant_id`,`shipment_id`,`sequence_no`,`active_record`);
+
+ALTER TABLE `trade_tracking_event`
+  ADD COLUMN `active_record` tinyint GENERATED ALWAYS AS (CASE WHEN `deleted` = b'0' THEN 1 ELSE NULL END) STORED,
+  DROP INDEX `uk_tracking_event_external`,
+  DROP INDEX `uk_tracking_event_hash`,
+  ADD UNIQUE KEY `uk_tracking_event_external` (`tenant_id`,`provider_id`,`external_event_id`,`active_record`),
+  ADD UNIQUE KEY `uk_tracking_event_hash` (`tenant_id`,`provider_id`,`event_hash`,`active_record`);
+
+ALTER TABLE `trade_order_fulfillment_summary`
+  ADD COLUMN `active_record` tinyint GENERATED ALWAYS AS (CASE WHEN `deleted` = b'0' THEN 1 ELSE NULL END) STORED,
+  DROP INDEX `uk_order_fulfillment_summary`,
+  ADD UNIQUE KEY `uk_order_fulfillment_summary` (`tenant_id`,`order_id`,`active_record`);
+
+ALTER TABLE `trade_fulfillment_idempotency`
+  ADD COLUMN `active_record` tinyint GENERATED ALWAYS AS (CASE WHEN `deleted` = b'0' THEN 1 ELSE NULL END) STORED,
+  DROP INDEX `uk_fulfillment_idempotency`,
+  ADD UNIQUE KEY `uk_fulfillment_idempotency` (`tenant_id`,`operation`,`idempotency_key_hash`,`active_record`);
+
+ALTER TABLE `trade_fulfillment_outbox_event`
+  ADD COLUMN `active_record` tinyint GENERATED ALWAYS AS (CASE WHEN `deleted` = b'0' THEN 1 ELSE NULL END) STORED,
+  DROP INDEX `uk_fulfillment_outbox_event_id`,
+  ADD UNIQUE KEY `uk_fulfillment_outbox_event_id` (`tenant_id`,`event_id`,`active_record`);
+
+ALTER TABLE `trade_tracking_status_mapping`
+  ADD COLUMN `active_record` tinyint GENERATED ALWAYS AS (CASE WHEN `deleted` = b'0' THEN 1 ELSE NULL END) STORED,
+  DROP INDEX `uk_tracking_status_mapping`,
+  ADD UNIQUE KEY `uk_tracking_status_mapping` (`tenant_id`,`provider_code`,`carrier_code`,`provider_status_normalized`,`mapping_version`,`active_record`);
+
 -- BEGIN Oakved demo catalog
 -- Oakved demo catalog: tenant 121, 26 mall products, ERP products, stock and mappings.
 SET @tenant_id = 121;
@@ -7961,4 +8021,5 @@ INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256)
 INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('015','trade fulfillment core','V015__trade_fulfillment_core.sql','683687685b5b4943949d965f3b3df86eaa2e4dfcdbf50641fb4fc05db8d80ec4') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
 INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('016','trade tracking status mapping','V016__trade_tracking_status_mapping.sql','21dbb820f0e1099b73154bcc2d6011cdc1ea98556f580aaa0e5ccdd7ed7951da') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
 INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('017','trade tracking event watermarks','V017__trade_tracking_event_watermarks.sql','4bddf6d0d0833138a45a6c4b52a6634e67a2798d66b7bf43cee8908a02bed46b') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
+INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('018','trade fulfillment active record uniqueness','V018__trade_fulfillment_active_record_uniqueness.sql','2bf0b39fbda389e3d14cbc8b99b60a29a09556f9a37870fd50f640d2cb008bfc') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
 SET FOREIGN_KEY_CHECKS = 1;

@@ -21,4 +21,3 @@
 3. Implement command, hashing, mapper CAS, and service validation/update changes.
 4. Run Task 5/6 command, transaction, atomicity, persistence, state-machine, provider, and legacy-order regressions.
 5. Run `git diff --check`, commit on the isolated task branch, and submit for independent review.
-

@@ -7,6 +7,33 @@ const root = join(import.meta.dirname, "../../yudao电商管理平台前后端/y
 const migrationPath = join(root, "migrations/V015__trade_fulfillment_core.sql");
 const trackingMappingMigrationPath = join(root, "migrations/V016__trade_tracking_status_mapping.sql");
 const trackingWatermarkMigrationPath = join(root, "migrations/V017__trade_tracking_event_watermarks.sql");
+const activeRecordUniquenessMigrationPath = join(root, "migrations/V018__trade_fulfillment_active_record_uniqueness.sql");
+
+const activeRecordIndexes = {
+  trade_carrier: { uk_carrier_code: ["tenant_id", "code"] },
+  trade_logistics_provider: { uk_provider_code: ["tenant_id", "code"] },
+  trade_shipment: { uk_shipment_no: ["tenant_id", "shipment_no"] },
+  trade_shipment_item: { uk_shipment_item: ["tenant_id", "shipment_id", "order_item_id"] },
+  trade_shipment_package: {
+    uk_shipment_package_no: ["tenant_id", "shipment_id", "package_no"],
+    uk_package_tracking: ["tenant_id", "carrier_id", "tracking_number"],
+  },
+  trade_shipment_leg: { uk_shipment_leg_sequence: ["tenant_id", "shipment_id", "sequence_no"] },
+  trade_tracking_event: {
+    uk_tracking_event_external: ["tenant_id", "provider_id", "external_event_id"],
+    uk_tracking_event_hash: ["tenant_id", "provider_id", "event_hash"],
+  },
+  trade_order_fulfillment_summary: { uk_order_fulfillment_summary: ["tenant_id", "order_id"] },
+  trade_fulfillment_idempotency: {
+    uk_fulfillment_idempotency: ["tenant_id", "operation", "idempotency_key_hash"],
+  },
+  trade_fulfillment_outbox_event: { uk_fulfillment_outbox_event_id: ["tenant_id", "event_id"] },
+  trade_tracking_status_mapping: {
+    uk_tracking_status_mapping: [
+      "tenant_id", "provider_code", "carrier_code", "provider_status_normalized", "mapping_version",
+    ],
+  },
+};
 
 describe("V015 trade fulfillment core migration", () => {
   it("creates the complete Phase 1 persistence contract", () => {
@@ -64,7 +91,7 @@ describe("V017 deterministic tracking watermarks", () => {
     const baseline = readFileSync(join(root, "oakved-baseline.sql"), "utf8").replace(/\r\n/g, "\n");
     const marker = "-- BEGIN V017__trade_tracking_event_watermarks.sql\n";
     const start = baseline.indexOf(marker);
-    const end = baseline.indexOf("\n-- BEGIN Oakved demo catalog", start);
+    const end = baseline.indexOf("\n-- BEGIN V018__trade_fulfillment_active_record_uniqueness.sql", start);
 
     expect(start).toBeGreaterThanOrEqual(0);
     expect(end).toBeGreaterThan(start);
@@ -105,6 +132,68 @@ describe("V016 tracking status mapping migration", () => {
     const marker = "-- BEGIN V016__trade_tracking_status_mapping.sql\n";
     const start = baseline.indexOf(marker);
     const end = baseline.indexOf("\n-- BEGIN V017__trade_tracking_event_watermarks.sql", start);
+
+    expect(start).toBeGreaterThanOrEqual(0);
+    expect(end).toBeGreaterThan(start);
+    expect(baseline.slice(start + marker.length, end).trimEnd()).toBe(migration);
+  });
+});
+
+describe("V018 active-record uniqueness correction", () => {
+  it("replaces every V015/V016 deleted-bit unique key with one nullable active marker per table", () => {
+    const sql = readFileSync(activeRecordUniquenessMigrationPath, "utf8");
+
+    for (const [table, indexes] of Object.entries(activeRecordIndexes)) {
+      const alters = [...sql.matchAll(new RegExp("ALTER TABLE `" + table + "`([\\s\\S]*?);", "g"))];
+      expect(alters, `${table} must have one coherent ALTER TABLE`).toHaveLength(1);
+      expect(alters[0][1]).toMatch(
+        /ADD COLUMN `active_record` tinyint GENERATED ALWAYS AS \(CASE WHEN `deleted` = b'0' THEN 1 ELSE NULL END\) STORED/i,
+      );
+      for (const [index, businessColumns] of Object.entries(indexes)) {
+        expect(alters[0][1]).toContain(`DROP INDEX \`${index}\``);
+        const replacement = [...businessColumns, "active_record"].map((column) => `\`${column}\``).join(",");
+        expect(alters[0][1]).toContain(`ADD UNIQUE KEY \`${index}\` (${replacement})`);
+      }
+    }
+    expect(sql.match(/ALTER TABLE/g)).toHaveLength(Object.keys(activeRecordIndexes).length);
+    expect(sql).not.toMatch(/ADD UNIQUE KEY[^;]+`deleted`/i);
+  });
+
+  it("models active-delete-recreate-delete-recreate semantics for every corrected business-key shape", () => {
+    const sql = readFileSync(activeRecordUniquenessMigrationPath, "utf8");
+
+    for (const [table, indexes] of Object.entries(activeRecordIndexes)) {
+      for (const [index, expectedColumns] of Object.entries(indexes)) {
+        const match = sql.match(new RegExp("ADD UNIQUE KEY `" + index + "` \\(([^)]+)\\)"));
+        expect(match, `${table}.${index} replacement index`).not.toBeNull();
+        const columns = match[1].match(/`([^`]+)`/g).map((column) => column.slice(1, -1));
+        expect(columns).toEqual([...expectedColumns, "active_record"]);
+
+        const activeKeys = new Set();
+        const businessKey = JSON.stringify(expectedColumns.map((column, position) => `${column}-${position}`));
+        const insertActive = () => {
+          if (activeKeys.has(businessKey)) throw new Error("duplicate active business key");
+          activeKeys.add(businessKey);
+        };
+        const softDelete = () => activeKeys.delete(businessKey); // generated active_record becomes NULL
+
+        insertActive();
+        expect(insertActive).toThrow("duplicate active business key");
+        expect(softDelete()).toBe(true);
+        insertActive();
+        expect(softDelete()).toBe(true);
+        insertActive();
+        expect(activeKeys).toEqual(new Set([businessKey]));
+      }
+    }
+  });
+
+  it("keeps the generated baseline V018 section byte-equivalent to the migration", () => {
+    const migration = readFileSync(activeRecordUniquenessMigrationPath, "utf8").replace(/\r\n/g, "\n").trimEnd();
+    const baseline = readFileSync(join(root, "oakved-baseline.sql"), "utf8").replace(/\r\n/g, "\n");
+    const marker = "-- BEGIN V018__trade_fulfillment_active_record_uniqueness.sql\n";
+    const start = baseline.indexOf(marker);
+    const end = baseline.indexOf("\n-- BEGIN Oakved demo catalog", start);
 
     expect(start).toBeGreaterThanOrEqual(0);
     expect(end).toBeGreaterThan(start);

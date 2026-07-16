@@ -1,8 +1,12 @@
 package cn.iocoder.yudao.module.trade.service.fulfillment;
 
+import cn.iocoder.yudao.framework.common.exception.ServiceException;
 import cn.iocoder.yudao.framework.security.core.LoginUser;
 import cn.iocoder.yudao.framework.security.core.util.SecurityFrameworkUtils;
+import cn.iocoder.yudao.framework.mybatis.core.util.MyBatisUtils;
+import cn.iocoder.yudao.framework.tenant.config.TenantProperties;
 import cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder;
+import cn.iocoder.yudao.framework.tenant.core.db.TenantDatabaseInterceptor;
 import cn.iocoder.yudao.framework.test.core.ut.BaseDbUnitTest;
 import cn.iocoder.yudao.module.trade.dal.dataobject.fulfillment.FulfillmentOutboxEventDO;
 import cn.iocoder.yudao.module.trade.dal.mysql.fulfillment.FulfillmentOutboxEventMapper;
@@ -10,21 +14,29 @@ import cn.iocoder.yudao.module.trade.dal.mysql.fulfillment.ShipmentPackageMapper
 import cn.iocoder.yudao.module.trade.enums.fulfillment.TrackingEventSourceEnum;
 import cn.iocoder.yudao.module.trade.framework.fulfillment.core.dto.ProviderTrackingEvent;
 import cn.iocoder.yudao.module.trade.service.fulfillment.command.ApplyTrackingEventCommand;
+import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
+import com.baomidou.mybatisplus.extension.plugins.inner.TenantLineInnerInterceptor;
 import jakarta.annotation.Resource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.mock.mockito.SpyBean;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import javax.sql.DataSource;
 import java.time.Instant;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -38,10 +50,12 @@ import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-@Import({FulfillmentTrackingServiceImpl.class, VersionedTrackingStatusMapper.class})
+@Import({FulfillmentTrackingServiceImpl.class, VersionedTrackingStatusMapper.class,
+        FulfillmentTrackingTransactionTest.TenantDbTestConfiguration.class})
 class FulfillmentTrackingTransactionTest extends BaseDbUnitTest {
 
     private static final Long TENANT_ID = 121L;
+    private static final Long OTHER_TENANT_ID = 122L;
     private static final Long ORDER_ID = 100L;
     private static final Long SHIPMENT_ID = 70001L;
     private static final Long PACKAGE_ID = 71001L;
@@ -60,7 +74,105 @@ class FulfillmentTrackingTransactionTest extends BaseDbUnitTest {
         jdbc = new JdbcTemplate(dataSource);
         LoginUser loginUser = new LoginUser().setId(110L).setTenantId(TENANT_ID).setUserType(1);
         SecurityFrameworkUtils.setLoginUser(loginUser, new MockHttpServletRequest());
+        TenantContextHolder.setTenantId(TENANT_ID);
         seedAggregate("HANDED_TO_CARRIER", 1);
+    }
+
+    @Test
+    void ingestionEstablishesCommandTenantWhenAmbientTenantIsAbsentAndRestoresIt() {
+        mapping("MOVING", "IN_TRANSIT", "v1", 30, "2026-01-01 00:00:00.000000");
+        TenantContextHolder.clear();
+
+        TrackingApplyResult result = service.applyEvent(
+                command("tenant-absent", "MOVING", Instant.parse("2026-07-15T01:00:00Z")));
+
+        assertTrue(result.inserted());
+        assertEquals("IN_TRANSIT", result.currentStatus());
+        assertNull(TenantContextHolder.getTenantId());
+    }
+
+    @Test
+    void ingestionOverridesMismatchedAmbientTenantAndRestoresIt() {
+        mapping("MOVING", "IN_TRANSIT", "v1", 30, "2026-01-01 00:00:00.000000");
+        TenantContextHolder.setTenantId(OTHER_TENANT_ID);
+
+        TrackingApplyResult result = service.applyEvent(
+                command("tenant-mismatch", "MOVING", Instant.parse("2026-07-15T01:05:00Z")));
+
+        assertTrue(result.inserted());
+        assertEquals("IN_TRANSIT", result.currentStatus());
+        assertEquals(OTHER_TENANT_ID, TenantContextHolder.getTenantId());
+    }
+
+    @Test
+    void rejectsSensitiveTrackingTextBeforeTimelinePersistence() {
+        mapping("MOVING", "IN_TRANSIT", "v1", 30, "2026-01-01 00:00:00.000000");
+        List<ProviderTrackingEvent> forbidden = List.of(
+                providerEvent("pii-phone", "+1 (416) 555-0123", "Arrived at hub", "blob:evt-1"),
+                providerEvent("pii-phone-prefix", "tel:4165550123", "Arrived at hub", "blob:evt-phone"),
+                providerEvent("pii-email", "Toronto, ON", "Contact dispatch@example.com", "blob:evt-2"),
+                providerEvent("pii-address", "123 Main Street, Toronto, ON M5V 2T6", "Arrived", "blob:evt-3"),
+                providerEvent("pii-token", "Toronto, ON", "Authorization: Bearer abc.def.ghi", "blob:evt-4"),
+                providerEvent("pii-json", "Toronto, ON", "Arrived", "{\"raw\":\"payload\"}"),
+                providerEvent("pii-form", "Toronto, ON", "Arrived", "event=MOVING&location=Toronto"),
+                providerEvent("pii-csv", "Toronto, ON", "Arrived", "event,location\nMOVING,Toronto"),
+                providerEvent("pii-url-encoded", "Toronto, ON", "Arrived",
+                        "%7B%22event%22%3A%22MOVING%22%7D"),
+                providerEvent("pii-base64", "Toronto, ON", "Arrived", "eyJldmVudCI6Ik1PVklORyJ9"),
+                providerEvent("pii-base64-form", "Toronto, ON", "Arrived",
+                        "ZXZlbnQ9TU9WSU5HJmxvY2F0aW9uPVRvcm9udG8"),
+                providerEvent("pii-url", "Toronto, ON", "Arrived",
+                        "https://operator:password@example.com/payload"));
+
+        for (ProviderTrackingEvent event : forbidden) {
+            ApplyTrackingEventCommand command = command(event.externalEventId(), "MOVING", event.occurredAt())
+                    .setProviderEvent(event);
+            ServiceException failure = assertThrows(ServiceException.class, () -> service.applyEvent(command));
+            assertEquals(1_011_009_012, failure.getCode());
+            assertFalse(failure.getMessage().contains(event.externalEventId()));
+            assertFalse(failure.getMessage().contains(event.rawPayloadRef()));
+        }
+        assertEquals(0, count("trade_tracking_event"));
+    }
+
+    @Test
+    void acceptsDeidentifiedTrackingTextAndOpaqueReference() {
+        mapping("MOVING", "IN_TRANSIT", "v1", 30, "2026-01-01 00:00:00.000000");
+        Instant occurredAt = Instant.parse("2026-07-15T01:10:00Z");
+        ApplyTrackingEventCommand command = command("safe-text", "MOVING", occurredAt)
+                .setProviderEvent(providerEvent("safe-text", "Toronto, ON",
+                        "Arrived at regional hub", "blob:evt-20260715-001"));
+
+        TrackingApplyResult result = service.applyEvent(command);
+
+        assertTrue(result.inserted());
+        assertEquals("Toronto, ON", value("SELECT location FROM trade_tracking_event WHERE external_event_id = "
+                + "'safe-text'", String.class));
+        assertEquals("Arrived at regional hub", value("SELECT description FROM trade_tracking_event WHERE "
+                + "external_event_id = 'safe-text'", String.class));
+        assertEquals("blob:evt-20260715-001", value("SELECT raw_payload_ref FROM trade_tracking_event WHERE "
+                + "external_event_id = 'safe-text'", String.class));
+        ApplyTrackingEventCommand numericCommand = command("safe-numeric-reference", "MOVING",
+                Instant.parse("2026-07-15T01:11:00Z"))
+                .setProviderEvent(providerEvent("safe-numeric-reference", "Toronto, ON",
+                        "Arrived at regional hub", "1234567890"));
+
+        TrackingApplyResult numericResult = service.applyEvent(numericCommand);
+
+        assertTrue(numericResult.inserted());
+        assertEquals("1234567890", value("SELECT raw_payload_ref FROM trade_tracking_event WHERE "
+                + "external_event_id = 'safe-numeric-reference'", String.class));
+
+        ApplyTrackingEventCommand uuidCommand = command("safe-uuid-reference", "MOVING",
+                Instant.parse("2026-07-15T01:12:00Z"))
+                .setProviderEvent(providerEvent("safe-uuid-reference", "Toronto, ON",
+                        "Arrived at regional hub", "123e4567-e89b-12d3-a456-426614174000"));
+
+        TrackingApplyResult uuidResult = service.applyEvent(uuidCommand);
+
+        assertTrue(uuidResult.inserted());
+        assertEquals("123e4567-e89b-12d3-a456-426614174000", value("SELECT raw_payload_ref "
+                + "FROM trade_tracking_event WHERE external_event_id = 'safe-uuid-reference'", String.class));
     }
 
     @AfterEach
@@ -574,5 +686,27 @@ class FulfillmentTrackingTransactionTest extends BaseDbUnitTest {
 
     private <T> T value(String sql, Class<T> type) {
         return jdbc.queryForObject(sql, type);
+    }
+
+    private ProviderTrackingEvent providerEvent(String externalId, String location, String description,
+                                                String rawPayloadRef) {
+        return new ProviderTrackingEvent(externalId, "MOVING", Instant.parse("2026-07-15T01:10:00Z"), "UTC",
+                location, description, rawPayloadRef);
+    }
+
+    @TestConfiguration(proxyBeanMethods = false)
+    @EnableConfigurationProperties(TenantProperties.class)
+    static class TenantDbTestConfiguration {
+
+        @Bean
+        @Lazy(false)
+        TenantLineInnerInterceptor tenantLineInnerInterceptor(TenantProperties properties,
+                                                               MybatisPlusInterceptor interceptor) {
+            TenantLineInnerInterceptor inner =
+                    new TenantLineInnerInterceptor(new TenantDatabaseInterceptor(properties));
+            MyBatisUtils.addInterceptor(interceptor, inner, 0);
+            return inner;
+        }
+
     }
 }
