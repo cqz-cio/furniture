@@ -77,11 +77,39 @@ class TradeOrderQueryServiceImplTest extends BaseMockitoUnitTest {
     }
 
     @Test
+    void adminReadFlagUsesNewModelWithoutCustomerUiFlag() {
+        TenantContextHolder.setTenantId(TENANT_ID);
+        TradeOrderDO order = new TradeOrderDO().setId(ORDER_ID).setUserId(USER_ID).setLogisticsId(null);
+        when(orderMapper.selectById(ORDER_ID)).thenReturn(order);
+        when(properties.isReadFromNewModel()).thenReturn(true);
+        when(projectionService.project(TENANT_ID, ORDER_ID))
+                .thenReturn(FulfillmentLegacyProjectionResult.authoritative(List.of()));
+
+        assertEquals(List.of(), service.getExpressTrackList(ORDER_ID));
+
+        verify(projectionService).project(TENANT_ID, ORDER_ID);
+    }
+
+    @Test
+    void appCustomerUiFlagDisabledSkipsNewModelEvenWhenReadFlagEnabled() {
+        TenantContextHolder.setTenantId(TENANT_ID);
+        TradeOrderDO order = new TradeOrderDO().setId(ORDER_ID).setUserId(USER_ID).setLogisticsId(null);
+        when(orderMapper.selectByIdAndUserId(ORDER_ID, USER_ID)).thenReturn(order);
+        when(properties.isReadFromNewModel()).thenReturn(true);
+        when(properties.isCustomerUiEnabled()).thenReturn(false);
+
+        assertEquals(List.of(), service.getExpressTrackList(ORDER_ID, USER_ID));
+
+        verify(projectionService, never()).project(TENANT_ID, ORDER_ID);
+    }
+
+    @Test
     void authoritativeEmptyNeverFallsBackToLegacyProvider() {
         TenantContextHolder.setTenantId(TENANT_ID);
         TradeOrderDO order = new TradeOrderDO().setId(ORDER_ID).setUserId(USER_ID).setLogisticsId(99L);
         when(orderMapper.selectByIdAndUserId(ORDER_ID, USER_ID)).thenReturn(order);
         when(properties.isReadFromNewModel()).thenReturn(true);
+        when(properties.isCustomerUiEnabled()).thenReturn(true);
         when(projectionService.project(TENANT_ID, ORDER_ID))
                 .thenReturn(FulfillmentLegacyProjectionResult.authoritative(List.of()));
 
@@ -96,6 +124,7 @@ class TradeOrderQueryServiceImplTest extends BaseMockitoUnitTest {
         TradeOrderDO order = new TradeOrderDO().setId(ORDER_ID).setUserId(USER_ID).setLogisticsId(null);
         when(orderMapper.selectByIdAndUserId(ORDER_ID, USER_ID)).thenReturn(order);
         when(properties.isReadFromNewModel()).thenReturn(true);
+        when(properties.isCustomerUiEnabled()).thenReturn(true);
         when(projectionService.project(TENANT_ID, ORDER_ID))
                 .thenReturn(FulfillmentLegacyProjectionResult.fallback());
 

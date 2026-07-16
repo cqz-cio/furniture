@@ -169,7 +169,7 @@ public class TradeOrderQueryServiceImpl implements TradeOrderQueryService {
             throw exception(ORDER_NOT_FOUND);
         }
         // 查询物流
-        return getExpressTrackList(order);
+        return getExpressTrackList(order, true);
     }
 
     @Override
@@ -180,7 +180,7 @@ public class TradeOrderQueryServiceImpl implements TradeOrderQueryService {
             throw exception(ORDER_NOT_FOUND);
         }
         // 查询物流
-        return getExpressTrackList(order);
+        return getExpressTrackList(order, false);
     }
 
     @Override
@@ -201,8 +201,9 @@ public class TradeOrderQueryServiceImpl implements TradeOrderQueryService {
      * @param order 订单
      * @return 物流轨迹
      */
-    private List<ExpressTrackRespDTO> getExpressTrackList(TradeOrderDO order) {
-        if (fulfillmentProperties.isReadFromNewModel()) {
+    private List<ExpressTrackRespDTO> getExpressTrackList(TradeOrderDO order, boolean customerRequest) {
+        if (fulfillmentProperties.isReadFromNewModel()
+                && (!customerRequest || fulfillmentProperties.isCustomerUiEnabled())) {
             FulfillmentLegacyProjectionResult projected = fulfillmentLegacyProjectionService.project(
                     TenantContextHolder.getRequiredTenantId(), order.getId());
             if (projected.mode() != FulfillmentLegacyProjectionResult.Mode.FALLBACK) {
