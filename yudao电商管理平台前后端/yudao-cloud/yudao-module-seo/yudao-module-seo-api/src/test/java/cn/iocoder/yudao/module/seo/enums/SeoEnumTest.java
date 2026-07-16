@@ -47,6 +47,12 @@ class SeoEnumTest {
         assertThat(ErrorCodeConstants.METADATA_VERSION_CONFLICT.getCode()).isEqualTo(1_070_002_003);
         assertThat(ErrorCodeConstants.METADATA_VERSION_CONFLICT.getMsg())
                 .isEqualTo("SEO 元数据已被其他用户修改，请刷新后重试");
+        assertThat(ErrorCodeConstants.METADATA_IDENTITY_IMMUTABLE.getCode()).isEqualTo(1_070_002_004);
+        assertThat(ErrorCodeConstants.METADATA_IDENTITY_IMMUTABLE.getMsg())
+                .isEqualTo("SEO 元数据的站点、实体和语言不可修改");
+        assertThat(ErrorCodeConstants.METADATA_CANONICAL_URL_INVALID.getCode()).isEqualTo(1_070_002_005);
+        assertThat(ErrorCodeConstants.METADATA_CANONICAL_URL_INVALID.getMsg())
+                .isEqualTo("Canonical URL 必须是有效的 HTTP(S) 绝对地址");
     }
 
 }
