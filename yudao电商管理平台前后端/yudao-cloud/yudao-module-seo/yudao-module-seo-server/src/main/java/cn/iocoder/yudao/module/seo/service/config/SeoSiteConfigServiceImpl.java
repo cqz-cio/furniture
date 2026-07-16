@@ -5,6 +5,7 @@ import cn.iocoder.yudao.framework.common.util.object.BeanUtils;
 import cn.iocoder.yudao.module.seo.controller.admin.config.vo.SeoSiteConfigSaveReqVO;
 import cn.iocoder.yudao.module.seo.dal.dataobject.config.SeoSiteConfigDO;
 import cn.iocoder.yudao.module.seo.dal.mysql.config.SeoSiteConfigMapper;
+import cn.iocoder.yudao.module.seo.service.SeoLocaleUtils;
 import jakarta.annotation.Resource;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
@@ -38,7 +39,8 @@ public class SeoSiteConfigServiceImpl implements SeoSiteConfigService {
                 .setDefaultDescription(defaultIfBlank(reqVO.getDefaultDescription(), ""))
                 .setDefaultRobots(defaultIfBlank(reqVO.getDefaultRobots(), DEFAULT_ROBOTS))
                 .setDefaultOgImage(defaultIfBlank(reqVO.getDefaultOgImage(), ""))
-                .setDefaultLocale(defaultIfBlank(reqVO.getDefaultLocale(), DEFAULT_LOCALE));
+                .setDefaultLocale(SeoLocaleUtils.normalize(
+                        defaultIfBlank(reqVO.getDefaultLocale(), DEFAULT_LOCALE)));
         SeoSiteConfigDO existing = siteConfigMapper.selectBySiteId(reqVO.getSiteId());
         if (existing != null) {
             updateExisting(config, existing);

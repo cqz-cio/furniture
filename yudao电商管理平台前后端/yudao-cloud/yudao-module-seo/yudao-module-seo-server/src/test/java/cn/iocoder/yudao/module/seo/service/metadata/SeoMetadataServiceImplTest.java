@@ -156,7 +156,27 @@ class SeoMetadataServiceImplTest extends BaseDbUnitTest {
         SeoMetadataSaveReqVO reqVO = newRequest(10L, "PRODUCT", 105L, locale);
 
         assertThatThrownBy(() -> metadataService.createMetadata(reqVO))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(ServiceException.class)
+                .extracting("code")
+                .isEqualTo(1_070_000_000);
+    }
+
+    @Test
+    void metadataResponses_shouldNormalizeNullRelatedKeyphrasesToEmptyLists() {
+        Long id = metadataService.createMetadata(newRequest(10L, "PRODUCT", 108L, "en-US"));
+        new JdbcTemplate(dataSource).update("UPDATE seo_metadata SET related_keyphrases = NULL WHERE id = ?", id);
+        SeoMetadataPageReqVO pageReqVO = new SeoMetadataPageReqVO().setSiteId(10L);
+        pageReqVO.setPageNo(1);
+        pageReqVO.setPageSize(10);
+
+        SeoMetadataDO detail = metadataService.getMetadata(id);
+        PageResult<SeoMetadataDO> page = metadataService.getMetadataPage(pageReqVO);
+
+        assertThat(detail.getRelatedKeyphrases()).isEmpty();
+        assertThat(page.getList()).singleElement()
+                .extracting(SeoMetadataDO::getRelatedKeyphrases)
+                .asList()
+                .isEmpty();
     }
 
     @Test
