@@ -34,7 +34,16 @@ public class FulfillmentLegacyMigrationServiceImpl implements FulfillmentLegacyM
         List<TradeOrderDO> page = hasMore ? selected.subList(0, limit) : selected;
         List<MigrationOrderResult> results = new ArrayList<>(page.size());
         for (TradeOrderDO order : page) {
-            results.add(dryRun ? evaluator.evaluate(tenantId, order) : writer.migrateOne(tenantId, order.getId()));
+            if (dryRun) {
+                results.add(evaluator.evaluate(tenantId, order));
+                continue;
+            }
+            try {
+                results.add(writer.migrateOne(tenantId, order.getId()));
+            } catch (LegacyMigrationWriteConflictException conflict) {
+                // migrateOne uses REQUIRES_NEW, so reaching here guarantees its partial aggregate rolled back.
+                results.add(conflict.toResult());
+            }
         }
         int wouldMigrate = (int) results.stream()
                 .filter(result -> result.outcome() == MigrationOutcome.WOULD_MIGRATE).count();

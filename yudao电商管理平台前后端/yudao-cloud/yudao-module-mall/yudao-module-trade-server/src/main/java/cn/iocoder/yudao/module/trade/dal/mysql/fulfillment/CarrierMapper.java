@@ -22,4 +22,10 @@ public interface CarrierMapper extends BaseMapperX<CarrierDO> {
             + "AND legacy_express_id = #{legacyExpressId} AND status = 0 AND deleted = FALSE ORDER BY id ASC")
     List<CarrierDO> selectEnabledByLegacyExpressId(@Param("tenantId") Long tenantId,
                                                     @Param("legacyExpressId") Long legacyExpressId);
+
+    @Select("SELECT * FROM trade_carrier WHERE tenant_id = #{tenantId} "
+            + "AND legacy_express_id = #{legacyExpressId} AND status = 0 AND deleted = FALSE "
+            + "ORDER BY id ASC FOR UPDATE")
+    List<CarrierDO> selectEnabledByLegacyExpressIdForUpdate(@Param("tenantId") Long tenantId,
+                                                             @Param("legacyExpressId") Long legacyExpressId);
 }

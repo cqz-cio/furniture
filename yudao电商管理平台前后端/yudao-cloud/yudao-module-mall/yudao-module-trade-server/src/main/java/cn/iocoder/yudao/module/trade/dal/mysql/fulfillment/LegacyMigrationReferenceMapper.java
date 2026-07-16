@@ -11,4 +11,9 @@ public interface LegacyMigrationReferenceMapper {
             + "AND id = #{warehouseId} AND status = 0 AND deleted = FALSE")
     long countEnabledWarehouse(@Param("tenantId") Long tenantId, @Param("warehouseId") Long warehouseId);
 
+    @Select("SELECT id FROM erp_warehouse WHERE tenant_id = #{tenantId} "
+            + "AND id = #{warehouseId} AND status = 0 AND deleted = FALSE FOR UPDATE")
+    Long selectEnabledWarehouseIdForUpdate(@Param("tenantId") Long tenantId,
+                                            @Param("warehouseId") Long warehouseId);
+
 }
