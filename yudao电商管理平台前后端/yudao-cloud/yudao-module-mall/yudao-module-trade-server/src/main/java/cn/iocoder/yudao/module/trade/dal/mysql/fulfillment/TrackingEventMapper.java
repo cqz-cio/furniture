@@ -18,6 +18,25 @@ public interface TrackingEventMapper extends BaseMapperX<TrackingEventDO> {
                 .orderByAsc(TrackingEventDO::getId));
     }
 
+    default List<TrackingEventDO> selectLegacySubjectEvents(Long tenantId, Long shipmentId,
+                                                             Long packageId, Long shipmentLegId) {
+        LambdaQueryWrapperX<TrackingEventDO> query = new LambdaQueryWrapperX<TrackingEventDO>()
+                .eq(TrackingEventDO::getTenantId, tenantId)
+                .eq(TrackingEventDO::getShipmentId, shipmentId);
+        if (packageId != null) {
+            query.and(wrapper -> wrapper.eq(TrackingEventDO::getPackageId, packageId)
+                    .or().isNull(TrackingEventDO::getPackageId));
+        } else {
+            query.isNull(TrackingEventDO::getPackageId);
+            if (shipmentLegId != null) {
+                query.and(wrapper -> wrapper.eq(TrackingEventDO::getShipmentLegId, shipmentLegId)
+                        .or().isNull(TrackingEventDO::getShipmentLegId));
+            }
+        }
+        return selectList(query.orderByAsc(TrackingEventDO::getOccurredAt)
+                .orderByAsc(TrackingEventDO::getId));
+    }
+
     default TrackingEventDO selectByExternalEventId(Long tenantId, Long providerId, String externalEventId) {
         return selectOne(new LambdaQueryWrapperX<TrackingEventDO>()
                 .eq(TrackingEventDO::getTenantId, tenantId)

@@ -98,12 +98,13 @@ public class KdNiaoExpressClient implements ExpressClient {
         requestBody.add("EBusinessID", config.getBusinessId());
         requestBody.add("DataSign", dataSign);
         requestBody.add("RequestType", requestType);
-        log.debug("[httpRequest][RequestType({}) 的请求参数({})]", requestType, requestBody);
-
         // 发送请求
         HttpEntity<MultiValueMap<String, String>> requestEntity = new HttpEntity<>(requestBody, headers);
+        long startedAt = System.nanoTime();
         ResponseEntity<String> responseEntity = restTemplate.exchange(url, HttpMethod.POST, requestEntity, String.class);
-        log.debug("[httpRequest][RequestType({}) 的响应结果({})", requestType, responseEntity);
+        long elapsedMillis = (System.nanoTime() - startedAt) / 1_000_000L;
+        log.debug("[httpRequest][provider=kdniao status={} elapsedMs={}]",
+                responseEntity.getStatusCode().value(), elapsedMillis);
         // 处理响应
         if (!responseEntity.getStatusCode().is2xxSuccessful()) {
             throw exception(EXPRESS_API_QUERY_ERROR);
