@@ -1,5 +1,7 @@
 package cn.iocoder.yudao.module.trade.framework.fulfillment.config;
 
+import cn.iocoder.yudao.module.trade.framework.fulfillment.core.LogisticsProviderRegistry;
+import cn.iocoder.yudao.module.trade.framework.fulfillment.core.impl.MockLogisticsProviderClient;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.autoconfigure.validation.ValidationAutoConfiguration;
@@ -19,7 +21,8 @@ class FulfillmentYamlBindingTest {
 
     private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
             .withConfiguration(AutoConfigurations.of(ValidationAutoConfiguration.class))
-            .withUserConfiguration(FulfillmentConfiguration.class);
+            .withUserConfiguration(FulfillmentConfiguration.class, MockLogisticsProviderClient.class,
+                    LogisticsProviderRegistry.class);
 
     @Test
     void sharedYamlKeepsEverythingDisabledAndSecretsOptional() {
