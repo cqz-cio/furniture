@@ -49,8 +49,13 @@ class FulfillmentLegacyProjectionMapperIntegrationTest extends BaseDbUnitTest {
 
     @Test
     void realMappersEnforceSubjectBoundariesAndStableTimelineOrdering() {
+        long foreignShipmentId = SHIPMENT_ID - 100;
+        long foreignPackageId = PACKAGE_ID - 100;
+        seedShipment(TENANT_ID, foreignShipmentId, ORDER_ID + 1, "IN_TRANSIT");
+        seedPackage(TENANT_ID, foreignPackageId, foreignShipmentId, "PKG-FOREIGN-ORDER");
+        seedEvent(87390L, TENANT_ID, foreignShipmentId, foreignPackageId, null, "EXCEPTION", EARLY);
+
         seedShipment(TENANT_ID, SHIPMENT_ID, ORDER_ID, "IN_TRANSIT");
-        seedShipment(TENANT_ID, SHIPMENT_ID + 1, ORDER_ID + 1, "IN_TRANSIT");
         seedPackage(TENANT_ID, PACKAGE_ID, SHIPMENT_ID, "PKG-TARGET");
         seedPackage(TENANT_ID, PACKAGE_ID + 1, SHIPMENT_ID, "PKG-SIBLING");
         seedLeg(TENANT_ID, 87300L, SHIPMENT_ID, PACKAGE_ID);
@@ -71,6 +76,37 @@ class FulfillmentLegacyProjectionMapperIntegrationTest extends BaseDbUnitTest {
         assertEquals(List.of("IN_TRANSIT", "OUT_FOR_DELIVERY", "DELIVERED"),
                 result.events().stream().map(event -> event.getContent()).toList());
         assertEquals(List.of(EARLY, EARLY, LATE),
+                result.events().stream().map(event -> event.getTime()).toList());
+    }
+
+    @Test
+    void realMappersSelectPackageLessLtlLegWithoutCrossingTenantShipmentOrLeg() {
+        long targetLegId = 87500L;
+        long crossTenantLegId = targetLegId - 2;
+        long crossShipmentLegId = targetLegId - 1;
+        long wrongLegId = targetLegId + 1;
+        long otherShipmentId = SHIPMENT_ID + 1;
+
+        seedShipment(TENANT_ID, SHIPMENT_ID, ORDER_ID, "IN_TRANSIT", "LTL");
+        seedShipment(TENANT_ID, otherShipmentId, ORDER_ID + 1, "IN_TRANSIT", "LTL");
+        seedLeg(OTHER_TENANT_ID, crossTenantLegId, SHIPMENT_ID, null);
+        seedLeg(TENANT_ID, crossShipmentLegId, otherShipmentId, null);
+        seedLeg(TENANT_ID, targetLegId, SHIPMENT_ID, null);
+
+        seedEvent(87600L, TENANT_ID, SHIPMENT_ID, null, targetLegId, "IN_TRANSIT", EARLY);
+        seedEvent(87601L, TENANT_ID, SHIPMENT_ID, null, targetLegId, "OUT_FOR_DELIVERY", LATE);
+
+        // Each adversary is valid-looking in isolation, but differs on one required subject boundary.
+        seedEvent(87610L, OTHER_TENANT_ID, SHIPMENT_ID, null, crossTenantLegId, "EXCEPTION", EARLY);
+        seedEvent(87611L, TENANT_ID, otherShipmentId, null, crossShipmentLegId, "EXCEPTION", EARLY);
+        seedEvent(87612L, TENANT_ID, SHIPMENT_ID, null, wrongLegId, "EXCEPTION", EARLY);
+
+        FulfillmentLegacyProjectionResult result = projectionService.project(TENANT_ID, ORDER_ID);
+
+        assertEquals(AUTHORITATIVE_EVENTS, result.mode());
+        assertEquals(List.of("IN_TRANSIT", "OUT_FOR_DELIVERY"),
+                result.events().stream().map(event -> event.getContent()).toList());
+        assertEquals(List.of(EARLY, LATE),
                 result.events().stream().map(event -> event.getTime()).toList());
     }
 
@@ -100,11 +136,16 @@ class FulfillmentLegacyProjectionMapperIntegrationTest extends BaseDbUnitTest {
     }
 
     private void seedShipment(long tenantId, long shipmentId, long orderId, String status) {
+        seedShipment(tenantId, shipmentId, orderId, status, "PARCEL");
+    }
+
+    private void seedShipment(long tenantId, long shipmentId, long orderId, String status, String shipmentType) {
         jdbc.update("INSERT INTO trade_shipment (id, tenant_id, order_id, shipment_no, shipment_type, status, "
                         + "origin_country, destination_country, origin_timezone, destination_timezone, warehouse_id) "
-                        + "VALUES (?, ?, ?, ?, 'PARCEL', ?, 'CA', 'CA', 'America/Toronto', "
+                        + "VALUES (?, ?, ?, ?, ?, ?, 'CA', 'CA', 'America/Toronto', "
                         + "'America/Toronto', ?)",
-                shipmentId, tenantId, orderId, "S-" + tenantId + "-" + shipmentId, status, shipmentId + 9000);
+                shipmentId, tenantId, orderId, "S-" + tenantId + "-" + shipmentId, shipmentType, status,
+                shipmentId + 9000);
     }
 
     private void seedPackage(long tenantId, long packageId, long shipmentId, String packageNo) {
@@ -113,7 +154,7 @@ class FulfillmentLegacyProjectionMapperIntegrationTest extends BaseDbUnitTest {
                 packageId, tenantId, shipmentId, packageNo);
     }
 
-    private void seedLeg(long tenantId, long legId, long shipmentId, long packageId) {
+    private void seedLeg(long tenantId, long legId, long shipmentId, Long packageId) {
         jdbc.update("INSERT INTO trade_shipment_leg (id, tenant_id, shipment_id, package_id, sequence_no, leg_type, "
                         + "carrier_id, provider_id, status) VALUES (?, ?, ?, ?, 1, 'LAST_MILE', 1, 1, 'IN_TRANSIT')",
                 legId, tenantId, shipmentId, packageId);

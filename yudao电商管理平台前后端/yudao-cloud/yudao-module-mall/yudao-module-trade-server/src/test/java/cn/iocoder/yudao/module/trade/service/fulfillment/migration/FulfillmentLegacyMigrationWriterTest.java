@@ -110,6 +110,12 @@ class FulfillmentLegacyMigrationWriterTest extends BaseDbUnitTest {
         assertTrue(payload.get("fulfillmentStatus").isTextual());
         assertEquals(TENANT_ID, payload.get("tenantId").longValue());
         assertEquals(ORDER_ID, payload.get("orderId").longValue());
+        Long shipmentId = jdbc.queryForObject("SELECT id FROM trade_shipment", Long.class);
+        assertEquals(shipmentId.longValue(), payload.get("shipmentId").longValue());
+        assertEquals(shipmentId, jdbc.queryForObject(
+                "SELECT resource_id FROM trade_fulfillment_idempotency", Long.class));
+        assertEquals(shipmentId, jdbc.queryForObject(
+                "SELECT aggregate_id FROM trade_fulfillment_outbox_event", Long.class));
         assertEquals("HANDED_TO_CARRIER", payload.get("shipmentStatus").textValue());
         assertEquals("SHIPPED", payload.get("fulfillmentStatus").textValue());
         for (String forbidden : Set.of("providerId", "providerCode", "warehouseId", "sourceReference",
