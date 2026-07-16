@@ -21,6 +21,42 @@ function Invoke-MySqlFile([string]$Path) {
     }
 }
 
+function Assert-IntegrationContainerAbsent([string]$Name) {
+    $previousErrorActionPreference = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = "Continue"
+        $inspectOutput = @(docker inspect $Name 2>&1)
+        $inspectExitCode = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+    }
+    if ($inspectExitCode -eq 0) {
+        throw "Temporary container $Name still exists after docker rm -f"
+    }
+    $inspectText = $inspectOutput -join [Environment]::NewLine
+    if ($inspectText -notmatch "No such (object|container)") {
+        throw "Unable to verify cleanup for temporary container ${Name}: $inspectText"
+    }
+}
+
+function Remove-IntegrationContainer([string]$Name) {
+    $previousErrorActionPreference = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = "Continue"
+        $removeOutput = @(docker rm -f $Name 2>&1)
+        $removeExitCode = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+    }
+    if ($removeExitCode -ne 0) {
+        Assert-IntegrationContainerAbsent $Name
+        Write-Host "Temporary container $Name was already absent"
+        return
+    }
+    Assert-IntegrationContainerAbsent $Name
+    Write-Host "Removed temporary container $Name"
+}
+
 try {
     Write-Host "Starting temporary $Image container $container on 127.0.0.1:$Port"
     docker run --name $container --rm -d `
@@ -69,10 +105,5 @@ try {
     Remove-Item Env:FULFILLMENT_MYSQL_TEST_URL -ErrorAction SilentlyContinue
     Remove-Item Env:FULFILLMENT_MYSQL_TEST_USER -ErrorAction SilentlyContinue
     Remove-Item Env:FULFILLMENT_MYSQL_TEST_PASSWORD -ErrorAction SilentlyContinue
-    try {
-        docker rm -f $container 2>$null | Out-Null
-    } catch {
-        Write-Warning "Docker cleanup command failed; the container uses --rm and may already be gone: $($_.Exception.Message)"
-    }
-    Write-Host "Removed temporary container $container"
+    Remove-IntegrationContainer $container
 }

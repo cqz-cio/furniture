@@ -14,6 +14,7 @@ import cn.iocoder.yudao.module.trade.service.fulfillment.FulfillmentCommandServi
 import cn.iocoder.yudao.module.trade.service.fulfillment.FulfillmentTrackingRegistrationFailureService;
 import cn.iocoder.yudao.module.trade.service.fulfillment.command.CreateShipmentCommand;
 import cn.iocoder.yudao.module.trade.service.fulfillment.command.CreateShipmentItemCommand;
+import cn.iocoder.yudao.module.trade.service.fulfillment.support.FulfillmentHashing;
 import cn.iocoder.yudao.module.trade.service.fulfillment.support.FulfillmentNoGenerator;
 import com.alibaba.druid.spring.boot3.autoconfigure.DruidDataSourceAutoConfigure;
 import com.baomidou.mybatisplus.autoconfigure.MybatisPlusAutoConfiguration;
@@ -23,6 +24,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.opentest4j.AssertionFailedError;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration;
@@ -48,6 +50,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @EnabledIfEnvironmentVariable(named = "FULFILLMENT_MYSQL_TEST_URL", matches = ".+")
@@ -76,6 +79,7 @@ class FulfillmentLegacyMigrationMySqlProductionIntegrationTest {
     @Resource private DataSource dataSource;
     @Resource private FulfillmentLegacyMigrationWriter migrationWriter;
     @Resource private FulfillmentCommandService commandService;
+    @Resource private FulfillmentProperties fulfillmentProperties;
     private JdbcTemplate jdbc;
 
     @DynamicPropertySource
@@ -183,6 +187,19 @@ class FulfillmentLegacyMigrationMySqlProductionIntegrationTest {
         }
     }
 
+    @Test
+    void zeroAggregateAssertionRejectsAnOrphanedLoserIdempotencyRow() {
+        long loserOrderId = 8401L;
+        String loserKeyHash = FulfillmentHashing.hmacSha256Hex(fulfillmentProperties.getIdempotencyHmacKey(),
+                "legacy-migration:key:v1|" + TENANT_ID + "|" + loserOrderId);
+        jdbc.update("INSERT INTO trade_fulfillment_idempotency (tenant_id, operation, idempotency_key_hash, "
+                        + "request_hash, resource_type, resource_id, status, expires_at) "
+                        + "VALUES (?, 'LEGACY_ORDER_MIGRATION', ?, ?, 'SHIPMENT', NULL, 'PROCESSING', ?)",
+                TENANT_ID, loserKeyHash, "0".repeat(64), LocalDateTime.of(9999, 12, 31, 23, 59, 59));
+
+        assertThrows(AssertionFailedError.class, () -> assertCompleteMigrationAggregate(loserOrderId, 0));
+    }
+
     private MigrationOrderResult migrateAfter(CountDownLatch start, long orderId) throws Exception {
         assertTrue(start.await(10, TimeUnit.SECONDS));
         return migrate(orderId);
@@ -272,11 +289,13 @@ class FulfillmentLegacyMigrationMySqlProductionIntegrationTest {
         assertEquals(expected, jdbc.queryForObject("SELECT COUNT(*) FROM trade_tracking_event e "
                 + "JOIN trade_shipment s ON s.id = e.shipment_id WHERE s.order_id = ?", Integer.class, orderId));
         assertEquals(expected, count("trade_order_fulfillment_summary", "order_id = " + orderId));
-        assertEquals(expected, jdbc.queryForObject("SELECT COUNT(*) FROM trade_fulfillment_idempotency i "
-                + "LEFT JOIN trade_shipment s ON s.id = i.resource_id "
-                + "WHERE i.operation = 'LEGACY_ORDER_MIGRATION' AND "
-                + (expected == 0 ? "i.id IS NULL" : "s.order_id = ?"), Integer.class,
-                expected == 0 ? new Object[]{} : new Object[]{orderId}));
+        String migrationKeyHash = FulfillmentHashing.hmacSha256Hex(fulfillmentProperties.getIdempotencyHmacKey(),
+                "legacy-migration:key:v1|" + TENANT_ID + "|" + orderId);
+        assertEquals(expected, jdbc.queryForObject("SELECT COUNT(*) FROM trade_fulfillment_idempotency "
+                        + "WHERE tenant_id = ? AND operation = 'LEGACY_ORDER_MIGRATION' "
+                        + "AND idempotency_key_hash = ? AND status IN ('PROCESSING', 'COMPLETED') "
+                        + "AND deleted = b'0'",
+                Integer.class, TENANT_ID, migrationKeyHash));
         assertEquals(expected, jdbc.queryForObject("SELECT COUNT(*) FROM trade_fulfillment_outbox_event o "
                 + "JOIN trade_shipment s ON s.id = o.aggregate_id "
                 + "WHERE o.event_type = 'LEGACY_ORDER_MIGRATED' AND s.order_id = ?", Integer.class, orderId));
