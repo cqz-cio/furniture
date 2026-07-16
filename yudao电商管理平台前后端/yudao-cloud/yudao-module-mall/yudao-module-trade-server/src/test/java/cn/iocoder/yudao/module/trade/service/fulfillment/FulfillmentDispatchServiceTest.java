@@ -897,8 +897,9 @@ class FulfillmentDispatchServiceTest extends BaseMockitoUnitTest {
 
     @Test
     void registrationFailureHelperRequiresNewTransactionAndPersistsOnlyReferenceIds() throws Exception {
+        FulfillmentFeatureGuard enabledGuard = mock(FulfillmentFeatureGuard.class);
         FulfillmentTrackingRegistrationFailureService helper =
-                new FulfillmentTrackingRegistrationFailureService(outboxMapper);
+                new FulfillmentTrackingRegistrationFailureService(outboxMapper, enabledGuard);
 
         helper.recordRetry(TENANT_ID, SHIPMENT_ID, PACKAGE_ID, PROVIDER_ID);
 
@@ -918,6 +919,21 @@ class FulfillmentDispatchServiceTest extends BaseMockitoUnitTest {
         assertFalse(serialized.contains("private-bol"));
         assertFalse(serialized.contains("private-origin"));
         assertFalse(serialized.contains(IDEMPOTENCY_KEY));
+        verify(enabledGuard).requireWriteEnabled();
+    }
+
+    @Test
+    void disabledRegistrationFailureHelperWritesNoOutbox() {
+        FulfillmentFeatureGuard disabledGuard = mock(FulfillmentFeatureGuard.class);
+        doThrow(cn.iocoder.yudao.framework.common.exception.util.ServiceExceptionUtil
+                .exception(FULFILLMENT_FEATURE_DISABLED)).when(disabledGuard).requireWriteEnabled();
+        FulfillmentTrackingRegistrationFailureService helper =
+                new FulfillmentTrackingRegistrationFailureService(outboxMapper, disabledGuard);
+
+        assertServiceException(() -> helper.recordRetry(TENANT_ID, SHIPMENT_ID, PACKAGE_ID, PROVIDER_ID),
+                FULFILLMENT_FEATURE_DISABLED);
+
+        verify(outboxMapper, never()).insert(any(FulfillmentOutboxEventDO.class));
     }
 
     @Test

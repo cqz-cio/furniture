@@ -429,6 +429,27 @@ class TradeFulfillmentControllerTest {
     }
 
     @Test
+    void disabledFeatureReturnsStableServiceErrorWithoutConfigurationDetails() throws Exception {
+        when(commandService.createShipment(any(), any())).thenThrow(
+                cn.iocoder.yudao.framework.common.exception.util.ServiceExceptionUtil.exception(
+                        cn.iocoder.yudao.module.trade.enums.ErrorCodeConstants.FULFILLMENT_FEATURE_DISABLED));
+        GlobalExceptionHandler global = new GlobalExceptionHandler("test", mock(ApiErrorLogCommonApi.class));
+        MockMvc mockMvc = proxiedMockMvc(global);
+
+        String response = mockMvc.perform(post("/trade/fulfillment/shipments")
+                        .header("Idempotency-Key", "disabled-key")
+                        .contentType(MediaType.APPLICATION_JSON).content(validCreateJson()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(1_011_009_012L))
+                .andReturn().getResponse().getContentAsString();
+
+        assertTrue(response.contains("Fulfillment feature is disabled"));
+        assertFalse(response.contains("write-new-model"));
+        assertFalse(response.contains("read-from-new-model"));
+        assertFalse(response.contains("legacy-migration-write-enabled"));
+    }
+
+    @Test
     void getPageValidationIsValueFreeAndDoesNotCallQueryService() throws Exception {
         GlobalExceptionHandler global = new GlobalExceptionHandler("test", mock(ApiErrorLogCommonApi.class));
         MockMvc mockMvc = proxiedMockMvc(global);

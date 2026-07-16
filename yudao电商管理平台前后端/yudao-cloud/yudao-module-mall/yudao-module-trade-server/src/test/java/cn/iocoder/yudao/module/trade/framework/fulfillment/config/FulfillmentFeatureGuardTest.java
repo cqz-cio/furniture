@@ -2,37 +2,29 @@ package cn.iocoder.yudao.module.trade.framework.fulfillment.config;
 
 import org.junit.jupiter.api.Test;
 
-import java.util.concurrent.atomic.AtomicInteger;
-
+import static cn.iocoder.yudao.framework.test.core.util.AssertUtils.assertServiceException;
+import static cn.iocoder.yudao.module.trade.enums.ErrorCodeConstants.FULFILLMENT_FEATURE_DISABLED;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class FulfillmentFeatureGuardTest {
 
     @Test
     void rejectsDisabledReadBeforeDownstreamWork() {
         FulfillmentFeatureGuard guard = new FulfillmentFeatureGuard(new FulfillmentProperties());
-        AtomicInteger downstreamCalls = new AtomicInteger();
-
-        assertThrows(RuntimeException.class, guard::requireReadEnabled);
-        assertEquals(0, downstreamCalls.get());
+        assertServiceException(guard::requireReadEnabled, FULFILLMENT_FEATURE_DISABLED);
     }
 
     @Test
     void rejectsDisabledWriteBeforeDownstreamWork() {
         FulfillmentFeatureGuard guard = new FulfillmentFeatureGuard(new FulfillmentProperties());
-        AtomicInteger downstreamCalls = new AtomicInteger();
-
-        assertThrows(RuntimeException.class, guard::requireWriteEnabled);
-        assertEquals(0, downstreamCalls.get());
+        assertServiceException(guard::requireWriteEnabled, FULFILLMENT_FEATURE_DISABLED);
     }
 
     @Test
     void migrationWriteRequiresAllThreeFlags() {
         FulfillmentProperties properties = enabledProperties();
         FulfillmentFeatureGuard guard = new FulfillmentFeatureGuard(properties);
-        assertThrows(RuntimeException.class, guard::requireMigrationWriteEnabled);
+        assertServiceException(guard::requireMigrationWriteEnabled, FULFILLMENT_FEATURE_DISABLED);
 
         properties.setLegacyMigrationWriteEnabled(true);
         assertDoesNotThrow(guard::requireMigrationWriteEnabled);
