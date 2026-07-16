@@ -38,6 +38,7 @@ import static cn.iocoder.yudao.module.trade.framework.delivery.core.client.conve
 public class KdNiaoExpressClient implements ExpressClient {
 
     private static final String REAL_TIME_QUERY_URL = "https://api.kdniao.com/Ebusiness/EbusinessOrderHandle.aspx";
+    private static final String SAFE_PROVIDER_FAILURE_REASON = "provider rejected request";
 
     private final RestTemplate restTemplate;
     private final TradeExpressProperties.KdNiaoConfig config;
@@ -67,7 +68,7 @@ public class KdNiaoExpressClient implements ExpressClient {
 
         // 处理结果
         if (respDTO == null || !respDTO.getSuccess()) {
-            throw exception(EXPRESS_API_QUERY_FAILED, respDTO == null ? "" : respDTO.getReason());
+            throw exception(EXPRESS_API_QUERY_FAILED, SAFE_PROVIDER_FAILURE_REASON);
         }
         if (CollUtil.isEmpty(respDTO.getTracks())) {
             return Collections.emptyList();
@@ -101,15 +102,21 @@ public class KdNiaoExpressClient implements ExpressClient {
         // 发送请求
         HttpEntity<MultiValueMap<String, String>> requestEntity = new HttpEntity<>(requestBody, headers);
         long startedAt = System.nanoTime();
-        ResponseEntity<String> responseEntity = restTemplate.exchange(url, HttpMethod.POST, requestEntity, String.class);
-        long elapsedMillis = (System.nanoTime() - startedAt) / 1_000_000L;
-        log.debug("[httpRequest][provider=kdniao status={} elapsedMs={}]",
-                responseEntity.getStatusCode().value(), elapsedMillis);
-        // 处理响应
-        if (!responseEntity.getStatusCode().is2xxSuccessful()) {
+        try {
+            ResponseEntity<String> responseEntity = restTemplate.exchange(
+                    url, HttpMethod.POST, requestEntity, String.class);
+            long elapsedMillis = (System.nanoTime() - startedAt) / 1_000_000L;
+            log.debug("[httpRequest][provider=kdniao status={} elapsedMs={}]",
+                    responseEntity.getStatusCode().value(), elapsedMillis);
+            // JsonUtils.parseObject logs the raw response when parsing fails.
+            if (!responseEntity.getStatusCode().is2xxSuccessful()) {
+                throw exception(EXPRESS_API_QUERY_ERROR);
+            }
+            return JsonUtils.getObjectMapper().readValue(responseEntity.getBody(), respClass);
+        } catch (Exception ignored) {
+            log.warn("[httpRequest][provider=kdniao outcome=failed]");
             throw exception(EXPRESS_API_QUERY_ERROR);
         }
-        return JsonUtils.parseObject(responseEntity.getBody(), respClass);
     }
 
     /**
