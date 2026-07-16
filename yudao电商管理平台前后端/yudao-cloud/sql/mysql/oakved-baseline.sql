@@ -7782,6 +7782,87 @@ ALTER TABLE `trade_tracking_event`
   ADD COLUMN `manual_reason` varchar(500) DEFAULT NULL AFTER `manual_operator_id`,
   ADD COLUMN `request_trace_id` varchar(64) DEFAULT NULL AFTER `manual_reason`;
 
+-- BEGIN V019__trade_fulfillment_admin_permissions.sql
+INSERT INTO `system_menu`
+(`name`, `permission`, `type`, `sort`, `parent_id`, `path`, `icon`,
+ `component`, `component_name`, `status`, `visible`, `keep_alive`,
+ `always_show`, `creator`, `create_time`, `updater`, `update_time`, `deleted`)
+SELECT '履约查询', 'trade:fulfillment:shipment:query', 3, 1, 2076,
+       '', '', '', NULL, 0, b'1', b'1', b'1',
+       'admin', CURRENT_TIMESTAMP, 'admin', CURRENT_TIMESTAMP, b'0'
+FROM DUAL
+WHERE EXISTS (
+    SELECT 1 FROM `system_menu` WHERE `id` = 2076 AND `deleted` = b'0'
+)
+AND NOT EXISTS (
+    SELECT 1 FROM `system_menu`
+    WHERE `permission` = 'trade:fulfillment:shipment:query' AND `deleted` = b'0'
+);
+
+INSERT INTO `system_menu`
+(`name`, `permission`, `type`, `sort`, `parent_id`, `path`, `icon`,
+ `component`, `component_name`, `status`, `visible`, `keep_alive`,
+ `always_show`, `creator`, `create_time`, `updater`, `update_time`, `deleted`)
+SELECT '履约创建', 'trade:fulfillment:shipment:create', 3, 2, 2076,
+       '', '', '', NULL, 0, b'1', b'1', b'1',
+       'admin', CURRENT_TIMESTAMP, 'admin', CURRENT_TIMESTAMP, b'0'
+FROM DUAL
+WHERE EXISTS (
+    SELECT 1 FROM `system_menu` WHERE `id` = 2076 AND `deleted` = b'0'
+)
+AND NOT EXISTS (
+    SELECT 1 FROM `system_menu`
+    WHERE `permission` = 'trade:fulfillment:shipment:create' AND `deleted` = b'0'
+);
+
+INSERT INTO `system_menu`
+(`name`, `permission`, `type`, `sort`, `parent_id`, `path`, `icon`,
+ `component`, `component_name`, `status`, `visible`, `keep_alive`,
+ `always_show`, `creator`, `create_time`, `updater`, `update_time`, `deleted`)
+SELECT '履约修改', 'trade:fulfillment:shipment:update', 3, 3, 2076,
+       '', '', '', NULL, 0, b'1', b'1', b'1',
+       'admin', CURRENT_TIMESTAMP, 'admin', CURRENT_TIMESTAMP, b'0'
+FROM DUAL
+WHERE EXISTS (
+    SELECT 1 FROM `system_menu` WHERE `id` = 2076 AND `deleted` = b'0'
+)
+AND NOT EXISTS (
+    SELECT 1 FROM `system_menu`
+    WHERE `permission` = 'trade:fulfillment:shipment:update' AND `deleted` = b'0'
+);
+
+INSERT INTO `system_menu`
+(`name`, `permission`, `type`, `sort`, `parent_id`, `path`, `icon`,
+ `component`, `component_name`, `status`, `visible`, `keep_alive`,
+ `always_show`, `creator`, `create_time`, `updater`, `update_time`, `deleted`)
+SELECT '履约交运', 'trade:fulfillment:shipment:dispatch', 3, 4, 2076,
+       '', '', '', NULL, 0, b'1', b'1', b'1',
+       'admin', CURRENT_TIMESTAMP, 'admin', CURRENT_TIMESTAMP, b'0'
+FROM DUAL
+WHERE EXISTS (
+    SELECT 1 FROM `system_menu` WHERE `id` = 2076 AND `deleted` = b'0'
+)
+AND NOT EXISTS (
+    SELECT 1 FROM `system_menu`
+    WHERE `permission` = 'trade:fulfillment:shipment:dispatch' AND `deleted` = b'0'
+);
+
+INSERT INTO `system_menu`
+(`name`, `permission`, `type`, `sort`, `parent_id`, `path`, `icon`,
+ `component`, `component_name`, `status`, `visible`, `keep_alive`,
+ `always_show`, `creator`, `create_time`, `updater`, `update_time`, `deleted`)
+SELECT '人工轨迹', 'trade:fulfillment:tracking:manual', 3, 5, 2076,
+       '', '', '', NULL, 0, b'1', b'1', b'1',
+       'admin', CURRENT_TIMESTAMP, 'admin', CURRENT_TIMESTAMP, b'0'
+FROM DUAL
+WHERE EXISTS (
+    SELECT 1 FROM `system_menu` WHERE `id` = 2076 AND `deleted` = b'0'
+)
+AND NOT EXISTS (
+    SELECT 1 FROM `system_menu`
+    WHERE `permission` = 'trade:fulfillment:tracking:manual' AND `deleted` = b'0'
+);
+
 -- BEGIN Oakved demo catalog
 -- Oakved demo catalog: tenant 121, 26 mall products, ERP products, stock and mappings.
 SET @tenant_id = 121;
@@ -7968,4 +8049,5 @@ INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256)
 INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('016','trade tracking status mapping','V016__trade_tracking_status_mapping.sql','21dbb820f0e1099b73154bcc2d6011cdc1ea98556f580aaa0e5ccdd7ed7951da') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
 INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('017','trade tracking event watermarks','V017__trade_tracking_event_watermarks.sql','4bddf6d0d0833138a45a6c4b52a6634e67a2798d66b7bf43cee8908a02bed46b') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
 INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('018','trade manual tracking audit','V018__trade_manual_tracking_audit.sql','002dad8815da46261f6a361ac9bf36850a345287844c0ea6e3295b53fdc8812d') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
+INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('019','trade fulfillment admin permissions','V019__trade_fulfillment_admin_permissions.sql','2b7094e055a3ab0fce335a96fcf0f539d4cb337a7190efa50fc7c7f538778e18') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
 SET FOREIGN_KEY_CHECKS = 1;

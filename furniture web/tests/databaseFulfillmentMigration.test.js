@@ -102,7 +102,7 @@ describe("V018 manual tracking audit", () => {
     const baseline = readFileSync(join(root, "oakved-baseline.sql"), "utf8").replace(/\r\n/g, "\n");
     const marker = "-- BEGIN V018__trade_manual_tracking_audit.sql\n";
     const start = baseline.indexOf(marker);
-    const end = baseline.indexOf("\n-- BEGIN Oakved demo catalog", start);
+    const end = baseline.indexOf("\n-- BEGIN V019__trade_fulfillment_admin_permissions.sql", start);
 
     expect(start).toBeGreaterThanOrEqual(0);
     expect(end).toBeGreaterThan(start);
