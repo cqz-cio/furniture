@@ -7,4 +7,17 @@ public record LegacyMigrationFacts(String originCountry, String destinationCount
                                    Long warehouseId, Long migrationProviderId,
                                    Long approvedBy, LocalDateTime approvedAt,
                                    String sourceReference) {
+
+    @Override
+    public String toString() {
+        return "LegacyMigrationFacts[originCountry=" + originCountry
+                + ", destinationCountry=" + destinationCountry
+                + ", originTimezone=" + originTimezone
+                + ", destinationTimezone=" + destinationTimezone
+                + ", warehouseId=" + warehouseId
+                + ", migrationProviderId=" + migrationProviderId
+                + ", approvedBy=" + approvedBy
+                + ", approvedAt=" + approvedAt
+                + ", sourceReference=[REDACTED]]";
+    }
 }
