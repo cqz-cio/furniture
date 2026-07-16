@@ -6,8 +6,8 @@ import {
   globalMenuLinkHref,
   mobileDrawerNavigation,
   primaryNavigation,
-  woodFurnitureDropdownLabels,
-  woodFurnitureMegaMenus,
+  storefrontDropdownKeys,
+  storefrontDropdownMenus,
 } from "../data/rhLayout.js";
 import { generatedFurnitureAssets } from "../data/generatedFurnitureAssets.js";
 import { useI18n } from "../i18n.js";
@@ -59,15 +59,6 @@ const babyChildPageMap = {
   Sale: "baby-child-sale",
   Registry: "baby-child-registry",
 };
-const primaryNavigationLabelKeys = {
-  "Bedroom Furniture": "navigation.primary.bedroomFurniture",
-  "Storage Cabinets": "navigation.primary.storageCabinets",
-  "Desks & Tables": "navigation.primary.desksTables",
-  "Seating & Benches": "navigation.primary.seatingBenches",
-  "Room Sets": "navigation.primary.roomSets",
-  Woodcraft: "navigation.primary.woodcraft",
-  "New & Sale": "navigation.primary.newSale",
-};
 const babyChildNavigationLabelKeys = {
   Furniture: "navigation.babyChild.furniture",
   Bedding: "navigation.babyChild.bedding",
@@ -83,17 +74,16 @@ const babyChildNavigationLabelKeys = {
   Sale: "navigation.babyChild.sale",
   Registry: "navigation.babyChild.registry",
 };
-const navigationLabelKey = (label) =>
-  (isBabyChildSitePage.value ? babyChildNavigationLabelKeys[label] : primaryNavigationLabelKeys[label]) ||
-  primaryNavigationLabelKeys[label] ||
-  babyChildNavigationLabelKeys[label] ||
-  "";
-const navItemLabel = (label) => t(navigationLabelKey(label));
-const menuItemLabel = (label) => (navigationLabelKey(label) ? navItemLabel(label) : label);
 const navItems = computed(() => (isBabyChildSitePage.value ? babyChildNavigation : primaryNavigation));
-const hasWoodDropdown = (label) => !isBabyChildSitePage.value && woodFurnitureDropdownLabels.includes(label);
-const hoverMenuItems = computed(() => woodFurnitureMegaMenus[activeDropdown.value] || []);
-const hoverSecondaryMenuItems = computed(() => []);
+const hasStorefrontDropdown = (item) =>
+  !isBabyChildSitePage.value && storefrontDropdownKeys.includes(item.key);
+const navItemLabel = (item) => t(item.labelKey);
+const menuItemLabel = (item) => t(item.labelKey);
+const babyChildItemLabel = (item) => {
+  const labelKey = babyChildNavigationLabelKeys[item.label];
+  return labelKey ? t(labelKey) : item.label;
+};
+const hoverMenuItems = computed(() => storefrontDropdownMenus[activeDropdown.value] || []);
 const dropdownPositionStyle = computed(() => ({
   "--category-menu-left": categoryMenuLeft.value,
 }));
@@ -199,16 +189,16 @@ const hideDropdown = () => {
   activeMegaItem.value = "";
 };
 
-const setNavButtonRef = (label, element) => {
+const setNavButtonRef = (key, element) => {
   if (element) {
-    navButtonRefs.value[label] = element;
+    navButtonRefs.value[key] = element;
     return;
   }
-  delete navButtonRefs.value[label];
+  delete navButtonRefs.value[key];
 };
 
-const updateDropdownPosition = (label) => {
-  const button = navButtonRefs.value[label];
+const updateDropdownPosition = (key) => {
+  const button = navButtonRefs.value[key];
   if (!button || typeof window === "undefined") return;
 
   const buttonRect = button.getBoundingClientRect();
@@ -237,27 +227,22 @@ const activatePage = (label) => {
   searchOpen.value = false;
 };
 
-const handleNavClick = (label) => {
-  if (!isBabyChildSitePage.value && label === "Baby & Child") {
-    window.open("/baby-child", "_blank", "noopener,noreferrer");
-    closeMenu();
-    hideDropdown();
-    regionOpen.value = false;
-    accountOpen.value = false;
-    searchOpen.value = false;
+const handleNavClick = (item) => {
+  if (isBabyChildSitePage.value) {
+    activatePage(item.label);
     return;
   }
 
-  if (!menuOpen.value && woodFurnitureDropdownLabels.includes(label)) {
-    updateDropdownPosition(label);
-    activeDropdown.value = activeDropdown.value === label ? "" : label;
+  if (!menuOpen.value && hasStorefrontDropdown(item)) {
+    updateDropdownPosition(item.key);
+    activeDropdown.value = activeDropdown.value === item.key ? "" : item.key;
     activeMegaItem.value = "";
     regionOpen.value = false;
     accountOpen.value = false;
     return;
   }
 
-  activatePage(label);
+  window.location.assign(item.href);
 };
 
 const activateMegaItem = (label) => {
@@ -395,44 +380,40 @@ onBeforeUnmount(() => {
       <div class="primary-nav-inner">
         <button
           v-for="item in navItems"
-          :key="item.label"
-          :ref="(element) => setNavButtonRef(item.label, element)"
+          :key="item.key || item.label"
+          :ref="(element) => setNavButtonRef(item.key || item.label, element)"
           class="nav-link"
-          :class="{ active: isActive(item.label) }"
+          :class="{
+            active: isBabyChildSitePage ? isActive(item.label) : activeDropdown === item.key,
+            accent: item.accent,
+          }"
           type="button"
-          :aria-expanded="hasWoodDropdown(item.label) ? activeDropdown === item.label : undefined"
-          @click="handleNavClick(item.label)"
+          :aria-expanded="hasStorefrontDropdown(item) ? activeDropdown === item.key : undefined"
+          @click="handleNavClick(item)"
         >
-          {{ navItemLabel(item.label) }}
+          {{ isBabyChildSitePage ? babyChildItemLabel(item) : navItemLabel(item) }}
         </button>
       </div>
     </nav>
 
     <section
-      v-if="woodFurnitureDropdownLabels.includes(activeDropdown)"
+      v-if="storefrontDropdownKeys.includes(activeDropdown)"
       class="category-mega-menu"
-      :class="{ 'is-sale-menu': activeDropdown === 'New & Sale' }"
       :style="dropdownPositionStyle"
-      :aria-label="`${activeDropdown} category menu`"
+      :aria-label="`${navItemLabel(primaryNavigation.find((item) => item.key === activeDropdown))} category menu`"
     >
       <ul>
-        <li v-for="item in hoverMenuItems" :key="item.label">
+        <li v-for="item in hoverMenuItems" :key="item.key">
           <a
             class="category-mega-link"
-            :class="{ accent: item.accent, active: activeMegaItem === item.label }"
             :href="item.href"
             @click="hideDropdown"
           >
-            {{ menuItemLabel(item.label) }}
+            {{ menuItemLabel(item) }}
           </a>
         </li>
       </ul>
-      <ul v-if="hoverSecondaryMenuItems.length" class="category-mega-secondary">
-        <li v-for="item in hoverSecondaryMenuItems" :key="item.label">
-          <a :href="item.href" @click="hideDropdown">{{ menuItemLabel(item.label) }}</a>
-        </li>
-      </ul>
-      <div v-else class="category-mega-empty" aria-hidden="true"></div>
+      <div class="category-mega-empty" aria-hidden="true"></div>
     </section>
 
     <section v-if="menuOpen" class="global-menu" aria-label="Oakved menu">
@@ -460,16 +441,17 @@ onBeforeUnmount(() => {
       <aside class="mobile-menu-drawer">
         <section v-for="section in mobileDrawerSections" :key="section.heading" class="mobile-drawer-section">
           <h2>{{ section.heading }}</h2>
-          <a
-            v-for="item in section.items"
-            :key="item.label"
-            :class="{ accent: item.accent }"
-            :href="item.href"
-            @click="closeMenu"
-          >
-            <span>{{ menuItemLabel(item.label) }}</span>
-            <span aria-hidden="true">›</span>
-          </a>
+          <div v-for="item in section.items" :key="item.key || item.label" class="mobile-nav-group">
+            <a :class="{ accent: item.accent }" :href="item.href" @click="closeMenu">
+              <span>{{ item.labelKey ? navItemLabel(item) : babyChildItemLabel(item) }}</span>
+              <span aria-hidden="true">›</span>
+            </a>
+            <div v-if="item.items?.length" class="mobile-nav-children">
+              <a v-for="child in item.items" :key="child.key" :href="child.href" @click="closeMenu">
+                {{ menuItemLabel(child) }}
+              </a>
+            </div>
+          </div>
         </section>
         <button class="mobile-region" type="button">
           <span>{{ t("header.mobileRegion") }}</span>

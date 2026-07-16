@@ -67,31 +67,34 @@ describe("header language menu", () => {
     expect(css).toContain(".rh-header.is-overlay:focus-within::before");
   });
 
-  it("opens focused wood furniture category menus only after a nav click", () => {
+  it("opens configured storefront category menus only after a nav click", () => {
     const source = readSource("../src/components/RhHeader.vue");
     const css = readSource("../src/styles.css");
 
-    expect(source).toContain("const handleNavClick = (label) => {");
-    expect(source).toContain("woodFurnitureDropdownLabels.includes(label)");
-    expect(source).toContain("activeDropdown.value = activeDropdown.value === label ? \"\" : label");
+    expect(source).toContain("const handleNavClick = (item) => {");
+    expect(source).toContain("hasStorefrontDropdown(item)");
+    expect(source).toContain("activeDropdown.value = activeDropdown.value === item.key ? \"\" : item.key");
     expect(source).toContain("activeMegaItem.value = \"\"");
-    expect(source).toContain("woodFurnitureMegaMenus[activeDropdown.value]");
-    expect(source).toContain("const activateMegaItem = (label) => {");
-    expect(source).toContain("category-mega-secondary");
+    expect(source).toContain("storefrontDropdownMenus[activeDropdown.value]");
     expect(source).toContain("category-mega-link");
-    expect(source).not.toContain("previewMegaItem");
-    expect(source).not.toContain("@mouseenter=\"previewMegaItem(item.label)\"");
     expect(css).toContain(".category-mega-link");
-    expect(css).toContain(".category-mega-link.active");
-    expect(css).not.toContain("font: inherit;\n  padding: 0;\n  text-align: left;");
     expect(source).toContain('ref="headerRef"');
     expect(source).toContain('document.addEventListener("pointerdown", handleDocumentPointerDown)');
     expect(source).toContain('document.removeEventListener("pointerdown", handleDocumentPointerDown)');
-    expect(source).toContain('@click="handleNavClick(item.label)"');
+    expect(source).toContain('@click="handleNavClick(item)"');
     expect(source).not.toContain('@mouseleave="hideDropdown"');
-    expect(source).not.toContain("@mouseenter=\"showDropdown");
-    expect(source).not.toContain("@focus=\"showDropdown");
-    expect(source).not.toContain("const showDropdown");
+  });
+
+  it("renders the shared storefront model for desktop and mobile", () => {
+    const source = readSource("../src/components/RhHeader.vue");
+
+    expect(source).toContain("storefrontDropdownKeys");
+    expect(source).toContain("storefrontDropdownMenus[activeDropdown.value]");
+    expect(source).toContain('const navItemLabel = (item) => t(item.labelKey)');
+    expect(source).toContain('const menuItemLabel = (item) => t(item.labelKey)');
+    expect(source).toContain('@click="handleNavClick(item)"');
+    expect(source).toContain('v-for="child in item.items"');
+    expect(source).toContain(':href="child.href"');
   });
 
   it("positions the category menu from the clicked primary nav item", () => {
@@ -100,8 +103,8 @@ describe("header language menu", () => {
 
     expect(source).toContain("const navButtonRefs = ref({})");
     expect(source).toContain("const dropdownPositionStyle = computed");
-    expect(source).toContain("updateDropdownPosition(label)");
-    expect(source).toContain(':ref="(element) => setNavButtonRef(item.label, element)"');
+    expect(source).toContain("updateDropdownPosition(item.key)");
+    expect(source).toContain(':ref="(element) => setNavButtonRef(item.key || item.label, element)"');
     expect(source).toContain(':style="dropdownPositionStyle"');
     expect(css).toContain("left: var(--category-menu-left, 80px);");
     expect(css).not.toContain(".category-mega-menu.is-sale-menu {\n  left: auto;");
