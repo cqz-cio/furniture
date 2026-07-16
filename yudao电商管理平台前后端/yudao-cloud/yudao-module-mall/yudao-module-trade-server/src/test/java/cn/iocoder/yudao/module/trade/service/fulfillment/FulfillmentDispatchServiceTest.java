@@ -12,6 +12,7 @@ import cn.iocoder.yudao.module.trade.enums.fulfillment.OrderFulfillmentStatusEnu
 import cn.iocoder.yudao.module.trade.enums.fulfillment.ShipmentStatusEnum;
 import cn.iocoder.yudao.module.trade.enums.fulfillment.ShipmentTypeEnum;
 import cn.iocoder.yudao.module.trade.enums.order.TradeOrderStatusEnum;
+import cn.iocoder.yudao.module.trade.framework.fulfillment.config.FulfillmentFeatureGuard;
 import cn.iocoder.yudao.module.trade.framework.fulfillment.config.FulfillmentProperties;
 import cn.iocoder.yudao.module.trade.framework.fulfillment.core.LogisticsProviderClient;
 import cn.iocoder.yudao.module.trade.framework.fulfillment.core.LogisticsProviderRegistry;
@@ -83,6 +84,7 @@ class FulfillmentDispatchServiceTest extends BaseMockitoUnitTest {
     @Mock private FulfillmentIdempotencyMapper idempotencyMapper;
     @Mock private FulfillmentOutboxEventMapper outboxMapper;
     @Mock private FulfillmentProperties properties;
+    @Mock private FulfillmentFeatureGuard featureGuard;
     @Mock private FulfillmentNoGenerator noGenerator;
     @Mock private LogisticsProviderRegistry providerRegistry;
     @Mock private FulfillmentTrackingRegistrationFailureService registrationFailureService;

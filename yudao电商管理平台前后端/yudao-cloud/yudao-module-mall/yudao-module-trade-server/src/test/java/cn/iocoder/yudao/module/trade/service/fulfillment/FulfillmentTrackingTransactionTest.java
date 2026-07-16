@@ -21,6 +21,7 @@ import cn.iocoder.yudao.module.trade.service.fulfillment.command.ApplyTrackingEv
 import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.TenantLineInnerInterceptor;
 import cn.iocoder.yudao.module.trade.service.fulfillment.command.ApplyManualTrackingEventCommand;
+import cn.iocoder.yudao.module.trade.framework.fulfillment.config.FulfillmentFeatureGuard;
 import cn.iocoder.yudao.module.trade.framework.fulfillment.config.FulfillmentProperties;
 import jakarta.annotation.Resource;
 import org.junit.jupiter.api.AfterEach;
@@ -61,7 +62,8 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 @Import({FulfillmentTrackingServiceImpl.class, VersionedTrackingStatusMapper.class,
-        FulfillmentTrackingTransactionTest.TenantDbTestConfiguration.class, FulfillmentProperties.class})
+        FulfillmentTrackingTransactionTest.TenantDbTestConfiguration.class, FulfillmentProperties.class,
+        FulfillmentFeatureGuard.class})
 class FulfillmentTrackingTransactionTest extends BaseDbUnitTest {
 
     private static final Long TENANT_ID = 121L;
@@ -187,6 +189,22 @@ class FulfillmentTrackingTransactionTest extends BaseDbUnitTest {
         assertTrue(uuidResult.inserted());
         assertEquals("123e4567-e89b-12d3-a456-426614174000", value("SELECT raw_payload_ref "
                 + "FROM trade_tracking_event WHERE external_event_id = 'safe-uuid-reference'", String.class));
+    }
+
+    @Test
+    void disabledWriteRejectsProviderAndManualEventsWithoutRows() {
+        fulfillmentProperties.setWriteNewModel(false);
+        try {
+            assertThrows(IllegalStateException.class, () -> service.applyEvent(
+                    command("disabled-provider", "MOVING", Instant.parse("2026-07-15T00:00:00Z"))));
+            assertThrows(IllegalStateException.class, () -> service.applyManualEvent("disabled-manual",
+                    manualCommand(ShipmentStatusEnum.IN_TRANSIT, Instant.parse("2026-07-15T00:00:00Z"), 1)));
+            assertEquals(0, count("trade_tracking_event"));
+            assertEquals(0, count("trade_fulfillment_idempotency"));
+            assertEquals(0, count("trade_fulfillment_outbox_event"));
+        } finally {
+            fulfillmentProperties.setWriteNewModel(true);
+        }
     }
 
     @Test

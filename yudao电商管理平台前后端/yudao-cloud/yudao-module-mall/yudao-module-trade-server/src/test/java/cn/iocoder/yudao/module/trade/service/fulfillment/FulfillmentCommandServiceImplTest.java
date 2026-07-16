@@ -25,6 +25,7 @@ import cn.iocoder.yudao.module.trade.enums.fulfillment.OrderFulfillmentStatusEnu
 import cn.iocoder.yudao.module.trade.enums.fulfillment.ShipmentStatusEnum;
 import cn.iocoder.yudao.module.trade.enums.fulfillment.ShipmentTypeEnum;
 import cn.iocoder.yudao.module.trade.framework.fulfillment.config.FulfillmentProperties;
+import cn.iocoder.yudao.module.trade.framework.fulfillment.config.FulfillmentFeatureGuard;
 import cn.iocoder.yudao.module.trade.framework.fulfillment.core.LogisticsProviderRegistry;
 import cn.iocoder.yudao.module.trade.service.fulfillment.command.CreateShipmentCommand;
 import cn.iocoder.yudao.module.trade.service.fulfillment.command.CreateShipmentItemCommand;
@@ -72,6 +73,7 @@ import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class FulfillmentCommandServiceImplTest extends BaseMockitoUnitTest {
@@ -111,6 +113,8 @@ class FulfillmentCommandServiceImplTest extends BaseMockitoUnitTest {
     @Mock
     private FulfillmentProperties properties;
     @Mock
+    private FulfillmentFeatureGuard featureGuard;
+    @Mock
     private FulfillmentNoGenerator noGenerator;
     @Mock
     private LogisticsProviderRegistry providerRegistry;
@@ -133,6 +137,28 @@ class FulfillmentCommandServiceImplTest extends BaseMockitoUnitTest {
         }).when(shipmentMapper).insert(any(ShipmentDO.class));
         lenient().when(idempotencyMapper.completeProcessingById(eq(TENANT_ID), eq(801L), anyString(), eq(SHIPMENT_ID),
                 any(LocalDateTime.class))).thenReturn(1);
+    }
+
+    @Test
+    void everyPublicMutationChecksWriteFlagBeforeValidationOrPersistence() {
+        IllegalStateException disabled = new IllegalStateException("writes disabled");
+        doThrow(disabled).when(featureGuard).requireWriteEnabled();
+
+        assertEquals(disabled, assertThrows(IllegalStateException.class,
+                () -> service.createShipment(IDEMPOTENCY_KEY, null)));
+        assertEquals(disabled, assertThrows(IllegalStateException.class,
+                () -> service.addPackage(IDEMPOTENCY_KEY, null)));
+        assertEquals(disabled, assertThrows(IllegalStateException.class,
+                () -> service.addLeg(IDEMPOTENCY_KEY, null)));
+        assertEquals(disabled, assertThrows(IllegalStateException.class,
+                () -> service.markReady(IDEMPOTENCY_KEY, null, null, null)));
+        assertEquals(disabled, assertThrows(IllegalStateException.class,
+                () -> service.dispatch(IDEMPOTENCY_KEY, null)));
+
+        verify(featureGuard, org.mockito.Mockito.times(5)).requireWriteEnabled();
+        verifyNoInteractions(tradeOrderMapper, tradeOrderItemMapper, shipmentMapper, shipmentItemMapper,
+                packageMapper, legMapper, carrierMapper, providerMapper, summaryMapper, idempotencyMapper,
+                outboxMapper, providerRegistry, registrationFailureService);
     }
 
     @AfterEach
