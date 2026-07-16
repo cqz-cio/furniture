@@ -51,9 +51,10 @@ try {
         "V015__trade_fulfillment_core.sql",
         "V016__trade_tracking_status_mapping.sql",
         "V017__trade_tracking_event_watermarks.sql",
-        "V018__trade_manual_tracking_audit.sql",
-        "V019__trade_fulfillment_admin_permissions.sql",
-        "V020__trade_fulfillment_legacy_migration_fact.sql"
+        "V018__trade_fulfillment_active_record_uniqueness.sql",
+        "V021__trade_manual_tracking_audit.sql",
+        "V022__trade_fulfillment_admin_permissions.sql",
+        "V023__trade_fulfillment_legacy_migration_fact.sql"
     ) | ForEach-Object { Invoke-MySqlFile (Join-Path $migrationRoot $_) }
 
     $env:FULFILLMENT_MYSQL_TEST_URL = "jdbc:mysql://127.0.0.1:$Port/${database}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"

@@ -1,4 +1,4 @@
--- Production-compatible prerequisites for applying the real V015-V020 fulfillment migrations in isolation.
+-- Production-compatible prerequisites for applying the real V015-V018 and V021-V023 fulfillment migrations in isolation.
 -- These are existing tables owned by older modules; fulfillment migrations only reference them.
 CREATE TABLE IF NOT EXISTS `trade_order` (
   `id` bigint NOT NULL AUTO_INCREMENT,
@@ -96,4 +96,5 @@ INSERT IGNORE INTO `system_menu`
 (`id`,`name`,`permission`,`type`,`sort`,`parent_id`,`path`,`icon`,`component`,`component_name`,
  `status`,`visible`,`keep_alive`,`always_show`,`creator`,`updater`,`deleted`)
 VALUES
-(2076,'Trade orders','',1,1,0,'trade','',NULL,NULL,0,b'1',b'1',b'1','test','test',b'0');
+(2076,'订单列表','',2,1,2072,'order','','mall/trade/order/index','TradeOrder',
+ 0,b'1',b'1',b'1','test','test',b'0');
