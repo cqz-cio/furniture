@@ -1,4 +1,5 @@
 -- Oakved demo catalog: tenant 121, 26 mall products, ERP products, stock and mappings.
+SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci;
 SET @tenant_id = 121;
 SET @seed_user = 'furniture-agent-seed';
 SET @default_image = 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=1200&q=80';
