@@ -9,6 +9,7 @@ import {
   storefrontDropdownKeys,
   storefrontDropdownMenus,
 } from "../data/rhLayout.js";
+import { OAKVED_LOGO_SRC } from "../config/brand.js";
 import { generatedFurnitureAssets } from "../data/generatedFurnitureAssets.js";
 import { useI18n } from "../i18n.js";
 import AuthModal from "./AuthModal.vue";
@@ -337,11 +338,11 @@ onBeforeUnmount(() => {
         @click="page = isBabyChildSitePage ? 'baby-child' : 'home'"
       >
         <template v-if="isBabyChildSitePage">
-          <img class="brand-logo" src="/assets/brand/oakved-logo-black.png" alt="Oakved" />
+          <img class="brand-logo" :src="OAKVED_LOGO_SRC" alt="Oakved" />
           <span class="brand-button-suffix">baby &amp; child</span>
         </template>
         <template v-else>
-          <img class="brand-logo" src="/assets/brand/oakved-logo-black.png" alt="Oakved" />
+          <img class="brand-logo" :src="OAKVED_LOGO_SRC" alt="Oakved" />
         </template>
       </button>
 
@@ -470,7 +471,7 @@ onBeforeUnmount(() => {
           <span aria-hidden="true">›</span>
         </button>
         <div class="mobile-drawer-brand">
-          <img class="mobile-drawer-brand-logo" src="/assets/brand/oakved-logo-black.png" alt="Oakved" />
+          <img class="mobile-drawer-brand-logo" :src="OAKVED_LOGO_SRC" alt="Oakved" />
         </div>
       </aside>
       <button class="mobile-drawer-scrim" type="button" :aria-label="t('header.menuClose')" @click="closeMenu"></button>

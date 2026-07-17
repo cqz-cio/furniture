@@ -942,11 +942,12 @@ button {
   height: auto;
   max-height: 72px;
   object-fit: contain;
+  filter: invert(1);
   transition: filter var(--rh-header-reveal-duration) ease;
 }
 
 .rh-header.is-overlay:not(:hover):not(:focus-within):not(.menu-is-open) .brand-logo {
-  filter: invert(1);
+  filter: none;
 }
 
 .brand-button-suffix {
@@ -1457,6 +1458,16 @@ button {
   height: auto;
   max-height: 32px;
   object-fit: contain;
+}
+
+.brand-eyebrow-dark .brand-eyebrow-logo {
+  filter: invert(1);
+}
+
+.mobile-drawer-brand-logo,
+.cart-brand-logo,
+.rh-checkout-top img {
+  filter: invert(1);
 }
 
 .brand-eyebrow-suffix {

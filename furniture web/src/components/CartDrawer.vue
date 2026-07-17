@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onBeforeUnmount, watch } from "vue";
+import { OAKVED_LOGO_SRC } from "../config/brand.js";
 import ProductImage from "./ProductImage.vue";
 import RhFooter from "./RhFooter.vue";
 import { canUseYudaoCheckout, getCheckoutPresentation } from "../services/checkoutSession.js";
@@ -121,7 +122,7 @@ onBeforeUnmount(() => setBodyCartState(false));
               <span class="search-icon" aria-hidden="true"></span>
             </div>
 
-            <img class="cart-brand-logo" src="/assets/brand/oakved-logo-black.png" alt="Oakved" />
+            <img class="cart-brand-logo" :src="OAKVED_LOGO_SRC" alt="Oakved" />
 
             <div class="cart-topline-spacer" aria-hidden="true"></div>
           </div>

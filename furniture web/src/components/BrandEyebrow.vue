@@ -1,7 +1,7 @@
 <script setup>
-import { computed } from "vue";
+import { OAKVED_LOGO_SRC } from "../config/brand.js";
 
-const props = defineProps({
+defineProps({
   suffix: {
     type: String,
     default: "",
@@ -12,15 +12,11 @@ const props = defineProps({
     validator: (value) => ["light", "dark"].includes(value),
   },
 });
-
-const logoSrc = computed(() =>
-  props.tone === "dark" ? "/assets/brand/oakved-logo-black.png" : "/assets/brand/oakved-logo-white.png",
-);
 </script>
 
 <template>
   <p class="eyebrow brand-eyebrow" :class="`brand-eyebrow-${tone}`">
-    <img class="brand-eyebrow-logo" :src="logoSrc" alt="Oakved" />
+    <img class="brand-eyebrow-logo" :src="OAKVED_LOGO_SRC" alt="Oakved" />
     <span v-if="suffix" class="brand-eyebrow-suffix">{{ suffix }}</span>
   </p>
 </template>
