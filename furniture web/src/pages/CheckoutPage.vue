@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
 import ProductImage from "../components/ProductImage.vue";
+import { OAKVED_LOGO_SRC } from "../config/brand.js";
 import { getCheckoutErrorKey } from "../services/checkoutErrors.js";
 import {
   buildPaymentReturnUrl,
@@ -657,7 +658,7 @@ watch(paymentForm, () => {
 <template>
   <section class="checkout-page rh-checkout-page">
     <header class="rh-checkout-top">
-      <img src="/assets/brand/oakved-logo-black.png" alt="Oakved" />
+      <img :src="OAKVED_LOGO_SRC" alt="Oakved" />
       <button type="button">{{ t("checkout.header.shipToUnitedStates") }} <span aria-hidden="true">v</span></button>
     </header>
 

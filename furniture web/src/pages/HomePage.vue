@@ -1,5 +1,6 @@
 <script setup>
 import BrandEyebrow from "../components/BrandEyebrow.vue";
+import { OAKVED_LOGO_SRC } from "../config/brand.js";
 import { generatedFurnitureAssets } from "../data/generatedFurnitureAssets.js";
 import { useI18n } from "../i18n.js";
 
@@ -113,7 +114,7 @@ const trustSignalCopy = (item, field) => t(`home.trust.${item.id}.${field}`);
     <div class="home-hero-copy">
       <p class="eyebrow">{{ t("home.heroEyebrow") }}</p>
       <h1 class="sr-only">Oakved</h1>
-      <img class="home-hero-logo" src="/assets/brand/oakved-logo-white.png" alt="Oakved" />
+      <img class="home-hero-logo" :src="OAKVED_LOGO_SRC" alt="Oakved" />
       <p>{{ t("home.heroSubtitle") }}</p>
     </div>
   </section>
