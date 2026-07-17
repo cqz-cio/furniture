@@ -51,7 +51,8 @@ describe("home landing page", () => {
     const styles = readSource("../src/styles.css");
 
     expect(homePage).toContain('class="home-hero-logo"');
-    expect(homePage).toContain('src="/assets/brand/oakved-logo-white.png"');
+    expect(homePage).toContain('import { OAKVED_LOGO_SRC } from "../config/brand.js";');
+    expect(homePage).toContain(':src="OAKVED_LOGO_SRC"');
     expect(homePage).toContain('alt="Oakved"');
     expect(homePage).not.toContain("<h1>RH</h1>");
     expect(styles).toContain(".home-hero-logo");
