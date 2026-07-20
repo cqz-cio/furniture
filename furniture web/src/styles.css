@@ -1022,6 +1022,10 @@ button {
   color: inherit;
 }
 
+.nav-link.accent {
+  color: #ca2022;
+}
+
 .rh-header.is-baby-child .primary-nav {
   gap: clamp(18px, 2.3vw, 34px);
 }

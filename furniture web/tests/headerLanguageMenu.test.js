@@ -87,11 +87,14 @@ describe("header language menu", () => {
 
   it("renders the shared storefront model for desktop and mobile", () => {
     const source = readSource("../src/components/RhHeader.vue");
+    const css = readSource("../src/styles.css");
 
     expect(source).toContain("storefrontDropdownKeys");
     expect(source).toContain("storefrontDropdownMenus[activeDropdown.value]");
     expect(source).toContain('const navItemLabel = (item) => t(item.labelKey)');
     expect(source).toContain('const menuItemLabel = (item) => t(item.labelKey)');
+    expect(source).toContain("accent: item.accent");
+    expect(css).toContain(".nav-link.accent {\n  color: #ca2022;\n}");
     expect(source).toContain('t("navigation.storefront.mobile.shopFurniture")');
     expect(source).toContain('labelKey: "navigation.storefront.mobile.membershipFaq"');
     expect(source).toContain('@click="handleNavClick(item)"');
