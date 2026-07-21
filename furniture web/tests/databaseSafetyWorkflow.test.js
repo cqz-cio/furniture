@@ -22,15 +22,15 @@ describe("safe database deployment workflow", () => {
     );
     expect(existsSync(directory)).toBe(true);
     const files = readdirSync(directory).filter((name) => name.endsWith(".sql")).sort();
-    const expectedVersions = Array.from({ length: 23 }, (_, index) => index + 1);
+    const expectedVersions = Array.from({ length: 24 }, (_, index) => index + 1);
     expect(files).toHaveLength(expectedVersions.length);
     expect(files[0]).toMatch(/^V001__/);
     expect(files.slice(-3)).toEqual([
-      "V021__trade_manual_tracking_audit.sql",
       "V022__trade_fulfillment_admin_permissions.sql",
       "V023__trade_fulfillment_legacy_migration_fact.sql",
+      "V024__normalize_dashboard_route_path.sql",
     ]);
-    expect(files.at(-1)).toMatch(/^V023__/);
+    expect(files.at(-1)).toMatch(/^V024__/);
     expect(files.map((name) => Number(name.slice(1, 4)))).toEqual(
       expectedVersions,
     );

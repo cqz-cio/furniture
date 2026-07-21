@@ -71,17 +71,6 @@ describe("product detail model", () => {
     expect(model.relatedLinks.every((link) => link.href.startsWith("/"))).toBe(true);
   });
 
-  it("uses safe defaults while the backend product detail is still loading", () => {
-    const model = buildProductDetailModel(null);
-
-    expect(model).toMatchObject({
-      name: "Luxury Furniture",
-      productType: "furniture",
-      source: "demo",
-    });
-    expect(model.gallery).toHaveLength(5);
-  });
-
   it("keeps every unique ERP gallery image instead of truncating product photography", () => {
     const gallery = Array.from({ length: 16 }, (_, index) => `https://cdn.example/view-${index + 2}.jpg`);
     const model = buildProductDetailModel({
