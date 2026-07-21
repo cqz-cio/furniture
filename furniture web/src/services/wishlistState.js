@@ -2,10 +2,13 @@ import { readLocalWishlist } from "./localWishlist.js";
 import { getRemoteWishlistItems } from "./yudaoFavoriteApi.js";
 import { isYudaoAuthError, readYudaoToken } from "./yudaoRequest.js";
 
-const identity = (item = {}) => ({
-  spuId: item.spuId || item.id,
-  skuId: item.skuId || item.id,
-});
+const identity = (itemInput = {}) => {
+  const item = itemInput || {};
+  return {
+    spuId: item.spuId || item.id,
+    skuId: item.skuId || item.id,
+  };
+};
 
 const identityKeys = (item = {}) => {
   const { spuId, skuId } = identity(item);

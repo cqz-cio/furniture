@@ -46,6 +46,12 @@ describe("wishlist identity state", () => {
     expect(isWishlistItemSaved({ id: 77, skuId: 7701 }, state)).toBe(false);
   });
 
+  it("treats a product that is still loading as not saved", () => {
+    expect(isWishlistItemSaved(null, new Set())).toBe(false);
+    expect(createWishlistIdentitySet([null])).toEqual(new Set());
+    expect(withWishlistItemSaved(new Set(), null)).toEqual(new Set());
+  });
+
   it("loads local wishlist state when the visitor is not authenticated", async () => {
     addLocalWishlistItem({ id: 88, skuId: 8801, name: "Oak Chair" }, storage);
 

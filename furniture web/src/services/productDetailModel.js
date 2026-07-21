@@ -438,7 +438,8 @@ const companyHeroNotes = {
   chair: "Shown as a wood-framed bedroom chair for desk, vanity or lounge pairing.",
 };
 
-const inferProductType = (product = {}) => {
+const inferProductType = (productInput = {}) => {
+  const product = productInput || {};
   const rawType = String(product.detailConfig?.productType || product.productType || product.type || product.category || "").toLowerCase();
   const knownCompanyTypes = new Set([
     "nightstand",
@@ -471,7 +472,8 @@ const inferProductType = (product = {}) => {
   return "furniture";
 };
 
-export const buildProductDetailModel = (product = {}) => {
+export const buildProductDetailModel = (productInput = {}) => {
+  const product = productInput || {};
   const productType = inferProductType(product);
   const templateKey = productTypeTemplateAliases[productType] || productType;
   const template = productTypeTemplates[templateKey] || productTypeTemplates.furniture;
