@@ -7,10 +7,30 @@ const fenToYuan = (value) => {
 
 const firstSku = (spu) => (Array.isArray(spu.skus) && spu.skus.length > 0 ? spu.skus[0] : {});
 
+const inferMaterial = (text) => {
+  if (/leather|皮革|真皮/i.test(text)) return "leather";
+  if (/wool|linen|fabric|boucl[eé]|upholster|织物|布艺|羊毛/i.test(text)) return "fabric";
+  if (/glass|玻璃/i.test(text)) return "glass";
+  if (/brass|steel|iron|metal|黄铜|金属|钢|铁/i.test(text)) return "metal";
+  if (/oak|walnut|ash|wood|reclaimed|橡木|胡桃木|白蜡木|木/i.test(text)) return "wood";
+  return "";
+};
+
+const inferColor = (text) => {
+  if (/black|charcoal|黑|炭灰/i.test(text)) return "black";
+  if (/ivory|cream|opal|white|象牙|奶油|白/i.test(text)) return "light";
+  if (/natural|beige|sand|taupe|pebble|原木|米色|沙色/i.test(text)) return "natural";
+  if (/brown|walnut|terracotta|棕|胡桃|陶土/i.test(text)) return "brown";
+  if (/grey|gray|silver|stone|灰|银/i.test(text)) return "grey";
+  return "";
+};
+
 export const mapSpuToProduct = (spu) => {
   const sku = firstSku(spu);
   const gallery = Array.isArray(spu.sliderPicUrls) ? spu.sliderPicUrls.filter(Boolean) : [];
   const cover = spu.picUrl || sku.picUrl || gallery[0] || "";
+  const categoryName = spu.categoryName || "";
+  const searchableText = `${spu.name || ""} ${spu.keyword || ""} ${spu.introduction || ""} ${categoryName}`;
 
   return {
     id: spu.id,
@@ -25,7 +45,13 @@ export const mapSpuToProduct = (spu) => {
     marketPrice: fenToYuan(sku.marketPrice ?? spu.marketPrice),
     stock: Number(sku.stock ?? spu.stock ?? 0),
     salesCount: Number(spu.salesCount ?? 0),
-    productType: spu.productType || spu.type || spu.categoryCode || spu.categoryName || "",
+    categoryId: spu.categoryId,
+    categoryName,
+    productType: spu.productType || spu.type || spu.categoryCode || categoryName,
+    material: spu.material || inferMaterial(searchableText),
+    color: spu.color || inferColor(searchableText),
+    isNew: spu.recommendNew === true,
+    isBestSeller: spu.recommendBest === true,
     detailConfig: spu.detailConfig || null,
     source: "yudao",
     raw: spu,

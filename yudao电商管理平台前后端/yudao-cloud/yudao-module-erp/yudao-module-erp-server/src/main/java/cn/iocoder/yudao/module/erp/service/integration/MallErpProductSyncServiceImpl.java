@@ -39,6 +39,8 @@ import static cn.iocoder.yudao.framework.common.util.collection.CollectionUtils.
 @Service
 @RequiredArgsConstructor
 public class MallErpProductSyncServiceImpl implements MallErpProductSyncService {
+    private static final String FURNITURE_CATEGORY_CODE = "FURNITURE";
+
     private final ProductSkuApi productSkuApi;
     private final ProductSpuApi productSpuApi;
     private final ErpProductMapper erpProductMapper;
@@ -83,11 +85,9 @@ public class MallErpProductSyncServiceImpl implements MallErpProductSyncService 
         if (mapping == null) {
             ErpProductUnitDO unit = unitMapper.selectListByStatus(CommonStatusEnum.ENABLE.getStatus()).stream().findFirst()
                     .orElseThrow(() -> new IllegalStateException("No enabled ERP product unit"));
-            ErpProductCategoryDO category = categoryMapper.selectList().stream().findFirst()
-                    .orElseThrow(() -> new IllegalStateException("No ERP product category"));
             product.setUnitId(unit.getId());
-            product.setCategoryId(category.getId());
         }
+        product.setCategoryId(resolveErpCategory(spu).getId());
         product.setName(spu.getName());
         product.setBarCode(productCode);
         product.setStatus(CommonStatusEnum.ENABLE.getStatus());
@@ -115,6 +115,28 @@ public class MallErpProductSyncServiceImpl implements MallErpProductSyncService 
         mappingMapper.updateById(mapping);
         insertSuccessLog(mallSkuId, productCode);
         return toDTO(mapping, product);
+    }
+
+    private ErpProductCategoryDO resolveErpCategory(ProductSpuRespDTO spu) {
+        ErpProductCategoryDO root = categoryMapper.selectList().stream()
+                .filter(category -> FURNITURE_CATEGORY_CODE.equals(category.getCode()))
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("No ERP furniture category"));
+        if (spu.getCategoryName() == null || spu.getCategoryName().isBlank()) {
+            return root;
+        }
+        ErpProductCategoryDO category = categoryMapper.selectByParentIdAndName(root.getId(), spu.getCategoryName());
+        if (category != null) {
+            return category;
+        }
+        category = new ErpProductCategoryDO();
+        category.setParentId(root.getId());
+        category.setName(spu.getCategoryName());
+        category.setCode("MALL_CATEGORY_" + spu.getCategoryId());
+        category.setSort(100);
+        category.setStatus(CommonStatusEnum.ENABLE.getStatus());
+        categoryMapper.insert(category);
+        return category;
     }
 
     @Override

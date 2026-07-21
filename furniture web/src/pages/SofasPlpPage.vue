@@ -5,6 +5,7 @@ import { useI18n } from "../i18n.js";
 import { PRODUCT_SORT_OPTIONS } from "../services/productListControls.js";
 import {
   buildProductListingModel,
+  inferListingType,
   productFacetGroups,
   productListingFilters,
   resolveProductListingQuery,
@@ -14,7 +15,7 @@ import {
   loadWishlistIdentityState,
   withWishlistItemSaved,
 } from "../services/wishlistState.js";
-import { getProductPage } from "../services/yudaoProductApi.js";
+import { getAllProducts } from "../services/yudaoProductApi.js";
 
 const props = defineProps({
   authVersion: {
@@ -34,6 +35,7 @@ const initialListingQuery = resolveProductListingQuery(typeof window === "undefi
 const emptyFacetState = () => Object.fromEntries(productFacetGroups.map((group) => [group.key, "all"]));
 const selectedProductType = ref(initialListingQuery.filter);
 const selectedFacets = ref({ ...emptyFacetState(), ...initialListingQuery.facets });
+const selectedTag = ref(initialListingQuery.tag);
 const selectedSort = ref("featured");
 const mobileFiltersOpen = ref(false);
 const quickAddMessage = ref("");
@@ -41,16 +43,31 @@ const wishlistIdentityKeys = ref(new Set());
 const wishlistIdentityStatusKey = ref("");
 const skeletonCards = [0, 1, 2, 3];
 const productTypeLabelKeys = {
+  sofa: "productList.typeOptions.sofa",
+  "lounge-chair": "productList.typeOptions.loungeChair",
+  ottoman: "productList.typeOptions.ottoman",
+  "dining-table": "productList.typeOptions.diningTable",
+  "dining-chair": "productList.typeOptions.diningChair",
+  "coffee-table": "productList.typeOptions.coffeeTable",
+  bed: "productList.typeOptions.bed",
   nightstand: "productList.typeOptions.nightstand",
   "bed-bench": "productList.typeOptions.bedBench",
   dresser: "productList.typeOptions.dresser",
+  wardrobe: "productList.typeOptions.wardrobe",
   vanity: "productList.typeOptions.vanity",
   desk: "productList.typeOptions.desk",
   "round-table": "productList.typeOptions.roundTable",
+  "side-table": "productList.typeOptions.sideTable",
+  "media-console": "productList.typeOptions.mediaConsole",
+  sideboard: "productList.typeOptions.sideboard",
+  "bar-stool": "productList.typeOptions.barStool",
+  lighting: "productList.typeOptions.lighting",
+  rug: "productList.typeOptions.rug",
   "single-sofa": "productList.typeOptions.singleSofa",
   chair: "productList.typeOptions.chair",
   storage: "productList.typeOptions.storage",
   "desk-table": "productList.typeOptions.deskTable",
+  table: "productList.typeOptions.table",
   seating: "productList.typeOptions.seating",
   "bedroom-set": "productList.typeOptions.bedroomSet",
   "storage-set": "productList.typeOptions.storageSet",
@@ -61,6 +78,8 @@ const productTypeLabelKeys = {
   room: "productList.typeOptions.room",
   study: "productList.typeOptions.study",
   living: "productList.typeOptions.living",
+  dining: "productList.typeOptions.dining",
+  decor: "productList.typeOptions.decor",
 };
 const facetGroupLabelKeys = {
   material: "productList.facetGroups.material",
@@ -72,7 +91,9 @@ const facetOptionLabelKeys = {
   material: {
     all: "productList.facetOptions.material.all",
     fabric: "productList.facetOptions.material.fabric",
+    leather: "productList.facetOptions.material.leather",
     wood: "productList.facetOptions.material.wood",
+    glass: "productList.facetOptions.material.glass",
     stone: "productList.facetOptions.material.stone",
     metal: "productList.facetOptions.material.metal",
   },
@@ -81,6 +102,8 @@ const facetOptionLabelKeys = {
     natural: "productList.facetOptions.color.natural",
     brown: "productList.facetOptions.color.brown",
     light: "productList.facetOptions.color.light",
+    black: "productList.facetOptions.color.black",
+    grey: "productList.facetOptions.color.grey",
   },
   availability: {
     all: "productList.facetOptions.availability.all",
@@ -107,8 +130,9 @@ const sortForListingModel = computed(() => {
   return "featured";
 });
 const productTypeOptions = computed(() => {
+  const availableTypes = new Set(products.value.map((product) => inferListingType(product)));
   const baseOptions = productListingFilters
-    .filter((option) => option.value !== "all")
+    .filter((option) => option.value !== "all" && availableTypes.has(option.value))
     .map((option) => ({ value: option.value }));
   const hasSelectedOption = baseOptions.some((option) => option.value === selectedProductType.value);
   if (hasSelectedOption || selectedProductType.value === "all") return baseOptions;
@@ -139,6 +163,7 @@ const listingModel = computed(() =>
     filter: selectedProductType.value,
     sort: sortForListingModel.value,
     facets: selectedFacets.value,
+    tag: selectedTag.value,
   })
 );
 const productMatchesSearch = (product) => {
@@ -176,6 +201,7 @@ const resetProductListControls = () => {
   searchQuery.value = "";
   selectedProductType.value = "all";
   selectedFacets.value = emptyFacetState();
+  selectedTag.value = "";
   selectedSort.value = "featured";
   mobileFiltersOpen.value = false;
 };
@@ -198,6 +224,7 @@ const syncListingQueryFromLocation = () => {
   const listingQuery = resolveProductListingQuery(window.location.search);
   selectedProductType.value = listingQuery.filter;
   selectedFacets.value = { ...emptyFacetState(), ...listingQuery.facets };
+  selectedTag.value = listingQuery.tag;
   mobileFiltersOpen.value = false;
 };
 
@@ -206,7 +233,7 @@ onMounted(async () => {
   window.addEventListener("oakved:navigation", syncListingQueryFromLocation);
   loadProductWishlistState();
   try {
-    const page = await getProductPage({ pageNo: 1, pageSize: 24 });
+    const page = await getAllProducts();
     products.value = page.list;
     source.value = "yudao";
     catalogError.value = false;

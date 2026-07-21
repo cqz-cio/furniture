@@ -94,7 +94,7 @@ describe("header language menu", () => {
     expect(source).toContain('const navItemLabel = (item) => t(item.labelKey)');
     expect(source).toContain('const menuItemLabel = (item) => t(item.labelKey)');
     expect(source).toContain("accent: item.accent");
-    expect(css).toContain(".nav-link.accent {\n  color: #ca2022;\n}");
+    expect(css).toMatch(/\.nav-link\.accent \{\r?\n  color: #ca2022;\r?\n\}/);
     expect(source).toContain('t("navigation.storefront.mobile.shopFurniture")');
     expect(source).toContain('labelKey: "navigation.storefront.mobile.membershipFaq"');
     expect(source).toContain('@click="handleNavClick(item)"');
