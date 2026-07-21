@@ -72,6 +72,25 @@ describe("yudao integration models", () => {
     });
   });
 
+  it("deduplicates ERP gallery images and keeps the card hover image distinct from the cover", () => {
+    const product = mapSpuToProduct({
+      id: 42,
+      name: "Arc Bouclé Curved Sofa",
+      picUrl: " https://cdn.example/01.jpg ",
+      sliderPicUrls: [
+        "https://cdn.example/01.jpg",
+        "https://cdn.example/02.jpg",
+        "https://cdn.example/02.jpg",
+        "",
+        "https://cdn.example/03.jpg",
+      ],
+      skus: [{ id: 142, picUrl: "https://cdn.example/sku.jpg" }],
+    });
+
+    expect(product.cover).toBe("https://cdn.example/01.jpg");
+    expect(product.gallery).toEqual(["https://cdn.example/02.jpg", "https://cdn.example/03.jpg"]);
+  });
+
   it("keeps local cart quantities stable and removes items", () => {
     const sofa = {
       id: 12,

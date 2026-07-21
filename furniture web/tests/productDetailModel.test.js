@@ -27,7 +27,7 @@ describe("product detail model", () => {
       price: { member: 888, regular: 999, prefix: "Starting at" },
       stock: { label: "Inventory", value: 20, status: "In stock" },
     });
-    expect(model.gallery).toHaveLength(5);
+    expect(model.gallery).toHaveLength(2);
     expect(model.gallery[0]).toMatchObject({ src: "https://cdn.example/bed-main.jpg", label: "Hero" });
     expect(model.optionGroups.map((group) => group.key)).toEqual(["size", "fabric", "finish", "configuration"]);
     expect(model.heroNote).toContain("Shown in");
@@ -69,6 +69,30 @@ describe("product detail model", () => {
     expect(model.gallery.every((item) => item.kind)).toBe(true);
     expect(model.relatedLinks).toContainEqual({ label: "ALSO AVAILABLE IN LEATHER", href: "/products?material=leather" });
     expect(model.relatedLinks.every((link) => link.href.startsWith("/"))).toBe(true);
+  });
+
+  it("uses safe defaults while the backend product detail is still loading", () => {
+    const model = buildProductDetailModel(null);
+
+    expect(model).toMatchObject({
+      name: "Luxury Furniture",
+      productType: "furniture",
+      source: "demo",
+    });
+    expect(model.gallery).toHaveLength(5);
+  });
+
+  it("keeps every unique ERP gallery image instead of truncating product photography", () => {
+    const gallery = Array.from({ length: 16 }, (_, index) => `https://cdn.example/view-${index + 2}.jpg`);
+    const model = buildProductDetailModel({
+      name: "Imported lounge chair",
+      cover: "https://cdn.example/view-1.jpg",
+      gallery: [gallery[0], ...gallery, gallery[15]],
+    });
+
+    expect(model.gallery).toHaveLength(17);
+    expect(model.gallery[0]).toMatchObject({ src: "https://cdn.example/view-1.jpg", label: "Hero" });
+    expect(model.gallery[16]).toMatchObject({ src: "https://cdn.example/view-17.jpg", label: "View 17" });
   });
 
   it("uses category-specific detail templates for other furniture types", () => {
