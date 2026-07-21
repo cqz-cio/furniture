@@ -2,6 +2,7 @@
 import { useTagsViewStore } from '@/store/modules/tagsView'
 import { useAppStore } from '@/store/modules/app'
 import { Footer } from '@/layout/components/Footer'
+import DashboardPageLoading from '@/layout/components/DashboardPageLoading.vue'
 
 defineOptions({ name: 'AppView' })
 
@@ -21,6 +22,10 @@ const getCaches = computed((): string[] => {
 
 const tagsView = computed(() => appStore.getTagsView)
 
+const showDashboardLoading = computed(
+  () => appStore.getPageLoading && appStore.getPageLoadingRoute === '/dashboard'
+)
+
 //region 无感刷新
 const routerAlive = ref(true)
 // 无感刷新，防止出现页面闪烁白屏
@@ -36,13 +41,17 @@ provide('reload', reload)
 <template>
   <section
     :class="[
-      'p-[var(--app-content-padding)] w-full bg-[var(--app-content-bg-color)] dark:bg-[var(--el-bg-color)]',
+      'relative p-[var(--app-content-padding)] w-full bg-[var(--app-content-bg-color)] dark:bg-[var(--el-bg-color)]',
       {
         '!min-h-[calc(100vh-var(--top-tool-height)-var(--tags-view-height)-var(--app-footer-height))] pb-0':
           footer
       }
     ]"
+    :aria-busy="showDashboardLoading"
   >
+    <Transition name="dashboard-loading-fade">
+      <DashboardPageLoading v-if="showDashboardLoading" overlay />
+    </Transition>
     <router-view v-if="routerAlive">
       <template #default="{ Component, route }">
         <keep-alive :include="getCaches">
@@ -53,3 +62,15 @@ provide('reload', reload)
   </section>
   <Footer v-if="footer" />
 </template>
+
+<style scoped>
+.dashboard-loading-fade-enter-active,
+.dashboard-loading-fade-leave-active {
+  transition: opacity 0.16s ease;
+}
+
+.dashboard-loading-fade-enter-from,
+.dashboard-loading-fade-leave-to {
+  opacity: 0;
+}
+</style>
