@@ -15,12 +15,26 @@ describe("product listing model", () => {
   it("exposes calm storefront filters for the product listing page", () => {
     expect(productListingFilters.map((filter) => filter.value)).toEqual([
       "all",
+      "sofa",
+      "lounge-chair",
+      "ottoman",
+      "dining-table",
+      "dining-chair",
+      "coffee-table",
+      "bed",
       "nightstand",
       "bed-bench",
       "dresser",
+      "wardrobe",
       "vanity",
       "desk",
       "round-table",
+      "side-table",
+      "media-console",
+      "sideboard",
+      "bar-stool",
+      "lighting",
+      "rug",
       "single-sofa",
       "chair",
     ]);
@@ -175,6 +189,47 @@ describe("product listing model", () => {
     expect(inferListingType({ category: "斗柜", name: "六斗柜" })).toBe("dresser");
     expect(inferListingType({ name: "圆桌" })).toBe("round-table");
     expect(inferListingType({ name: "单人座沙发" })).toBe("single-sofa");
+  });
+
+  it("maps every current ERP-aligned mall category into a storefront product type", () => {
+    const currentCategories = [
+      ["Sofas", "Arc Boucle Curved Sofa", "sofa"],
+      ["Lounge Chairs", "Stone Barrel Lounge Chair", "lounge-chair"],
+      ["Ottomans", "Pebble Upholstered Ottoman", "ottoman"],
+      ["Dining Tables", "Natural Oak Dining Table", "dining-table"],
+      ["Dining Chairs", "Natural Ash Dining Chair", "dining-chair"],
+      ["Coffee Tables", "Smoked Glass Coffee Table", "coffee-table"],
+      ["Beds", "Upholstered Shelter Bed", "bed"],
+      ["Desks", "Walnut Writing Desk", "desk"],
+      ["Rugs", "Handwoven Beige Wool Rug", "rug"],
+      ["Bedroom Storage", "Oak Two-Drawer Nightstand", "nightstand"],
+      ["Bedroom Storage", "Walnut Six-Drawer Dresser", "dresser"],
+      ["Wardrobes", "Natural Oak Wardrobe", "wardrobe"],
+      ["Side Tables", "Walnut Drum Side Table", "side-table"],
+      ["Lighting", "Brass Drum Pendant", "lighting"],
+      ["Media Storage", "Fluted Oak Media Console", "media-console"],
+      ["Media Storage", "Walnut Four-Door Sideboard", "sideboard"],
+      ["Bar Stools", "Ivory Upholstered Bar Stool", "bar-stool"],
+    ];
+
+    currentCategories.forEach(([productType, name, expected]) => {
+      expect(inferListingType({ productType, name })).toBe(expected);
+    });
+  });
+
+  it("maps the existing room navigation to the available ERP-aligned categories", () => {
+    const products = [
+      { id: 1, productType: "Sofas", name: "Sofa" },
+      { id: 2, productType: "Dining Tables", name: "Dining Table" },
+      { id: 3, productType: "Beds", name: "Bed" },
+      { id: 4, productType: "Lighting", name: "Lamp" },
+      { id: 5, productType: "Rugs", name: "Rug" },
+    ];
+
+    expect(buildProductListingModel(products, resolveProductListingQuery("?room=living")).products.map((item) => item.id)).toEqual([1, 4, 5]);
+    expect(buildProductListingModel(products, resolveProductListingQuery("?room=dining")).products.map((item) => item.id)).toEqual([2, 4, 5]);
+    expect(buildProductListingModel(products, resolveProductListingQuery("?room=bedroom")).products.map((item) => item.id)).toEqual([3, 4, 5]);
+    expect(buildProductListingModel(products, resolveProductListingQuery("?category=decor")).products.map((item) => item.id)).toEqual([4, 5]);
   });
 
   it("supplements missing company product types when live catalog data is incomplete", () => {

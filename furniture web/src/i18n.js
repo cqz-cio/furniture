@@ -6893,16 +6893,31 @@ const taskFourModelUiMessages = {
   "en": {
     "productList": {
       "typeOptions": {
+        "sofa": "Sofas",
+        "loungeChair": "Lounge Chairs",
+        "ottoman": "Ottomans",
+        "diningTable": "Dining Tables",
+        "diningChair": "Dining Chairs",
+        "coffeeTable": "Coffee Tables",
+        "bed": "Beds",
         "nightstand": "Nightstands",
         "bedBench": "Benches",
         "dresser": "Dressers",
+        "wardrobe": "Wardrobes",
         "vanity": "Vanities",
         "desk": "Desks",
         "roundTable": "Round Tables",
+        "sideTable": "Side Tables",
+        "mediaConsole": "Media Consoles",
+        "sideboard": "Sideboards",
+        "barStool": "Bar Stools",
+        "lighting": "Lighting",
+        "rug": "Rugs",
         "singleSofa": "Single Sofas",
         "chair": "Chairs",
         "storage": "Storage Cabinets",
         "deskTable": "Desks & Tables",
+        "table": "Coffee & Side Tables",
         "seating": "Seating & Benches",
         "bedroomSet": "Bedroom Sets",
         "storageSet": "Bedroom Storage",
@@ -6912,7 +6927,9 @@ const taskFourModelUiMessages = {
         "guestBedroom": "Guest Bedroom",
         "room": "Complete Rooms",
         "study": "Study Rooms",
-        "living": "Living Corners"
+        "living": "Living Corners",
+        "dining": "Dining Furniture",
+        "decor": "Rugs & Lighting"
       },
       "facetGroups": {
         "material": "Material",
@@ -6924,7 +6941,9 @@ const taskFourModelUiMessages = {
         "material": {
           "all": "All materials",
           "fabric": "Fabric",
+          "leather": "Leather",
           "wood": "Wood",
+          "glass": "Glass",
           "stone": "Stone",
           "metal": "Metal"
         },
@@ -6932,7 +6951,9 @@ const taskFourModelUiMessages = {
           "all": "All colors",
           "natural": "Natural",
           "brown": "Brown",
-          "light": "Light"
+          "light": "Light",
+          "black": "Black",
+          "grey": "Grey"
         },
         "availability": {
           "all": "All availability",
@@ -7133,16 +7154,31 @@ const taskFourModelUiMessages = {
   "zh-CN": {
     "productList": {
       "typeOptions": {
+        "sofa": "\u6c99\u53d1",
+        "loungeChair": "\u4f11\u95f2\u6905",
+        "ottoman": "\u811a\u51f3",
+        "diningTable": "\u9910\u684c",
+        "diningChair": "\u9910\u6905",
+        "coffeeTable": "\u8336\u51e0",
+        "bed": "\u5e8a",
         "nightstand": "\u5e8a\u5934\u67dc",
         "bedBench": "\u5e8a\u5c3e\u51f3",
         "dresser": "\u6597\u67dc",
+        "wardrobe": "\u8863\u67dc",
         "vanity": "\u68b3\u5986\u53f0",
         "desk": "\u4e66\u684c",
         "roundTable": "\u5706\u684c",
+        "sideTable": "\u8fb9\u684c",
+        "mediaConsole": "\u7535\u89c6\u67dc",
+        "sideboard": "\u9910\u8fb9\u67dc",
+        "barStool": "\u5427\u6905",
+        "lighting": "\u706f\u5177",
+        "rug": "\u5730\u6bef",
         "singleSofa": "\u5355\u4eba\u6c99\u53d1",
         "chair": "\u6905\u5b50",
         "storage": "\u50a8\u7269\u67dc",
         "deskTable": "\u684c\u53f0\u4e0e\u4e66\u684c",
+        "table": "\u8336\u51e0\u4e0e\u8fb9\u684c",
         "seating": "\u5ea7\u6905\u4e0e\u957f\u51f3",
         "bedroomSet": "\u5367\u5ba4\u5957\u7ec4",
         "storageSet": "\u5367\u5ba4\u6536\u7eb3",
@@ -7152,7 +7188,9 @@ const taskFourModelUiMessages = {
         "guestBedroom": "\u5ba2\u5367",
         "room": "\u5b8c\u6574\u7a7a\u95f4",
         "study": "\u4e66\u623f\u7a7a\u95f4",
-        "living": "\u5ba2\u5385\u89d2\u843d"
+        "living": "\u5ba2\u5385\u89d2\u843d",
+        "dining": "\u9910\u5385\u5bb6\u5177",
+        "decor": "\u5730\u6bef\u4e0e\u706f\u5177"
       },
       "facetGroups": {
         "material": "\u6750\u8d28",
@@ -7164,7 +7202,9 @@ const taskFourModelUiMessages = {
         "material": {
           "all": "\u5168\u90e8\u6750\u8d28",
           "fabric": "\u9762\u6599",
+          "leather": "\u76ae\u9769",
           "wood": "\u6728\u8d28",
+          "glass": "\u73bb\u7483",
           "stone": "\u77f3\u6750",
           "metal": "\u91d1\u5c5e"
         },
@@ -7172,7 +7212,9 @@ const taskFourModelUiMessages = {
           "all": "\u5168\u90e8\u989c\u8272",
           "natural": "\u539f\u6728\u8272",
           "brown": "\u68d5\u8272",
-          "light": "\u6d45\u8272"
+          "light": "\u6d45\u8272",
+          "black": "\u9ed1\u8272",
+          "grey": "\u7070\u8272"
         },
         "availability": {
           "all": "\u5168\u90e8\u73b0\u8d27\u60c5\u51b5",
@@ -7373,16 +7415,31 @@ const taskFourModelUiMessages = {
   "fr": {
     "productList": {
       "typeOptions": {
+        "sofa": "Canapes",
+        "loungeChair": "Fauteuils lounge",
+        "ottoman": "Poufs",
+        "diningTable": "Tables de repas",
+        "diningChair": "Chaises de repas",
+        "coffeeTable": "Tables basses",
+        "bed": "Lits",
         "nightstand": "Tables de chevet",
         "bedBench": "Bancs",
         "dresser": "Commodes",
+        "wardrobe": "Armoires",
         "vanity": "Coiffeuses",
         "desk": "Bureaux",
         "roundTable": "Tables rondes",
+        "sideTable": "Tables d'appoint",
+        "mediaConsole": "Meubles media",
+        "sideboard": "Buffets",
+        "barStool": "Tabourets de bar",
+        "lighting": "Luminaires",
+        "rug": "Tapis",
         "singleSofa": "Canapes individuels",
         "chair": "Chaises",
         "storage": "Meubles de rangement",
         "deskTable": "Bureaux et tables",
+        "table": "Tables basses et d'appoint",
         "seating": "Assises et bancs",
         "bedroomSet": "Ensembles chambre",
         "storageSet": "Rangement chambre",
@@ -7392,7 +7449,9 @@ const taskFourModelUiMessages = {
         "guestBedroom": "Chambre d'amis",
         "room": "Pieces completes",
         "study": "Espaces bureau",
-        "living": "Coins salon"
+        "living": "Coins salon",
+        "dining": "Mobilier de salle a manger",
+        "decor": "Tapis et luminaires"
       },
       "facetGroups": {
         "material": "Matiere",
@@ -7404,7 +7463,9 @@ const taskFourModelUiMessages = {
         "material": {
           "all": "Toutes les matieres",
           "fabric": "Tissu",
+          "leather": "Cuir",
           "wood": "Bois",
+          "glass": "Verre",
           "stone": "Pierre",
           "metal": "Metal"
         },
@@ -7412,7 +7473,9 @@ const taskFourModelUiMessages = {
           "all": "Toutes les couleurs",
           "natural": "Naturel",
           "brown": "Brun",
-          "light": "Clair"
+          "light": "Clair",
+          "black": "Noir",
+          "grey": "Gris"
         },
         "availability": {
           "all": "Toutes les disponibilites",

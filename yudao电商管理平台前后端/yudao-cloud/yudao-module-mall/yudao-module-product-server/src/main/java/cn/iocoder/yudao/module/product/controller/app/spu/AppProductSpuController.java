@@ -8,9 +8,11 @@ import cn.iocoder.yudao.module.erp.api.integration.MallErpProductApi;
 import cn.iocoder.yudao.module.product.controller.app.spu.vo.AppProductSpuDetailRespVO;
 import cn.iocoder.yudao.module.product.controller.app.spu.vo.AppProductSpuPageReqVO;
 import cn.iocoder.yudao.module.product.controller.app.spu.vo.AppProductSpuRespVO;
+import cn.iocoder.yudao.module.product.dal.dataobject.category.ProductCategoryDO;
 import cn.iocoder.yudao.module.product.dal.dataobject.sku.ProductSkuDO;
 import cn.iocoder.yudao.module.product.dal.dataobject.spu.ProductSpuDO;
 import cn.iocoder.yudao.module.product.enums.spu.ProductSpuStatusEnum;
+import cn.iocoder.yudao.module.product.service.category.ProductCategoryService;
 import cn.iocoder.yudao.module.product.service.history.ProductBrowseHistoryService;
 import cn.iocoder.yudao.module.product.service.sku.ProductSkuService;
 import cn.iocoder.yudao.module.product.service.spu.ProductSpuService;
@@ -53,6 +55,8 @@ public class AppProductSpuController {
     @Resource
     private ProductBrowseHistoryService productBrowseHistoryService;
     @Resource
+    private ProductCategoryService productCategoryService;
+    @Resource
     private MallErpProductApi mallErpProductApi;
 
     @GetMapping("/list-by-ids")
@@ -70,6 +74,7 @@ public class AppProductSpuController {
         // 拼接返回
         list.forEach(spu -> spu.setSalesCount(spu.getSalesCount() + spu.getVirtualSalesCount()));
         List<AppProductSpuRespVO> voList = BeanUtils.toBean(list, AppProductSpuRespVO.class);
+        overlayCategoryNames(voList);
         return success(voList);
     }
 
@@ -97,6 +102,7 @@ public class AppProductSpuController {
         // 拼接返回
         pageResult.getList().forEach(spu -> spu.setSalesCount(spu.getSalesCount() + spu.getVirtualSalesCount()));
         PageResult<AppProductSpuRespVO> voPageResult = BeanUtils.toBean(pageResult, AppProductSpuRespVO.class);
+        overlayCategoryNames(voPageResult.getList());
         return success(voPageResult);
     }
 
@@ -129,7 +135,19 @@ public class AppProductSpuController {
         spu.setSalesCount(spu.getSalesCount() + spu.getVirtualSalesCount());
         AppProductSpuDetailRespVO spuVO = BeanUtils.toBean(spu, AppProductSpuDetailRespVO.class)
                 .setSkus(BeanUtils.toBean(skus, AppProductSpuDetailRespVO.Sku.class));
+        ProductCategoryDO category = productCategoryService.getCategory(spu.getCategoryId());
+        spuVO.setCategoryName(category == null ? null : category.getName());
         return success(spuVO);
+    }
+
+    private void overlayCategoryNames(List<AppProductSpuRespVO> spus) {
+        if (CollUtil.isEmpty(spus)) {
+            return;
+        }
+        Map<Long, String> categoryNames = productCategoryService.getEnableCategoryList(
+                        spus.stream().map(AppProductSpuRespVO::getCategoryId).distinct().collect(Collectors.toList()))
+                .stream().collect(Collectors.toMap(ProductCategoryDO::getId, ProductCategoryDO::getName));
+        spus.forEach(spu -> spu.setCategoryName(categoryNames.get(spu.getCategoryId())));
     }
 
     private void overlayErpStock(List<ProductSpuDO> spus) {

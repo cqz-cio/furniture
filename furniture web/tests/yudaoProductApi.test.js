@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { getProductDetail, getProductPage } from "../src/services/yudaoProductApi.js";
+import { getAllProducts, getProductDetail, getProductPage } from "../src/services/yudaoProductApi.js";
 
 const API_BASE = "http://127.0.0.1:48080/app-api";
 
@@ -81,5 +81,20 @@ describe("Yudao product API module", () => {
       name: "Belgian linen sofa",
       price: 2499,
     });
+  });
+
+  it("loads every backend page instead of silently stopping at the first 24 products", async () => {
+    fetchMock
+      .mockResolvedValueOnce(mockYudaoResponse({ list: [{ ...productRow, id: 101 }, { ...productRow, id: 102 }], total: 3 }))
+      .mockResolvedValueOnce(mockYudaoResponse({ list: [{ ...productRow, id: 103 }], total: 3 }));
+
+    const page = await getAllProducts({ pageSize: 2 }, { storage });
+
+    expect(page.list.map((product) => product.id)).toEqual([101, 102, 103]);
+    expect(page.total).toBe(3);
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+      `${API_BASE}/product/spu/page?pageNo=1&pageSize=2`,
+      `${API_BASE}/product/spu/page?pageNo=2&pageSize=2`,
+    ]);
   });
 });

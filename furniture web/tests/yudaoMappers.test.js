@@ -30,6 +30,28 @@ describe("yudao mapper module", () => {
     });
   });
 
+  it("preserves backend category metadata for storefront navigation matching", () => {
+    expect(
+      mapSpuToProduct({
+        id: 42,
+        name: "Natural Oak Dining Table",
+        categoryId: 3,
+        categoryName: "Dining Tables",
+        recommendNew: true,
+        recommendBest: true,
+        skus: [{ id: 4201, price: 459900, stock: 12 }],
+      }),
+    ).toMatchObject({
+      categoryId: 3,
+      categoryName: "Dining Tables",
+      productType: "Dining Tables",
+      material: "wood",
+      color: "natural",
+      isNew: true,
+      isBestSeller: true,
+    });
+  });
+
   it("maps favorite page records into wishlist item rows", () => {
     expect(
       mapFavoritePageToItems({

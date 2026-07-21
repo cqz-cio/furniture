@@ -22,6 +22,15 @@ public class AppProductSpuRespVO {
     @Schema(description = "分类编号", requiredMode = Schema.RequiredMode.REQUIRED)
     private Long categoryId;
 
+    @Schema(description = "分类名称", requiredMode = Schema.RequiredMode.REQUIRED)
+    private String categoryName;
+
+    @Schema(description = "是否新品推荐", requiredMode = Schema.RequiredMode.REQUIRED)
+    private Boolean recommendNew;
+
+    @Schema(description = "是否精品推荐", requiredMode = Schema.RequiredMode.REQUIRED)
+    private Boolean recommendBest;
+
     @Schema(description = "商品封面图", requiredMode = Schema.RequiredMode.REQUIRED)
     private String picUrl;
 

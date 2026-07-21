@@ -39,6 +39,10 @@ public class ProductSpuRespDTO {
      */
     private Long categoryId;
     /**
+     * 商品分类名称
+     */
+    private String categoryName;
+    /**
      * 商品封面图
      */
     private String picUrl;

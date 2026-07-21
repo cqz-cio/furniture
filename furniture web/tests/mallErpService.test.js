@@ -5,6 +5,7 @@ const root = new URL(
   "../../yudao电商管理平台前后端/yudao-cloud/yudao-module-erp/yudao-module-erp-server/src/main/java/cn/iocoder/yudao/module/erp/",
   import.meta.url,
 );
+const repositoryRoot = new URL("../../", import.meta.url);
 
 const file = (path) => new URL(path, root);
 
@@ -18,7 +19,24 @@ describe("mall ERP product synchronization service", () => {
     expect(service).toContain("productSpuApi.getSpu(mallSpuId).getCheckedData()");
     expect(service).toContain("mappingMapper.selectByMallSkuId(mallSkuId)");
     expect(service).toContain("erpStockMapper.selectSumByProductId");
+    expect(service).toContain("resolveErpCategory(spu)");
+    expect(service).toContain('"MALL_CATEGORY_" + spu.getCategoryId()');
     expect(service).not.toMatch(/getName\(\).*select|select.*getName\(\)/);
+  });
+
+  it("exposes mall category names to both storefront and ERP synchronization", () => {
+    const controller = readFileSync(new URL(
+      "yudao电商管理平台前后端/yudao-cloud/yudao-module-mall/yudao-module-product-server/src/main/java/cn/iocoder/yudao/module/product/controller/app/spu/AppProductSpuController.java",
+      repositoryRoot,
+    ), "utf8");
+    const dto = readFileSync(new URL(
+      "yudao电商管理平台前后端/yudao-cloud/yudao-module-mall/yudao-module-product-api/src/main/java/cn/iocoder/yudao/module/product/api/spu/dto/ProductSpuRespDTO.java",
+      repositoryRoot,
+    ), "utf8");
+
+    expect(controller).toContain("overlayCategoryNames");
+    expect(controller).toContain("setCategoryName");
+    expect(dto).toContain("private String categoryName;");
   });
 
   it("defines mapping and sanitized sync-log persistence", () => {

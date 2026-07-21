@@ -14,6 +14,27 @@ export const getProductPage = async (params = {}, options = {}) => {
   };
 };
 
+export const getAllProducts = async (params = {}, options = {}) => {
+  const requestedPageSize = Number(params.pageSize || 100);
+  const pageSize = Math.min(100, Math.max(1, Number.isFinite(requestedPageSize) ? requestedPageSize : 100));
+  const baseParams = { ...params };
+  delete baseParams.pageNo;
+  delete baseParams.pageSize;
+
+  const list = [];
+  let pageNo = 1;
+  let total = 0;
+  do {
+    const page = await getProductPage({ ...baseParams, pageNo, pageSize }, options);
+    list.push(...page.list);
+    total = page.total;
+    if (page.list.length === 0) break;
+    pageNo += 1;
+  } while (list.length < total);
+
+  return { list, total };
+};
+
 export const getProductDetail = async (id, options = {}) => {
   const data = await requestYudao(`/product/spu/get-detail?id=${encodeURIComponent(id)}`, options);
   return mapSpuToProduct(data);
