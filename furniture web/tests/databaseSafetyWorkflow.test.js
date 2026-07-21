@@ -22,18 +22,34 @@ describe("safe database deployment workflow", () => {
     );
     expect(existsSync(directory)).toBe(true);
     const files = readdirSync(directory).filter((name) => name.endsWith(".sql")).sort();
-    const expectedVersions = Array.from({ length: 24 }, (_, index) => index + 1);
+    const expectedVersions = Array.from({ length: 25 }, (_, index) => index + 1);
     expect(files).toHaveLength(expectedVersions.length);
     expect(files[0]).toMatch(/^V001__/);
     expect(files.slice(-3)).toEqual([
-      "V022__trade_fulfillment_admin_permissions.sql",
       "V023__trade_fulfillment_legacy_migration_fact.sql",
       "V024__normalize_dashboard_route_path.sql",
+      "V025__expose_oakved_mail_management.sql",
     ]);
-    expect(files.at(-1)).toMatch(/^V024__/);
+    expect(files.at(-1)).toMatch(/^V025__/);
     expect(files.map((name) => Number(name.slice(1, 4)))).toEqual(
       expectedVersions,
     );
+  });
+
+  it("isolates Oakved mail routes in a dedicated tenant package", () => {
+    const migration = read(
+      "../../yudao电商管理平台前后端/yudao-cloud/sql/mysql/migrations/V025__expose_oakved_mail_management.sql",
+    );
+
+    expect(migration).toContain("oakved:tenant-121:mail-management");
+    expect(migration).toContain("INSERT INTO `system_tenant_package`");
+    expect(migration).toContain("UPDATE `system_tenant`");
+    expect(migration).toContain("INSERT INTO `system_role_menu`");
+    expect(migration).toContain("system/mail/account/index");
+    expect(migration).toContain("system/mail/template/index");
+    expect(migration).toContain("system/mail/log/index");
+    expect(migration).toContain("JSON_ARRAY_APPEND");
+    expect(migration).toContain("JSON_TABLE");
   });
 
   it("generates one complete baseline with catalog and ERP demo data", () => {
