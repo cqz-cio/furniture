@@ -6,6 +6,11 @@ const fallbackGallery = [
   { label: "Scale", kind: "Dimension guide", tone: "line" },
 ];
 
+const MAX_JABO_GALLERY_IMAGES = 9;
+const JABO_IMAGE_PATTERN = /\/admin-api\/infra\/file\/\d+\/get\/j\/(\d{2})\/\d{2}\.(?:jpe?g|png|webp)(?:[?#].*)?$/i;
+
+const getJaboSourceFolder = (url = "") => String(url).match(JABO_IMAGE_PATTERN)?.[1] || "";
+
 const stripHtml = (value = "") =>
   String(value)
     .replace(/<br\s*\/?>/gi, "\n")
@@ -23,9 +28,16 @@ const normalizeGallery = (product = {}) => {
     ),
   ];
 
-  if (!urls.length) return fallbackGallery.map((item) => ({ ...item }));
+  const jaboSourceFolder = urls.map(getJaboSourceFolder).find(Boolean);
+  const normalizedUrls = jaboSourceFolder
+    ? urls
+        .filter((url) => getJaboSourceFolder(url) === jaboSourceFolder)
+        .slice(0, MAX_JABO_GALLERY_IMAGES)
+    : urls;
 
-  return urls.map((src, index) => {
+  if (!normalizedUrls.length) return fallbackGallery.map((item) => ({ ...item }));
+
+  return normalizedUrls.map((src, index) => {
     const preset = fallbackGallery[index % fallbackGallery.length];
     return {
       ...preset,

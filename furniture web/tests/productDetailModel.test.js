@@ -95,6 +95,25 @@ describe("product detail model", () => {
     expect(model.gallery[16]).toMatchObject({ src: "https://cdn.example/view-17.jpg", label: "View 17" });
   });
 
+  it("keeps exactly nine unique images from the matching Jabo product folder", () => {
+    const jaboUrl = (folder, image) =>
+      `http://127.0.0.1:48080/admin-api/infra/file/4/get/j/${folder}/${String(image).padStart(2, "0")}.jpg`;
+    const model = buildProductDetailModel({
+      name: "Sand Wraparound Sofa",
+      cover: jaboUrl("02", 1),
+      gallery: [
+        ...Array.from({ length: 16 }, (_, index) => jaboUrl("02", index + 2)),
+        jaboUrl("02", 2),
+        jaboUrl("05", 2),
+      ],
+    });
+
+    expect(model.gallery).toHaveLength(9);
+    expect(model.gallery.map((item) => item.src)).toEqual(
+      Array.from({ length: 9 }, (_, index) => jaboUrl("02", index + 1)),
+    );
+  });
+
   it("uses category-specific detail templates for other furniture types", () => {
     const cases = [
       {
