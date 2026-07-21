@@ -106,6 +106,9 @@ const requiredFurnitureLiteConfigTokens = [
   '/member/gift-registry',
   '/member/trade-application',
   '/system/role',
+  '/system/messages/mail/mail-account',
+  '/system/messages/mail/mail-template',
+  '/system/messages/mail/mail-log',
   '/infra/file/file-config',
   'deniedFixedRoutePrefixes',
   '/crm'
