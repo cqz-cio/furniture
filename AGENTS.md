@@ -2,11 +2,13 @@
 
 These rules apply to every task and conversation in this repository:
 
-- Use `codex/agent-rag` as the default working branch.
-- Commit completed, verified changes to `codex/agent-rag`.
-- When the user asks to push, or when pushing is the established final step of an explicitly requested implementation, push to `origin/codex/agent-rag`.
-- Do not propose, merge into, push to, check out, reset, or otherwise modify `main` unless the user explicitly requests that exact action.
-- Do not ask whether work should be pushed to `main` during normal task completion.
+- Treat `main` as the stable integration branch. Do not use `codex/agent-rag` or any other long-lived branch as the default working branch.
+- For each independent change, start from the current local `main` and create a fresh, task-specific branch named `codex/<short-task-name>`.
+- Keep one coherent change set per task branch. Do not reuse an old task branch for unrelated work.
+- Run the relevant tests, builds, and runtime checks on the task branch before integration.
+- After the task branch is verified, merge it into the local `main` as the normal completion step. Check both worktrees first and stop if unrelated changes or merge conflicts would be overwritten.
+- Direct work on `main` is allowed when the user explicitly asks to work directly on `main` or explicitly chooses the quicker direct-edit workflow for that task.
+- Do not push any branch or `main` unless the user asks, or pushing is already an explicitly established final step for the task.
 - Do not create a pull request unless the user explicitly requests one.
 - Preserve unrelated user changes and untracked files.
 
