@@ -7,6 +7,14 @@ const fenToYuan = (value) => {
 
 const firstSku = (spu) => (Array.isArray(spu.skus) && spu.skus.length > 0 ? spu.skus[0] : {});
 
+const uniqueImageUrls = (urls = []) => [
+  ...new Set(
+    urls
+      .map((url) => (typeof url === "string" ? url.trim() : ""))
+      .filter(Boolean),
+  ),
+];
+
 const inferMaterial = (text) => {
   if (/leather|皮革|真皮/i.test(text)) return "leather";
   if (/wool|linen|fabric|boucl[eé]|upholster|织物|布艺|羊毛/i.test(text)) return "fabric";
@@ -27,8 +35,9 @@ const inferColor = (text) => {
 
 export const mapSpuToProduct = (spu) => {
   const sku = firstSku(spu);
-  const gallery = Array.isArray(spu.sliderPicUrls) ? spu.sliderPicUrls.filter(Boolean) : [];
-  const cover = spu.picUrl || sku.picUrl || gallery[0] || "";
+  const sliderImages = uniqueImageUrls(Array.isArray(spu.sliderPicUrls) ? spu.sliderPicUrls : []);
+  const cover = uniqueImageUrls([spu.picUrl, sku.picUrl, sliderImages[0]])[0] || "";
+  const gallery = sliderImages.filter((url) => url !== cover);
   const categoryName = spu.categoryName || "";
   const searchableText = `${spu.name || ""} ${spu.keyword || ""} ${spu.introduction || ""} ${categoryName}`;
 

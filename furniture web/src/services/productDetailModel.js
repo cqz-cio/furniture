@@ -15,12 +15,25 @@ const stripHtml = (value = "") =>
     .trim();
 
 const normalizeGallery = (product = {}) => {
-  const urls = [product.cover, ...(Array.isArray(product.gallery) ? product.gallery : [])].filter(Boolean);
-  const images = urls.map((src, index) => ({
-    ...fallbackGallery[index % fallbackGallery.length],
-    src,
-  }));
-  return [...images, ...fallbackGallery.slice(images.length)].slice(0, 5);
+  const urls = [
+    ...new Set(
+      [product.cover, ...(Array.isArray(product.gallery) ? product.gallery : [])]
+        .map((url) => (typeof url === "string" ? url.trim() : ""))
+        .filter(Boolean),
+    ),
+  ];
+
+  if (!urls.length) return fallbackGallery.map((item) => ({ ...item }));
+
+  return urls.map((src, index) => {
+    const preset = fallbackGallery[index % fallbackGallery.length];
+    return {
+      ...preset,
+      label: index < fallbackGallery.length ? preset.label : `View ${index + 1}`,
+      kind: index < fallbackGallery.length ? preset.kind : `Product view ${index + 1}`,
+      src,
+    };
+  });
 };
 
 const swatches = {
