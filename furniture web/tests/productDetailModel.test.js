@@ -71,6 +71,17 @@ describe("product detail model", () => {
     expect(model.relatedLinks.every((link) => link.href.startsWith("/"))).toBe(true);
   });
 
+  it("uses safe defaults while the backend product detail is still loading", () => {
+    const model = buildProductDetailModel(null);
+
+    expect(model).toMatchObject({
+      name: "Luxury Furniture",
+      productType: "furniture",
+      source: "demo",
+    });
+    expect(model.gallery).toHaveLength(5);
+  });
+
   it("uses category-specific detail templates for other furniture types", () => {
     const cases = [
       {
