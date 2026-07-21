@@ -25,7 +25,8 @@ function New-RuntimeFixture {
 
     [pscustomobject]@{
         Target = [pscustomobject]@{
-            Branch = 'feature/runtime'; Commit = ('a' * 40); Dirty = $false
+            Mode = 'snapshot'; Branch = 'feature/runtime'; Commit = ('a' * 40); Dirty = $false
+            SourceDirty = $false; SourceWorktree = 'D:\code'
             Worktree = $Root; RuntimeId = 'feature_runtime_12345678'
         }
         Layout = [pscustomobject]@{
@@ -335,6 +336,26 @@ Describe 'Start-OakvedRuntime orchestration' {
         $capture.Events[-1] | Should Be 'manifest'
         ($capture.Events | Where-Object { $_ -like 'health:*' }).Count | Should BeGreaterThan 2
     }
+
+    It 'records immutable snapshot provenance separately from the source worktree' {
+        $fixture = New-RuntimeFixture -Root (Join-Path $TestDrive 'snapshot-manifest')
+        $fixture.Target.SourceDirty = $true
+        $capture = [pscustomobject]@{ Specs = @(); NextPid = 100; Manifest = $null }
+        $providers = New-HealthyRuntimeProviders -Capture $capture
+
+        Start-OakvedRuntime -Target $fixture.Target -Layout $fixture.Layout -RuntimeRoot (Join-Path $TestDrive 'snapshot-manifest-state') -MySqlRootPassword 'secret' `
+            -DatabaseGateProvider ({ $fixture.Database }.GetNewClosure()) -BuildProvider { param($spec) } `
+            -ProcessStarter $providers.ProcessStarter -ProcessProvider $providers.ProcessProvider `
+            -ProcessTreeProvider $providers.ProcessTreeProvider -ListenerProvider $providers.ListenerProvider `
+            -HttpProvider $providers.HttpProvider `
+            -ManifestWriter { param($manifest, $path) $capture.Manifest = $manifest }.GetNewClosure() | Out-Null
+
+        $capture.Manifest.Mode | Should Be 'snapshot'
+        $capture.Manifest.Dirty | Should Be $false
+        $capture.Manifest.SourceDirty | Should Be $true
+        $capture.Manifest.SourceWorktree | Should Be 'D:\code'
+        $capture.Manifest.Worktree | Should Be $fixture.Target.Worktree
+    }
 }
 
 Describe 'Get-OakvedRuntimeStatus' {
@@ -395,6 +416,35 @@ Describe 'Get-OakvedRuntimeStatus' {
         $status.Health.Backend | Should Be $true
         $status.Health.Admin | Should Be $true
         $status.Health.Storefront | Should Be $true
+    }
+
+    It 'reports an advanced branch reference as an available update without making the running snapshot unhealthy' {
+        $fixture = New-RuntimeFixture -Root (Join-Path $TestDrive 'update-available')
+        $fixture.Target | Add-Member -NotePropertyName RefCommit -NotePropertyValue ('b' * 40)
+        $processes = @(
+            [pscustomobject]@{ Pid = 101; StartTime = '2026-07-17T01:00:00.0000000Z'; Role = 'backend'; Port = 48080 },
+            [pscustomobject]@{ Pid = 102; StartTime = '2026-07-17T01:00:00.0000000Z'; Role = 'admin'; Port = 80 },
+            [pscustomobject]@{ Pid = 103; StartTime = '2026-07-17T01:00:00.0000000Z'; Role = 'storefront'; Port = 5173 }
+        )
+        $manifest = [pscustomobject]@{
+            Mode = 'snapshot'; RuntimeId = $fixture.Target.RuntimeId; Branch = $fixture.Target.Branch; Commit = $fixture.Target.Commit
+            Dirty = $false; SourceDirty = $false; SourceWorktree = 'D:\code'; Worktree = $fixture.Target.Worktree
+            Database = $fixture.Database; CatalogVersion = '020'; Ports = @(80, 5173, 48080); Processes = $processes
+        }
+
+        $status = Get-OakvedRuntimeStatus -Manifest $manifest -Target $fixture.Target `
+            -DatabaseVersionProvider { param($database) '020' } `
+            -ProcessProvider { param($id) [pscustomobject]@{ Id = $id; StartTime = [datetime]'2026-07-17T01:00:00Z' } } `
+            -ProcessTreeProvider { param($id) @($id, ($id + 1000)) } `
+            -ListenerProvider { @(
+                    [pscustomobject]@{ Port = 48080; Pid = 1101 }, [pscustomobject]@{ Port = 80; Pid = 1102 }, [pscustomobject]@{ Port = 5173; Pid = 1103 }
+                ) } `
+            -HttpProvider { param($url) if ($url -match 'get-id-by-name') { [pscustomobject]@{ StatusCode = 200; Content = '{"code":0,"data":1}' } } else { [pscustomobject]@{ StatusCode = 200; Content = 'ok' } } }
+
+        $status.Healthy | Should Be $true
+        $status.UpdateAvailable | Should Be $true
+        $status.CurrentBranchCommit | Should Be ('b' * 40)
+        $status.Commit | Should Be ('a' * 40)
     }
 
     It 'fails closed when live database-ledger and resolved-target proof are not supplied' {

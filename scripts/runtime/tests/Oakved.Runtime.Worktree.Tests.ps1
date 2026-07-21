@@ -69,7 +69,7 @@ Describe 'Oakved.Runtime public surface' {
     It 'exports exactly the cumulative Task 1 Task 2 and Task 3 functions' {
         $module = Get-Module Oakved.Runtime
         $actual = @($module.ExportedFunctions.Keys | Sort-Object) -join ','
-        $actual | Should Be 'Assert-OakvedPortsAvailable,Compare-OakvedMigrationLedger,Get-OakvedBuildFingerprint,Get-OakvedDatabaseName,Get-OakvedMigrationCatalog,Get-OakvedProjectLayout,Get-OakvedRuntimeId,Get-OakvedRuntimeStatus,Get-OakvedWorktreeInventory,Invoke-OakvedDatabaseGate,Resolve-OakvedTarget,Start-OakvedRuntime,Stop-OakvedRuntime,Write-OakvedManifest'
+        $actual | Should Be 'Assert-OakvedPortsAvailable,Compare-OakvedMigrationLedger,Get-OakvedBranchCommit,Get-OakvedBuildFingerprint,Get-OakvedDatabaseName,Get-OakvedMigrationCatalog,Get-OakvedProjectLayout,Get-OakvedRuntimeId,Get-OakvedRuntimeStatus,Get-OakvedWorktreeInventory,Invoke-OakvedDatabaseGate,New-OakvedRuntimeSnapshot,Resolve-OakvedManifestTarget,Resolve-OakvedTarget,Start-OakvedRuntime,Stop-OakvedRuntime,Write-OakvedManifest'
     }
 }
 
@@ -106,19 +106,21 @@ Describe 'Get-OakvedWorktreeInventory' {
     }
 
     It 'accepts an injectable porcelain provider' {
+        $repositoryRoot = Join-Path $TestDrive 'provider repository'
         $provider = {
             param([string]$RepositoryAnchor)
 
             @(
-                'worktree D:\code\.worktrees\provided',
+                "worktree $RepositoryAnchor",
                 'HEAD dddddddddddddddddddddddddddddddddddddddd',
                 'branch refs/heads/provided'
             )
         }
 
-        $inventory = @(Get-OakvedWorktreeInventory -Provider $provider)
+        $inventory = @(Get-OakvedWorktreeInventory -RepositoryRoot $repositoryRoot -Provider $provider)
 
         $inventory.Count | Should Be 1
+        $inventory[0].Worktree | Should Be ([IO.Path]::GetFullPath($repositoryRoot))
         $inventory[0].Branch | Should Be 'provided'
     }
 }
@@ -169,28 +171,37 @@ Describe 'Resolve-OakvedTarget' {
         (@((Get-Command Resolve-OakvedTarget).Parameters.Keys) -contains 'ProjectLayoutProvider') | Should Be $false
     }
 
-    It 'resolves main only from its exact worktree instead of falling back to the repository root' {
+    It 'resolves a branch commit into a detached runtime snapshot instead of occupying the branch worktree' {
         $inventory = @(
             (New-InventoryItem -Worktree 'D:\code' -Branch 'codex/agent-rag' -Commit ('a' * 40)),
             (New-InventoryItem -Worktree 'D:\code\.worktrees\main-runtime' -Branch 'main' -Commit ('b' * 40))
         )
+        $snapshotPath = 'D:\code\.runtime\worktrees\main_0d6e4079-bbbbbbbbbbbb'
 
-        $target = Resolve-OakvedTarget -Branch 'main' -Inventory $inventory -GitStatusProvider $cleanStatus
+        $target = Resolve-OakvedTarget -Branch 'main' -Inventory $inventory -GitStatusProvider $cleanStatus `
+            -RepositoryRoot 'D:\code' -RuntimeRoot 'D:\code\.runtime' `
+            -BranchCommitProvider { param($repositoryRoot, $branch) ('b' * 40) } `
+            -SnapshotProvider { param($branch, $commit, $repositoryRoot, $runtimeRoot) [pscustomobject]@{ Worktree = $snapshotPath; Branch = $null; Commit = $commit; Detached = $true } }.GetNewClosure()
 
-        $target.Worktree | Should Be 'D:\code\.worktrees\main-runtime'
+        $target.Mode | Should Be 'snapshot'
+        $target.Worktree | Should Be $snapshotPath
         $target.Branch | Should Be 'main'
         $target.Commit | Should Be ('b' * 40)
         $target.Dirty | Should Be $false
+        $target.SourceDirty | Should Be $false
+        $target.SourceWorktree | Should Be 'D:\code\.worktrees\main-runtime'
         $target.RuntimeId | Should Match '^main_[0-9a-f]{8}$'
-        $target.BackendStart | Should Be 'D:\code\.worktrees\main-runtime\start-yudao-all-backend.ps1'
+        $target.BackendStart | Should Be (Join-Path $snapshotPath 'start-yudao-all-backend.ps1')
     }
 
-    It 'reports an exact error when the requested branch is missing' {
-        $inventory = @((New-InventoryItem -Worktree 'D:\code' -Branch 'codex/agent-rag'))
+    It 'reports an exact error when the requested branch reference is missing even if no worktree contains it' {
+        $message = Get-CaughtMessage {
+            Resolve-OakvedTarget -Branch 'missing' -Inventory @() -GitStatusProvider $cleanStatus `
+                -RepositoryRoot 'D:\code' -RuntimeRoot 'D:\code\.runtime' `
+                -BranchCommitProvider { param($repositoryRoot, $branch) throw "Branch $branch does not exist." }
+        }
 
-        $message = Get-CaughtMessage { Resolve-OakvedTarget -Branch 'missing' -Inventory $inventory -GitStatusProvider $cleanStatus }
-
-        $message | Should Be 'Branch missing is not checked out in a worktree.'
+        $message | Should Be 'Branch missing does not exist.'
     }
 
     It 'rejects a selected detached worktree with the exact error' {
@@ -201,33 +212,30 @@ Describe 'Resolve-OakvedTarget' {
         $message | Should Be 'Detached worktrees are not supported.'
     }
 
-    It 'rejects ambiguous branch targets with the exact error' {
-        $inventory = @(
-            (New-InventoryItem -Worktree 'D:\code\.worktrees\one' -Branch 'feature/duplicate'),
-            (New-InventoryItem -Worktree 'D:\code\.worktrees\two' -Branch 'feature/duplicate')
-        )
-
-        $message = Get-CaughtMessage { Resolve-OakvedTarget -Branch 'feature/duplicate' -Inventory $inventory -GitStatusProvider $cleanStatus }
-
-        $message | Should Be 'Target must resolve to exactly one worktree.'
-    }
-
-    It 'rejects dirty main with the exact error' {
+    It 'runs the committed branch snapshot while reporting uncommitted source-worktree changes separately' {
         $inventory = @((New-InventoryItem -Worktree 'D:\code\.worktrees\main-runtime' -Branch 'main'))
         $dirtyStatus = { param([string]$Worktree) ' M user-change.txt' }
+        $snapshotPath = 'D:\code\.runtime\worktrees\main_0d6e4079-0123456789ab'
 
-        $message = Get-CaughtMessage { Resolve-OakvedTarget -Branch 'main' -Inventory $inventory -GitStatusProvider $dirtyStatus }
+        $target = Resolve-OakvedTarget -Branch 'main' -Inventory $inventory -GitStatusProvider $dirtyStatus `
+            -RepositoryRoot 'D:\code' -RuntimeRoot 'D:\code\.runtime' `
+            -BranchCommitProvider { param($repositoryRoot, $branch) '0123456789abcdef0123456789abcdef01234567' } `
+            -SnapshotProvider { param($branch, $commit, $repositoryRoot, $runtimeRoot) [pscustomobject]@{ Worktree = $snapshotPath; Branch = $null; Commit = $commit; Detached = $true } }.GetNewClosure()
 
-        $message | Should Be 'main worktree must be clean.'
+        $target.Mode | Should Be 'snapshot'
+        $target.Dirty | Should Be $false
+        $target.SourceDirty | Should Be $true
     }
 
-    It 'allows a dirty feature worktree and reports Dirty true' {
+    It 'keeps explicit worktree selection as live development mode and reports Dirty true' {
         $inventory = @((New-InventoryItem -Worktree 'D:\code\.worktrees\feature' -Branch 'feature/runtime'))
         $dirtyStatus = { param([string]$Worktree) '?? local-notes.txt' }
 
-        $target = Resolve-OakvedTarget -Branch 'feature/runtime' -Inventory $inventory -GitStatusProvider $dirtyStatus
+        $target = Resolve-OakvedTarget -Worktree 'D:\code\.worktrees\feature' -Inventory $inventory -GitStatusProvider $dirtyStatus
 
+        $target.Mode | Should Be 'live-worktree'
         $target.Dirty | Should Be $true
+        $target.SourceDirty | Should Be $true
     }
 
     It 'selects a registered worktree case-insensitively and returns the inventory path' {
@@ -256,6 +264,133 @@ Describe 'Resolve-OakvedTarget' {
         $message = Get-CaughtMessage { Resolve-OakvedTarget -Worktree 'D:feature' -Inventory @() -GitStatusProvider $cleanStatus }
 
         $message | Should Be 'Worktree selector must be a fully qualified path.'
+    }
+}
+
+Describe 'detached runtime snapshots' {
+    $cleanStatus = { param([string]$Worktree) @() }
+
+    Mock Get-OakvedProjectLayout -ModuleName Oakved.Runtime -MockWith {
+        param([string]$Worktree)
+
+        [pscustomobject]@{
+            Worktree = $Worktree; FurnitureWeb = Join-Path $Worktree 'furniture web'; FurniturePackage = Join-Path $Worktree 'furniture web\package.json'
+            AdminUi = Join-Path $Worktree 'admin'; AdminPackage = Join-Path $Worktree 'admin\package.json'; YudaoCloud = Join-Path $Worktree 'cloud'
+            Migrations = Join-Path $Worktree 'cloud\migrations'; Baseline = Join-Path $Worktree 'cloud\baseline.sql'
+            BackendStart = Join-Path $Worktree 'start-yudao-all-backend.ps1'; BackendStop = Join-Path $Worktree 'stop-yudao-all-backend.ps1'
+            MavenJdk17 = Join-Path $Worktree 'cloud\Invoke-MavenJdk17.ps1'
+        }
+    }
+
+    It 'resolves a local branch reference without requiring a checked-out branch worktree' {
+        $commit = Get-OakvedBranchCommit -Branch 'main' -RepositoryRoot 'D:\code' `
+            -CommitProvider { param($repositoryRoot, $branch) if ($branch -eq 'main') { return ('a' * 40) } }
+
+        $commit | Should Be ('a' * 40)
+    }
+
+    It 'creates a deterministic detached snapshot path beneath the runtime root' {
+        $repositoryRoot = Join-Path $TestDrive 'repository'
+        $runtimeRoot = Join-Path $TestDrive 'runtime'
+        New-Item -ItemType Directory -Path $repositoryRoot -Force | Out-Null
+        $commit = 'abcdef0123456789abcdef0123456789abcdef01'
+
+        $snapshot = New-OakvedRuntimeSnapshot -Branch 'main' -Commit $commit -RepositoryRoot $repositoryRoot -RuntimeRoot $runtimeRoot `
+            -Inventory @() -GitStatusProvider $cleanStatus `
+            -WorktreeAdder {
+                param($repo, $path, $sha)
+                New-Item -ItemType Directory -Path $path -Force | Out-Null
+                New-InventoryItem -Worktree $path -Branch $null -Commit $sha -Detached $true
+            }
+
+        $snapshot.Worktree | Should Be (Join-Path $runtimeRoot 'worktrees\main_0d6e4079-abcdef012345')
+        $snapshot.Commit | Should Be $commit
+        $snapshot.Detached | Should Be $true
+    }
+
+    It 'reuses an existing clean detached snapshot for the same commit' {
+        $runtimeRoot = Join-Path $TestDrive 'reuse-runtime'
+        $path = Join-Path $runtimeRoot 'worktrees\main_0d6e4079-aaaaaaaaaaaa'
+        New-Item -ItemType Directory -Path $path -Force | Out-Null
+        $record = New-InventoryItem -Worktree $path -Branch $null -Commit ('a' * 40) -Detached $true
+
+        $snapshot = New-OakvedRuntimeSnapshot -Branch 'main' -Commit ('a' * 40) -RepositoryRoot $TestDrive -RuntimeRoot $runtimeRoot `
+            -Inventory @($record) -GitStatusProvider $cleanStatus -WorktreeAdder { throw 'must not create a second snapshot' }
+
+        $snapshot.Worktree | Should Be $path
+    }
+
+    It 'refuses an unmanaged directory collision at the deterministic snapshot path' {
+        $runtimeRoot = Join-Path $TestDrive 'collision-runtime'
+        $path = Join-Path $runtimeRoot 'worktrees\main_0d6e4079-bbbbbbbbbbbb'
+        New-Item -ItemType Directory -Path $path -Force | Out-Null
+
+        $message = Get-CaughtMessage {
+            New-OakvedRuntimeSnapshot -Branch 'main' -Commit ('b' * 40) -RepositoryRoot $TestDrive -RuntimeRoot $runtimeRoot `
+                -Inventory @() -GitStatusProvider $cleanStatus -WorktreeAdder { throw 'must not overwrite the collision' }
+        }
+
+        $message | Should Be "Runtime snapshot path already exists but is not a registered Git worktree: $path"
+    }
+
+    It 'resolves snapshot provenance from the manifest while allowing the branch reference to advance' {
+        $runtimeRoot = 'D:\code\.runtime'
+        $snapshotPath = 'D:\code\.runtime\worktrees\main_0d6e4079-aaaaaaaaaaaa'
+        $manifest = [pscustomobject]@{
+            Mode = 'snapshot'; RuntimeId = 'main_0d6e4079'; Branch = 'main'; Commit = ('a' * 40); Dirty = $false
+            SourceDirty = $false; Worktree = $snapshotPath
+        }
+        $inventory = @((New-InventoryItem -Worktree $snapshotPath -Branch $null -Commit ('a' * 40) -Detached $true))
+
+        $target = Resolve-OakvedManifestTarget -Manifest $manifest -RepositoryRoot 'D:\code' -RuntimeRoot $runtimeRoot `
+            -Inventory $inventory -GitStatusProvider $cleanStatus -BranchCommitProvider { param($repositoryRoot, $branch) ('b' * 40) }
+
+        $target.Mode | Should Be 'snapshot'
+        $target.Commit | Should Be ('a' * 40)
+        $target.RefCommit | Should Be ('b' * 40)
+        $target.Worktree | Should Be $snapshotPath
+    }
+
+    It 'keeps a real detached snapshot pinned while the source branch advances' {
+        $repositoryRoot = Join-Path $TestDrive 'real git repository'
+        $runtimeRoot = Join-Path $repositoryRoot '.runtime'
+        $snapshotPath = $null
+        New-Item -ItemType Directory -Path $repositoryRoot -Force | Out-Null
+
+        try {
+            & git -C $repositoryRoot init -b main | Out-Null
+            if ($LASTEXITCODE -ne 0) { throw 'Unable to initialize the integration-test repository.' }
+            Set-Content -LiteralPath (Join-Path $repositoryRoot 'version.txt') -Value 'one' -Encoding Ascii
+            & git -C $repositoryRoot add version.txt
+            & git -C $repositoryRoot -c user.name=Oakved-Test -c user.email=oakved-test@example.invalid commit -m initial | Out-Null
+            if ($LASTEXITCODE -ne 0) { throw 'Unable to create the initial integration-test commit.' }
+            $firstCommit = (& git -C $repositoryRoot rev-parse HEAD).Trim()
+
+            $snapshot = New-OakvedRuntimeSnapshot -Branch 'main' -Commit $firstCommit `
+                -RepositoryRoot $repositoryRoot -RuntimeRoot $runtimeRoot
+            $snapshotPath = $snapshot.Worktree
+            $snapshot.Detached | Should Be $true
+            (& git -C $snapshotPath rev-parse HEAD).Trim() | Should Be $firstCommit
+
+            Set-Content -LiteralPath (Join-Path $repositoryRoot 'version.txt') -Value 'two' -Encoding Ascii
+            & git -C $repositoryRoot add version.txt
+            & git -C $repositoryRoot -c user.name=Oakved-Test -c user.email=oakved-test@example.invalid commit -m second | Out-Null
+            if ($LASTEXITCODE -ne 0) { throw 'Unable to advance the integration-test branch.' }
+            $secondCommit = (& git -C $repositoryRoot rev-parse HEAD).Trim()
+
+            $secondCommit | Should Not Be $firstCommit
+            (Get-OakvedBranchCommit -Branch 'main' -RepositoryRoot $repositoryRoot) | Should Be $secondCommit
+            (& git -C $snapshotPath rev-parse HEAD).Trim() | Should Be $firstCommit
+            @(& git -C $snapshotPath status --porcelain --untracked-files=no).Count | Should Be 0
+            @((Get-OakvedWorktreeInventory -RepositoryRoot $repositoryRoot) | Where-Object {
+                    $_.Worktree -eq $snapshotPath -and $_.Detached
+                }).Count | Should Be 1
+        }
+        finally {
+            if ($snapshotPath -and (Test-Path -LiteralPath $repositoryRoot -PathType Container)) {
+                & git -C $repositoryRoot worktree remove --force $snapshotPath 2>$null
+            }
+        }
     }
 }
 

@@ -16,11 +16,13 @@ These rules apply to every task and conversation in this repository:
 
 These rules apply regardless of the currently checked-out branch:
 
-- When the user asks how to start or stop the Yudao/ERP backend, first check for `start-yudao-all-backend.ps1` and `stop-yudao-all-backend.ps1` at the current workspace root.
-- If the scripts exist, prefer the one-command lifecycle scripts over separate commands for `yudao-server` and `ai-server`.
-- The preferred start command is `powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\start-yudao-all-backend.ps1"`; add `-Build` only when the user needs to rebuild updated backend code.
-- The preferred stop command is `powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\stop-yudao-all-backend.ps1"`.
-- If the current branch does not contain the scripts, say so explicitly and use this lifecycle design as the reference for adding them; do not silently fall back to presenting two separate daily startup commands.
+- Use `D:\code\.runtime\bin\oakved.ps1` as the normal full-stack lifecycle entry point. It is installed from the tracked source in `scripts/runtime`.
+- For stable branch-based operation, use `powershell.exe -NoProfile -ExecutionPolicy Bypass -File "D:\code\.runtime\bin\oakved.ps1" start -Branch <branch>`. Branch mode runs the branch's committed HEAD in a managed detached snapshot under `D:\code\.runtime\worktrees`; it does not require that branch to be checked out and does not occupy the branch.
+- Use `powershell.exe -NoProfile -ExecutionPolicy Bypass -File "D:\code\.runtime\bin\oakved.ps1" status` and `... stop` for status and shutdown. These actions resolve the active runtime from `D:\code\.runtime\runtime.json`, not from the branch currently checked out in `D:\code`.
+- The `D:\code` worktree may switch branches while a branch snapshot is running. A later branch commit is reported as `UpdateAvailable`; it does not make the pinned running snapshot unhealthy.
+- Use `start -Worktree <absolute-path>` only for intentional live-development mode. In that mode, edits or branch changes in the selected worktree can affect the running services.
+- The repository-root `start-yudao-all-backend.ps1` and `stop-yudao-all-backend.ps1` remain the one-command backend-only entry points for a deliberately selected live worktree. Prefer them over separate daily commands for `yudao-server` and `ai-server` when backend-only operation is requested.
+- If the installed launcher is missing, install it from the selected verified source worktree with `scripts\runtime\install-oakved-runtime.ps1`; do not recreate a permanent `main-runtime` worktree.
 
 # Spreadsheet Presentation Defaults
 

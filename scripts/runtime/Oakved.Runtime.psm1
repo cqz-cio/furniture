@@ -81,6 +81,8 @@ function Get-OakvedRuntimeId {
 function Get-OakvedWorktreeInventory {
     [CmdletBinding(DefaultParameterSetName = 'Git')]
     param(
+        [string]$RepositoryRoot = $script:RepositoryAnchor,
+
         [Parameter(Mandatory = $true, ParameterSetName = 'Lines')]
         [AllowEmptyCollection()]
         [AllowEmptyString()]
@@ -90,14 +92,15 @@ function Get-OakvedWorktreeInventory {
         [scriptblock]$Provider
     )
 
+    $normalizedRepositoryRoot = ConvertTo-OakvedNormalizedPath -Path $RepositoryRoot
     if ($PSCmdlet.ParameterSetName -eq 'Provider') {
-        $porcelainLines = @(& $Provider $script:RepositoryAnchor)
+        $porcelainLines = @(& $Provider $normalizedRepositoryRoot)
     }
     elseif ($PSCmdlet.ParameterSetName -eq 'Lines') {
         $porcelainLines = @($Lines)
     }
     else {
-        $porcelainLines = @(& git -C $script:RepositoryAnchor worktree list --porcelain)
+        $porcelainLines = @(& git -C $normalizedRepositoryRoot worktree list --porcelain)
         if ($LASTEXITCODE -ne 0) {
             throw 'Unable to read git worktree inventory.'
         }
@@ -150,6 +153,142 @@ function Get-OakvedWorktreeInventory {
     }
 
     return $records.ToArray()
+}
+
+function Get-OakvedBranchCommit {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Branch,
+
+        [string]$RepositoryRoot = $script:RepositoryAnchor,
+
+        [scriptblock]$CommitProvider
+    )
+
+    $normalizedRepositoryRoot = ConvertTo-OakvedNormalizedPath -Path $RepositoryRoot
+    if ($null -ne $CommitProvider) {
+        $commit = [string](& $CommitProvider $normalizedRepositoryRoot $Branch)
+    }
+    else {
+        $reference = "refs/heads/$Branch"
+        $commitLines = @(& git -C $normalizedRepositoryRoot rev-parse --verify "$reference`^{commit}" 2>$null)
+        if ($LASTEXITCODE -ne 0) {
+            throw "Branch $Branch does not exist."
+        }
+        $commit = (($commitLines | ForEach-Object { [string]$_ }) -join '').Trim()
+    }
+
+    if ($commit -cnotmatch '^[0-9a-fA-F]{40}$') {
+        throw "Branch $Branch did not resolve to a complete Git commit."
+    }
+
+    return $commit.ToLowerInvariant()
+}
+
+function New-OakvedRuntimeSnapshot {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][ValidateNotNullOrEmpty()][string]$Branch,
+        [Parameter(Mandatory = $true)][ValidatePattern('^[0-9a-fA-F]{40}$')][string]$Commit,
+        [Parameter(Mandatory = $true)][ValidateNotNullOrEmpty()][string]$RepositoryRoot,
+        [Parameter(Mandatory = $true)][ValidateNotNullOrEmpty()][string]$RuntimeRoot,
+        [AllowEmptyCollection()][object[]]$Inventory,
+        [scriptblock]$GitStatusProvider,
+        [scriptblock]$WorktreeAdder
+    )
+
+    $normalizedRepositoryRoot = ConvertTo-OakvedNormalizedPath -Path $RepositoryRoot
+    $normalizedRuntimeRoot = ConvertTo-OakvedNormalizedPath -Path $RuntimeRoot
+    $snapshotRoot = ConvertTo-OakvedNormalizedPath -Path (Join-Path $normalizedRuntimeRoot 'worktrees')
+    $runtimeId = Get-OakvedRuntimeId -Branch $Branch
+    $normalizedCommit = $Commit.ToLowerInvariant()
+    $snapshotPath = ConvertTo-OakvedNormalizedPath -Path (Join-Path $snapshotRoot "$runtimeId-$($normalizedCommit.Substring(0, 12))")
+
+    if (-not (Test-OakvedPathWithinRoot -Path $snapshotPath -Root $snapshotRoot) -or
+        [string]::Equals($snapshotPath, $snapshotRoot, [StringComparison]::OrdinalIgnoreCase)) {
+        throw 'Runtime snapshot path escaped the managed snapshot root.'
+    }
+
+    if (-not $PSBoundParameters.ContainsKey('Inventory')) {
+        $Inventory = @(Get-OakvedWorktreeInventory -RepositoryRoot $normalizedRepositoryRoot)
+    }
+
+    $matches = @($Inventory | Where-Object {
+        [string]::Equals(
+            (ConvertTo-OakvedNormalizedPath -Path ([string]$_.Worktree)),
+            $snapshotPath,
+            [StringComparison]::OrdinalIgnoreCase
+        )
+    })
+
+    if ($matches.Count -gt 1) {
+        throw "Runtime snapshot path is registered more than once: $snapshotPath"
+    }
+
+    $record = if ($matches.Count -eq 1) { $matches[0] } else { $null }
+    if ($null -eq $record) {
+        if (Test-Path -LiteralPath $snapshotPath) {
+            throw "Runtime snapshot path already exists but is not a registered Git worktree: $snapshotPath"
+        }
+
+        New-Item -ItemType Directory -Path $snapshotRoot -Force | Out-Null
+        if ($null -ne $WorktreeAdder) {
+            $record = & $WorktreeAdder $normalizedRepositoryRoot $snapshotPath $normalizedCommit
+        }
+        else {
+            & git -C $normalizedRepositoryRoot worktree add --detach $snapshotPath $normalizedCommit
+            if ($LASTEXITCODE -ne 0) {
+                throw "Unable to create runtime snapshot at $snapshotPath."
+            }
+            $createdInventory = @(Get-OakvedWorktreeInventory -RepositoryRoot $normalizedRepositoryRoot)
+            $createdMatches = @($createdInventory | Where-Object {
+                [string]::Equals(
+                    (ConvertTo-OakvedNormalizedPath -Path ([string]$_.Worktree)),
+                    $snapshotPath,
+                    [StringComparison]::OrdinalIgnoreCase
+                )
+            })
+            if ($createdMatches.Count -ne 1) {
+                throw "Created runtime snapshot is not registered exactly once: $snapshotPath"
+            }
+            $record = $createdMatches[0]
+        }
+    }
+
+    if ($null -eq $record) {
+        throw "Runtime snapshot provider returned no worktree for $snapshotPath."
+    }
+    if (-not [bool]$record.Detached) {
+        throw "Managed runtime snapshot must be detached: $snapshotPath"
+    }
+    if ([string]$record.Commit -cne $normalizedCommit) {
+        throw "Runtime snapshot commit mismatch at $snapshotPath."
+    }
+
+    if ($null -ne $GitStatusProvider) {
+        $statusLines = @(& $GitStatusProvider $snapshotPath)
+    }
+    else {
+        $statusLines = @(& git -C $snapshotPath status --porcelain --untracked-files=no)
+        if ($LASTEXITCODE -ne 0) {
+            throw "Unable to inspect runtime snapshot status at $snapshotPath."
+        }
+    }
+    $trackedChanges = @($statusLines | Where-Object {
+        $null -ne $_ -and -not [string]::IsNullOrEmpty([string]$_)
+    })
+    if ($trackedChanges.Count -gt 0) {
+        throw "Runtime snapshot has tracked changes: $snapshotPath"
+    }
+
+    return [pscustomobject]@{
+        Worktree = $snapshotPath
+        Commit   = $normalizedCommit
+        Branch   = $null
+        Detached = $true
+    }
 }
 
 function Get-OakvedProjectLayout {
@@ -237,25 +376,69 @@ function Resolve-OakvedTarget {
         [ValidateNotNullOrEmpty()]
         [string]$Worktree,
 
+        [string]$RepositoryRoot = $script:RepositoryAnchor,
+
+        [string]$RuntimeRoot = 'D:\code\.runtime',
+
         [AllowEmptyCollection()]
         [object[]]$Inventory,
 
-        [scriptblock]$GitStatusProvider
+        [scriptblock]$GitStatusProvider,
+
+        [scriptblock]$BranchCommitProvider,
+
+        [scriptblock]$SnapshotProvider
     )
 
     if (-not $PSBoundParameters.ContainsKey('Inventory')) {
-        $Inventory = @(Get-OakvedWorktreeInventory)
+        $Inventory = @(Get-OakvedWorktreeInventory -RepositoryRoot $RepositoryRoot)
     }
 
     if ($PSCmdlet.ParameterSetName -eq 'Branch') {
-        $matches = @($Inventory | Where-Object {
+        $commit = Get-OakvedBranchCommit -Branch $Branch -RepositoryRoot $RepositoryRoot -CommitProvider $BranchCommitProvider
+        $sourceMatches = @($Inventory | Where-Object {
             $branchProperty = $_.PSObject.Properties['Branch']
             $null -ne $branchProperty -and ([string]$branchProperty.Value -ceq $Branch)
         })
-
-        if ($matches.Count -eq 0) {
-            throw "Branch $Branch is not checked out in a worktree."
+        if ($sourceMatches.Count -gt 1) {
+            throw "Branch $Branch is checked out in more than one worktree."
         }
+        $sourceWorktree = $null
+        $sourceDirty = $false
+        if ($sourceMatches.Count -eq 1) {
+            $sourceWorktree = ConvertTo-OakvedNormalizedPath -Path ([string]$sourceMatches[0].Worktree)
+            if ($null -ne $GitStatusProvider) {
+                $sourceStatusLines = @(& $GitStatusProvider $sourceWorktree)
+            }
+            else {
+                $sourceStatusLines = @(& git -C $sourceWorktree status --porcelain)
+                if ($LASTEXITCODE -ne 0) {
+                    throw "Unable to read git status for source worktree $sourceWorktree."
+                }
+            }
+            $sourceDirty = @($sourceStatusLines | Where-Object {
+                $null -ne $_ -and -not [string]::IsNullOrEmpty([string]$_)
+            }).Count -gt 0
+        }
+
+        $snapshot = if ($null -ne $SnapshotProvider) {
+            & $SnapshotProvider $Branch $commit (ConvertTo-OakvedNormalizedPath -Path $RepositoryRoot) (ConvertTo-OakvedNormalizedPath -Path $RuntimeRoot)
+        }
+        else {
+            New-OakvedRuntimeSnapshot -Branch $Branch -Commit $commit -RepositoryRoot $RepositoryRoot -RuntimeRoot $RuntimeRoot
+        }
+        if ($null -eq $snapshot -or -not [bool]$snapshot.Detached) {
+            throw 'Branch snapshot provider must return a detached worktree.'
+        }
+        if ([string]$snapshot.Commit -cne [string]$commit) {
+            throw 'Branch snapshot provider returned the wrong commit.'
+        }
+
+        $selectedWorktree = ConvertTo-OakvedNormalizedPath -Path ([string]$snapshot.Worktree)
+        $selectedBranch = $Branch
+        $selectedCommit = $commit
+        $dirty = $false
+        $mode = 'snapshot'
     }
     else {
         if (-not (Test-OakvedFullyQualifiedPath -Path $Worktree)) {
@@ -276,44 +459,46 @@ function Resolve-OakvedTarget {
         if ($matches.Count -eq 0) {
             throw "Worktree $normalizedRequestedWorktree is not registered."
         }
-    }
-
-    if ($matches.Count -ne 1) {
-        throw 'Target must resolve to exactly one worktree.'
-    }
-
-    $selected = $matches[0]
-    $detachedProperty = $selected.PSObject.Properties['Detached']
-    if ($null -ne $detachedProperty -and [bool]$detachedProperty.Value) {
-        throw 'Detached worktrees are not supported.'
-    }
-
-    $selectedWorktree = ConvertTo-OakvedNormalizedPath -Path ([string]$selected.Worktree)
-    if ($PSBoundParameters.ContainsKey('GitStatusProvider')) {
-        $statusLines = @(& $GitStatusProvider $selectedWorktree)
-    }
-    else {
-        $statusLines = @(& git -C $selectedWorktree status --porcelain)
-        if ($LASTEXITCODE -ne 0) {
-            throw "Unable to read git status for worktree $selectedWorktree."
+        if ($matches.Count -ne 1) {
+            throw 'Target must resolve to exactly one worktree.'
         }
-    }
 
-    $dirty = @($statusLines | Where-Object {
-        $null -ne $_ -and -not [string]::IsNullOrEmpty([string]$_)
-    }).Count -gt 0
+        $selected = $matches[0]
+        $detachedProperty = $selected.PSObject.Properties['Detached']
+        if ($null -ne $detachedProperty -and [bool]$detachedProperty.Value) {
+            throw 'Detached worktrees are not supported.'
+        }
 
-    $selectedBranch = [string]$selected.Branch
-    if ($selectedBranch -ceq 'main' -and $dirty) {
-        throw 'main worktree must be clean.'
+        $selectedWorktree = ConvertTo-OakvedNormalizedPath -Path ([string]$selected.Worktree)
+        if ($PSBoundParameters.ContainsKey('GitStatusProvider')) {
+            $statusLines = @(& $GitStatusProvider $selectedWorktree)
+        }
+        else {
+            $statusLines = @(& git -C $selectedWorktree status --porcelain)
+            if ($LASTEXITCODE -ne 0) {
+                throw "Unable to read git status for worktree $selectedWorktree."
+            }
+        }
+
+        $dirty = @($statusLines | Where-Object {
+            $null -ne $_ -and -not [string]::IsNullOrEmpty([string]$_)
+        }).Count -gt 0
+        $selectedBranch = [string]$selected.Branch
+        $selectedCommit = [string]$selected.Commit
+        $sourceWorktree = $selectedWorktree
+        $sourceDirty = $dirty
+        $mode = 'live-worktree'
     }
 
     $projectLayout = Get-OakvedProjectLayout -Worktree $selectedWorktree
 
     $target = [ordered]@{
+        Mode      = $mode
         Branch    = $selectedBranch
-        Commit    = [string]$selected.Commit
+        Commit    = $selectedCommit
         Dirty     = $dirty
+        SourceDirty = [bool]$sourceDirty
+        SourceWorktree = $sourceWorktree
         Worktree  = $selectedWorktree
         RuntimeId = Get-OakvedRuntimeId -Branch $selectedBranch
     }
@@ -324,6 +509,102 @@ function Resolve-OakvedTarget {
         }
     }
 
+    return [pscustomobject]$target
+}
+
+function Resolve-OakvedManifestTarget {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][object]$Manifest,
+        [string]$RepositoryRoot = $script:RepositoryAnchor,
+        [string]$RuntimeRoot = 'D:\code\.runtime',
+        [AllowEmptyCollection()][object[]]$Inventory,
+        [scriptblock]$GitStatusProvider,
+        [scriptblock]$BranchCommitProvider
+    )
+
+    $modeProperty = $Manifest.PSObject.Properties['Mode']
+    $mode = if ($null -ne $modeProperty -and -not [string]::IsNullOrWhiteSpace([string]$modeProperty.Value)) {
+        [string]$modeProperty.Value
+    }
+    else {
+        'live-worktree'
+    }
+
+    if (-not $PSBoundParameters.ContainsKey('Inventory')) {
+        $Inventory = @(Get-OakvedWorktreeInventory -RepositoryRoot $RepositoryRoot)
+    }
+
+    if ($mode -cne 'snapshot') {
+        return Resolve-OakvedTarget -Worktree ([string]$Manifest.Worktree) -RepositoryRoot $RepositoryRoot `
+            -RuntimeRoot $RuntimeRoot -Inventory $Inventory -GitStatusProvider $GitStatusProvider
+    }
+
+    $snapshotRoot = ConvertTo-OakvedNormalizedPath -Path (Join-Path (ConvertTo-OakvedNormalizedPath -Path $RuntimeRoot) 'worktrees')
+    $snapshotPath = ConvertTo-OakvedNormalizedPath -Path ([string]$Manifest.Worktree)
+    if (-not (Test-OakvedPathWithinRoot -Path $snapshotPath -Root $snapshotRoot) -or
+        [string]::Equals($snapshotPath, $snapshotRoot, [StringComparison]::OrdinalIgnoreCase)) {
+        throw 'Manifest snapshot path is outside the managed runtime snapshot root.'
+    }
+
+    $matches = @($Inventory | Where-Object {
+        [string]::Equals(
+            (ConvertTo-OakvedNormalizedPath -Path ([string]$_.Worktree)),
+            $snapshotPath,
+            [StringComparison]::OrdinalIgnoreCase
+        )
+    })
+    if ($matches.Count -ne 1) {
+        throw "Manifest snapshot is not registered exactly once: $snapshotPath"
+    }
+    $record = $matches[0]
+    if (-not [bool]$record.Detached) {
+        throw "Manifest snapshot is not detached: $snapshotPath"
+    }
+    if ([string]$record.Commit -cne [string]$Manifest.Commit) {
+        throw "Manifest snapshot commit mismatch at $snapshotPath."
+    }
+
+    if ($null -ne $GitStatusProvider) {
+        $statusLines = @(& $GitStatusProvider $snapshotPath)
+    }
+    else {
+        $statusLines = @(& git -C $snapshotPath status --porcelain --untracked-files=no)
+        if ($LASTEXITCODE -ne 0) {
+            throw "Unable to inspect manifest snapshot status at $snapshotPath."
+        }
+    }
+    $dirty = @($statusLines | Where-Object {
+        $null -ne $_ -and -not [string]::IsNullOrEmpty([string]$_)
+    }).Count -gt 0
+
+    $sourceDirtyProperty = $Manifest.PSObject.Properties['SourceDirty']
+    $sourceWorktreeProperty = $Manifest.PSObject.Properties['SourceWorktree']
+    $refCommit = $null
+    try {
+        $refCommit = Get-OakvedBranchCommit -Branch ([string]$Manifest.Branch) -RepositoryRoot $RepositoryRoot -CommitProvider $BranchCommitProvider
+    }
+    catch {
+        $refCommit = $null
+    }
+
+    $layout = Get-OakvedProjectLayout -Worktree $snapshotPath
+    $target = [ordered]@{
+        Mode = 'snapshot'
+        Branch = [string]$Manifest.Branch
+        Commit = [string]$record.Commit
+        RefCommit = $refCommit
+        Dirty = $dirty
+        SourceDirty = $(if ($null -ne $sourceDirtyProperty) { [bool]$sourceDirtyProperty.Value } else { $false })
+        SourceWorktree = $(if ($null -ne $sourceWorktreeProperty) { [string]$sourceWorktreeProperty.Value } else { $null })
+        Worktree = $snapshotPath
+        RuntimeId = Get-OakvedRuntimeId -Branch ([string]$Manifest.Branch)
+    }
+    foreach ($property in $layout.PSObject.Properties) {
+        if ($property.Name -ne 'Worktree') {
+            $target[$property.Name] = $property.Value
+        }
+    }
     return [pscustomobject]$target
 }
 
@@ -2003,8 +2284,14 @@ function Start-OakvedRuntime {
         } while ($true)
         if ($VisibleProcesses) { Write-Host '[5/5] All services are healthy.' -ForegroundColor Green }
         $startedAt = ([datetime](& $UtcNowProvider)).ToUniversalTime().ToString('o')
+        $targetModeProperty = $Target.PSObject.Properties['Mode']
+        $targetSourceDirtyProperty = $Target.PSObject.Properties['SourceDirty']
+        $targetSourceWorktreeProperty = $Target.PSObject.Properties['SourceWorktree']
+        $targetMode = if ($null -ne $targetModeProperty) { [string]$targetModeProperty.Value } else { 'live-worktree' }
         $manifest = [ordered]@{
-            RuntimeId = [string]$Target.RuntimeId; Branch = [string]$Target.Branch; Commit = [string]$Target.Commit; Dirty = [bool]$Target.Dirty
+            Mode = $targetMode; RuntimeId = [string]$Target.RuntimeId; Branch = [string]$Target.Branch; Commit = [string]$Target.Commit; Dirty = [bool]$Target.Dirty
+            SourceDirty = $(if ($null -ne $targetSourceDirtyProperty) { [bool]$targetSourceDirtyProperty.Value } else { [bool]$Target.Dirty })
+            SourceWorktree = $(if ($null -ne $targetSourceWorktreeProperty) { [string]$targetSourceWorktreeProperty.Value } else { [string]$Target.Worktree })
             Worktree = [string]$Target.Worktree; StartedAt = $startedAt; Database = $database; CatalogVersion = [string]$database.CatalogVersion
             BuildFingerprint = [string]$fingerprint.Value; BuildFingerprints = $fingerprint; Ports = $fixedPorts; Processes = $started.ToArray(); Health = $health
         }
@@ -2067,6 +2354,12 @@ function Get-OakvedRuntimeStatus {
         foreach ($field in @('RuntimeId', 'Branch', 'Commit', 'Dirty', 'Worktree')) {
             if ([string]$Manifest.$field -cne [string]$Target.$field) { $mismatches.Add("$($field.ToLowerInvariant()) mismatch") }
         }
+        $manifestModeProperty = $Manifest.PSObject.Properties['Mode']
+        $targetModeProperty = $Target.PSObject.Properties['Mode']
+        if ($null -ne $manifestModeProperty -and $null -ne $targetModeProperty -and
+            [string]$manifestModeProperty.Value -cne [string]$targetModeProperty.Value) {
+            $mismatches.Add('mode mismatch')
+        }
     }
     if ($null -eq $ProcessProvider) { $ProcessProvider = { param($id) Get-Process -Id $id -ErrorAction SilentlyContinue } }
     if ($null -eq $ProcessTreeProvider) { $ProcessTreeProvider = { param($id) Get-OakvedDefaultProcessTree -RootPid $id } }
@@ -2111,9 +2404,18 @@ function Get-OakvedRuntimeStatus {
     }
     if ($null -ne $databaseVersion -and $databaseVersion -cne [string]$Manifest.CatalogVersion) { $mismatches.Add('database catalog version mismatch') }
     $healthy = $mismatches.Count -eq 0
+    $modeProperty = $Manifest.PSObject.Properties['Mode']
+    $sourceDirtyProperty = $Manifest.PSObject.Properties['SourceDirty']
+    $refCommitProperty = if ($null -ne $Target) { $Target.PSObject.Properties['RefCommit'] } else { $null }
+    $mode = if ($null -ne $modeProperty) { [string]$modeProperty.Value } else { 'live-worktree' }
+    $refCommit = if ($null -ne $refCommitProperty) { [string]$refCommitProperty.Value } else { $null }
     return [pscustomobject]@{
         Healthy = $healthy; ExitCode = $(if ($healthy) { 0 } else { 1 }); Mismatches = $mismatches.ToArray()
+        Mode = $mode
         RuntimeId = [string]$Manifest.RuntimeId; Branch = [string]$Manifest.Branch; Commit = [string]$Manifest.Commit; Dirty = [bool]$Manifest.Dirty
+        SourceDirty = $(if ($null -ne $sourceDirtyProperty) { [bool]$sourceDirtyProperty.Value } else { [bool]$Manifest.Dirty })
+        CurrentBranchCommit = $refCommit
+        UpdateAvailable = $(if ($mode -ceq 'snapshot' -and -not [string]::IsNullOrWhiteSpace($refCommit)) { [string]$Manifest.Commit -cne $refCommit } else { $false })
         Worktree = [string]$Manifest.Worktree; Database = [string]$Manifest.Database.Name; DatabaseVersion = $databaseVersion
         CatalogVersion = [string]$Manifest.CatalogVersion
         BuildFingerprint = $(if ($null -ne $Manifest.PSObject.Properties['BuildFingerprint']) { [string]$Manifest.BuildFingerprint } else { $null })
@@ -2123,7 +2425,10 @@ function Get-OakvedRuntimeStatus {
 
 Export-ModuleMember -Function @(
     'Get-OakvedWorktreeInventory',
+    'Get-OakvedBranchCommit',
+    'New-OakvedRuntimeSnapshot',
     'Resolve-OakvedTarget',
+    'Resolve-OakvedManifestTarget',
     'Get-OakvedRuntimeId',
     'Get-OakvedProjectLayout',
     'Get-OakvedMigrationCatalog',

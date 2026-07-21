@@ -34,10 +34,13 @@ try {
             }
 
             $target = if ($Branch) {
-                Resolve-OakvedTarget -Branch $Branch
+                Resolve-OakvedTarget -Branch $Branch -RepositoryRoot $RepositoryRoot -RuntimeRoot $RuntimeRoot
             }
             else {
-                Resolve-OakvedTarget -Worktree $Worktree
+                Resolve-OakvedTarget -Worktree $Worktree -RepositoryRoot $RepositoryRoot -RuntimeRoot $RuntimeRoot
+            }
+            if ([bool]$target.SourceDirty -and [string]$target.Mode -ceq 'snapshot') {
+                Write-Warning "The source worktree has uncommitted changes. The runtime snapshot uses committed branch HEAD $($target.Commit) only."
             }
             $layout = Get-OakvedProjectLayout -Worktree $target.Worktree
             $result = Start-OakvedRuntime -Target $target -Layout $layout -RuntimeRoot $RuntimeRoot `
@@ -58,7 +61,7 @@ try {
             }
 
             $manifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
-            $target = Resolve-OakvedTarget -Worktree ([string]$manifest.Worktree)
+            $target = Resolve-OakvedManifestTarget -Manifest $manifest -RepositoryRoot $RepositoryRoot -RuntimeRoot $RuntimeRoot
             $status = Get-OakvedRuntimeStatus -Manifest $manifest -Target $target `
                 -MySqlRootPassword $MySqlRootPassword
             if ($Json) {
