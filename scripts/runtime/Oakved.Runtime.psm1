@@ -1949,6 +1949,9 @@ function Start-OakvedManagedProcess {
     if ($isVisible) {
         $roleLiteral = & $toLiteral ([string]$Spec.Role)
         $managedCommand = @"
+`$utf8Encoding = New-Object Text.UTF8Encoding(`$false)
+[Console]::OutputEncoding = `$utf8Encoding
+`$OutputEncoding = `$utf8Encoding
 $environmentLines
 [Console]::Title = 'Oakved - ' + $roleLiteral
 [IO.File]::WriteAllText($stdoutLiteral, '', (New-Object Text.UTF8Encoding(`$false)))
@@ -1967,7 +1970,7 @@ exit `$exitCode
 "@
     }
     else {
-        $managedCommand = "$environmentLines`r`n& $fileLiteral @($argumentLiterals) 1>> $stdoutLiteral 2>> $stderrLiteral`r`nexit `$LASTEXITCODE"
+        $managedCommand = "`$utf8Encoding = New-Object Text.UTF8Encoding(`$false)`r`n[Console]::OutputEncoding = `$utf8Encoding`r`n`$OutputEncoding = `$utf8Encoding`r`n$environmentLines`r`n& $fileLiteral @($argumentLiterals) 1>> $stdoutLiteral 2>> $stderrLiteral`r`nexit `$LASTEXITCODE"
     }
     $encodedManagedCommand = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($managedCommand))
     if ($isVisible) {
@@ -2007,19 +2010,24 @@ function Invoke-OakvedHealthRequest {
     return [pscustomobject]@{ StatusCode = [int]$response.StatusCode; Content = [string]$response.Content }
 }
 
-function Test-OakvedHttpHealth {
+function Test-OakvedBackendHealth {
     param([scriptblock]$HttpProvider)
-    $health = [ordered]@{ Backend = $false; Admin = $false; Storefront = $false }
     try {
         # Readiness must reflect the ERP login path, not the aggregate Actuator
         # state. Optional integrations may make /actuator/health report DOWN
         # while the database-backed application API is fully usable.
         $backend = & $HttpProvider 'http://127.0.0.1:48080/admin-api/system/tenant/get-id-by-name?name=%E8%8A%8B%E9%81%93%E6%BA%90%E7%A0%81'
-        $health.Backend = [int]$backend.StatusCode -eq 200 `
+        return [int]$backend.StatusCode -eq 200 `
             -and [string]$backend.Content -match '"code"\s*:\s*0' `
             -and [string]$backend.Content -match '"data"\s*:\s*\d+'
     }
-    catch { $health.Backend = $false }
+    catch { return $false }
+}
+
+function Test-OakvedHttpHealth {
+    param([scriptblock]$HttpProvider)
+    $health = [ordered]@{ Backend = $false; Admin = $false; Storefront = $false }
+    $health.Backend = Test-OakvedBackendHealth -HttpProvider $HttpProvider
     try {
         $admin = & $HttpProvider 'http://127.0.0.1:80/'
         $health.Admin = [int]$admin.StatusCode -eq 200
@@ -2241,7 +2249,7 @@ function Start-OakvedRuntime {
 
     $jdbc = "jdbc:mysql://127.0.0.1:3306/$($database.Name)?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&nullCatalogMeansCurrent=true&rewriteBatchedStatements=true"
     $specs = @(
-        [pscustomobject]@{ Role = 'backend'; FilePath = 'java.exe'; Arguments = @('-jar', [string]$Layout.ServerJar, '--spring.profiles.active=local', "--server.port=48080", "--spring.datasource.dynamic.datasource.master.url=$jdbc", "--spring.datasource.dynamic.datasource.slave.url=$jdbc"); WorkingDirectory = [string]$Layout.YudaoCloud; Environment = @{}; Port = 48080; Visible = [bool]$VisibleProcesses },
+        [pscustomobject]@{ Role = 'backend'; FilePath = 'java.exe'; Arguments = @('-Dfile.encoding=UTF-8', '-Dsun.stdout.encoding=UTF-8', '-Dsun.stderr.encoding=UTF-8', '-jar', [string]$Layout.ServerJar, '--spring.profiles.active=local', "--server.port=48080", "--spring.datasource.dynamic.datasource.master.url=$jdbc", "--spring.datasource.dynamic.datasource.slave.url=$jdbc"); WorkingDirectory = [string]$Layout.YudaoCloud; Environment = @{}; Port = 48080; Visible = [bool]$VisibleProcesses },
         [pscustomobject]@{ Role = 'admin'; FilePath = 'pnpm.cmd'; Arguments = @('dev', '--', '--host', '0.0.0.0', '--port', '80', '--strictPort'); WorkingDirectory = [string]$Layout.AdminUi; Environment = @{ VITE_CACHE_DIR = (Join-Path $cacheRoot 'admin'); VITE_BASE_URL = 'http://127.0.0.1:48080'; VITE_API_URL = '/admin-api'; VITE_FURNITURE_WEB_URL = 'http://127.0.0.1:5173' }; Port = 80; Visible = [bool]$VisibleProcesses },
         [pscustomobject]@{ Role = 'storefront'; FilePath = 'npm.cmd'; Arguments = @('run', 'dev', '--', '--host', '127.0.0.1', '--port', '5173', '--strictPort'); WorkingDirectory = [string]$Layout.FurnitureWeb; Environment = @{ VITE_CACHE_DIR = (Join-Path $cacheRoot 'storefront'); VITE_YUDAO_APP_API_BASE = 'http://127.0.0.1:48080/app-api' }; Port = 5173; Visible = [bool]$VisibleProcesses }
     )
@@ -2251,7 +2259,8 @@ function Start-OakvedRuntime {
     }
     $started = New-Object 'System.Collections.Generic.List[object]'
     try {
-        foreach ($spec in $specs) {
+        $startSpec = {
+            param($spec)
             if ($VisibleProcesses) { Write-Host "[4/5] Opening $($spec.Role) window..." -ForegroundColor Cyan }
             $process = & $ProcessStarter $spec
             $started.Add([pscustomobject]@{
@@ -2259,6 +2268,36 @@ function Start-OakvedRuntime {
                 Role = $spec.Role; FilePath = $spec.FilePath; Arguments = $spec.Arguments; WorkingDirectory = $spec.WorkingDirectory
                 StdOutLog = $spec.StdOutLog; StdErrLog = $spec.StdErrLog; Port = $spec.Port
             })
+        }
+
+        # The admin UI starts much faster than Spring Boot. Starting it early
+        # lets already-open browser tabs issue API calls while port 48080 is
+        # still unavailable, producing noisy unhandled Axios rejections.
+        & $startSpec $specs[0]
+        $backendDeadline = [datetime]::UtcNow.AddMilliseconds($HealthTimeoutMilliseconds)
+        $lastBackendPortFailure = $null
+        if ($VisibleProcesses) { Write-Host '[4/5] Waiting for backend readiness before opening frontends...' -ForegroundColor Cyan }
+        do {
+            $backendRecord = $started[0]
+            $current = & $ProcessProvider ([int]$backendRecord.Pid)
+            if ($null -eq $current -or ([datetime]$current.StartTime).ToUniversalTime().Ticks -ne ([datetime]$backendRecord.StartTime).ToUniversalTime().Ticks) {
+                throw 'Managed backend process is no longer the recorded PID/start-time instance.'
+            }
+            $backendPortsHealthy = $true
+            try { Assert-OakvedPortsAvailable -Ports $fixedPorts -ListenerProvider $ListenerProvider -ManagedPids @([int]$backendRecord.Pid) -ProcessTreeProvider $ProcessTreeProvider }
+            catch { $backendPortsHealthy = $false; $lastBackendPortFailure = $_.Exception.Message }
+            $backendHealthy = Test-OakvedBackendHealth -HttpProvider $HttpProvider
+            if ($backendPortsHealthy -and $backendHealthy) { break }
+            if ([datetime]::UtcNow -ge $backendDeadline) {
+                $portDetail = if ($lastBackendPortFailure) { $lastBackendPortFailure } else { 'OK' }
+                throw "Backend readiness check timed out. Backend=$backendHealthy, Ports=$backendPortsHealthy ($portDetail)"
+            }
+            & $SleepProvider 250
+        } while ($true)
+        if ($VisibleProcesses) { Write-Host '[4/5] Backend is ready; opening frontends.' -ForegroundColor Green }
+
+        foreach ($spec in @($specs | Select-Object -Skip 1)) {
+            & $startSpec $spec
         }
         $deadline = [datetime]::UtcNow.AddMilliseconds($HealthTimeoutMilliseconds)
         $health = $null

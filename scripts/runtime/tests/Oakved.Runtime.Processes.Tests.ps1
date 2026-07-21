@@ -74,6 +74,17 @@ function New-HealthyRuntimeProviders {
 }
 
 Describe 'Oakved managed lifecycle primitives' {
+    It 'configures UTF-8 before invoking managed native processes' {
+        $module = Get-Module Oakved.Runtime
+        $functionText = & $module { (Get-Command Start-OakvedManagedProcess).ScriptBlock.ToString() }
+        $outputEncodingIndex = $functionText.IndexOf('[Console]::OutputEncoding = `$utf8Encoding')
+        $nativeInvocationIndex = $functionText.IndexOf('& $fileLiteral')
+
+        $outputEncodingIndex | Should BeGreaterThan -1
+        $nativeInvocationIndex | Should BeGreaterThan $outputEncodingIndex
+        $functionText | Should Match ([regex]::Escape('`$OutputEncoding = `$utf8Encoding'))
+    }
+
     It 'runs a managed command with shell metacharacters safely preserved and captures its logs' {
         $stdout = Join-Path $TestDrive 'managed.stdout.log'
         $stderr = Join-Path $TestDrive 'managed.stderr.log'
@@ -197,9 +208,14 @@ Describe 'Start-OakvedRuntime orchestration' {
             -BuildProvider ({ param($spec) $capture.Events += 'build' }.GetNewClosure()) `
             -ProcessStarter ({ param($spec) $capture.Events += "start:$($spec.Role)"; & $providers.ProcessStarter $spec }.GetNewClosure()) `
             -ProcessProvider $providers.ProcessProvider -ProcessTreeProvider $providers.ProcessTreeProvider `
-            -ListenerProvider $providers.ListenerProvider -HttpProvider $providers.HttpProvider | Out-Null
+            -ListenerProvider $providers.ListenerProvider `
+            -HttpProvider ({ param($url) $capture.Events += "health:$url"; & $providers.HttpProvider $url }.GetNewClosure()) | Out-Null
         $capture.Events[0] | Should Be 'database'
         ($capture.Events -join ',') | Should Match '^database,(build,)?start:backend'
+        $backendHealthIndex = [array]::IndexOf($capture.Events, @($capture.Events | Where-Object { $_ -like 'health:*48080*' })[0])
+        $adminStartIndex = [array]::IndexOf($capture.Events, 'start:admin')
+        $backendHealthIndex | Should BeGreaterThan -1
+        $adminStartIndex | Should BeGreaterThan $backendHealthIndex
     }
 
     It 'builds the backend only when its fingerprint changes using the selected JDK 17 Maven wrapper' {
@@ -276,6 +292,9 @@ Describe 'Start-OakvedRuntime orchestration' {
         $storefront = $capture.Specs | Where-Object Role -eq 'storefront'
         $backend.WorkingDirectory | Should Be $fixture.Layout.YudaoCloud
         ($backend.Arguments -join ' ') | Should Match '--spring.profiles.active=local'
+        ($backend.Arguments -join ' ') | Should Match '-Dfile.encoding=UTF-8'
+        ($backend.Arguments -join ' ') | Should Match '-Dsun.stdout.encoding=UTF-8'
+        ($backend.Arguments -join ' ') | Should Match '-Dsun.stderr.encoding=UTF-8'
         ($backend.Arguments -join ' ') | Should Match 'jdbc:mysql://127.0.0.1:3306/oakved_feature_runtime_12345678'
         (($backend.Arguments -join ' ') + ($backend.Environment.Values -join ' ')) | Should Not Match 'not-in-commands'
         $admin.FilePath | Should Be 'pnpm.cmd'
@@ -301,7 +320,9 @@ Describe 'Start-OakvedRuntime orchestration' {
                 -DatabaseGateProvider $databaseGate -BuildProvider { param($spec) } `
                 -ProcessStarter $starter `
                 -ProcessProvider { param($id) [pscustomobject]@{ Id = $id; StartTime = [datetime]'2026-01-01T00:00:00Z' } } `
-                -Stopper { param($id) $script:stopped += $id } -ListenerProvider { @() } -HttpProvider { param($url) } } | Should Throw 'admin failed'
+                -Stopper { param($id) $script:stopped += $id } -ListenerProvider { @() } -ProcessTreeProvider { param($id) @($id) } `
+                -HttpProvider { param($url) [pscustomobject]@{ StatusCode = 200; Content = '{"code":0,"data":1}' } } `
+                -HealthTimeoutMilliseconds 1000 } | Should Throw 'admin failed'
         $script:stopped | Should Be @(42)
     }
 
@@ -318,8 +339,8 @@ Describe 'Start-OakvedRuntime orchestration' {
                 -ProcessStarter $providers.ProcessStarter -ProcessProvider $providers.ProcessProvider `
                 -ProcessTreeProvider $providers.ProcessTreeProvider -ListenerProvider $providers.ListenerProvider `
                 -HttpProvider { param($url) [pscustomobject]@{ StatusCode = 503; Content = 'down' } } `
-                -Stopper { param($id) $script:stopped += $id } -HealthTimeoutMilliseconds 1 -SleepProvider { param($ms) } } | Should Throw 'Runtime health check timed out.'
-        $script:stopped.Count | Should Be 3
+                -Stopper { param($id) $script:stopped += $id } -HealthTimeoutMilliseconds 1 -SleepProvider { param($ms) } } | Should Throw 'Backend readiness check timed out.'
+        $script:stopped.Count | Should Be 1
         Test-Path -LiteralPath (Join-Path $runtimeRoot 'runtime.json') | Should Be $false
     }
 
