@@ -225,6 +225,11 @@ const syncPageFromLocation = () => {
   routeSignature.value = `${window.location.pathname}${window.location.search}${window.location.hash}`;
 };
 
+const resetProductDetailScroll = (page) => {
+  if (page !== "sofa-pdp") return;
+  window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+};
+
 const navigateToPath = (path) => {
   const nextPath = path || "/";
   const nextPage = pageFromPath(nextPath.split("?")[0].split("#")[0]);
@@ -233,6 +238,7 @@ const navigateToPath = (path) => {
     window.history.pushState({ page: nextPage }, "", nextPath);
   }
   routeSignature.value = nextPath;
+  resetProductDetailScroll(nextPage);
   window.dispatchEvent(new CustomEvent("oakved:navigation", { detail: { path: nextPath } }));
 };
 
