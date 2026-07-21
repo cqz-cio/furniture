@@ -6,6 +6,7 @@ import { ElMessage } from 'element-plus'
 import type { BarSeriesOption, EChartsOption, LineSeriesOption } from 'echarts'
 import download from '@/utils/download'
 import { checkPermi } from '@/utils/permission'
+import DashboardPageLoading from '@/layout/components/DashboardPageLoading.vue'
 import {
   DashboardApi,
   type DashboardAttention,
@@ -67,6 +68,7 @@ const query = reactive<DashboardQuery>({
 })
 const dateRange = ref<[string, string]>([query.startDate, query.endDate])
 const loading = ref(false)
+const initialLoading = ref(true)
 const exporting = ref(false)
 const error = ref('')
 const summary = ref<DashboardSummary | null>(null)
@@ -122,7 +124,10 @@ const applyDateRange = () => {
 }
 
 const loadDashboard = async () => {
-  if (!canQuery.value) return
+  if (!canQuery.value) {
+    initialLoading.value = false
+    return
+  }
   syncUrl()
   const sequence = ++loadSequence
   loading.value = true
@@ -152,7 +157,10 @@ const loadDashboard = async () => {
     if (sequence !== loadSequence) return
     error.value = caught instanceof Error ? caught.message : '数据加载失败'
   } finally {
-    if (sequence === loadSequence) loading.value = false
+    if (sequence === loadSequence) {
+      loading.value = false
+      initialLoading.value = false
+    }
   }
 }
 
@@ -397,8 +405,9 @@ onMounted(loadDashboard)
 </script>
 
 <template>
-  <div class="furniture-dashboard" v-loading="loading" aria-live="polite">
-    <el-result v-if="!canQuery" icon="warning" title="暂无数据看板查询权限" sub-title="请联系管理员授予 statistics:dashboard:query" />
+  <div class="furniture-dashboard" v-loading="loading && !initialLoading" aria-live="polite">
+    <DashboardPageLoading v-if="initialLoading" />
+    <el-result v-else-if="!canQuery" icon="warning" title="暂无数据看板查询权限" sub-title="请联系管理员授予 statistics:dashboard:query" />
     <template v-else>
       <header class="dashboard-header">
         <div class="header-copy">

@@ -28,6 +28,7 @@ interface AppState {
   fixedHeader: boolean
   greyMode: boolean
   pageLoading: boolean
+  pageLoadingRoute: string
   layout: LayoutType
   title: string
   userInfo: string
@@ -48,6 +49,7 @@ export const useAppStore = defineStore('app', {
       mobile: false, // 是否是移动端
       title: import.meta.env.VITE_APP_TITLE, // 标题
       pageLoading: false, // 路由跳转loading
+      pageLoadingRoute: '', // 当前正在加载的目标路由
 
       breadcrumb: true, // 面包屑
       breadcrumbIcon: true, // 面包屑图标
@@ -154,6 +156,9 @@ export const useAppStore = defineStore('app', {
     },
     getPageLoading(): boolean {
       return this.pageLoading
+    },
+    getPageLoadingRoute(): string {
+      return this.pageLoadingRoute
     },
     getLayout(): LayoutType {
       return this.layout
@@ -267,8 +272,9 @@ export const useAppStore = defineStore('app', {
       wsCache.set('fixedMenu', fixedMenu)
       this.fixedMenu = fixedMenu
     },
-    setPageLoading(pageLoading: boolean) {
+    setPageLoading(pageLoading: boolean, routePath = '') {
       this.pageLoading = pageLoading
+      this.pageLoadingRoute = pageLoading ? routePath : ''
     },
     setLayout(layout: LayoutType) {
       if (this.mobile && layout !== 'classic') {
