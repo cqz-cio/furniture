@@ -369,6 +369,8 @@ Describe 'detached runtime snapshots' {
             $snapshot = New-OakvedRuntimeSnapshot -Branch 'main' -Commit $firstCommit `
                 -RepositoryRoot $repositoryRoot -RuntimeRoot $runtimeRoot
             $snapshotPath = $snapshot.Worktree
+            @($snapshot).Count | Should Be 1
+            $snapshot.GetType().FullName | Should Be 'System.Management.Automation.PSCustomObject'
             $snapshot.Detached | Should Be $true
             (& git -C $snapshotPath rev-parse HEAD).Trim() | Should Be $firstCommit
 

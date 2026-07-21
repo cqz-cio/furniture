@@ -238,7 +238,7 @@ function New-OakvedRuntimeSnapshot {
             $record = & $WorktreeAdder $normalizedRepositoryRoot $snapshotPath $normalizedCommit
         }
         else {
-            & git -C $normalizedRepositoryRoot worktree add --detach $snapshotPath $normalizedCommit
+            & git -C $normalizedRepositoryRoot worktree add --detach $snapshotPath $normalizedCommit | Out-Null
             if ($LASTEXITCODE -ne 0) {
                 throw "Unable to create runtime snapshot at $snapshotPath."
             }
