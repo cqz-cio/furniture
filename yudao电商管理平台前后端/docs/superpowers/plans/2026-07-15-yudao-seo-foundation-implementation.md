@@ -873,8 +873,9 @@ If no correction was required, do not create an empty commit.
 
 After this plan passes, continue in this order with separate implementation plans:
 
-1. `2026-07-15-yudao-seo-document-analysis-implementation.md`: DOCX/PDF/XLSX extraction, keyword analysis, deterministic Yoast-level rules, scoring explanations and analysis history.
-2. `2026-07-15-yudao-seo-technical-controls-implementation.md`: Sitemap generation, robots editor, redirect rules, validation and caches.
-3. `2026-07-15-yudao-seo-storefront-rendering-implementation.md`: product/category entity adapters, locale fallback, canonical policy, Schema.org JSON-LD, and initial-HTML Head rendering in `furniture web`.
+1. `2026-07-22-yudao-seo-keyword-relevance-analysis-implementation.md`: per-keyword percentage scoring, deterministic Yoast-level rules, evidence, recommendations, analysis history and the unified-color result UI. Generative AI polishing is explicitly excluded.
+2. `2026-07-15-yudao-seo-document-analysis-implementation.md`: DOCX/PDF/XLSX extraction and conversion into the keyword plan's shared immutable content snapshot; it must reuse the same analysis engine instead of creating a second scoring path.
+3. `2026-07-15-yudao-seo-technical-controls-implementation.md`: Sitemap generation, robots editor, redirect rules, validation and caches.
+4. `2026-07-15-yudao-seo-storefront-rendering-implementation.md`: product/category entity adapters, locale fallback, canonical policy, Schema.org JSON-LD, and initial-HTML Head rendering in `furniture web`.
 
 Those plans must consume the contracts delivered here rather than reintroducing SEO configuration or metadata tables.
