@@ -1,0 +1,16 @@
+[Unit]
+Description=Oakved Yudao Backend
+After=network.target mysql.service redis.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/oakved/backend
+EnvironmentFile=/opt/oakved/backend/backend.env
+ExecStart=/usr/bin/java -jar /opt/oakved/backend/yudao-server.jar
+Restart=always
+RestartSec=5
+StandardOutput=append:/opt/oakved/backend/logs/yudao-server.out
+StandardError=append:/opt/oakved/backend/logs/yudao-server.err
+
+[Install]
+WantedBy=multi-user.target
