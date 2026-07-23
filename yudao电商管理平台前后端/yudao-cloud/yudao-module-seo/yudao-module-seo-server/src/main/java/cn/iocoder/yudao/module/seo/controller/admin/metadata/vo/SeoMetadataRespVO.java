@@ -29,6 +29,7 @@ public class SeoMetadataRespVO {
     private String publishStatus;
     private Integer version;
     private LocalDateTime publishedTime;
+    private Long latestAnalysisId;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 

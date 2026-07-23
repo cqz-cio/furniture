@@ -25,6 +25,7 @@
     "check:mall-warnings": "node scripts/check-mall-warning-contract.mjs",
     "check:dashboard": "node scripts/check-dashboard-contract.mjs",
     "check:seo-foundation": "node scripts/check-seo-foundation-contract.mjs",
+    "check:seo-analysis": "node scripts/check-seo-keyword-analysis-contract.mjs",
     "clean": "npx rimraf node_modules",
     "clean:cache": "npx rimraf node_modules/.cache",
     "lint:eslint": "eslint --fix ./src",

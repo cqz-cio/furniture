@@ -44,5 +44,6 @@ public class SeoMetadataDO extends TenantBaseDO {
     private String publishStatus;
     private Integer version;
     private LocalDateTime publishedTime;
+    private Long latestAnalysisId;
 
 }

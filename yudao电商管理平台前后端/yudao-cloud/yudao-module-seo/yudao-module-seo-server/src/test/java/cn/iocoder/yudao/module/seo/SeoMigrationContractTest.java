@@ -17,6 +17,37 @@ class SeoMigrationContractTest {
             Path.of("sql", "mysql", "migrations", "V019__seo_foundation.sql");
     private static final Path ACTIVE_RECORD_MIGRATION_RELATIVE_PATH =
             Path.of("sql", "mysql", "migrations", "V020__seo_active_record_uniqueness.sql");
+    private static final Path KEYWORD_ANALYSIS_MIGRATION_RELATIVE_PATH =
+            Path.of("sql", "mysql", "migrations", "V026__seo_keyword_relevance_analysis.sql");
+
+    @Test
+    void shouldCreateKeywordAnalysisHistoryAndEvidenceTables() throws IOException {
+        String sql = migrationSql(KEYWORD_ANALYSIS_MIGRATION_RELATIVE_PATH);
+
+        assertThat(sql).contains(
+                "CREATE TABLE IF NOT EXISTS `seo_analysis`",
+                "CREATE TABLE IF NOT EXISTS `seo_analysis_item`",
+                "CREATE TABLE IF NOT EXISTS `seo_keyword_analysis`",
+                "CREATE TABLE IF NOT EXISTS `seo_keyword_analysis_item`",
+                "`semantic_percent` int DEFAULT NULL",
+                "UNIQUE KEY `uk_analysis_idempotency_active`",
+                "UNIQUE KEY `uk_keyword_normalized_active`",
+                "ADD COLUMN `latest_analysis_id` bigint DEFAULT NULL");
+    }
+
+    @Test
+    void shouldAddKeywordAnalysisMenuAndPermissions() throws IOException {
+        String sql = migrationSql(KEYWORD_ANALYSIS_MIGRATION_RELATIVE_PATH);
+
+        assertThat(sql).contains(
+                "SET @seo_root_menu_id =",
+                "SELECT 8112,'关键词分析'",
+                "'analysis','ep:data-analysis','seo/analysis/index','SeoAnalysis'",
+                "SET @seo_analysis_menu_id =",
+                "'seo:analysis:run'",
+                "'seo:analysis:query'",
+                "@seo_analysis_menu_id");
+    }
 
     @Test
     void shouldReplaceDeletedFlagUniqueIndexesWithActiveRecordMarkers() throws IOException {

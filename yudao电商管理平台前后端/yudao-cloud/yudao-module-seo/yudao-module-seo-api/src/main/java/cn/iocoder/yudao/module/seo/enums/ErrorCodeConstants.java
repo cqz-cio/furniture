@@ -20,4 +20,16 @@ public interface ErrorCodeConstants {
     ErrorCode METADATA_CANONICAL_URL_INVALID = new ErrorCode(1_070_002_005,
             "Canonical URL 必须是有效的 HTTP(S) 绝对地址");
 
+    ErrorCode ANALYSIS_NOT_EXISTS = new ErrorCode(1_070_003_000, "SEO 分析记录不存在");
+    ErrorCode ANALYSIS_SOURCE_NOT_SUPPORTED = new ErrorCode(1_070_003_001, "当前 SEO 分析来源尚不支持");
+    ErrorCode ANALYSIS_CONTENT_REQUIRED = new ErrorCode(1_070_003_002, "SEO 分析内容不能为空");
+    ErrorCode ANALYSIS_KEYWORD_DUPLICATE = new ErrorCode(1_070_003_003,
+            "焦点关键词和关联关键词归一化后不能重复");
+    ErrorCode ANALYSIS_IDEMPOTENCY_CONFLICT = new ErrorCode(1_070_003_004,
+            "幂等键已用于不同的 SEO 分析内容");
+    ErrorCode KEYWORD_ANALYSIS_NOT_EXISTS = new ErrorCode(1_070_003_005, "SEO 关键词分析记录不存在");
+    ErrorCode ANALYSIS_KEYWORD_INVALID = new ErrorCode(1_070_003_006, "SEO 关键词归一化后不能为空");
+    ErrorCode ANALYSIS_COMPARISON_MISMATCH = new ErrorCode(1_070_003_007,
+            "只能对比同一站点、实体和语言的 SEO 分析");
+
 }

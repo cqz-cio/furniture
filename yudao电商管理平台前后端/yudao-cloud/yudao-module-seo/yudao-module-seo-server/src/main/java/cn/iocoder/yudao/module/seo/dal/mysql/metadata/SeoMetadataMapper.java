@@ -109,4 +109,18 @@ public interface SeoMetadataMapper extends BaseMapperX<SeoMetadataDO> {
                       @Param("tenantId") Long tenantId,
                       @Param("updater") String updater);
 
+    @Update("""
+            UPDATE seo_metadata
+            SET latest_analysis_id = #{analysisId},
+                updater = #{updater},
+                update_time = CURRENT_TIMESTAMP
+            WHERE id = #{metadataId}
+              AND tenant_id = #{tenantId}
+              AND deleted = FALSE
+            """)
+    int updateLatestAnalysisId(@Param("metadataId") Long metadataId,
+                               @Param("analysisId") Long analysisId,
+                               @Param("tenantId") Long tenantId,
+                               @Param("updater") String updater);
+
 }

@@ -29,6 +29,7 @@ export interface SeoMetadataUpdateReqVO extends SeoMetadataCreateReqVO {
 export interface SeoMetadataRespVO extends SeoMetadataUpdateReqVO {
   publishStatus: SeoPublishStatus
   publishedTime?: string
+  latestAnalysisId?: number
   createTime: string
   updateTime: string
 }
