@@ -35,14 +35,12 @@ public class SeoContentSnapshotFactory {
     private ObjectProvider<ProductSpuApi> productSpuApiProvider;
 
     public SeoResolvedContent resolve(SeoAnalysisRunReqVO reqVO) {
-        if (SeoAnalysisSourceTypeEnum.MANUAL.getCode().equals(reqVO.getSourceType())) {
+        if (SeoAnalysisSourceTypeEnum.MANUAL.getCode().equals(reqVO.getSourceType())
+                || SeoAnalysisSourceTypeEnum.DOCUMENT.getCode().equals(reqVO.getSourceType())) {
             SeoContentSnapshot snapshot = fromManual(reqVO.getContent());
             ensureContent(snapshot);
             return new SeoResolvedContent(snapshot, null, reqVO.getFocusKeyphrase(),
                     defaultList(reqVO.getRelatedKeyphrases()));
-        }
-        if (SeoAnalysisSourceTypeEnum.DOCUMENT.getCode().equals(reqVO.getSourceType())) {
-            throw exception(ANALYSIS_SOURCE_NOT_SUPPORTED);
         }
         if (!SeoAnalysisSourceTypeEnum.ENTITY.getCode().equals(reqVO.getSourceType())) {
             throw exception(ANALYSIS_SOURCE_NOT_SUPPORTED);

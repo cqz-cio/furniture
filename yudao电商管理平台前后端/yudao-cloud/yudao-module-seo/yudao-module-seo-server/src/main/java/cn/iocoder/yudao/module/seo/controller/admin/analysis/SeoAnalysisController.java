@@ -2,15 +2,19 @@ package cn.iocoder.yudao.module.seo.controller.admin.analysis;
 
 import cn.iocoder.yudao.framework.common.pojo.CommonResult;
 import cn.iocoder.yudao.module.seo.controller.admin.analysis.vo.SeoAnalysisCompareRespVO;
+import cn.iocoder.yudao.module.seo.controller.admin.analysis.vo.SeoDocumentAnalysisRunReqVO;
 import cn.iocoder.yudao.module.seo.controller.admin.analysis.vo.SeoAnalysisRespVO;
 import cn.iocoder.yudao.module.seo.controller.admin.analysis.vo.SeoAnalysisRerunReqVO;
 import cn.iocoder.yudao.module.seo.controller.admin.analysis.vo.SeoAnalysisRunReqVO;
 import cn.iocoder.yudao.module.seo.controller.admin.analysis.vo.SeoKeywordAnalysisRespVO;
+import cn.iocoder.yudao.module.seo.controller.admin.analysis.vo.SeoParsedDocumentRespVO;
 import cn.iocoder.yudao.module.seo.service.analysis.SeoAnalysisService;
+import cn.iocoder.yudao.module.seo.service.analysis.document.SeoDocumentAnalysisService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
 import jakarta.validation.Valid;
+import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -33,12 +38,29 @@ public class SeoAnalysisController {
 
     @Resource
     private SeoAnalysisService analysisService;
+    @Resource
+    private SeoDocumentAnalysisService documentAnalysisService;
 
     @PostMapping("/run")
     @Operation(summary = "运行 SEO 逐关键词分析")
     @PreAuthorize("@ss.hasPermission('seo:analysis:run')")
     public CommonResult<Long> runAnalysis(@Valid @RequestBody SeoAnalysisRunReqVO reqVO) {
         return success(analysisService.runAnalysis(reqVO));
+    }
+
+    @PostMapping(value = "/document/parse", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "解析 DOCX、PDF 或 XLSX 并返回内容预览")
+    @PreAuthorize("@ss.hasPermission('seo:analysis:run')")
+    public CommonResult<SeoParsedDocumentRespVO> parseDocument(
+            @RequestParam("file") MultipartFile file) {
+        return success(documentAnalysisService.parse(file));
+    }
+
+    @PostMapping(value = "/document/run", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "上传 DOCX、PDF 或 XLSX 并运行 SEO 分析")
+    @PreAuthorize("@ss.hasPermission('seo:analysis:run')")
+    public CommonResult<Long> runDocumentAnalysis(@Valid SeoDocumentAnalysisRunReqVO reqVO) {
+        return success(documentAnalysisService.run(reqVO));
     }
 
     @GetMapping("/{id}")

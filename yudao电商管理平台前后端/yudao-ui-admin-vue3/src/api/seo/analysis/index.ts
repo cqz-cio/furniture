@@ -31,6 +31,27 @@ export interface SeoAnalysisRunReqVO {
   content?: SeoContentSnapshotReqVO
 }
 
+export interface SeoParsedDocumentRespVO {
+  filename: string
+  extension: 'docx' | 'pdf' | 'xlsx'
+  contentType: string | null
+  fileSize: number
+  extractedCharacters: number
+  truncated: boolean
+  content: string
+}
+
+export interface SeoDocumentAnalysisRunReqVO {
+  siteId: number
+  entityType: string
+  entityId: number
+  locale: string
+  focusKeyphrase: string
+  relatedKeyphrases: string[]
+  idempotencyKey: string
+  file: File
+}
+
 export interface SeoKeywordRuleRespVO {
   id: number
   ruleCode: string
@@ -123,6 +144,33 @@ export const createSeoIdempotencyKey = (prefix = 'seo-analysis') => {
 
 export const runSeoAnalysis = async (data: SeoAnalysisRunReqVO) => {
   return request.post<number>({ url: '/seo/analysis/run', data })
+}
+
+export const parseSeoDocument = async (file: File) => {
+  const data = new FormData()
+  data.append('file', file)
+  const response = await request.upload<{ data: SeoParsedDocumentRespVO }>({
+    url: '/seo/analysis/document/parse',
+    data
+  })
+  return response.data
+}
+
+export const runSeoDocumentAnalysis = async (requestData: SeoDocumentAnalysisRunReqVO) => {
+  const data = new FormData()
+  data.append('siteId', String(requestData.siteId))
+  data.append('entityType', requestData.entityType)
+  data.append('entityId', String(requestData.entityId))
+  data.append('locale', requestData.locale)
+  data.append('focusKeyphrase', requestData.focusKeyphrase)
+  requestData.relatedKeyphrases.forEach((keyword) => data.append('relatedKeyphrases', keyword))
+  data.append('idempotencyKey', requestData.idempotencyKey)
+  data.append('file', requestData.file)
+  const response = await request.upload<{ data: number }>({
+    url: '/seo/analysis/document/run',
+    data
+  })
+  return response.data
 }
 
 export const getSeoAnalysis = async (id: number) => {

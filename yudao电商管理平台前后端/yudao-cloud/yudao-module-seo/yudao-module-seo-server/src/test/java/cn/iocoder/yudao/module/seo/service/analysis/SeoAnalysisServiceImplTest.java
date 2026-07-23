@@ -14,6 +14,7 @@ import cn.iocoder.yudao.module.seo.controller.admin.analysis.vo.SeoAnalysisRunRe
 import cn.iocoder.yudao.module.seo.controller.admin.analysis.vo.SeoContentSnapshotReqVO;
 import cn.iocoder.yudao.module.seo.controller.admin.analysis.vo.SeoKeywordAnalysisRespVO;
 import cn.iocoder.yudao.module.seo.dal.mysql.analysis.SeoAnalysisMapper;
+import cn.iocoder.yudao.module.seo.service.analysis.bm25.DisabledSeoBm25Provider;
 import cn.iocoder.yudao.module.seo.service.analysis.dictionary.SeoIndustryDictionary;
 import cn.iocoder.yudao.module.seo.service.analysis.engine.DefaultSeoKeywordAnalysisEngine;
 import cn.iocoder.yudao.module.seo.service.analysis.engine.SeoKeywordScorer;
@@ -45,7 +46,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @Import({SeoAnalysisServiceImpl.class, SeoContentSnapshotFactory.class,
         DefaultSeoKeywordAnalysisEngine.class, SeoKeywordScorer.class, SeoRuleSuggestionService.class,
-        SeoTextNormalizer.class, SeoIndustryDictionary.class, DisabledSeoSemanticSimilarityProvider.class,
+        SeoTextNormalizer.class, SeoIndustryDictionary.class, DisabledSeoBm25Provider.class,
+        DisabledSeoSemanticSimilarityProvider.class,
         ValidationAutoConfiguration.class, SeoAnalysisServiceImplTest.TenantInterceptorTestConfiguration.class})
 class SeoAnalysisServiceImplTest extends BaseDbUnitTest {
 

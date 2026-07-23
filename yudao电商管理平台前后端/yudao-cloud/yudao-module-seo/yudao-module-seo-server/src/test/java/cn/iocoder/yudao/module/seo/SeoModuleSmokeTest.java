@@ -26,6 +26,10 @@ class SeoModuleSmokeTest {
 
         assertThat(properties.getProperty("spring.application.name")).isEqualTo("seo-server");
         assertThat(properties.getProperty("spring.data.redis.repositories.enabled", Boolean.class)).isFalse();
+        assertThat(properties.getProperty("yudao.seo.analysis.bm25.enabled", Boolean.class)).isFalse();
+        assertThat(properties.getProperty("yudao.seo.analysis.semantic.enabled", Boolean.class)).isFalse();
+        assertThat(properties.getProperty("yudao.seo.analysis.document.max-file-size")).isEqualTo("16MB");
+        assertThat(properties.getProperty("spring.servlet.multipart.max-file-size")).isEqualTo("16MB");
     }
 
     @Test

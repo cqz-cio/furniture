@@ -2,11 +2,14 @@ package cn.iocoder.yudao.module.seo.service.analysis.engine;
 
 import cn.iocoder.yudao.module.seo.enums.SeoAnalysisStatusEnum;
 import cn.iocoder.yudao.module.seo.enums.SeoKeywordGradeEnum;
+import cn.iocoder.yudao.module.seo.service.analysis.bm25.SeoBm25Provider;
 import cn.iocoder.yudao.module.seo.service.analysis.dictionary.SeoIndustryDictionary;
 import cn.iocoder.yudao.module.seo.service.analysis.lexical.SeoTextNormalizer;
+import cn.iocoder.yudao.module.seo.service.analysis.model.SeoAnalysisContext;
 import cn.iocoder.yudao.module.seo.service.analysis.model.SeoContentSnapshot;
 import cn.iocoder.yudao.module.seo.service.analysis.model.SeoKeywordEvaluation;
 import cn.iocoder.yudao.module.seo.service.analysis.model.SeoKeywordRuleResult;
+import cn.iocoder.yudao.module.seo.service.analysis.model.SeoProviderScore;
 import cn.iocoder.yudao.module.seo.service.analysis.semantic.SeoSemanticSimilarityProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -19,26 +22,32 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.OptionalInt;
 import java.util.Set;
 
 @Component
 @RequiredArgsConstructor
 public class DefaultSeoKeywordAnalysisEngine implements SeoKeywordAnalysisEngine {
 
-    public static final String ENGINE_VERSION = "seo-keyword-engine-v1";
-    public static final String RULE_PROFILE_VERSION = "keyword-rules-v1";
+    public static final String ENGINE_VERSION = "seo-keyword-engine-v2";
+    public static final String RULE_PROFILE_VERSION = "keyword-rules-v2";
 
     private static final Map<String, Integer> POSITION_WEIGHTS = createPositionWeights();
 
     private final SeoTextNormalizer normalizer;
     private final SeoIndustryDictionary dictionary;
+    private final SeoBm25Provider bm25Provider;
     private final SeoSemanticSimilarityProvider semanticProvider;
     private final SeoKeywordScorer scorer;
     private final SeoRuleSuggestionService suggestionService;
 
     @Override
-    public SeoKeywordEvaluation analyze(String keyword, String keywordType, int sort, SeoContentSnapshot snapshot) {
+    public void prepare(SeoAnalysisContext context, SeoContentSnapshot snapshot) {
+        bm25Provider.index(context, snapshot);
+    }
+
+    @Override
+    public SeoKeywordEvaluation analyze(String keyword, String keywordType, int sort,
+                                        SeoContentSnapshot snapshot, SeoAnalysisContext context) {
         String normalizedKeyword = normalizer.normalize(keyword);
         String visibleText = snapshot.visibleText();
         Set<String> variants = dictionary.variants(normalizedKeyword);
@@ -48,11 +57,12 @@ public class DefaultSeoKeywordAnalysisEngine implements SeoKeywordAnalysisEngine
         List<SeoKeywordRuleResult> items = new ArrayList<>();
 
         Integer keyPositionPercent = scoreKeyPositions(keyword, normalizedKeyword, variants, snapshot, items);
+        SeoProviderScore bm25Score = bm25Provider.calculate(keyword, context, snapshot);
         int lexicalMatchPercent = scoreLexical(keyword, normalizedKeyword, variants, visibleText,
-                exactMatchCount, variantMatchCount, items);
-        OptionalInt semantic = semanticProvider.calculatePercent(keyword, snapshot);
-        Integer semanticPercent = semantic.isPresent() ? clamp(semantic.getAsInt()) : null;
-        addSemanticEvidence(semanticPercent, items);
+                exactMatchCount, variantMatchCount, bm25Score, items);
+        SeoProviderScore semanticScore = semanticProvider.calculate(keyword, context, snapshot);
+        Integer semanticPercent = semanticScore.isAvailable() ? clamp(semanticScore.getPercent()) : null;
+        addSemanticEvidence(semanticScore, items);
         int distributionPercent = scoreDistribution(keyword, normalizedKeyword, variants, snapshot,
                 exactMatchCount, items);
         int intentCoveragePercent = scoreIntent(keyword, normalizedKeyword, visibleText, items);
@@ -60,7 +70,8 @@ public class DefaultSeoKeywordAnalysisEngine implements SeoKeywordAnalysisEngine
         Map<String, Integer> dimensions = scorer.dimensions(keyPositionPercent, lexicalMatchPercent,
                 semanticPercent, distributionPercent, intentCoveragePercent);
         int relevancePercent = scorer.weightedPercent(dimensions);
-        int confidencePercent = Math.max(35, scorer.availableWeight(dimensions) - 10); // BM25 is not enabled yet.
+        int providerPenalty = (bm25Score.isAvailable() ? 0 : 5) + (semanticScore.isAvailable() ? 0 : 10);
+        int confidencePercent = Math.max(35, scorer.availableWeight(dimensions) - providerPenalty);
         String status = items.stream().anyMatch(item -> "NOT_COMPLETED".equals(item.getStatus()))
                 ? SeoAnalysisStatusEnum.PARTIAL.getCode() : SeoAnalysisStatusEnum.SUCCEEDED.getCode();
 
@@ -90,7 +101,7 @@ public class DefaultSeoKeywordAnalysisEngine implements SeoKeywordAnalysisEngine
                 .variantMatchCount(variantMatchCount)
                 .matchedLocations(matchedLocations)
                 .dictionaryVersion(dictionary.getVersion())
-                .semanticModelVersion(semanticProvider.getModelVersion())
+                .semanticModelVersion(semanticScore.getVersion())
                 .items(List.copyOf(items))
                 .build();
     }
@@ -161,7 +172,8 @@ public class DefaultSeoKeywordAnalysisEngine implements SeoKeywordAnalysisEngine
     }
 
     private int scoreLexical(String keyword, String normalizedKeyword, Set<String> variants, String visibleText,
-                             int exactMatchCount, int variantMatchCount, List<SeoKeywordRuleResult> items) {
+                             int exactMatchCount, int variantMatchCount, SeoProviderScore bm25Score,
+                             List<SeoKeywordRuleResult> items) {
         List<String> keywordTokens = normalizer.tokens(normalizedKeyword);
         List<String> contentTokens = normalizer.tokens(visibleText);
         long coveredTokens = keywordTokens.stream().filter(contentTokens::contains).count();
@@ -173,6 +185,11 @@ public class DefaultSeoKeywordAnalysisEngine implements SeoKeywordAnalysisEngine
         if (!variants.isEmpty()) {
             availablePoints += 25;
             variantPoints = Math.min(25, variantMatchCount * 13);
+        }
+        int bm25Points = 0;
+        if (bm25Score.isAvailable()) {
+            availablePoints += 35;
+            bm25Points = round(bm25Score.getPercent() * 35.0 / 100);
         }
 
         items.add(rule("KW_LEXICAL_EXACT_PHRASE", "LEXICAL", exactPoints == 40 ? "INFO" : "HIGH",
@@ -194,27 +211,41 @@ public class DefaultSeoKeywordAnalysisEngine implements SeoKeywordAnalysisEngine
                     null, 310));
         }
 
-        items.add(rule("KW_LEXICAL_BM25", "LEXICAL", "INFO", "NOT_COMPLETED", null,
-                BigDecimal.valueOf(35), null, Map.of("provider", "DISABLED"),
-                "BM25 站内语料索引尚未启用，本分项已按精确词和变体词的可用权重归一化",
-                "启用按租户、站点和语言隔离的 Lucene/BM25 索引后可提高词法评分可信度",
+        Map<String, Object> bm25Evidence = new LinkedHashMap<>(bm25Score.getEvidence());
+        if (bm25Score.getVersion() != null) {
+            bm25Evidence.put("providerVersion", bm25Score.getVersion());
+        }
+        items.add(rule("KW_LEXICAL_BM25", "LEXICAL",
+                bm25Score.isAvailable() && bm25Score.getPercent() < 40 ? "MEDIUM" : "INFO",
+                bm25Score.isAvailable() ? bm25Score.getPercent() >= 40 ? "GOOD" : "ISSUE" : "NOT_COMPLETED",
+                bm25Score.isAvailable() ? BigDecimal.valueOf(bm25Points) : null,
+                BigDecimal.valueOf(35), null, bm25Evidence,
+                bm25Score.getReason(),
+                bm25Score.isAvailable()
+                        ? bm25Score.getPercent() >= 40 ? ""
+                        : "参考排名靠前的同站点同语言商品，补充与该关键词直接相关且真实的属性和使用场景"
+                        : "积累达到最低数量的同站点同语言内容，或确认 BM25 索引配置后重新分析",
                 null, 320));
-        return round((exactPoints + variantPoints) * 100.0 / availablePoints);
+        return round((exactPoints + variantPoints + bm25Points) * 100.0 / availablePoints);
     }
 
-    private void addSemanticEvidence(Integer semanticPercent, List<SeoKeywordRuleResult> items) {
-        if (semanticPercent == null) {
+    private void addSemanticEvidence(SeoProviderScore semanticScore, List<SeoKeywordRuleResult> items) {
+        if (!semanticScore.isAvailable()) {
             items.add(rule("KW_SEMANTIC_PROVIDER", "SEMANTIC", "INFO", "NOT_COMPLETED", null,
-                    BigDecimal.valueOf(100), null, Map.of("provider", "DISABLED"),
-                    semanticProvider.getUnavailableReason(),
+                    BigDecimal.valueOf(100), null, semanticScore.getEvidence(),
+                    semanticScore.getReason(),
                     "配置经评测集校准的 BGE-M3 提供者后重新分析；未配置时不伪造 0%",
                     null, 400));
             return;
         }
+        Integer semanticPercent = semanticScore.getPercent();
+        Map<String, Object> evidence = new LinkedHashMap<>(semanticScore.getEvidence());
+        if (semanticScore.getVersion() != null) {
+            evidence.put("modelVersion", semanticScore.getVersion());
+        }
         items.add(rule("KW_SEMANTIC_PROVIDER", "SEMANTIC", "INFO", "GOOD",
                 BigDecimal.valueOf(semanticPercent), BigDecimal.valueOf(100), null,
-                Map.of("modelVersion", semanticProvider.getModelVersion()),
-                "语义相似度已由当前校准模型完成", "", null, 400));
+                evidence, semanticScore.getReason(), "", null, 400));
     }
 
     private int scoreDistribution(String keyword, String normalizedKeyword, Set<String> variants,
