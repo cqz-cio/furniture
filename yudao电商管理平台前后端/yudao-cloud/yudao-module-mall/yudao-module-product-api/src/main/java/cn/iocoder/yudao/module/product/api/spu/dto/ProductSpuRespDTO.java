@@ -4,6 +4,7 @@ import cn.iocoder.yudao.module.product.enums.spu.ProductSpuStatusEnum;
 import lombok.Data;
 
 import java.util.List;
+import java.util.Map;
 
 // TODO @LeeYan9: ProductSpuRespDTO
 
@@ -28,6 +29,18 @@ public class ProductSpuRespDTO {
      */
     private String name;
     /**
+     * 商品站内关键词
+     */
+    private String keyword;
+    /**
+     * 商品简介
+     */
+    private String introduction;
+    /**
+     * 商品详情（可包含 HTML）
+     */
+    private String description;
+    /**
      * 单位
      *
      * 对应 product_unit 数据字典
@@ -46,6 +59,14 @@ public class ProductSpuRespDTO {
      * 商品封面图
      */
     private String picUrl;
+    /**
+     * 商品轮播图
+     */
+    private List<String> sliderPicUrls;
+    /**
+     * 家具 Web 详情配置
+     */
+    private Map<String, Object> detailConfig;
 
     /**
      * 商品状态

@@ -56,8 +56,26 @@
       </el-table-column>
       <el-table-column label="版本" prop="version" width="80" />
       <el-table-column label="更新时间" prop="updateTime" :formatter="dateFormatter" width="180" />
-      <el-table-column label="操作" fixed="right" width="210">
+      <el-table-column label="操作" fixed="right" width="390">
         <template #default="scope">
+          <el-button
+            link
+            type="primary"
+            :loading="analysingId === scope.row.id"
+            v-hasPermi="['seo:analysis:run']"
+            @click="handleAnalyze(scope.row)"
+          >
+            分析
+          </el-button>
+          <el-button
+            v-if="scope.row.latestAnalysisId"
+            link
+            type="primary"
+            v-hasPermi="['seo:analysis:query']"
+            @click="openAnalysis(scope.row.latestAnalysisId)"
+          >
+            查看最新分析
+          </el-button>
           <el-button link type="primary" v-hasPermi="['seo:metadata:update']" @click="openForm('update', scope.row.id)">编辑</el-button>
           <el-button link type="danger" v-hasPermi="['seo:metadata:delete']" @click="handleDelete(scope.row.id)">删除</el-button>
           <el-button link type="success" v-hasPermi="['seo:metadata:publish']" @click="handlePublish(scope.row)">发布</el-button>
@@ -78,7 +96,9 @@
 <script setup lang="ts">
 import { ElMessageBox } from 'element-plus'
 import { onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { dateFormatter } from '@/utils/formatTime'
+import { createSeoIdempotencyKey, runSeoAnalysis } from '@/api/seo/analysis'
 import {
   deleteSeoMetadata,
   getSeoMetadataPage,
@@ -93,7 +113,9 @@ import MetadataForm from './MetadataForm.vue'
 defineOptions({ name: 'SeoMetadata' })
 
 const message = useMessage()
+const router = useRouter()
 const loading = ref(false)
+const analysingId = ref<number>()
 const list = ref<SeoMetadataRespVO[]>([])
 const total = ref(0)
 const queryFormRef = ref()
@@ -161,6 +183,35 @@ const handlePublish = async (row: SeoMetadataRespVO) => {
   } catch (error) {
     if (error === 'cancel' || error === 'close') return
     message.error('发布失败，可能存在版本冲突，请重新加载后重试')
+  }
+}
+
+const openAnalysis = async (id: number) => {
+  await router.push({ path: '/seo/analysis', query: { id: String(id) } })
+}
+
+const handleAnalyze = async (row: SeoMetadataRespVO) => {
+  if (!row.focusKeyphrase?.trim()) {
+    message.warning('请先编辑这条内容并设置焦点关键词')
+    return
+  }
+  analysingId.value = row.id
+  try {
+    const id = await runSeoAnalysis({
+      siteId: row.siteId,
+      entityType: row.entityType,
+      entityId: row.entityId,
+      locale: row.locale,
+      focusKeyphrase: row.focusKeyphrase,
+      relatedKeyphrases: row.relatedKeyphrases || [],
+      sourceType: 'ENTITY',
+      sourceId: row.id,
+      idempotencyKey: createSeoIdempotencyKey(`seo-entity-${row.id}`)
+    })
+    message.success('SEO 分析完成')
+    await openAnalysis(id)
+  } finally {
+    analysingId.value = undefined
   }
 }
 

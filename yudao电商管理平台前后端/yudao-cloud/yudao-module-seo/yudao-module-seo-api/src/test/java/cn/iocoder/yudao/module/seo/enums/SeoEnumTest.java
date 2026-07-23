@@ -53,6 +53,18 @@ class SeoEnumTest {
         assertThat(ErrorCodeConstants.METADATA_CANONICAL_URL_INVALID.getCode()).isEqualTo(1_070_002_005);
         assertThat(ErrorCodeConstants.METADATA_CANONICAL_URL_INVALID.getMsg())
                 .isEqualTo("Canonical URL 必须是有效的 HTTP(S) 绝对地址");
+        assertThat(ErrorCodeConstants.ANALYSIS_NOT_EXISTS.getCode()).isEqualTo(1_070_003_000);
+        assertThat(ErrorCodeConstants.ANALYSIS_KEYWORD_DUPLICATE.getCode()).isEqualTo(1_070_003_003);
+    }
+
+    @Test
+    void shouldExposeKeywordGradeBoundaries() {
+        assertThat(SeoKeywordGradeEnum.fromPercent(100)).isEqualTo(SeoKeywordGradeEnum.HIGH);
+        assertThat(SeoKeywordGradeEnum.fromPercent(80)).isEqualTo(SeoKeywordGradeEnum.HIGH);
+        assertThat(SeoKeywordGradeEnum.fromPercent(79)).isEqualTo(SeoKeywordGradeEnum.MEDIUM);
+        assertThat(SeoKeywordGradeEnum.fromPercent(60)).isEqualTo(SeoKeywordGradeEnum.MEDIUM);
+        assertThat(SeoKeywordGradeEnum.fromPercent(40)).isEqualTo(SeoKeywordGradeEnum.WEAK);
+        assertThat(SeoKeywordGradeEnum.fromPercent(39)).isEqualTo(SeoKeywordGradeEnum.LOW);
     }
 
 }

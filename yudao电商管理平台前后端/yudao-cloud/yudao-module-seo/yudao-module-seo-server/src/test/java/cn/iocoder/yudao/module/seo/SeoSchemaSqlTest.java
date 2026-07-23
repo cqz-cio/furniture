@@ -27,12 +27,23 @@ class SeoSchemaSqlTest {
             ScriptUtils.executeSqlScript(connection, new ClassPathResource("sql/create_tables.sql"));
 
             DatabaseMetaData metadata = connection.getMetaData();
-            assertThat(tableNames(metadata)).contains("seo_site_config", "seo_metadata");
+            assertThat(tableNames(metadata)).contains("seo_site_config", "seo_metadata", "seo_analysis",
+                    "seo_analysis_item", "seo_keyword_analysis", "seo_keyword_analysis_item");
             assertThat(columnNames(metadata, "seo_site_config"))
                     .contains("site_id", "site_url", "default_locale", "tenant_id", "deleted", "active_record");
             assertThat(columnNames(metadata, "seo_metadata"))
                     .contains("entity_type", "entity_id", "locale", "related_keyphrases", "publish_status", "version",
-                            "active_record");
+                            "active_record", "latest_analysis_id");
+            assertThat(columnNames(metadata, "seo_analysis"))
+                    .contains("site_id", "source_type", "input_snapshot", "content_hash", "idempotency_key",
+                            "overall_relevance_percent", "confidence_percent", "analysis_status", "tenant_id");
+            assertThat(columnNames(metadata, "seo_keyword_analysis"))
+                    .contains("analysis_id", "keyword_type", "normalized_keyword", "key_position_percent",
+                            "lexical_match_percent", "semantic_percent", "distribution_percent",
+                            "intent_coverage_percent", "relevance_percent", "confidence_percent");
+            assertThat(columnNames(metadata, "seo_keyword_analysis_item"))
+                    .contains("keyword_analysis_id", "rule_code", "dimension", "severity", "content_location",
+                            "evidence", "reason", "recommendation", "recoverable_score");
 
             assertColumn(metadata, "seo_site_config", "id", Types.BIGINT, 64, false, null);
             assertColumn(metadata, "seo_site_config", "site_id", Types.BIGINT, 64, false, null);
@@ -62,8 +73,34 @@ class SeoSchemaSqlTest {
                     "tenant_id", "site_id", "entity_type", "entity_id", "locale", "active_record");
             assertIndex(metadata, "seo_metadata", "idx_public_resolve", false,
                     "tenant_id", "site_id", "entity_type", "entity_id", "locale", "publish_status");
+            assertIndex(metadata, "seo_analysis", "uk_analysis_idempotency_active", true,
+                    "tenant_id", "idempotency_key", "active_record");
+            assertIndex(metadata, "seo_keyword_analysis", "uk_keyword_order_active", true,
+                    "tenant_id", "analysis_id", "keyword_type", "sort", "active_record");
+            assertIndex(metadata, "seo_keyword_analysis", "uk_keyword_normalized_active", true,
+                    "tenant_id", "analysis_id", "normalized_keyword", "active_record");
 
             assertActiveRecordLifecycle(connection);
+            assertKeywordUniqueness(connection);
+        }
+    }
+
+    private static void assertKeywordUniqueness(Connection connection) throws SQLException {
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate("INSERT INTO seo_analysis "
+                    + "(site_id, source_type, entity_type, locale, focus_keyphrase, input_snapshot, content_hash, "
+                    + "idempotency_key, engine_version, rule_profile_version, dictionary_version, tenant_id) "
+                    + "VALUES (11, 'MANUAL', 'PRODUCT', 'zh-CN', '实木餐桌', '{}', "
+                    + "'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'run-1', "
+                    + "'engine-v1', 'rules-v1', 'dictionary-v1', 1)");
+            statement.executeUpdate("INSERT INTO seo_keyword_analysis "
+                    + "(analysis_id, keyword_type, keyword, normalized_keyword, sort, analysis_status, "
+                    + "dictionary_version, tenant_id) VALUES (1, 'FOCUS', '实木餐桌', '实木餐桌', 0, "
+                    + "'PARTIAL', 'dictionary-v1', 1)");
+            assertThatThrownBySql(() -> statement.executeUpdate("INSERT INTO seo_keyword_analysis "
+                    + "(analysis_id, keyword_type, keyword, normalized_keyword, sort, analysis_status, "
+                    + "dictionary_version, tenant_id) VALUES (1, 'RELATED', '实木 餐桌', '实木餐桌', 1, "
+                    + "'PARTIAL', 'dictionary-v1', 1)"));
         }
     }
 
