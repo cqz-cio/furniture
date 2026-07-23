@@ -1,9 +1,12 @@
 package cn.iocoder.yudao.module.seo.service.analysis.engine;
 
+import cn.iocoder.yudao.module.seo.service.analysis.bm25.DisabledSeoBm25Provider;
 import cn.iocoder.yudao.module.seo.service.analysis.dictionary.SeoIndustryDictionary;
 import cn.iocoder.yudao.module.seo.service.analysis.lexical.SeoTextNormalizer;
+import cn.iocoder.yudao.module.seo.service.analysis.model.SeoAnalysisContext;
 import cn.iocoder.yudao.module.seo.service.analysis.model.SeoContentSnapshot;
 import cn.iocoder.yudao.module.seo.service.analysis.model.SeoKeywordEvaluation;
+import cn.iocoder.yudao.module.seo.service.analysis.model.SeoProviderScore;
 import cn.iocoder.yudao.module.seo.service.analysis.semantic.DisabledSeoSemanticSimilarityProvider;
 import cn.iocoder.yudao.module.seo.service.analysis.semantic.SeoSemanticSimilarityProvider;
 import org.junit.jupiter.api.BeforeEach;
@@ -11,7 +14,6 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
-import java.util.OptionalInt;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -23,7 +25,7 @@ class DefaultSeoKeywordAnalysisEngineTest {
     void setUp() {
         SeoTextNormalizer normalizer = new SeoTextNormalizer();
         engine = new DefaultSeoKeywordAnalysisEngine(normalizer, new SeoIndustryDictionary(normalizer),
-                new DisabledSeoSemanticSimilarityProvider(), new SeoKeywordScorer(),
+                new DisabledSeoBm25Provider(), new DisabledSeoSemanticSimilarityProvider(), new SeoKeywordScorer(),
                 new SeoRuleSuggestionService());
     }
 
@@ -76,8 +78,9 @@ class DefaultSeoKeywordAnalysisEngineTest {
         SeoTextNormalizer normalizer = new SeoTextNormalizer();
         SeoSemanticSimilarityProvider availableSemanticProvider = new SeoSemanticSimilarityProvider() {
             @Override
-            public OptionalInt calculatePercent(String keyword, SeoContentSnapshot snapshot) {
-                return OptionalInt.of(88);
+            public SeoProviderScore calculate(String keyword, SeoAnalysisContext context,
+                                              SeoContentSnapshot snapshot) {
+                return SeoProviderScore.available(88, getModelVersion(), "test", Map.of());
             }
 
             @Override
@@ -91,7 +94,8 @@ class DefaultSeoKeywordAnalysisEngineTest {
             }
         };
         DefaultSeoKeywordAnalysisEngine engineWithSemantic = new DefaultSeoKeywordAnalysisEngine(
-                normalizer, new SeoIndustryDictionary(normalizer), availableSemanticProvider,
+                normalizer, new SeoIndustryDictionary(normalizer), new DisabledSeoBm25Provider(),
+                availableSemanticProvider,
                 new SeoKeywordScorer(), new SeoRuleSuggestionService());
 
         SeoKeywordEvaluation result = engineWithSemantic.analyze("实木餐桌", "FOCUS", 0, relevantSnapshot());

@@ -27,6 +27,7 @@ import cn.iocoder.yudao.module.seo.enums.SeoKeywordTypeEnum;
 import cn.iocoder.yudao.module.seo.service.SeoLocaleUtils;
 import cn.iocoder.yudao.module.seo.service.analysis.engine.SeoKeywordAnalysisEngine;
 import cn.iocoder.yudao.module.seo.service.analysis.lexical.SeoTextNormalizer;
+import cn.iocoder.yudao.module.seo.service.analysis.model.SeoAnalysisContext;
 import cn.iocoder.yudao.module.seo.service.analysis.model.SeoContentSnapshot;
 import cn.iocoder.yudao.module.seo.service.analysis.model.SeoKeywordEvaluation;
 import cn.iocoder.yudao.module.seo.service.analysis.model.SeoKeywordRuleResult;
@@ -101,13 +102,23 @@ public class SeoAnalysisServiceImpl implements SeoAnalysisService {
                 : findLatestAnalysisId(reqVO);
         SeoAnalysisDO analysis = createAnalysis(reqVO, resolved, inputSnapshot, contentHash, previousAnalysisId);
         analysisMapper.insert(analysis);
+        SeoAnalysisContext analysisContext = SeoAnalysisContext.builder()
+                .tenantId(currentTenantId())
+                .siteId(reqVO.getSiteId())
+                .entityType(reqVO.getEntityType())
+                .entityId(reqVO.getEntityId())
+                .locale(reqVO.getLocale())
+                .sourceType(reqVO.getSourceType())
+                .sourceId(resolved.metadataId() != null ? resolved.metadataId() : reqVO.getSourceId())
+                .build();
+        analysisEngine.prepare(analysisContext, resolved.snapshot());
 
         List<SeoKeywordEvaluation> evaluations = new ArrayList<>();
         boolean hasFailedKeyword = false;
         for (KeywordInput keyword : keywords) {
             try {
                 SeoKeywordEvaluation evaluation = analysisEngine.analyze(
-                        keyword.keyword(), keyword.type(), keyword.sort(), resolved.snapshot());
+                        keyword.keyword(), keyword.type(), keyword.sort(), resolved.snapshot(), analysisContext);
                 persistKeyword(analysis.getId(), evaluation);
                 evaluations.add(evaluation);
             } catch (RuntimeException ex) {
@@ -169,7 +180,8 @@ public class SeoAnalysisServiceImpl implements SeoAnalysisService {
         runReq.setRelatedKeyphrases(previousKeywords.stream()
                 .filter(keyword -> SeoKeywordTypeEnum.RELATED.getCode().equals(keyword.getKeywordType()))
                 .map(SeoKeywordAnalysisDO::getKeyword).toList());
-        if (SeoAnalysisSourceTypeEnum.MANUAL.getCode().equals(previous.getSourceType())) {
+        if (SeoAnalysisSourceTypeEnum.MANUAL.getCode().equals(previous.getSourceType())
+                || SeoAnalysisSourceTypeEnum.DOCUMENT.getCode().equals(previous.getSourceType())) {
             runReq.setContent(JsonUtils.convertObject(previous.getInputSnapshot().get("content"),
                     SeoContentSnapshotReqVO.class));
         }

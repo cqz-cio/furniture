@@ -1,16 +1,15 @@
 package cn.iocoder.yudao.module.seo.service.analysis.semantic;
 
+import cn.iocoder.yudao.module.seo.service.analysis.model.SeoAnalysisContext;
 import cn.iocoder.yudao.module.seo.service.analysis.model.SeoContentSnapshot;
-import org.springframework.stereotype.Component;
+import cn.iocoder.yudao.module.seo.service.analysis.model.SeoProviderScore;
 
-import java.util.OptionalInt;
-
-@Component
 public class DisabledSeoSemanticSimilarityProvider implements SeoSemanticSimilarityProvider {
 
     @Override
-    public OptionalInt calculatePercent(String keyword, SeoContentSnapshot snapshot) {
-        return OptionalInt.empty();
+    public SeoProviderScore calculate(String keyword, SeoAnalysisContext context, SeoContentSnapshot snapshot) {
+        return SeoProviderScore.unavailable(null, getUnavailableReason(),
+                java.util.Map.of("provider", "DISABLED"));
     }
 
     @Override

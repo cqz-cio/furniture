@@ -32,4 +32,10 @@ public interface ErrorCodeConstants {
     ErrorCode ANALYSIS_COMPARISON_MISMATCH = new ErrorCode(1_070_003_007,
             "只能对比同一站点、实体和语言的 SEO 分析");
 
+    ErrorCode DOCUMENT_FILE_EMPTY = new ErrorCode(1_070_004_000, "SEO 分析文件不能为空");
+    ErrorCode DOCUMENT_TYPE_UNSUPPORTED = new ErrorCode(1_070_004_001,
+            "SEO 分析文件仅支持 DOCX、PDF 和 XLSX");
+    ErrorCode DOCUMENT_FILE_TOO_LARGE = new ErrorCode(1_070_004_002, "SEO 分析文件超过允许大小");
+    ErrorCode DOCUMENT_PARSE_FAILED = new ErrorCode(1_070_004_003, "SEO 分析文件内容解析失败");
+
 }

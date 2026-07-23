@@ -16,8 +16,8 @@ spring:
 
   servlet:
     multipart:
-      max-file-size: 16MB
-      max-request-size: 32MB
+      max-file-size: ${SEO_DOCUMENT_MAX_FILE_SIZE:16MB}
+      max-request-size: ${SEO_DOCUMENT_MAX_REQUEST_SIZE:32MB}
 
   jackson:
     serialization:
@@ -103,5 +103,30 @@ yudao:
   tenant:
     enable: true
     ignore-urls:
+  seo:
+    analysis:
+      bm25:
+        enabled: ${SEO_BM25_ENABLED:false}
+        index-path: ${SEO_BM25_INDEX_PATH:${user.home}/.oakved/seo-bm25}
+        minimum-corpus-size: ${SEO_BM25_MIN_CORPUS_SIZE:20}
+        max-hits: ${SEO_BM25_MAX_HITS:1000}
+      semantic:
+        enabled: ${SEO_BGE_M3_ENABLED:false}
+        base-url: ${SEO_BGE_M3_BASE_URL:http://127.0.0.1:8000}
+        api-key: ${SEO_BGE_M3_API_KEY:}
+        model: ${SEO_BGE_M3_MODEL:BAAI/bge-m3}
+        endpoint-path: ${SEO_BGE_M3_ENDPOINT_PATH:/v1/embeddings}
+        connect-timeout: ${SEO_BGE_M3_CONNECT_TIMEOUT:2s}
+        read-timeout: ${SEO_BGE_M3_READ_TIMEOUT:8s}
+        minimum-similarity: ${SEO_BGE_M3_MIN_SIMILARITY:0.25}
+        maximum-similarity: ${SEO_BGE_M3_MAX_SIMILARITY:0.85}
+        max-content-chars: ${SEO_BGE_M3_MAX_CONTENT_CHARS:12000}
+      document:
+        max-file-size: ${SEO_DOCUMENT_MAX_FILE_SIZE:16MB}
+        max-extracted-chars: ${SEO_DOCUMENT_MAX_EXTRACTED_CHARS:200000}
+        allowed-extensions:
+          - docx
+          - pdf
+          - xlsx
 
 debug: false

@@ -14,9 +14,14 @@
           <Icon icon="ep:right" />
           <span>4. 重新分析并对比</span>
         </div>
-        <el-button type="primary" v-hasPermi="['seo:analysis:run']" @click="openManualDialog">
-          <Icon icon="ep:plus" class="mr-5px" />手工录入内容并分析
-        </el-button>
+        <div class="empty-actions">
+          <el-button v-hasPermi="['seo:analysis:run']" @click="openDocumentDialog">
+            <Icon icon="ep:upload-filled" class="mr-5px" />上传文档分析
+          </el-button>
+          <el-button type="primary" v-hasPermi="['seo:analysis:run']" @click="openManualDialog">
+            <Icon icon="ep:plus" class="mr-5px" />手工录入内容并分析
+          </el-button>
+        </div>
         <p class="empty-tip">也可以在“内容优化”列表中点击“分析”，直接读取最新商品与 SEO 元数据。</p>
       </div>
     </ContentWrap>
@@ -37,6 +42,7 @@
             </div>
           </div>
           <div class="header-actions">
+            <el-button v-hasPermi="['seo:analysis:run']" @click="openDocumentDialog">上传文档分析</el-button>
             <el-button v-hasPermi="['seo:analysis:run']" @click="openManualDialog">新建手工分析</el-button>
             <el-button
               v-if="analysis.previousAnalysisId"
@@ -170,25 +176,105 @@
     </template>
   </el-dialog>
 
+  <el-dialog v-model="documentDialogVisible" title="上传文档并分析" width="760px" destroy-on-close>
+    <el-form ref="documentFormRef" :model="documentForm" :rules="documentRules" label-width="110px">
+      <div class="form-grid">
+        <el-form-item label="站点 ID" prop="siteId">
+          <el-input-number v-model="documentForm.siteId" :min="1" :precision="0" class="!w-100%" />
+        </el-form-item>
+        <el-form-item label="内容类型" prop="entityType">
+          <el-select v-model="documentForm.entityType" class="!w-100%">
+            <el-option v-for="item in entityTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="实体 ID" prop="entityId">
+          <el-input-number v-model="documentForm.entityId" :min="1" :precision="0" class="!w-100%" />
+        </el-form-item>
+        <el-form-item label="Locale" prop="locale">
+          <el-input v-model="documentForm.locale" placeholder="zh-CN" />
+        </el-form-item>
+      </div>
+      <el-form-item label="焦点关键词" prop="focusKeyphrase">
+        <el-input v-model="documentForm.focusKeyphrase" maxlength="255" show-word-limit />
+      </el-form-item>
+      <el-form-item label="关联关键词">
+        <el-select
+          v-model="documentForm.relatedKeyphrases"
+          multiple
+          filterable
+          allow-create
+          default-first-option
+          placeholder="输入一个关键词后按回车，可添加多个"
+          class="!w-100%"
+        />
+      </el-form-item>
+      <el-form-item label="内容文件" required>
+        <el-upload
+          ref="documentUploadRef"
+          drag
+          :auto-upload="false"
+          :limit="1"
+          accept=".docx,.pdf,.xlsx"
+          :on-change="handleDocumentFileChange"
+          :on-remove="handleDocumentFileRemove"
+          class="document-upload"
+        >
+          <Icon icon="ep:upload-filled" class="document-upload-icon" />
+          <div>拖入文件，或点击选择 DOCX、PDF、XLSX</div>
+          <template #tip>
+            <div class="el-upload__tip">最大 16 MB；文件内容只用于当前 SEO 分析。</div>
+          </template>
+        </el-upload>
+      </el-form-item>
+      <div v-if="documentPreview" class="document-preview">
+        <div class="document-preview-meta">
+          <strong>{{ documentPreview.filename }}</strong>
+          <span>已提取 {{ documentPreview.extractedCharacters }} 个字符</span>
+          <el-tag v-if="documentPreview.truncated" effect="plain">内容已按上限截断</el-tag>
+        </div>
+        <el-input :model-value="documentPreview.content" type="textarea" :rows="6" readonly />
+      </div>
+    </el-form>
+    <template #footer>
+      <el-button @click="documentDialogVisible = false">取消</el-button>
+      <el-button :loading="parsingDocument" :disabled="!documentFile" @click="previewDocument">
+        解析预览
+      </el-button>
+      <el-button
+        type="primary"
+        :loading="submittingDocument"
+        :disabled="!documentFile"
+        v-hasPermi="['seo:analysis:run']"
+        @click="submitDocumentAnalysis"
+      >
+        开始分析
+      </el-button>
+    </template>
+  </el-dialog>
+
   <el-dialog v-model="compareDialogVisible" title="SEO 分析历史对比" width="920px">
     <AnalysisComparison v-if="comparison" :data="comparison" />
   </el-dialog>
 </template>
 
 <script setup lang="ts">
-import type { FormInstance, FormRules } from 'element-plus'
+import type { FormInstance, FormRules, UploadFile, UploadInstance } from 'element-plus'
 import { reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   compareSeoAnalysis,
   createSeoIdempotencyKey,
   getSeoAnalysis,
+  parseSeoDocument,
   rerunSeoAnalysis,
+  runSeoDocumentAnalysis,
   runSeoAnalysis,
   type SeoAnalysisCompareRespVO,
   type SeoAnalysisRespVO,
   type SeoAnalysisRunReqVO,
-  type SeoContentSnapshotReqVO
+  type SeoContentSnapshotReqVO,
+  type SeoDocumentAnalysisRunReqVO,
+  type SeoParsedDocumentRespVO
 } from '@/api/seo/analysis'
 import { useMessage } from '@/hooks/web/useMessage'
 import AnalysisComparison from './components/AnalysisComparison.vue'
@@ -201,12 +287,19 @@ const router = useRouter()
 const message = useMessage()
 const loading = ref(false)
 const submitting = ref(false)
+const parsingDocument = ref(false)
+const submittingDocument = ref(false)
 const rerunning = ref(false)
 const analysis = ref<SeoAnalysisRespVO>()
 const comparison = ref<SeoAnalysisCompareRespVO>()
 const compareDialogVisible = ref(false)
 const manualDialogVisible = ref(false)
+const documentDialogVisible = ref(false)
 const manualFormRef = ref<FormInstance>()
+const documentFormRef = ref<FormInstance>()
+const documentUploadRef = ref<UploadInstance>()
+const documentFile = ref<File>()
+const documentPreview = ref<SeoParsedDocumentRespVO>()
 
 const entityTypeOptions = [
   { label: '商品', value: 'PRODUCT' },
@@ -247,6 +340,26 @@ const manualRules: FormRules = {
   'content.seoTitle': [{ required: true, message: '请输入用于分析的 SEO 标题', trigger: 'blur' }]
 }
 
+type DocumentAnalysisForm = Omit<SeoDocumentAnalysisRunReqVO, 'file' | 'idempotencyKey'>
+
+const createDocumentForm = (): DocumentAnalysisForm => ({
+  siteId: 1,
+  entityType: 'PRODUCT',
+  entityId: 1,
+  locale: 'zh-CN',
+  focusKeyphrase: '',
+  relatedKeyphrases: []
+})
+
+const documentForm = reactive<DocumentAnalysisForm>(createDocumentForm())
+const documentRules: FormRules = {
+  siteId: [{ required: true, message: '请输入站点 ID', trigger: 'change' }],
+  entityType: [{ required: true, message: '请选择内容类型', trigger: 'change' }],
+  entityId: [{ required: true, message: '请输入实体 ID', trigger: 'change' }],
+  locale: [{ required: true, message: '请输入 Locale', trigger: 'blur' }],
+  focusKeyphrase: [{ required: true, message: '请输入焦点关键词', trigger: 'blur' }]
+}
+
 const entityTypeLabel = (value: string) =>
   entityTypeOptions.find((item) => item.value === value)?.label || value
 
@@ -276,6 +389,61 @@ const loadAnalysis = async () => {
 const openManualDialog = () => {
   Object.assign(manualForm, createManualForm())
   manualDialogVisible.value = true
+}
+
+const openDocumentDialog = () => {
+  Object.assign(documentForm, createDocumentForm())
+  documentFile.value = undefined
+  documentPreview.value = undefined
+  documentUploadRef.value?.clearFiles()
+  documentDialogVisible.value = true
+}
+
+const handleDocumentFileChange = (uploadFile: UploadFile) => {
+  documentFile.value = uploadFile.raw
+  documentPreview.value = undefined
+}
+
+const handleDocumentFileRemove = () => {
+  documentFile.value = undefined
+  documentPreview.value = undefined
+}
+
+const previewDocument = async () => {
+  if (!documentFile.value) {
+    message.warning('请先选择 DOCX、PDF 或 XLSX 文件')
+    return
+  }
+  parsingDocument.value = true
+  try {
+    documentPreview.value = await parseSeoDocument(documentFile.value)
+    message.success('文档解析完成')
+  } finally {
+    parsingDocument.value = false
+  }
+}
+
+const submitDocumentAnalysis = async () => {
+  await documentFormRef.value?.validate()
+  if (!documentFile.value) {
+    message.warning('请先选择 DOCX、PDF 或 XLSX 文件')
+    return
+  }
+  submittingDocument.value = true
+  try {
+    const id = await runSeoDocumentAnalysis({
+      ...documentForm,
+      focusKeyphrase: documentForm.focusKeyphrase.trim(),
+      relatedKeyphrases: documentForm.relatedKeyphrases.map((item) => item.trim()).filter(Boolean),
+      idempotencyKey: createSeoIdempotencyKey('seo-document'),
+      file: documentFile.value
+    })
+    documentDialogVisible.value = false
+    message.success('文档 SEO 分析完成')
+    await router.replace({ path: '/seo/analysis', query: { id: String(id) } })
+  } finally {
+    submittingDocument.value = false
+  }
 }
 
 const submitManualAnalysis = async () => {
@@ -359,6 +527,12 @@ watch(() => route.query.id, loadAnalysis, { immediate: true })
 .empty-tip {
   margin-top: 14px;
   font-size: 12px;
+}
+
+.empty-actions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
 }
 
 .analysis-header,
@@ -446,6 +620,41 @@ watch(() => route.query.id, loadAnalysis, { immediate: true })
   column-gap: 20px;
 }
 
+.document-upload {
+  width: 100%;
+}
+
+.document-upload :deep(.el-upload),
+.document-upload :deep(.el-upload-dragger) {
+  width: 100%;
+}
+
+.document-upload-icon {
+  margin-bottom: 8px;
+  color: var(--el-color-primary);
+  font-size: 34px;
+}
+
+.document-preview {
+  margin: 8px 0 8px 110px;
+  padding: 14px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 8px;
+}
+
+.document-preview-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+  color: var(--el-text-color-secondary);
+  font-size: 13px;
+}
+
+.document-preview-meta strong {
+  color: var(--el-text-color-primary);
+}
+
 @media (max-width: 850px) {
   .workflow,
   .analysis-header,
@@ -463,6 +672,10 @@ watch(() => route.query.id, loadAnalysis, { immediate: true })
 
   .form-grid {
     grid-template-columns: 1fr;
+  }
+
+  .document-preview {
+    margin-left: 0;
   }
 }
 </style>

@@ -1,12 +1,12 @@
 package cn.iocoder.yudao.module.seo.service.analysis.semantic;
 
+import cn.iocoder.yudao.module.seo.service.analysis.model.SeoAnalysisContext;
 import cn.iocoder.yudao.module.seo.service.analysis.model.SeoContentSnapshot;
-
-import java.util.OptionalInt;
+import cn.iocoder.yudao.module.seo.service.analysis.model.SeoProviderScore;
 
 public interface SeoSemanticSimilarityProvider {
 
-    OptionalInt calculatePercent(String keyword, SeoContentSnapshot snapshot);
+    SeoProviderScore calculate(String keyword, SeoAnalysisContext context, SeoContentSnapshot snapshot);
 
     String getModelVersion();
 
