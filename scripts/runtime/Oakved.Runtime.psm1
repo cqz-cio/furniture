@@ -52,6 +52,32 @@ function Test-OakvedPathWithinRoot {
     return $normalizedPath.StartsWith($prefix, [StringComparison]::OrdinalIgnoreCase)
 }
 
+function Invoke-OakvedGitStatus {
+    param(
+        [Parameter(Mandatory = $true)][string]$Worktree,
+        [switch]$TrackedOnly
+    )
+
+    $normalizedWorktree = ConvertTo-OakvedNormalizedPath -Path $Worktree
+    $safeDirectory = $normalizedWorktree -replace '\\', '/'
+    $arguments = @(
+        '-c', "safe.directory=$safeDirectory",
+        '-C', $normalizedWorktree,
+        'status', '--porcelain'
+    )
+    if ($TrackedOnly) {
+        $arguments += '--untracked-files=no'
+    }
+
+    # The launcher trusts only worktrees already registered beneath its repository.
+    # Keep that trust command-scoped so the user's global Git configuration is unchanged.
+    $lines = @(& git @arguments)
+    return [pscustomobject]@{
+        Lines    = $lines
+        ExitCode = $LASTEXITCODE
+    }
+}
+
 function Get-OakvedRuntimeId {
     [CmdletBinding()]
     param(
@@ -271,8 +297,9 @@ function New-OakvedRuntimeSnapshot {
         $statusLines = @(& $GitStatusProvider $snapshotPath)
     }
     else {
-        $statusLines = @(& git -C $snapshotPath status --porcelain --untracked-files=no)
-        if ($LASTEXITCODE -ne 0) {
+        $gitStatus = Invoke-OakvedGitStatus -Worktree $snapshotPath -TrackedOnly
+        $statusLines = @($gitStatus.Lines)
+        if ([int]$gitStatus.ExitCode -ne 0) {
             throw "Unable to inspect runtime snapshot status at $snapshotPath."
         }
     }
@@ -411,8 +438,9 @@ function Resolve-OakvedTarget {
                 $sourceStatusLines = @(& $GitStatusProvider $sourceWorktree)
             }
             else {
-                $sourceStatusLines = @(& git -C $sourceWorktree status --porcelain)
-                if ($LASTEXITCODE -ne 0) {
+                $sourceGitStatus = Invoke-OakvedGitStatus -Worktree $sourceWorktree
+                $sourceStatusLines = @($sourceGitStatus.Lines)
+                if ([int]$sourceGitStatus.ExitCode -ne 0) {
                     throw "Unable to read git status for source worktree $sourceWorktree."
                 }
             }
@@ -474,8 +502,9 @@ function Resolve-OakvedTarget {
             $statusLines = @(& $GitStatusProvider $selectedWorktree)
         }
         else {
-            $statusLines = @(& git -C $selectedWorktree status --porcelain)
-            if ($LASTEXITCODE -ne 0) {
+            $selectedGitStatus = Invoke-OakvedGitStatus -Worktree $selectedWorktree
+            $statusLines = @($selectedGitStatus.Lines)
+            if ([int]$selectedGitStatus.ExitCode -ne 0) {
                 throw "Unable to read git status for worktree $selectedWorktree."
             }
         }
@@ -569,8 +598,9 @@ function Resolve-OakvedManifestTarget {
         $statusLines = @(& $GitStatusProvider $snapshotPath)
     }
     else {
-        $statusLines = @(& git -C $snapshotPath status --porcelain --untracked-files=no)
-        if ($LASTEXITCODE -ne 0) {
+        $gitStatus = Invoke-OakvedGitStatus -Worktree $snapshotPath -TrackedOnly
+        $statusLines = @($gitStatus.Lines)
+        if ([int]$gitStatus.ExitCode -ne 0) {
             throw "Unable to inspect manifest snapshot status at $snapshotPath."
         }
     }

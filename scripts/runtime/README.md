@@ -60,4 +60,5 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File "D:\code\.runtime\bin\oa
 - `D:\code\.runtime\runtime.json` 记录实际运行的模式、commit、快照路径、数据库和进程 PID；`status` 与 `stop` 以它为准，不猜测当前 checkout。
 - 数据库名称仍按逻辑分支生成。例如 `main` 始终使用 `oakved_main_0d6e4079`，更换 commit 快照不会新建或丢失商品数据。
 - 快照只隔离代码和构建产物；MySQL 数据、日志、缓存和启动器都保存在 `D:\code\.runtime` 的受管目录中。
+- 启动器读取已登记工作树时，只对当前 Git 命令信任该工作树路径，不会写入全局 `safe.directory` 配置；因此管理员终端与 Codex 沙箱可以共用运行快照。
 - `start -Branch` 只接受本地分支已经提交的内容。需要运行最新改动时，先提交，再停止并重新启动相应分支。
