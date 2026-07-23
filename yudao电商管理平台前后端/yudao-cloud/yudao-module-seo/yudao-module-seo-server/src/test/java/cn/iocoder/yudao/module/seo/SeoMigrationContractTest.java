@@ -41,12 +41,13 @@ class SeoMigrationContractTest {
 
         assertThat(sql).contains(
                 "SET @seo_root_menu_id =",
-                "SELECT 8112,'关键词分析'",
+                "SELECT '关键词分析'",
                 "'analysis','ep:data-analysis','seo/analysis/index','SeoAnalysis'",
                 "SET @seo_analysis_menu_id =",
                 "'seo:analysis:run'",
                 "'seo:analysis:query'",
                 "@seo_analysis_menu_id");
+        assertThat(sql).doesNotContain("SELECT 8110,", "SELECT 8111,", "SELECT 8112,");
     }
 
     @Test
