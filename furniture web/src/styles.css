@@ -144,13 +144,13 @@ button {
 }
 
 .rh-header.is-overlay:hover,
-.rh-header.is-overlay:focus-within,
+.rh-header.is-overlay:has(:focus-visible),
 .rh-header.is-overlay.menu-is-open {
   color: #111;
 }
 
 .rh-header.is-overlay:hover::before,
-.rh-header.is-overlay:focus-within::before,
+.rh-header.is-overlay:has(:focus-visible)::before,
 .rh-header.is-overlay.menu-is-open::before {
   opacity: 1;
 }
@@ -946,7 +946,7 @@ button {
   transition: filter var(--rh-header-reveal-duration) ease;
 }
 
-.rh-header.is-overlay:not(:hover):not(:focus-within):not(.menu-is-open) .brand-logo {
+.rh-header.is-overlay:not(:hover):not(:has(:focus-visible)):not(.menu-is-open) .brand-logo {
   filter: none;
 }
 

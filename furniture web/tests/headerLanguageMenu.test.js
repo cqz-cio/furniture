@@ -50,7 +50,7 @@ describe("header language menu", () => {
     expect(css).toContain("@keyframes rhGlobalMenuReveal");
   });
 
-  it("fades the overlay header background in when the top navigation is touched", () => {
+  it("fades the overlay header background in for hover and keyboard focus only", () => {
     const appSource = readSource("../src/App.vue");
     const css = readSource("../src/styles.css");
     const overlayStyles = css.match(/\.rh-header\.is-overlay \{[\s\S]*?\n\}/)?.[0] || "";
@@ -64,7 +64,8 @@ describe("header language menu", () => {
     expect(css).toContain("transition: opacity var(--rh-header-reveal-duration) ease;");
     expect(css).toContain(".rh-header.is-overlay::before");
     expect(css).toContain(".rh-header.is-overlay:hover::before");
-    expect(css).toContain(".rh-header.is-overlay:focus-within::before");
+    expect(css).toContain(".rh-header.is-overlay:has(:focus-visible)::before");
+    expect(css).not.toContain(".rh-header.is-overlay:focus-within");
   });
 
   it("opens configured storefront category menus only after a nav click", () => {
