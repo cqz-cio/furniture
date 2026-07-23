@@ -14,11 +14,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 class SeoMigrationContractTest {
 
     private static final Path MIGRATION_RELATIVE_PATH =
-            Path.of("sql", "mysql", "migrations", "V019__seo_foundation.sql");
+            Path.of("sql", "mysql", "migrations", "V021__seo_foundation.sql");
     private static final Path ACTIVE_RECORD_MIGRATION_RELATIVE_PATH =
-            Path.of("sql", "mysql", "migrations", "V020__seo_active_record_uniqueness.sql");
+            Path.of("sql", "mysql", "migrations", "V022__seo_active_record_uniqueness.sql");
     private static final Path KEYWORD_ANALYSIS_MIGRATION_RELATIVE_PATH =
-            Path.of("sql", "mysql", "migrations", "V026__seo_keyword_relevance_analysis.sql");
+            Path.of("sql", "mysql", "migrations", "V024__seo_keyword_relevance_analysis.sql");
 
     @Test
     void shouldCreateKeywordAnalysisHistoryAndEvidenceTables() throws IOException {
