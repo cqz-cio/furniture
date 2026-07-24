@@ -132,8 +132,8 @@ CREATE TABLE IF NOT EXISTS `seo_keyword_analysis_item` (
 SET @seo_root_menu_id = (SELECT MIN(`id`) FROM `system_menu`
   WHERE `path` = '/seo' AND `deleted` = b'0');
 
-INSERT INTO `system_menu` (`name`,`permission`,`type`,`sort`,`parent_id`,`path`,`icon`,`component`,`component_name`,`status`,`visible`,`keep_alive`,`always_show`,`creator`,`create_time`,`updater`,`update_time`,`deleted`)
-SELECT '关键词分析','',2,3,@seo_root_menu_id,'analysis','ep:data-analysis','seo/analysis/index','SeoAnalysis',0,b'1',b'1',b'1','seo-migration',NOW(),'seo-migration',NOW(),b'0'
+INSERT INTO `system_menu` (`id`,`name`,`permission`,`type`,`sort`,`parent_id`,`path`,`icon`,`component`,`component_name`,`status`,`visible`,`keep_alive`,`always_show`,`creator`,`create_time`,`updater`,`update_time`,`deleted`)
+SELECT 8112,'关键词分析','',2,3,@seo_root_menu_id,'analysis','ep:data-analysis','seo/analysis/index','SeoAnalysis',0,b'1',b'1',b'1','seo-migration',NOW(),'seo-migration',NOW(),b'0'
 WHERE @seo_root_menu_id IS NOT NULL
   AND NOT EXISTS (SELECT 1 FROM `system_menu`
     WHERE `parent_id` = @seo_root_menu_id AND `path` = 'analysis' AND `deleted` = b'0');
@@ -141,12 +141,12 @@ WHERE @seo_root_menu_id IS NOT NULL
 SET @seo_analysis_menu_id = (SELECT MIN(`id`) FROM `system_menu`
   WHERE `parent_id` = @seo_root_menu_id AND `path` = 'analysis' AND `deleted` = b'0');
 
-INSERT INTO `system_menu` (`name`,`permission`,`type`,`sort`,`parent_id`,`path`,`icon`,`component`,`component_name`,`status`,`visible`,`keep_alive`,`always_show`,`creator`,`create_time`,`updater`,`update_time`,`deleted`)
-SELECT '运行分析','seo:analysis:run',3,1,@seo_analysis_menu_id,'','','','',0,b'1',b'1',b'1','seo-migration',NOW(),'seo-migration',NOW(),b'0'
+INSERT INTO `system_menu` (`id`,`name`,`permission`,`type`,`sort`,`parent_id`,`path`,`icon`,`component`,`component_name`,`status`,`visible`,`keep_alive`,`always_show`,`creator`,`create_time`,`updater`,`update_time`,`deleted`)
+SELECT 8110,'运行分析','seo:analysis:run',3,1,@seo_analysis_menu_id,'','','','',0,b'1',b'1',b'1','seo-migration',NOW(),'seo-migration',NOW(),b'0'
 WHERE @seo_analysis_menu_id IS NOT NULL
   AND NOT EXISTS (SELECT 1 FROM `system_menu` WHERE `permission`='seo:analysis:run' AND `deleted`=b'0');
 
-INSERT INTO `system_menu` (`name`,`permission`,`type`,`sort`,`parent_id`,`path`,`icon`,`component`,`component_name`,`status`,`visible`,`keep_alive`,`always_show`,`creator`,`create_time`,`updater`,`update_time`,`deleted`)
-SELECT '分析查询','seo:analysis:query',3,2,@seo_analysis_menu_id,'','','','',0,b'1',b'1',b'1','seo-migration',NOW(),'seo-migration',NOW(),b'0'
+INSERT INTO `system_menu` (`id`,`name`,`permission`,`type`,`sort`,`parent_id`,`path`,`icon`,`component`,`component_name`,`status`,`visible`,`keep_alive`,`always_show`,`creator`,`create_time`,`updater`,`update_time`,`deleted`)
+SELECT 8111,'分析查询','seo:analysis:query',3,2,@seo_analysis_menu_id,'','','','',0,b'1',b'1',b'1','seo-migration',NOW(),'seo-migration',NOW(),b'0'
 WHERE @seo_analysis_menu_id IS NOT NULL
   AND NOT EXISTS (SELECT 1 FROM `system_menu` WHERE `permission`='seo:analysis:query' AND `deleted`=b'0');

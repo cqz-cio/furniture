@@ -6,6 +6,9 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -19,6 +22,10 @@ class SeoMigrationContractTest {
             Path.of("sql", "mysql", "migrations", "V020__seo_active_record_uniqueness.sql");
     private static final Path KEYWORD_ANALYSIS_MIGRATION_RELATIVE_PATH =
             Path.of("sql", "mysql", "migrations", "V026__seo_keyword_relevance_analysis.sql");
+    private static final Path KEYWORD_ANALYSIS_MENU_REPAIR_MIGRATION_RELATIVE_PATH =
+            Path.of("sql", "mysql", "migrations", "V027__repair_seo_analysis_menu_registration.sql");
+    private static final String RELEASED_KEYWORD_ANALYSIS_MIGRATION_SHA256 =
+            "91aeaf8bca0249c1692314c99ad5a9e7d7b380e257d003c26517c0e381114560";
 
     @Test
     void shouldCreateKeywordAnalysisHistoryAndEvidenceTables() throws IOException {
@@ -36,17 +43,34 @@ class SeoMigrationContractTest {
     }
 
     @Test
-    void shouldAddKeywordAnalysisMenuAndPermissions() throws IOException {
+    void shouldPreserveReleasedKeywordAnalysisMigration() throws IOException {
         String sql = migrationSql(KEYWORD_ANALYSIS_MIGRATION_RELATIVE_PATH);
 
         assertThat(sql).contains(
                 "SET @seo_root_menu_id =",
-                "SELECT '关键词分析'",
+                "SELECT 8112,'关键词分析'",
                 "'analysis','ep:data-analysis','seo/analysis/index','SeoAnalysis'",
                 "SET @seo_analysis_menu_id =",
+                "SELECT 8110,'运行分析'",
+                "SELECT 8111,'分析查询'",
                 "'seo:analysis:run'",
                 "'seo:analysis:query'",
                 "@seo_analysis_menu_id");
+        assertThat(normalizedSha256(sql)).isEqualTo(RELEASED_KEYWORD_ANALYSIS_MIGRATION_SHA256);
+    }
+
+    @Test
+    void shouldRepairKeywordAnalysisMenuInForwardMigrationWithoutReservedIds() throws IOException {
+        String sql = migrationSql(KEYWORD_ANALYSIS_MENU_REPAIR_MIGRATION_RELATIVE_PATH);
+
+        assertThat(sql).contains(
+                "V026 is already released and must remain byte-for-byte immutable",
+                "INSERT INTO `system_menu`",
+                "SELECT\n  '关键词分析'",
+                "'seo:analysis:run'",
+                "'seo:analysis:query'",
+                "CREATE TEMPORARY TABLE `seo_analysis_menu_registration_guard`",
+                "CHECK (`valid` = 1)");
         assertThat(sql).doesNotContain("SELECT 8110,", "SELECT 8111,", "SELECT 8112,");
     }
 
@@ -166,6 +190,17 @@ class SeoMigrationContractTest {
             count++;
         }
         return count;
+    }
+
+    private static String normalizedSha256(String sql) {
+        String normalized = sql.replace("\r\n", "\n").replace('\r', '\n')
+                .replaceFirst("\\s+$", "") + "\n";
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            return HexFormat.of().formatHex(digest.digest(normalized.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IllegalStateException("SHA-256 is unavailable", ex);
+        }
     }
 
     private static void assertPostResolutionReservedIdGuard(String sql, int reservedId,
