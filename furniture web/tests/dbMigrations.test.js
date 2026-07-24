@@ -12,11 +12,11 @@ describe("database migration readiness", () => {
 
   it("discovers the complete contiguous numbered catalog", () => {
     const checks = buildMigrationChecks();
-    const expectedVersions = Array.from({ length: 25 }, (_, index) => index + 1);
+    const expectedVersions = Array.from({ length: 26 }, (_, index) => index + 1);
 
     expect(checks).toHaveLength(expectedVersions.length);
     expect(checks[0].fileName).toBe("V001__module_tables.sql");
-    expect(checks.at(-1).fileName).toBe("V025__tenant_business_mode.sql");
+    expect(checks.at(-1).fileName).toBe("V026__website_inquiry_notify.sql");
     expect(checks.map((check) => check.version)).toEqual(expectedVersions);
   });
 
@@ -26,7 +26,7 @@ describe("database migration readiness", () => {
     expect(result.ok).toBe(true);
     expect(result.errors).toEqual([]);
     expect(result.checked.map((check) => check.version)).toEqual(
-      Array.from({ length: 25 }, (_, index) => index + 1),
+      Array.from({ length: 26 }, (_, index) => index + 1),
     );
   });
 
