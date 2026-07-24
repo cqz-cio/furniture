@@ -93,6 +93,7 @@ describe("tenant business mode ERP contract", () => {
       config.match(/const allowedMenuPaths = new Set\(\[[\s\S]*?\]\)/)?.[0] || "";
 
     expect(allowedMenuBlock).toContain("'/system/tenant'");
+    expect(allowedMenuBlock).toContain("'/system/tenant/list'");
   });
 
   it("does not hardcode known tenant IDs in product frontend business logic", () => {

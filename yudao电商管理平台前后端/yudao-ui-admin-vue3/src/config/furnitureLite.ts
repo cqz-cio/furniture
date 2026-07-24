@@ -87,6 +87,7 @@ const allowedMenuPaths = new Set([
   '/system/role',
   '/system/menu',
   '/system/tenant',
+  '/system/tenant/list',
   '/system/messages/mail/mail-account',
   '/system/messages/mail/mail-template',
   '/system/messages/mail/mail-log'
