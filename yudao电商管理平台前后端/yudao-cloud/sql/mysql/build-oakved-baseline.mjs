@@ -46,6 +46,35 @@ export const discoverMigrations = (directory) => {
   return migrations;
 };
 
+export const adaptMigrationForBaseline = (migration) => {
+  if (migration.version === "013") {
+    const originalLockName = "CONCAT(DATABASE(), ':statistics-commerce-dashboard:v2')";
+    const boundedLockName = "CONCAT('oakved:stats:', LEFT(SHA2(DATABASE(), 256), 40))";
+    const occurrences = migration.source.split(originalLockName).length - 1;
+    if (occurrences !== 2) {
+      throw new Error(`V013 baseline lock compatibility expected 2 occurrences, found ${occurrences}`);
+    }
+    return migration.source.replaceAll(originalLockName, boundedLockName);
+  }
+
+  if (migration.version === "026") {
+    let replacements = 0;
+    const source = migration.source.replace(
+      /INSERT INTO `system_menu` \(`id`,([^\n]+)\)\nSELECT (?:8110|8111|8112),/g,
+      (_match, remainingColumns) => {
+        replacements += 1;
+        return `INSERT INTO \`system_menu\` (${remainingColumns})\nSELECT `;
+      },
+    );
+    if (replacements !== 3) {
+      throw new Error(`V026 baseline menu compatibility expected 3 fixed IDs, found ${replacements}`);
+    }
+    return source;
+  }
+
+  return migration.source;
+};
+
 export const buildBaseline = ({ baseFiles, migrations, seedFile }) => {
   const missing = [...baseFiles, seedFile].filter((path) => !existsSync(path));
   if (missing.length) throw new Error(`Missing baseline source file(s): ${missing.join(", ")}`);
@@ -53,7 +82,9 @@ export const buildBaseline = ({ baseFiles, migrations, seedFile }) => {
     "-- GENERATED FILE. DO NOT EDIT. Run build-oakved-baseline.mjs.\n",
     "SET NAMES utf8mb4;\nSET FOREIGN_KEY_CHECKS = 0;\n",
     ...baseFiles.map((path) => `\n-- BEGIN ${path.split(/[\\/]/).at(-1)}\n${sanitizeBootstrapSql(readFileSync(path, "utf8"))}`),
-    ...migrations.map((migration) => `\n-- BEGIN ${migration.scriptName}\n${migration.source}`),
+    ...migrations.map((migration) =>
+      `\n-- BEGIN ${migration.scriptName}\n${adaptMigrationForBaseline(migration)}`,
+    ),
     `\n-- BEGIN Oakved demo catalog\n${normalize(readFileSync(seedFile, "utf8"))}`,
     `\nCREATE TABLE IF NOT EXISTS \`schema_migrations\` (
   \`version\` varchar(16) NOT NULL,

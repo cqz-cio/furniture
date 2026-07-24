@@ -93,7 +93,9 @@ const allowedMenuPaths = new Set([
   '/system/messages/mail/mail-log'
 ])
 
-const deniedFixedRoutePrefixes = ['/bpm', '/crm', '/iot', '/mes', '/diy', '/codegen', '/job']
+const allowedMenuPrefixes = ['/crm']
+
+const deniedFixedRoutePrefixes = ['/bpm', '/iot', '/mes', '/diy', '/codegen', '/job']
 
 const menuTitleOverrides: Record<string, string> = {
   '/member/trade-application': '交易申请',
@@ -118,7 +120,9 @@ const normalizeRoutePath = (path: string, parentPath = ''): string => {
   return normalizedPath.replace(/\/$/, '')
 }
 
-const isPathAllowed = (path: string): boolean => allowedMenuPaths.has(path)
+const isPathAllowed = (path: string): boolean =>
+  allowedMenuPaths.has(path) ||
+  allowedMenuPrefixes.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))
 
 const isPathDenied = (path: string): boolean =>
   deniedFixedRoutePrefixes.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))

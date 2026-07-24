@@ -123,6 +123,8 @@ for (const token of requiredFurnitureLiteConfigTokens) {
 
 const allowedMenuBlock =
   furnitureLiteConfig.match(/const allowedMenuPaths = new Set\(\[[\s\S]*?\]\)/)?.[0] || ''
+const allowedMenuPrefixesBlock =
+  furnitureLiteConfig.match(/const allowedMenuPrefixes = \[[\s\S]*?\]/)?.[0] || ''
 const deniedFixedRoutePrefixesBlock =
   furnitureLiteConfig.match(/const deniedFixedRoutePrefixes = \[[\s\S]*?\]/)?.[0] || ''
 
@@ -141,7 +143,18 @@ assert.ok(
   'src/config/furnitureLite.ts must not deny /ai fixed routes in furniture-lite mode'
 )
 
-for (const route of ['/bpm', '/crm', '/iot', '/mes', '/diy', '/codegen', '/job']) {
+assert.ok(
+  allowedMenuPrefixesBlock.includes("'/crm'") ||
+    allowedMenuPrefixesBlock.includes('"/crm"'),
+  'furniture-lite mode must allow the complete /crm menu tree'
+)
+assert.ok(
+  !deniedFixedRoutePrefixesBlock.includes("'/crm'") &&
+    !deniedFixedRoutePrefixesBlock.includes('"/crm"'),
+  'src/config/furnitureLite.ts must not deny /crm fixed routes'
+)
+
+for (const route of ['/bpm', '/iot', '/mes', '/diy', '/codegen', '/job']) {
   assert.ok(
     deniedFixedRoutePrefixesBlock.includes(`'${route}'`) ||
       deniedFixedRoutePrefixesBlock.includes(`"${route}"`),

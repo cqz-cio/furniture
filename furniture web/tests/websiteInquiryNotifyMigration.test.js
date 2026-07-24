@@ -28,7 +28,7 @@ describe("V029 website inquiry notify migration", () => {
     ).replace(/\r\n/g, "\n");
     const marker = "-- BEGIN V029__website_inquiry_notify.sql\n";
     const start = baseline.indexOf(marker);
-    const end = baseline.indexOf("\n-- BEGIN Oakved demo catalog", start);
+    const end = baseline.indexOf("\n-- BEGIN V030__enable_full_crm.sql", start);
 
     expect(start).toBeGreaterThanOrEqual(0);
     expect(end).toBeGreaterThan(start);
