@@ -168,4 +168,9 @@ public interface ErrorCodeConstants {
     // ========== 站内信发送 1-002-028-000 ==========
     ErrorCode NOTIFY_SEND_TEMPLATE_PARAM_MISS = new ErrorCode(1_002_028_000, "模板参数({})缺失");
 
+    // ========== 官网询盘通知 1-002-029-000 ==========
+    ErrorCode WEBSITE_INQUIRY_DISABLED = new ErrorCode(1_002_029_000, "官网询盘通知未启用");
+    ErrorCode WEBSITE_INQUIRY_UNAUTHORIZED = new ErrorCode(1_002_029_001, "官网询盘通知鉴权失败");
+    ErrorCode WEBSITE_INQUIRY_CONFIGURATION_ERROR = new ErrorCode(1_002_029_002, "官网询盘通知配置不完整");
+
 }

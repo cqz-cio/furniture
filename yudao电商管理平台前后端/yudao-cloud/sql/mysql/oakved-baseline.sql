@@ -8807,6 +8807,37 @@ UPDATE `system_tenant`
 SET `business_mode` = 'B2C'
 WHERE `id` = 121;
 
+-- BEGIN V029__website_inquiry_notify.sql
+-- VANZ website inquiry -> ERP notify message integration.
+
+ALTER TABLE `system_notify_message`
+  MODIFY COLUMN `template_params` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    NOT NULL COMMENT '模版参数';
+
+INSERT INTO `system_notify_template`
+  (`name`, `code`, `nickname`, `content`, `type`, `params`, `status`, `remark`,
+   `creator`, `create_time`, `updater`, `update_time`, `deleted`)
+SELECT
+  'VANZ 官网询盘',
+  'vanz_website_inquiry',
+  'VANZ Website',
+  'New VANZ inquiry | Received: {submittedAt} | Name: {name} | Email: {email} | Company: {companyName} | Phone / WhatsApp: {phone} | Subject: {subject} | Message: {message}',
+  2,
+  '["submittedAt","name","email","companyName","phone","subject","message"]',
+  0,
+  '由 VANZ 官网询盘表单生成的 ERP 站内信',
+  'website-inquiry',
+  CURRENT_TIMESTAMP,
+  'website-inquiry',
+  CURRENT_TIMESTAMP,
+  b'0'
+WHERE NOT EXISTS (
+  SELECT 1
+  FROM `system_notify_template`
+  WHERE `code` = 'vanz_website_inquiry'
+    AND `deleted` = b'0'
+);
+
 -- BEGIN Oakved demo catalog
 -- Oakved demo catalog: tenant 121, 26 mall products, ERP products, stock and mappings.
 SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -9014,4 +9045,5 @@ INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256)
 INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('026','seo keyword relevance analysis','V026__seo_keyword_relevance_analysis.sql','91aeaf8bca0249c1692314c99ad5a9e7d7b380e257d003c26517c0e381114560') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
 INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('027','repair seo analysis menu registration','V027__repair_seo_analysis_menu_registration.sql','829aa48630fbf02d9bb53ba836134539cf99aac29264b16973bb2cf64332f498') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
 INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('028','tenant business mode','V028__tenant_business_mode.sql','bfcf181ca6c10222e8f61adf1633fd78eef550b325d823f7cb0d5ffd8b8ceeef') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
+INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('029','website inquiry notify','V029__website_inquiry_notify.sql','618a9b14b493aeeff26fbd923ca21ca9bd94a0e39f8ded431cfb1331c847dac2') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
 SET FOREIGN_KEY_CHECKS = 1;
