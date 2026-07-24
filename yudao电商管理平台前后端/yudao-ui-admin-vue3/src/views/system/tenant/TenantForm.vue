@@ -20,6 +20,13 @@
           />
         </el-select>
       </el-form-item>
+      <el-form-item label="业务模式" prop="businessMode">
+        <el-radio-group v-model="formData.businessMode">
+          <el-radio v-for="item in businessModeOptions" :key="item.value" :value="item.value">
+            {{ item.label }}
+          </el-radio>
+        </el-radio-group>
+      </el-form-item>
       <el-form-item label="联系人" prop="contactName">
         <el-input v-model="formData.contactName" placeholder="请输入联系人" />
       </el-form-item>
@@ -93,10 +100,15 @@ const dialogVisible = ref(false) // 弹窗的是否展示
 const dialogTitle = ref('') // 弹窗的标题
 const formLoading = ref(false) // 表单的加载中：1）修改时的数据加载；2）提交的按钮禁用
 const formType = ref('') // 表单的类型：create - 新增；update - 修改
+const businessModeOptions = [
+  { label: 'ToC（零售型）', value: 'B2C' },
+  { label: 'ToB（询盘型）', value: 'B2B' }
+]
 const formData = ref({
   id: undefined,
   name: undefined,
   packageId: undefined,
+  businessMode: 'B2C',
   contactName: undefined,
   contactMobile: undefined,
   accountCount: undefined,
@@ -110,6 +122,7 @@ const formData = ref({
 const formRules = reactive({
   name: [{ required: true, message: '租户名不能为空', trigger: 'blur' }],
   packageId: [{ required: true, message: '租户套餐不能为空', trigger: 'blur' }],
+  businessMode: [{ required: true, message: '业务模式不能为空', trigger: 'change' }],
   contactName: [{ required: true, message: '联系人不能为空', trigger: 'blur' }],
   status: [{ required: true, message: '租户状态不能为空', trigger: 'blur' }],
   accountCount: [{ required: true, message: '账号额度不能为空', trigger: 'blur' }],
@@ -172,6 +185,7 @@ const resetForm = () => {
     id: undefined,
     name: undefined,
     packageId: undefined,
+    businessMode: 'B2C',
     contactName: undefined,
     contactMobile: undefined,
     accountCount: undefined,

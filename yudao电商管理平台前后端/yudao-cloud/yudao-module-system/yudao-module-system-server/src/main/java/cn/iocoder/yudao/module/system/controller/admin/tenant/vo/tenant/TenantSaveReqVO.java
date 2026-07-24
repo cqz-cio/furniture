@@ -1,6 +1,8 @@
 package cn.iocoder.yudao.module.system.controller.admin.tenant.vo.tenant;
 
 import cn.hutool.core.util.ObjectUtil;
+import cn.iocoder.yudao.framework.common.validation.InEnum;
+import cn.iocoder.yudao.module.system.enums.tenant.TenantBusinessModeEnum;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.AssertTrue;
@@ -37,6 +39,11 @@ public class TenantSaveReqVO {
 
     @Schema(description = "绑定域名数组", example = "https://www.iocoder.cn")
     private List<String> websites;
+
+    @Schema(description = "业务模式", requiredMode = Schema.RequiredMode.REQUIRED, example = "B2C")
+    @NotNull(message = "业务模式不能为空")
+    @InEnum(value = TenantBusinessModeEnum.class, message = "业务模式必须是 {value}")
+    private String businessMode;
 
     @Schema(description = "租户套餐编号", requiredMode = Schema.RequiredMode.REQUIRED, example = "1024")
     @NotNull(message = "租户套餐编号不能为空")

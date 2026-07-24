@@ -8507,6 +8507,306 @@ SELECT 0 WHERE (
 DROP TEMPORARY TABLE `oakved_mail_management_guard`;
 DROP TEMPORARY TABLE `oakved_mail_menu_scope`;
 
+-- BEGIN V026__seo_keyword_relevance_analysis.sql
+-- SEO keyword relevance analysis history, evidence, and permissions (MySQL 8.x).
+
+ALTER TABLE `seo_metadata`
+  ADD COLUMN `latest_analysis_id` bigint DEFAULT NULL AFTER `published_time`,
+  ADD KEY `idx_latest_analysis` (`tenant_id`, `latest_analysis_id`);
+
+CREATE TABLE IF NOT EXISTS `seo_analysis` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `site_id` bigint NOT NULL,
+  `source_type` varchar(16) NOT NULL,
+  `source_id` bigint DEFAULT NULL,
+  `entity_type` varchar(32) NOT NULL,
+  `entity_id` bigint DEFAULT NULL,
+  `locale` varchar(32) NOT NULL DEFAULT 'zh-CN',
+  `focus_keyphrase` varchar(255) NOT NULL,
+  `input_snapshot` json NOT NULL,
+  `content_hash` char(64) NOT NULL,
+  `idempotency_key` varchar(128) NOT NULL,
+  `previous_analysis_id` bigint DEFAULT NULL,
+  `overall_relevance_percent` int DEFAULT NULL,
+  `confidence_percent` int DEFAULT NULL,
+  `total_score` int DEFAULT NULL,
+  `engine_version` varchar(64) NOT NULL,
+  `rule_profile_version` varchar(64) NOT NULL,
+  `dictionary_version` varchar(64) NOT NULL,
+  `semantic_model_version` varchar(128) DEFAULT NULL,
+  `analysis_status` varchar(16) NOT NULL DEFAULT 'PENDING',
+  `failure_code` varchar(64) DEFAULT NULL,
+  `failure_message` varchar(500) DEFAULT NULL,
+  `creator` varchar(64) NOT NULL DEFAULT '',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updater` varchar(64) NOT NULL DEFAULT '',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` bit(1) NOT NULL DEFAULT b'0',
+  `tenant_id` bigint NOT NULL DEFAULT 0,
+  `active_record` tinyint GENERATED ALWAYS AS
+      (CASE WHEN `deleted` = b'0' THEN 1 ELSE NULL END) STORED,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_analysis_idempotency_active`
+      (`tenant_id`, `idempotency_key`, `active_record`),
+  KEY `idx_analysis_entity_history`
+      (`tenant_id`, `site_id`, `entity_type`, `entity_id`, `locale`, `create_time`),
+  KEY `idx_analysis_previous` (`tenant_id`, `previous_analysis_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='SEO immutable analysis run';
+
+CREATE TABLE IF NOT EXISTS `seo_analysis_item` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `analysis_id` bigint NOT NULL,
+  `rule_code` varchar(96) NOT NULL,
+  `category` varchar(32) NOT NULL,
+  `status` varchar(24) NOT NULL,
+  `score` decimal(8,4) DEFAULT NULL,
+  `max_score` decimal(8,4) DEFAULT NULL,
+  `evidence` json DEFAULT NULL,
+  `message` varchar(1000) NOT NULL DEFAULT '',
+  `recommendation` varchar(1000) NOT NULL DEFAULT '',
+  `sort` int NOT NULL DEFAULT 0,
+  `creator` varchar(64) NOT NULL DEFAULT '',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updater` varchar(64) NOT NULL DEFAULT '',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` bit(1) NOT NULL DEFAULT b'0',
+  `tenant_id` bigint NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_analysis_rule` (`tenant_id`, `analysis_id`, `rule_code`),
+  KEY `idx_analysis_item_sort` (`tenant_id`, `analysis_id`, `sort`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='SEO non-keyword rule evidence';
+
+CREATE TABLE IF NOT EXISTS `seo_keyword_analysis` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `analysis_id` bigint NOT NULL,
+  `keyword_type` varchar(16) NOT NULL,
+  `keyword` varchar(255) NOT NULL,
+  `normalized_keyword` varchar(255) NOT NULL,
+  `sort` int NOT NULL,
+  `key_position_percent` int DEFAULT NULL,
+  `lexical_match_percent` int DEFAULT NULL,
+  `semantic_percent` int DEFAULT NULL,
+  `distribution_percent` int DEFAULT NULL,
+  `intent_coverage_percent` int DEFAULT NULL,
+  `relevance_percent` int DEFAULT NULL,
+  `confidence_percent` int NOT NULL DEFAULT 0,
+  `grade` varchar(16) DEFAULT NULL,
+  `analysis_status` varchar(16) NOT NULL,
+  `exact_match_count` int NOT NULL DEFAULT 0,
+  `variant_match_count` int NOT NULL DEFAULT 0,
+  `matched_locations` json DEFAULT NULL,
+  `dictionary_version` varchar(64) NOT NULL,
+  `semantic_model_version` varchar(128) DEFAULT NULL,
+  `creator` varchar(64) NOT NULL DEFAULT '',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updater` varchar(64) NOT NULL DEFAULT '',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` bit(1) NOT NULL DEFAULT b'0',
+  `tenant_id` bigint NOT NULL DEFAULT 0,
+  `active_record` tinyint GENERATED ALWAYS AS
+      (CASE WHEN `deleted` = b'0' THEN 1 ELSE NULL END) STORED,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_keyword_order_active`
+      (`tenant_id`, `analysis_id`, `keyword_type`, `sort`, `active_record`),
+  UNIQUE KEY `uk_keyword_normalized_active`
+      (`tenant_id`, `analysis_id`, `normalized_keyword`, `active_record`),
+  KEY `idx_keyword_analysis` (`tenant_id`, `analysis_id`, `sort`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Per-keyword SEO relevance result';
+
+CREATE TABLE IF NOT EXISTS `seo_keyword_analysis_item` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `keyword_analysis_id` bigint NOT NULL,
+  `rule_code` varchar(96) NOT NULL,
+  `dimension` varchar(24) NOT NULL,
+  `severity` varchar(16) NOT NULL,
+  `status` varchar(24) NOT NULL,
+  `score` decimal(8,4) DEFAULT NULL,
+  `max_score` decimal(8,4) DEFAULT NULL,
+  `content_location` varchar(64) DEFAULT NULL,
+  `evidence` json DEFAULT NULL,
+  `reason` varchar(1000) NOT NULL DEFAULT '',
+  `recommendation` varchar(1000) NOT NULL DEFAULT '',
+  `recoverable_score` decimal(8,4) DEFAULT NULL,
+  `sort` int NOT NULL DEFAULT 0,
+  `creator` varchar(64) NOT NULL DEFAULT '',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updater` varchar(64) NOT NULL DEFAULT '',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` bit(1) NOT NULL DEFAULT b'0',
+  `tenant_id` bigint NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_keyword_rule` (`tenant_id`, `keyword_analysis_id`, `rule_code`),
+  KEY `idx_keyword_item_sort` (`tenant_id`, `keyword_analysis_id`, `sort`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Per-keyword SEO evidence and suggestions';
+
+SET @seo_root_menu_id = (SELECT MIN(`id`) FROM `system_menu`
+  WHERE `path` = '/seo' AND `deleted` = b'0');
+
+INSERT INTO `system_menu` (`id`,`name`,`permission`,`type`,`sort`,`parent_id`,`path`,`icon`,`component`,`component_name`,`status`,`visible`,`keep_alive`,`always_show`,`creator`,`create_time`,`updater`,`update_time`,`deleted`)
+SELECT 8112,'关键词分析','',2,3,@seo_root_menu_id,'analysis','ep:data-analysis','seo/analysis/index','SeoAnalysis',0,b'1',b'1',b'1','seo-migration',NOW(),'seo-migration',NOW(),b'0'
+WHERE @seo_root_menu_id IS NOT NULL
+  AND NOT EXISTS (SELECT 1 FROM `system_menu`
+    WHERE `parent_id` = @seo_root_menu_id AND `path` = 'analysis' AND `deleted` = b'0');
+
+SET @seo_analysis_menu_id = (SELECT MIN(`id`) FROM `system_menu`
+  WHERE `parent_id` = @seo_root_menu_id AND `path` = 'analysis' AND `deleted` = b'0');
+
+INSERT INTO `system_menu` (`id`,`name`,`permission`,`type`,`sort`,`parent_id`,`path`,`icon`,`component`,`component_name`,`status`,`visible`,`keep_alive`,`always_show`,`creator`,`create_time`,`updater`,`update_time`,`deleted`)
+SELECT 8110,'运行分析','seo:analysis:run',3,1,@seo_analysis_menu_id,'','','','',0,b'1',b'1',b'1','seo-migration',NOW(),'seo-migration',NOW(),b'0'
+WHERE @seo_analysis_menu_id IS NOT NULL
+  AND NOT EXISTS (SELECT 1 FROM `system_menu` WHERE `permission`='seo:analysis:run' AND `deleted`=b'0');
+
+INSERT INTO `system_menu` (`id`,`name`,`permission`,`type`,`sort`,`parent_id`,`path`,`icon`,`component`,`component_name`,`status`,`visible`,`keep_alive`,`always_show`,`creator`,`create_time`,`updater`,`update_time`,`deleted`)
+SELECT 8111,'分析查询','seo:analysis:query',3,2,@seo_analysis_menu_id,'','','','',0,b'1',b'1',b'1','seo-migration',NOW(),'seo-migration',NOW(),b'0'
+WHERE @seo_analysis_menu_id IS NOT NULL
+  AND NOT EXISTS (SELECT 1 FROM `system_menu` WHERE `permission`='seo:analysis:query' AND `deleted`=b'0');
+
+-- BEGIN V027__repair_seo_analysis_menu_registration.sql
+-- Forward-only repair for the SEO analysis menu.
+-- V026 is already released and must remain byte-for-byte immutable.
+
+START TRANSACTION;
+
+SET @seo_root_menu_id = (
+  SELECT MIN(`id`)
+  FROM `system_menu`
+  WHERE `path` = '/seo' AND `type` = 1 AND `deleted` = b'0'
+);
+
+INSERT INTO `system_menu`
+  (`name`,`permission`,`type`,`sort`,`parent_id`,`path`,`icon`,`component`,`component_name`,
+   `status`,`visible`,`keep_alive`,`always_show`,`creator`,`create_time`,`updater`,`update_time`,`deleted`)
+SELECT
+  '关键词分析','',2,3,@seo_root_menu_id,'analysis','ep:data-analysis','seo/analysis/index','SeoAnalysis',
+  0,b'1',b'1',b'1','seo-migration',NOW(),'seo-migration',NOW(),b'0'
+WHERE @seo_root_menu_id IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1
+    FROM `system_menu`
+    WHERE `parent_id` = @seo_root_menu_id
+      AND `path` = 'analysis'
+      AND `deleted` = b'0'
+  );
+
+SET @seo_analysis_menu_id = (
+  SELECT MIN(`id`)
+  FROM `system_menu`
+  WHERE `parent_id` = @seo_root_menu_id
+    AND `path` = 'analysis'
+    AND `deleted` = b'0'
+);
+
+INSERT INTO `system_menu`
+  (`name`,`permission`,`type`,`sort`,`parent_id`,`path`,`icon`,`component`,`component_name`,
+   `status`,`visible`,`keep_alive`,`always_show`,`creator`,`create_time`,`updater`,`update_time`,`deleted`)
+SELECT
+  '运行分析','seo:analysis:run',3,1,@seo_analysis_menu_id,'','','','',
+  0,b'1',b'1',b'1','seo-migration',NOW(),'seo-migration',NOW(),b'0'
+WHERE @seo_analysis_menu_id IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1
+    FROM `system_menu`
+    WHERE `permission` = 'seo:analysis:run' AND `deleted` = b'0'
+  );
+
+INSERT INTO `system_menu`
+  (`name`,`permission`,`type`,`sort`,`parent_id`,`path`,`icon`,`component`,`component_name`,
+   `status`,`visible`,`keep_alive`,`always_show`,`creator`,`create_time`,`updater`,`update_time`,`deleted`)
+SELECT
+  '分析查询','seo:analysis:query',3,2,@seo_analysis_menu_id,'','','','',
+  0,b'1',b'1',b'1','seo-migration',NOW(),'seo-migration',NOW(),b'0'
+WHERE @seo_analysis_menu_id IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1
+    FROM `system_menu`
+    WHERE `permission` = 'seo:analysis:query' AND `deleted` = b'0'
+  );
+
+UPDATE `system_menu`
+SET `name` = '关键词分析',
+    `permission` = '',
+    `type` = 2,
+    `sort` = 3,
+    `icon` = 'ep:data-analysis',
+    `component` = 'seo/analysis/index',
+    `component_name` = 'SeoAnalysis',
+    `status` = 0,
+    `visible` = b'1',
+    `keep_alive` = b'1',
+    `always_show` = b'1',
+    `updater` = 'seo-migration',
+    `update_time` = NOW()
+WHERE `id` = @seo_analysis_menu_id;
+
+UPDATE `system_menu`
+SET `name` = '运行分析',
+    `type` = 3,
+    `sort` = 1,
+    `parent_id` = @seo_analysis_menu_id,
+    `updater` = 'seo-migration',
+    `update_time` = NOW()
+WHERE @seo_analysis_menu_id IS NOT NULL
+  AND `permission` = 'seo:analysis:run'
+  AND `deleted` = b'0';
+
+UPDATE `system_menu`
+SET `name` = '分析查询',
+    `type` = 3,
+    `sort` = 2,
+    `parent_id` = @seo_analysis_menu_id,
+    `updater` = 'seo-migration',
+    `update_time` = NOW()
+WHERE @seo_analysis_menu_id IS NOT NULL
+  AND `permission` = 'seo:analysis:query'
+  AND `deleted` = b'0';
+
+CREATE TEMPORARY TABLE `seo_analysis_menu_registration_guard` (
+  `valid` tinyint NOT NULL,
+  CONSTRAINT `chk_seo_analysis_menu_registration_guard` CHECK (`valid` = 1)
+);
+
+INSERT INTO `seo_analysis_menu_registration_guard` (`valid`)
+SELECT CASE
+  WHEN @seo_root_menu_id IS NOT NULL
+   AND (SELECT COUNT(*) FROM `system_menu`
+        WHERE `parent_id` = @seo_root_menu_id
+          AND `path` = 'analysis'
+          AND `type` = 2
+          AND `deleted` = b'0') = 1
+   AND (SELECT COUNT(*) FROM `system_menu`
+        WHERE `permission` = 'seo:analysis:run'
+          AND `parent_id` = @seo_analysis_menu_id
+          AND `type` = 3
+          AND `deleted` = b'0') = 1
+   AND (SELECT COUNT(*) FROM `system_menu`
+        WHERE `permission` = 'seo:analysis:query'
+          AND `parent_id` = @seo_analysis_menu_id
+          AND `type` = 3
+          AND `deleted` = b'0') = 1
+  THEN 1
+  ELSE 0
+END;
+
+DROP TEMPORARY TABLE `seo_analysis_menu_registration_guard`;
+
+COMMIT;
+
+-- BEGIN V028__tenant_business_mode.sql
+-- Tenant business mode controls whether inventory management is exposed in the ERP UI.
+
+ALTER TABLE `system_tenant`
+  ADD COLUMN `business_mode` varchar(16) NOT NULL DEFAULT 'B2C'
+    COMMENT '业务模式：B2C 零售型，B2B 询盘型'
+    AFTER `websites`;
+
+UPDATE `system_tenant`
+SET `business_mode` = 'B2B'
+WHERE `id` = 162;
+
+UPDATE `system_tenant`
+SET `business_mode` = 'B2C'
+WHERE `id` = 121;
+
 -- BEGIN Oakved demo catalog
 -- Oakved demo catalog: tenant 121, 26 mall products, ERP products, stock and mappings.
 SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -8711,4 +9011,7 @@ INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256)
 INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('023','trade fulfillment legacy migration fact','V023__trade_fulfillment_legacy_migration_fact.sql','f7f89c40f7ac14eb1b4dce008fc41aa553810261e5185602a677701370c0d40e') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
 INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('024','normalize dashboard route path','V024__normalize_dashboard_route_path.sql','cf8d25341d561e72d4309a897d300225d70d4868801153823b94b06142a8f87b') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
 INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('025','expose oakved mail management','V025__expose_oakved_mail_management.sql','283e7f4086a822e92c906de5bd983ffa8252d4def37583c1d19b0ea9dd57369e') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
+INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('026','seo keyword relevance analysis','V026__seo_keyword_relevance_analysis.sql','91aeaf8bca0249c1692314c99ad5a9e7d7b380e257d003c26517c0e381114560') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
+INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('027','repair seo analysis menu registration','V027__repair_seo_analysis_menu_registration.sql','829aa48630fbf02d9bb53ba836134539cf99aac29264b16973bb2cf64332f498') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
+INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('028','tenant business mode','V028__tenant_business_mode.sql','bfcf181ca6c10222e8f61adf1633fd78eef550b325d823f7cb0d5ffd8b8ceeef') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
 SET FOREIGN_KEY_CHECKS = 1;

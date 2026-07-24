@@ -1,63 +1,73 @@
 <template>
-  <ContentWrap v-loading="formLoading">
-    <el-tabs v-model="activeName">
-      <el-tab-pane label="基础设置" name="info">
-        <InfoForm
-          ref="infoRef"
-          v-model:activeName="activeName"
-          :is-detail="isDetail"
-          :propFormData="formData"
-        />
-      </el-tab-pane>
-      <el-tab-pane label="价格库存" name="sku">
-        <SkuForm
-          ref="skuRef"
-          v-model:activeName="activeName"
-          :is-detail="isDetail"
-          :propFormData="formData"
-        />
-      </el-tab-pane>
-      <el-tab-pane label="物流设置" name="delivery">
-        <DeliveryForm
-          ref="deliveryRef"
-          v-model:activeName="activeName"
-          :is-detail="isDetail"
-          :propFormData="formData"
-        />
-      </el-tab-pane>
-      <el-tab-pane label="商品详情" name="description">
-        <DescriptionForm
-          ref="descriptionRef"
-          v-model:activeName="activeName"
-          :is-detail="isDetail"
-          :propFormData="formData"
-        />
-      </el-tab-pane>
-      <el-tab-pane label="家具详情配置" name="furnitureDetail">
-        <FurnitureDetailForm
-          ref="furnitureDetailRef"
-          v-model:activeName="activeName"
-          :is-detail="isDetail"
-          :propFormData="formData"
-        />
-      </el-tab-pane>
-      <el-tab-pane label="其它设置" name="other">
-        <OtherForm
-          ref="otherRef"
-          v-model:activeName="activeName"
-          :is-detail="isDetail"
-          :propFormData="formData"
-        />
-      </el-tab-pane>
-    </el-tabs>
-    <el-form>
-      <el-form-item style="float: right">
-        <el-button v-if="!isDetail" :loading="formLoading" type="primary" @click="submitForm">
-          保存
-        </el-button>
-        <el-button @click="close">返回</el-button>
-      </el-form-item>
-    </el-form>
+  <ContentWrap v-loading="pageLoading">
+    <el-alert
+      v-if="profileError"
+      :closable="false"
+      show-icon
+      title="当前租户业务配置加载失败，请刷新页面后重试"
+      type="error"
+    />
+    <template v-else-if="profileLoaded">
+      <el-tabs v-model="activeName">
+        <el-tab-pane label="基础设置" name="info">
+          <InfoForm
+            ref="infoRef"
+            v-model:activeName="activeName"
+            :is-detail="isDetail"
+            :propFormData="formData"
+          />
+        </el-tab-pane>
+        <el-tab-pane :label="inventoryEnabled ? '价格库存' : '价格与规格'" name="sku">
+          <SkuForm
+            ref="skuRef"
+            v-model:activeName="activeName"
+            :is-detail="isDetail"
+            :propFormData="formData"
+            :show-stock="inventoryEnabled"
+          />
+        </el-tab-pane>
+        <el-tab-pane label="物流设置" name="delivery">
+          <DeliveryForm
+            ref="deliveryRef"
+            v-model:activeName="activeName"
+            :is-detail="isDetail"
+            :propFormData="formData"
+          />
+        </el-tab-pane>
+        <el-tab-pane label="商品详情" name="description">
+          <DescriptionForm
+            ref="descriptionRef"
+            v-model:activeName="activeName"
+            :is-detail="isDetail"
+            :propFormData="formData"
+          />
+        </el-tab-pane>
+        <el-tab-pane label="家具详情配置" name="furnitureDetail">
+          <FurnitureDetailForm
+            ref="furnitureDetailRef"
+            v-model:activeName="activeName"
+            :is-detail="isDetail"
+            :propFormData="formData"
+          />
+        </el-tab-pane>
+        <el-tab-pane label="其它设置" name="other">
+          <OtherForm
+            ref="otherRef"
+            v-model:activeName="activeName"
+            :is-detail="isDetail"
+            :propFormData="formData"
+          />
+        </el-tab-pane>
+      </el-tabs>
+      <el-form>
+        <el-form-item style="float: right">
+          <el-button v-if="!isDetail" :loading="formLoading" type="primary" @click="submitForm">
+            保存
+          </el-button>
+          <el-button @click="close">返回</el-button>
+        </el-form-item>
+      </el-form>
+    </template>
   </ContentWrap>
 </template>
 <script lang="ts" setup>
@@ -72,6 +82,7 @@ import DeliveryForm from './DeliveryForm.vue'
 import FurnitureDetailForm from './FurnitureDetailForm.vue'
 import { convertToInteger, floatToFixed2, formatToFraction } from '@/utils'
 import { isEmpty } from '@/utils/is'
+import { useTenantBusinessProfile } from '@/hooks/web/useTenantBusinessProfile'
 
 defineOptions({ name: 'ProductSpuAdd' })
 
@@ -82,6 +93,9 @@ const { params, name } = useRoute() // 查询参数
 const { delView } = useTagsViewStore() // 视图操作
 
 const formLoading = ref(false) // 表单的加载中：1）修改时的数据加载；2）提交的按钮禁用
+const { profileLoading, profileLoaded, profileError, inventoryEnabled, loadTenantBusinessProfile } =
+  useTenantBusinessProfile()
+const pageLoading = computed(() => formLoading.value || profileLoading.value)
 const activeName = ref('info') // Tag 激活的窗口
 const isDetail = ref(false) // 是否查看详情
 const infoRef = ref() // 商品信息 Ref
@@ -217,6 +231,11 @@ const close = () => {
 
 /** 初始化 */
 onMounted(async () => {
+  try {
+    await loadTenantBusinessProfile()
+  } catch {
+    return
+  }
   await getDetail()
 })
 </script>

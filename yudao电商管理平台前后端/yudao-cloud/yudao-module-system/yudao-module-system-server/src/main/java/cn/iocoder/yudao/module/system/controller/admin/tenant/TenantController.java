@@ -8,10 +8,13 @@ import cn.iocoder.yudao.framework.common.pojo.PageResult;
 import cn.iocoder.yudao.framework.common.util.object.BeanUtils;
 import cn.iocoder.yudao.framework.excel.core.util.ExcelUtils;
 import cn.iocoder.yudao.framework.tenant.core.aop.TenantIgnore;
+import cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder;
+import cn.iocoder.yudao.module.system.controller.admin.tenant.vo.tenant.TenantBusinessProfileRespVO;
 import cn.iocoder.yudao.module.system.controller.admin.tenant.vo.tenant.TenantPageReqVO;
 import cn.iocoder.yudao.module.system.controller.admin.tenant.vo.tenant.TenantRespVO;
 import cn.iocoder.yudao.module.system.controller.admin.tenant.vo.tenant.TenantSaveReqVO;
 import cn.iocoder.yudao.module.system.dal.dataobject.tenant.TenantDO;
+import cn.iocoder.yudao.module.system.enums.tenant.TenantBusinessModeEnum;
 import cn.iocoder.yudao.module.system.service.tenant.TenantService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -29,8 +32,10 @@ import java.io.IOException;
 import java.util.List;
 
 import static cn.iocoder.yudao.framework.apilog.core.enums.OperateTypeEnum.EXPORT;
+import static cn.iocoder.yudao.framework.common.exception.util.ServiceExceptionUtil.exception;
 import static cn.iocoder.yudao.framework.common.pojo.CommonResult.success;
 import static cn.iocoder.yudao.framework.common.util.collection.CollectionUtils.convertList;
+import static cn.iocoder.yudao.module.system.enums.ErrorCodeConstants.TENANT_NOT_EXISTS;
 
 @Tag(name = "管理后台 - 租户")
 @RestController
@@ -73,6 +78,21 @@ public class TenantController {
             return success(null);
         }
         return success(new TenantRespVO().setId(tenant.getId()).setName(tenant.getName()));
+    }
+
+    @GetMapping("/current-business-profile")
+    @Operation(summary = "获得当前有效租户业务配置")
+    public CommonResult<TenantBusinessProfileRespVO> getCurrentTenantBusinessProfile() {
+        Long effectiveTenantId = TenantContextHolder.getRequiredTenantId();
+        TenantDO tenant = tenantService.getTenant(effectiveTenantId);
+        if (tenant == null) {
+            throw exception(TENANT_NOT_EXISTS);
+        }
+        TenantBusinessModeEnum businessMode = TenantBusinessModeEnum.of(tenant.getBusinessMode());
+        return success(new TenantBusinessProfileRespVO()
+                .setTenantId(effectiveTenantId)
+                .setBusinessMode(businessMode.getCode())
+                .setInventoryEnabled(businessMode.isInventoryEnabled()));
     }
 
     @PostMapping("/create")

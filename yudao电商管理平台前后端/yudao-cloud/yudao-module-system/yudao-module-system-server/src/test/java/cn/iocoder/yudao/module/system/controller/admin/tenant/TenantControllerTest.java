@@ -1,0 +1,87 @@
+package cn.iocoder.yudao.module.system.controller.admin.tenant;
+
+import cn.iocoder.yudao.framework.common.pojo.CommonResult;
+import cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder;
+import cn.iocoder.yudao.framework.test.core.ut.BaseMockitoUnitTest;
+import cn.iocoder.yudao.module.system.controller.admin.tenant.vo.tenant.TenantBusinessProfileRespVO;
+import cn.iocoder.yudao.module.system.controller.admin.tenant.vo.tenant.TenantSaveReqVO;
+import cn.iocoder.yudao.module.system.dal.dataobject.tenant.TenantDO;
+import cn.iocoder.yudao.module.system.enums.tenant.TenantBusinessModeEnum;
+import cn.iocoder.yudao.module.system.service.tenant.TenantService;
+import jakarta.validation.Validation;
+import jakarta.validation.Validator;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+
+import static cn.iocoder.yudao.framework.test.core.util.AssertUtils.assertServiceException;
+import static cn.iocoder.yudao.module.system.enums.ErrorCodeConstants.TENANT_NOT_EXISTS;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+public class TenantControllerTest extends BaseMockitoUnitTest {
+
+    @InjectMocks
+    private TenantController tenantController;
+
+    @Mock
+    private TenantService tenantService;
+
+    @AfterEach
+    public void tearDown() {
+        TenantContextHolder.clear();
+    }
+
+    @Test
+    public void testGetCurrentTenantBusinessProfile_b2b() {
+        Long effectiveTenantId = 200L;
+        TenantContextHolder.setTenantId(effectiveTenantId);
+        when(tenantService.getTenant(effectiveTenantId)).thenReturn(new TenantDO()
+                .setId(effectiveTenantId)
+                .setBusinessMode(TenantBusinessModeEnum.B2B.getCode()));
+
+        CommonResult<TenantBusinessProfileRespVO> result =
+                tenantController.getCurrentTenantBusinessProfile();
+
+        assertEquals(0, result.getCode());
+        assertEquals(effectiveTenantId, result.getData().getTenantId());
+        assertEquals(TenantBusinessModeEnum.B2B.getCode(), result.getData().getBusinessMode());
+        assertFalse(result.getData().getInventoryEnabled());
+        verify(tenantService).getTenant(effectiveTenantId);
+    }
+
+    @Test
+    public void testGetCurrentTenantBusinessProfile_b2c() {
+        Long effectiveTenantId = 201L;
+        TenantContextHolder.setTenantId(effectiveTenantId);
+        when(tenantService.getTenant(effectiveTenantId)).thenReturn(new TenantDO()
+                .setId(effectiveTenantId)
+                .setBusinessMode(TenantBusinessModeEnum.B2C.getCode()));
+
+        TenantBusinessProfileRespVO profile =
+                tenantController.getCurrentTenantBusinessProfile().getData();
+
+        assertEquals(TenantBusinessModeEnum.B2C.getCode(), profile.getBusinessMode());
+        assertTrue(profile.getInventoryEnabled());
+    }
+
+    @Test
+    public void testGetCurrentTenantBusinessProfile_notExists() {
+        Long effectiveTenantId = 202L;
+        TenantContextHolder.setTenantId(effectiveTenantId);
+
+        assertServiceException(tenantController::getCurrentTenantBusinessProfile, TENANT_NOT_EXISTS);
+    }
+
+    @Test
+    public void testTenantSaveReqVO_invalidBusinessMode() {
+        Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
+        TenantSaveReqVO reqVO = new TenantSaveReqVO().setBusinessMode("INVALID");
+
+        assertTrue(validator.validate(reqVO).stream()
+                .anyMatch(violation -> "businessMode".equals(violation.getPropertyPath().toString())));
+    }
+
+}

@@ -31,6 +31,7 @@
         :prop-form-data="formData"
         :property-list="propertyList"
         :rule-config="ruleConfig"
+        :show-stock="showStock"
       />
     </el-form-item>
     <el-form-item v-if="formData.specType" label="商品属性">
@@ -43,7 +44,12 @@
     </el-form-item>
     <template v-if="formData.specType && propertyList.length > 0">
       <el-form-item v-if="!isDetail" label="批量设置">
-        <SkuList :is-batch="true" :prop-form-data="formData" :property-list="propertyList" />
+        <SkuList
+          :is-batch="true"
+          :prop-form-data="formData"
+          :property-list="propertyList"
+          :show-stock="showStock"
+        />
       </el-form-item>
       <el-form-item label="规格列表">
         <SkuList
@@ -52,6 +58,7 @@
           :prop-form-data="formData"
           :property-list="propertyList"
           :rule-config="ruleConfig"
+          :show-stock="showStock"
         />
       </el-form-item>
     </template>
@@ -77,7 +84,7 @@ import type { Spu } from '@/api/mall/product/spu'
 defineOptions({ name: 'ProductSpuSkuForm' })
 
 // sku 相关属性校验规则
-const ruleConfig: RuleConfig[] = [
+const allRuleConfig: RuleConfig[] = [
   {
     name: 'stock',
     rule: (arg) => arg >= 0,
@@ -107,8 +114,12 @@ const props = defineProps({
     type: Object as PropType<Spu>,
     default: () => {}
   },
-  isDetail: propTypes.bool.def(false) // 是否作为详情组件
+  isDetail: propTypes.bool.def(false), // 是否作为详情组件
+  showStock: propTypes.bool.def(true) // 是否展示并校验库存
 })
+const ruleConfig = computed<RuleConfig[]>(() =>
+  props.showStock ? allRuleConfig : allRuleConfig.filter((rule) => rule.name !== 'stock')
+)
 const attributesAddFormRef = ref() // 添加商品属性表单
 const formRef = ref() // 表单 Ref
 const propertyList = ref<PropertyAndValues[]>([]) // 商品属性列表
@@ -150,7 +161,11 @@ const validate = async () => {
     // 校验通过更新数据
     Object.assign(props.propFormData, formData)
   } catch (e) {
-    message.error('【库存价格】不完善，请填写相关信息')
+    message.error(
+      props.showStock
+        ? '【价格库存】不完善，请填写相关信息'
+        : '【价格与规格】不完善，请填写相关信息'
+    )
     emit('update:activeName', 'sku')
     throw e // 目的截断之后的校验
   }

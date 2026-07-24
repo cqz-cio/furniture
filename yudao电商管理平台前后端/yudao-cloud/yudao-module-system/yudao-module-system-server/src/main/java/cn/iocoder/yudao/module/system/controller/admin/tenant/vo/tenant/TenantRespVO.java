@@ -40,6 +40,10 @@ public class TenantRespVO {
     @Schema(description = "绑定域名数组", example = "https://www.iocoder.cn")
     private List<String> websites;
 
+    @Schema(description = "业务模式", requiredMode = Schema.RequiredMode.REQUIRED, example = "B2C")
+    @ExcelProperty("业务模式")
+    private String businessMode;
+
     @Schema(description = "租户套餐编号", requiredMode = Schema.RequiredMode.REQUIRED, example = "1024")
     private Long packageId;
 
