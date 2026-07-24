@@ -28,6 +28,9 @@ public class AuthPermissionInfoRespVO {
     @Schema(description = "菜单树", requiredMode = Schema.RequiredMode.REQUIRED)
     private List<MenuVO> menus;
 
+    @Schema(description = "家具后台导航菜单路径，由前后端共同使用的导航目录", requiredMode = Schema.RequiredMode.REQUIRED)
+    private Set<String> furnitureNavigationMenuPaths;
+
     @Schema(description = "用户信息 VO")
     @Data
     @NoArgsConstructor

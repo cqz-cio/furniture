@@ -11,7 +11,13 @@ const envLocal = readText('.env.local')
 const packageJson = JSON.parse(readText('package.json'))
 const furnitureLiteConfig = readRequired(
   'src/config/furnitureLite.ts',
-  'Task 2 should add the furniture lite config exports and route allow/deny lists.'
+  'Furniture-lite mode must consume the backend navigation catalog and keep its fixed-route deny list.'
+)
+const furnitureNavigationMenuPaths = JSON.parse(
+  readRequired(
+    '../yudao-cloud/yudao-module-system/yudao-module-system-server/src/main/resources/navigation/furniture-lite-menu-paths.json',
+    'The backend-owned furniture navigation catalog must be available to both permission sync and the admin UI.'
+  )
 )
 const permissionStore = readRequired(
   'src/store/modules/permission.ts',
@@ -97,16 +103,8 @@ for (const exportName of requiredFurnitureLiteExports) {
 }
 
 const requiredFurnitureLiteConfigTokens = [
-  '/mall/product/category',
-  '/mall/product/comment',
-  '/mall/statistics',
-  '/mall/statistics/product',
-  '/mall/trade/order',
-  '/member/membership',
-  '/member/gift-registry',
-  '/member/trade-application',
-  '/system/role',
-  '/infra/file/file-config',
+  'synchronizedMenuPaths',
+  'allowedMenuPaths',
   'deniedFixedRoutePrefixes',
   '/crm'
 ]
@@ -118,17 +116,33 @@ for (const token of requiredFurnitureLiteConfigTokens) {
   )
 }
 
-const allowedMenuBlock =
-  furnitureLiteConfig.match(/const allowedMenuPaths = new Set\(\[[\s\S]*?\]\)/)?.[0] || ''
 const deniedFixedRoutePrefixesBlock =
   furnitureLiteConfig.match(/const deniedFixedRoutePrefixes = \[[\s\S]*?\]/)?.[0] || ''
+
+for (const route of [
+  '/mall/product/category',
+  '/mall/product/comment',
+  '/mall/statistics',
+  '/mall/statistics/product',
+  '/mall/trade/order',
+  '/member/membership',
+  '/member/gift-registry',
+  '/member/trade-application',
+  '/system/role',
+  '/infra/file/file-config'
+]) {
+  assert.ok(
+    furnitureNavigationMenuPaths.includes(route),
+    `the backend furniture navigation catalog must include ${route}`
+  )
+}
 
 const requiredAiRoutes = ['/ai', '/ai/chat', '/ai/model', '/ai/knowledge', '/ai/workflow']
 
 for (const route of requiredAiRoutes) {
   assert.ok(
-    allowedMenuBlock.includes(`'${route}'`) || allowedMenuBlock.includes(`"${route}"`),
-    `furniture-lite mode must allow AI menu route ${route}`
+    furnitureNavigationMenuPaths.includes(route),
+    `the backend furniture navigation catalog must allow AI menu route ${route}`
   )
 }
 
@@ -152,6 +166,11 @@ for (const token of ['filterFurnitureLiteMenus', 'filterFurnitureLiteFixedRoutes
     `src/store/modules/permission.ts must reference ${token}`
   )
 }
+
+assert.ok(
+  permissionStore.includes('userInfo?.furnitureNavigationMenuPaths'),
+  'src/store/modules/permission.ts must filter menus with the backend-synchronized navigation paths'
+)
 
 assert.ok(
   routerIndex.includes('filterFurnitureLiteFixedRoutes') &&

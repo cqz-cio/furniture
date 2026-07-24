@@ -7,9 +7,12 @@ const styleIndex = readText('src/styles/index.scss')
 const adminStyle = readText('src/styles/furniture-admin.scss')
 const homePage = readText('src/views/Home/Index.vue')
 const furnitureLiteConfig = readText('src/config/furnitureLite.ts')
+const furnitureNavigationMenuPaths = JSON.parse(
+  readText(
+    '../yudao-cloud/yudao-module-system/yudao-module-system-server/src/main/resources/navigation/furniture-lite-menu-paths.json'
+  )
+)
 
-const allowedMenuBlock =
-  furnitureLiteConfig.match(/const allowedMenuPaths = new Set\(\[[\s\S]*?\]\)/)?.[0] || ''
 const deniedFixedRoutePrefixesBlock =
   furnitureLiteConfig.match(/const deniedFixedRoutePrefixes = \[[\s\S]*?\]/)?.[0] || ''
 
@@ -42,8 +45,8 @@ for (const token of [
 
 for (const route of ['/ai', '/ai/chat', '/ai/model', '/ai/knowledge', '/ai/workflow']) {
   assert.ok(
-    allowedMenuBlock.includes(`'${route}'`) || allowedMenuBlock.includes(`"${route}"`),
-    `furniture-lite menu must allow ${route}`
+    furnitureNavigationMenuPaths.includes(route),
+    `the backend furniture navigation catalog must allow ${route}`
   )
 }
 

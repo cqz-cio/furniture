@@ -8,17 +8,26 @@ const migrationPath = join(
   "yudao-cloud/sql/mysql/migrations/V027__align_furniture_navigation_permissions.sql",
 );
 const baselinePath = join(root, "yudao-cloud/sql/mysql/oakved-baseline.sql");
-const furnitureLitePath = join(root, "yudao-ui-admin-vue3/src/config/furnitureLite.ts");
+const furnitureNavigationCatalogPath = join(
+  root,
+  "yudao-cloud/yudao-module-system/yudao-module-system-server/src/main/resources/navigation/furniture-lite-menu-paths.json",
+);
+const systemServerJavaPath = join(
+  root,
+  "yudao-cloud/yudao-module-system/yudao-module-system-server/src/main/java/cn/iocoder/yudao/module/system",
+);
+const furnitureLiteConfigPath = join(
+  root,
+  "yudao-ui-admin-vue3/src/config/furnitureLite.ts",
+);
+const permissionStorePath = join(
+  root,
+  "yudao-ui-admin-vue3/src/store/modules/permission.ts",
+);
 
 const extractQuotedPaths = (source) =>
   [...source.matchAll(/'((?:\/dashboard)|(?:\/seo(?:\/[^']*)?)|(?:\/mall(?:\/[^']*)?)|(?:\/ai(?:\/[^']*)?))'/g)]
     .map((match) => match[1]);
-
-const extractFurnitureLitePaths = (source) => {
-  const match = source.match(/const allowedMenuPaths = new Set\(\[([\s\S]*?)\]\)/);
-  if (!match) throw new Error("Unable to find allowedMenuPaths in furnitureLite.ts");
-  return extractQuotedPaths(match[1]);
-};
 
 const extractMigrationRoutePaths = (source) => {
   const match = source.match(
@@ -31,10 +40,17 @@ const extractMigrationRoutePaths = (source) => {
 describe("V027 furniture navigation permission alignment", () => {
   it("keeps the package migration aligned with every custom furniture-lite route", () => {
     const migration = readFileSync(migrationPath, "utf8");
-    const furnitureLite = readFileSync(furnitureLitePath, "utf8");
+    const navigationCatalog = JSON.parse(
+      readFileSync(furnitureNavigationCatalogPath, "utf8"),
+    );
+    const customNavigationPaths = navigationCatalog.filter((path) =>
+      ["/dashboard", "/seo", "/mall", "/ai"].some(
+        (rootPath) => path === rootPath || path.startsWith(`${rootPath}/`),
+      ),
+    ).filter((path) => path !== "/mall");
 
     expect(new Set(extractMigrationRoutePaths(migration)))
-      .toEqual(new Set(extractFurnitureLitePaths(furnitureLite)));
+      .toEqual(new Set(customNavigationPaths));
     expect(migration).toContain("('/mall');");
     for (const rootPath of ["/mall", "/seo", "/dashboard", "/ai"]) {
       expect(migration).toContain(`\`path\` = '${rootPath}'`);
@@ -74,5 +90,92 @@ describe("V027 furniture navigation permission alignment", () => {
     expect(end).toBeGreaterThan(start);
     expect(baseline.slice(start + marker.length, end).replace(/\s+$/, "") + "\n")
       .toBe(migration);
+  });
+});
+
+describe("furniture navigation permission auto-sync", () => {
+  it("uses one backend-owned navigation catalog for both the sidebar and package sync", () => {
+    const catalog = JSON.parse(readFileSync(furnitureNavigationCatalogPath, "utf8"));
+    const furnitureLiteConfig = readFileSync(furnitureLiteConfigPath, "utf8");
+    const permissionStore = readFileSync(permissionStorePath, "utf8");
+    const authController = readFileSync(
+      join(systemServerJavaPath, "controller/admin/auth/AuthController.java"),
+      "utf8",
+    );
+    const syncService = readFileSync(
+      join(
+        systemServerJavaPath,
+        "service/permission/FurnitureNavigationPermissionServiceImpl.java",
+      ),
+      "utf8",
+    );
+
+    expect(catalog).toContain("/dashboard");
+    expect(catalog).toContain("/system/role");
+    expect(furnitureLiteConfig).not.toMatch(
+      /const allowedMenuPaths = new Set\(\[[\s\S]*?\]\)/,
+    );
+    expect(furnitureLiteConfig).toContain("synchronizedMenuPaths");
+    expect(permissionStore).toContain("userInfo?.furnitureNavigationMenuPaths");
+    expect(authController).toContain(
+      "setFurnitureNavigationMenuPaths(furnitureNavigationCatalog.getMenuPaths())",
+    );
+    expect(syncService).toContain("catalog.getMenuPaths().contains(fullPath)");
+  });
+
+  it("syncs on startup and every menu lifecycle change without dropping existing package menus", () => {
+    const initializer = readFileSync(
+      join(
+        systemServerJavaPath,
+        "service/permission/FurnitureNavigationPermissionInitializer.java",
+      ),
+      "utf8",
+    );
+    const menuService = readFileSync(
+      join(systemServerJavaPath, "service/permission/MenuServiceImpl.java"),
+      "utf8",
+    );
+    const syncService = readFileSync(
+      join(
+        systemServerJavaPath,
+        "service/permission/FurnitureNavigationPermissionServiceImpl.java",
+      ),
+      "utf8",
+    );
+    const monolithApplicationConfig = readFileSync(
+      join(root, "yudao-cloud/yudao-server/src/main/resources/application.yaml"),
+      "utf8",
+    );
+    const systemApplicationConfig = readFileSync(
+      join(
+        root,
+        "yudao-cloud/yudao-module-system/yudao-module-system-server/src/main/resources/application.yaml",
+      ),
+      "utf8",
+    );
+
+    expect(initializer).toContain("implements ApplicationRunner");
+    expect(initializer).toContain(
+      "furnitureNavigationPermissionService.syncMenuPermissions()",
+    );
+    expect(
+      menuService.match(
+        /furnitureNavigationPermissionService\.syncMenuPermissions\(\)/g,
+      ),
+    ).toHaveLength(4);
+    expect(syncService).toContain(
+      "new HashSet<>(CollUtil.emptyIfNull(tenantPackage.getMenuIds()))",
+    );
+    expect(syncService).toContain("synchronizedMenuIds.addAll(desiredMenuIds)");
+    expect(syncService).toContain("validatePackageOwnership(packageId)");
+    for (const applicationConfig of [
+      monolithApplicationConfig,
+      systemApplicationConfig,
+    ]) {
+      expect(applicationConfig).toContain("furniture-navigation:");
+      expect(applicationConfig).toContain(
+        "${OAKVED_FURNITURE_NAVIGATION_TENANT_IDS:121,162}",
+      );
+    }
   });
 });

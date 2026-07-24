@@ -14,6 +14,7 @@ import cn.iocoder.yudao.module.system.dal.dataobject.permission.MenuDO;
 import cn.iocoder.yudao.module.system.dal.dataobject.permission.RoleDO;
 import cn.iocoder.yudao.module.system.dal.dataobject.user.AdminUserDO;
 import cn.iocoder.yudao.module.system.enums.logger.LoginLogTypeEnum;
+import cn.iocoder.yudao.module.system.framework.navigation.config.FurnitureNavigationCatalog;
 import cn.iocoder.yudao.module.system.service.auth.AdminAuthService;
 import cn.iocoder.yudao.module.system.service.permission.MenuService;
 import cn.iocoder.yudao.module.system.service.permission.PermissionService;
@@ -59,6 +60,8 @@ public class AuthController {
     private PermissionService permissionService;
     @Resource
     private SocialClientService socialClientService;
+    @Resource
+    private FurnitureNavigationCatalog furnitureNavigationCatalog;
 
     @Resource
     private SecurityProperties securityProperties;
@@ -103,7 +106,10 @@ public class AuthController {
         // 1.2 获得角色列表
         Set<Long> roleIds = permissionService.getUserRoleIdListByUserId(getLoginUserId());
         if (CollUtil.isEmpty(roleIds)) {
-            return success(AuthConvert.INSTANCE.convert(user, Collections.emptyList(), Collections.emptyList()));
+            AuthPermissionInfoRespVO permissionInfo = AuthConvert.INSTANCE.convert(
+                    user, Collections.emptyList(), Collections.emptyList());
+            permissionInfo.setFurnitureNavigationMenuPaths(furnitureNavigationCatalog.getMenuPaths());
+            return success(permissionInfo);
         }
         List<RoleDO> roles = roleService.getRoleList(roleIds);
         roles.removeIf(role -> !CommonStatusEnum.ENABLE.getStatus().equals(role.getStatus())); // 移除禁用的角色
@@ -114,7 +120,9 @@ public class AuthController {
         menuList = menuService.filterDisableMenus(menuList);
 
         // 2. 拼接结果返回
-        return success(AuthConvert.INSTANCE.convert(user, roles, menuList));
+        AuthPermissionInfoRespVO permissionInfo = AuthConvert.INSTANCE.convert(user, roles, menuList);
+        permissionInfo.setFurnitureNavigationMenuPaths(furnitureNavigationCatalog.getMenuPaths());
+        return success(permissionInfo);
     }
 
     @PostMapping("/register")
