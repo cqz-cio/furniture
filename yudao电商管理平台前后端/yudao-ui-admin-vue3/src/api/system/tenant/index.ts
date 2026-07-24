@@ -13,7 +13,14 @@ export interface TenantVO {
   expireTime: Date
   accountCount: number
   websites: string[]
+  businessMode: string
   createTime: Date
+}
+
+export interface TenantBusinessProfile {
+  tenantId: number
+  businessMode: string
+  inventoryEnabled: boolean
 }
 
 export interface TenantPageReqVO extends PageParam {
@@ -45,6 +52,11 @@ export const getTenant = (id: number) => {
 // 获取租户精简信息列表
 export const getTenantList = () => {
   return request.get({ url: '/system/tenant/simple-list' })
+}
+
+// 获取当前有效租户业务配置
+export const getCurrentTenantBusinessProfile = (): Promise<TenantBusinessProfile> => {
+  return request.get({ url: '/system/tenant/current-business-profile' })
 }
 
 // 新增租户

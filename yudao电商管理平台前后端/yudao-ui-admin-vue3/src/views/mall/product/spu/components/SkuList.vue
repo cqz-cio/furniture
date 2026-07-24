@@ -70,7 +70,7 @@
         />
       </template>
     </el-table-column>
-    <el-table-column align="center" label="库存" min-width="168">
+    <el-table-column v-if="showStock" align="center" label="库存" min-width="168">
       <template #default="{ row }">
         <el-input-number v-model="row.stock" :min="0" class="w-100%" controls-position="right" />
       </template>
@@ -193,7 +193,7 @@
         {{ row.costPrice }}
       </template>
     </el-table-column>
-    <el-table-column align="center" label="库存" min-width="80">
+    <el-table-column v-if="showStock" align="center" label="库存" min-width="80">
       <template #default="{ row }">
         {{ row.stock }}
       </template>
@@ -273,7 +273,7 @@
         {{ formatToFraction(row.costPrice) }}
       </template>
     </el-table-column>
-    <el-table-column align="center" label="库存" min-width="80">
+    <el-table-column v-if="showStock" align="center" label="库存" min-width="80">
       <template #default="{ row }">
         {{ row.stock }}
       </template>
@@ -313,7 +313,8 @@ const props = defineProps({
   isBatch: propTypes.bool.def(false), // 是否作为批量操作组件
   isDetail: propTypes.bool.def(false), // 是否作为 sku 详情组件
   isComponent: propTypes.bool.def(false), // 是否作为 sku 选择组件
-  isActivityComponent: propTypes.bool.def(false) // 是否作为 sku 活动配置组件
+  isActivityComponent: propTypes.bool.def(false), // 是否作为 sku 活动配置组件
+  showStock: propTypes.bool.def(true) // 是否展示库存；默认保持促销等既有调用方行为
 })
 const formData: Ref<Spu | undefined> = ref<Spu>() // 表单数据
 const skuList = ref<Sku[]>([
@@ -343,8 +344,12 @@ const imagePreview = (imgUrl: string) => {
 /** 批量添加 */
 const batchAdd = () => {
   validateProperty()
+  const batchValues: Partial<Sku> = { ...skuList.value[0] }
+  if (!props.showStock) {
+    delete batchValues.stock
+  }
   formData.value!.skus!.forEach((item) => {
-    copyValueToTarget(item, skuList.value[0])
+    copyValueToTarget(item, batchValues)
   })
 }
 /** 校验商品属性属性值 */

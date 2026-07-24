@@ -392,6 +392,7 @@ CREATE TABLE IF NOT EXISTS "system_tenant" (
     "contact_mobile" varchar(255),
     "status" tinyint NOT NULL,
     "websites" varchar(1024) DEFAULT '',
+    "business_mode" varchar(16) NOT NULL DEFAULT 'B2C',
     "package_id"  bigint NOT NULL,
     "expire_time" timestamp NOT NULL,
     "account_count" int NOT NULL,

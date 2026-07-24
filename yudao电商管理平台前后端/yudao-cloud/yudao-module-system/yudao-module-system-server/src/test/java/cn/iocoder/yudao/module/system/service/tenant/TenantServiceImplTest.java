@@ -14,6 +14,7 @@ import cn.iocoder.yudao.module.system.dal.dataobject.tenant.TenantPackageDO;
 import cn.iocoder.yudao.module.system.dal.mysql.tenant.TenantMapper;
 import cn.iocoder.yudao.module.system.enums.permission.RoleCodeEnum;
 import cn.iocoder.yudao.module.system.enums.permission.RoleTypeEnum;
+import cn.iocoder.yudao.module.system.enums.tenant.TenantBusinessModeEnum;
 import cn.iocoder.yudao.module.system.service.permission.MenuService;
 import cn.iocoder.yudao.module.system.service.permission.PermissionService;
 import cn.iocoder.yudao.module.system.service.permission.RoleService;
@@ -156,6 +157,7 @@ public class TenantServiceImplTest extends BaseDbUnitTest {
             o.setContactName("芋道");
             o.setContactMobile("15601691300");
             o.setPackageId(100L);
+            o.setBusinessMode(TenantBusinessModeEnum.B2B.getCode());
             o.setStatus(randomCommonStatus());
             o.setWebsites(singletonList("https://www.iocoder.cn"));
             o.setUsername("yunai");
@@ -179,11 +181,14 @@ public class TenantServiceImplTest extends BaseDbUnitTest {
     @Test
     public void testUpdateTenant_success() {
         // mock 数据
-        TenantDO dbTenant = randomPojo(TenantDO.class, o -> o.setStatus(randomCommonStatus()));
+        TenantDO dbTenant = randomPojo(TenantDO.class, o -> o
+                .setStatus(randomCommonStatus())
+                .setBusinessMode(TenantBusinessModeEnum.B2C.getCode()));
         tenantMapper.insert(dbTenant);// @Sql: 先插入出一条存在的数据
         // 准备参数
         TenantSaveReqVO reqVO = randomPojo(TenantSaveReqVO.class, o -> {
             o.setId(dbTenant.getId()); // 设置更新的 ID
+            o.setBusinessMode(TenantBusinessModeEnum.B2B.getCode());
             o.setStatus(randomCommonStatus());
             o.setWebsites(singletonList(randomString()));
         });
@@ -214,7 +219,8 @@ public class TenantServiceImplTest extends BaseDbUnitTest {
     @Test
     public void testUpdateTenant_notExists() {
         // 准备参数
-        TenantSaveReqVO reqVO = randomPojo(TenantSaveReqVO.class);
+        TenantSaveReqVO reqVO = randomPojo(TenantSaveReqVO.class,
+                o -> o.setBusinessMode(TenantBusinessModeEnum.B2C.getCode()));
 
         // 调用, 并断言异常
         assertServiceException(() -> tenantService.updateTenant(reqVO), TENANT_NOT_EXISTS);
@@ -228,6 +234,7 @@ public class TenantServiceImplTest extends BaseDbUnitTest {
         // 准备参数
         TenantSaveReqVO reqVO = randomPojo(TenantSaveReqVO.class, o -> {
             o.setId(dbTenant.getId()); // 设置更新的 ID
+            o.setBusinessMode(TenantBusinessModeEnum.B2C.getCode());
         });
 
         // 调用，校验业务异常

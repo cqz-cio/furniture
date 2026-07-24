@@ -112,6 +112,11 @@
       <el-table-column type="selection" width="55" />
       <el-table-column label="租户编号" align="center" prop="id" />
       <el-table-column label="租户名" align="center" prop="name" />
+      <el-table-column label="业务模式" align="center" prop="businessMode">
+        <template #default="{ row }">
+          {{ formatBusinessMode(row.businessMode) }}
+        </template>
+      </el-table-column>
       <el-table-column label="租户套餐" align="center" prop="packageId">
         <template #default="scope">
           <el-tag v-if="scope.row.packageId === 0" type="danger">系统租户</el-tag>
@@ -217,6 +222,12 @@ const queryParams = reactive({
 const queryFormRef = ref() // 搜索的表单
 const exportLoading = ref(false) // 导出的加载中
 const packageList = ref([] as TenantPackageApi.TenantPackageVO[]) //租户套餐列表
+const businessModeLabels: Record<string, string> = {
+  B2C: 'ToC（零售型）',
+  B2B: 'ToB（询盘型）'
+}
+const formatBusinessMode = (businessMode: string) =>
+  businessModeLabels[businessMode] || businessMode || '-'
 
 /** 查询列表 */
 const getList = async () => {

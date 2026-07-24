@@ -2,252 +2,275 @@
 <template>
   <doc-alert title="【商品】商品 SPU 与 SKU" url="https://doc.iocoder.cn/mall/product-spu-sku/" />
 
-  <!-- 搜索工作栏 -->
-  <ContentWrap>
-    <el-form
-      ref="queryFormRef"
-      :inline="true"
-      :model="queryParams"
-      class="-mb-15px"
-      label-width="68px"
-    >
-      <el-form-item label="商品名称" prop="name">
-        <el-input
-          v-model="queryParams.name"
-          class="!w-240px"
-          clearable
-          placeholder="请输入商品名称"
-          @keyup.enter="handleQuery"
-        />
-      </el-form-item>
-      <el-form-item label="商品分类" prop="categoryId">
-        <el-cascader
-          v-model="queryParams.categoryId"
-          :options="categoryList"
-          :props="defaultProps"
-          class="w-1/1"
-          clearable
-          filterable
-          placeholder="请选择商品分类"
-        />
-      </el-form-item>
-      <el-form-item label="创建时间" prop="createTime">
-        <el-date-picker
-          v-model="queryParams.createTime"
-          :default-time="[new Date('1 00:00:00'), new Date('1 23:59:59')]"
-          class="!w-240px"
-          end-placeholder="结束日期"
-          start-placeholder="开始日期"
-          type="daterange"
-          value-format="YYYY-MM-DD HH:mm:ss"
-        />
-      </el-form-item>
-      <el-form-item>
-        <el-button @click="handleQuery">
-          <Icon class="mr-5px" icon="ep:search" />
-          搜索
-        </el-button>
-        <el-button @click="resetQuery">
-          <Icon class="mr-5px" icon="ep:refresh" />
-          重置
-        </el-button>
-        <el-button
-          v-hasPermi="['product:spu:create']"
-          plain
-          type="primary"
-          @click="openForm(undefined)"
-        >
-          <Icon class="mr-5px" icon="ep:plus" />
-          新增
-        </el-button>
-        <el-button
-          v-hasPermi="['product:spu:export']"
-          :loading="exportLoading"
-          plain
-          type="success"
-          @click="handleExport"
-        >
-          <Icon class="mr-5px" icon="ep:download" />
-          导出
-        </el-button>
-        <el-button v-hasPermi="['product:spu:update']" plain @click="handleErpSyncAll">
-          ERP 全量同步
-        </el-button>
-      </el-form-item>
-    </el-form>
+  <ContentWrap v-if="profileLoading" v-loading="true" class="min-h-200px" />
+  <ContentWrap v-else-if="profileError">
+    <el-alert
+      :closable="false"
+      show-icon
+      title="当前租户业务配置加载失败，请刷新页面后重试"
+      type="error"
+    />
   </ContentWrap>
-
-  <!-- 列表 -->
-  <ContentWrap>
-    <el-tabs v-model="queryParams.tabType" @tab-click="handleTabClick">
-      <el-tab-pane
-        v-for="item in tabsData"
-        :key="item.type"
-        :label="item.name + '(' + item.count + ')'"
-        :name="item.type"
-      />
-    </el-tabs>
-    <el-table v-loading="loading" :data="list">
-      <el-table-column type="expand">
-        <template #default="{ row }">
-          <el-form class="spu-table-expand" label-position="left">
-            <el-row>
-              <el-col :span="24">
-                <el-row>
-                  <el-col :span="8">
-                    <el-form-item label="商品分类:">
-                      <span>{{ formatCategoryName(row.categoryId) }}</span>
-                    </el-form-item>
-                  </el-col>
-                  <el-col :span="8">
-                    <el-form-item label="市场价:">
-                      <span>{{ fenToYuan(row.marketPrice) }}</span>
-                    </el-form-item>
-                  </el-col>
-                  <el-col :span="8">
-                    <el-form-item label="成本价:">
-                      <span>{{ fenToYuan(row.costPrice) }}</span>
-                    </el-form-item>
-                  </el-col>
-                </el-row>
-              </el-col>
-            </el-row>
-            <el-row>
-              <el-col :span="24">
-                <el-row>
-                  <el-col :span="8">
-                    <el-form-item label="浏览量:">
-                      <span>{{ row.browseCount }}</span>
-                    </el-form-item>
-                  </el-col>
-                  <el-col :span="8">
-                    <el-form-item label="虚拟销量:">
-                      <span>{{ row.virtualSalesCount }}</span>
-                    </el-form-item>
-                  </el-col>
-                </el-row>
-              </el-col>
-            </el-row>
-          </el-form>
-        </template>
-      </el-table-column>
-      <el-table-column label="商品编号" min-width="140" prop="id" />
-      <el-table-column label="商品信息" min-width="300">
-        <template #default="{ row }">
-          <div class="flex">
-            <el-image
-              fit="cover"
-              :src="row.picUrl"
-              class="flex-none w-50px h-50px"
-              @click="imagePreview(row.picUrl)"
-            />
-            <div class="ml-4 overflow-hidden">
-              <el-tooltip effect="dark" :content="row.name" placement="top">
-                <div>
-                  {{ row.name }}
-                </div>
-              </el-tooltip>
-            </div>
-          </div>
-        </template>
-      </el-table-column>
-      <el-table-column align="center" label="价格" min-width="160" prop="price">
-        <template #default="{ row }"> ¥ {{ fenToYuan(row.price) }}</template>
-      </el-table-column>
-      <el-table-column align="center" label="销量" min-width="90" prop="salesCount" />
-      <el-table-column align="center" label="库存" min-width="90" prop="stock" />
-      <el-table-column align="center" label="ERP 编码" min-width="150">
-        <template #default="{ row }">{{ erpBySpuId[row.id]?.erpProductCode || '-' }}</template>
-      </el-table-column>
-      <el-table-column align="center" label="ERP 状态" min-width="100">
-        <template #default="{ row }">{{ erpBySpuId[row.id]?.syncStatus || '未映射' }}</template>
-      </el-table-column>
-      <el-table-column align="center" label="ERP 库存" min-width="90">
-        <template #default="{ row }">{{ erpBySpuId[row.id]?.sellableStock ?? '-' }}</template>
-      </el-table-column>
-      <el-table-column align="center" label="最后同步" min-width="180">
-        <template #default="{ row }">{{ erpBySpuId[row.id]?.lastSyncedAt || '-' }}</template>
-      </el-table-column>
-      <el-table-column align="center" label="排序" min-width="70" prop="sort" />
-      <el-table-column align="center" label="销售状态" min-width="80">
-        <template #default="{ row }">
-          <template v-if="row.status >= 0">
-            <el-switch
-              v-model="row.status"
-              :active-value="1"
-              :inactive-value="0"
-              active-text="上架"
-              inactive-text="下架"
-              inline-prompt
-              @change="handleStatusChange(row)"
-            />
-          </template>
-          <template v-else>
-            <el-tag type="info">回收站</el-tag>
-          </template>
-        </template>
-      </el-table-column>
-      <el-table-column
-        :formatter="dateFormatter"
-        align="center"
-        label="创建时间"
-        prop="createTime"
-        width="180"
-      />
-      <el-table-column align="center" fixed="right" label="操作" min-width="260">
-        <template #default="{ row }">
-          <el-button link type="primary" @click="openDetail(row.id)"> 详情 </el-button>
-          <el-button link type="primary" @click="openFrontendPreview(row.id)"> 前台预览 </el-button>
-          <el-button v-hasPermi="['product:spu:update']" link @click="handleErpSync(row.id)">
-            同步 ERP
+  <template v-else-if="profileLoaded">
+    <!-- 搜索工作栏 -->
+    <ContentWrap>
+      <el-form
+        ref="queryFormRef"
+        :inline="true"
+        :model="queryParams"
+        class="-mb-15px"
+        label-width="68px"
+      >
+        <el-form-item label="商品名称" prop="name">
+          <el-input
+            v-model="queryParams.name"
+            class="!w-240px"
+            clearable
+            placeholder="请输入商品名称"
+            @keyup.enter="handleQuery"
+          />
+        </el-form-item>
+        <el-form-item label="商品分类" prop="categoryId">
+          <el-cascader
+            v-model="queryParams.categoryId"
+            :options="categoryList"
+            :props="defaultProps"
+            class="w-1/1"
+            clearable
+            filterable
+            placeholder="请选择商品分类"
+          />
+        </el-form-item>
+        <el-form-item label="创建时间" prop="createTime">
+          <el-date-picker
+            v-model="queryParams.createTime"
+            :default-time="[new Date('1 00:00:00'), new Date('1 23:59:59')]"
+            class="!w-240px"
+            end-placeholder="结束日期"
+            start-placeholder="开始日期"
+            type="daterange"
+            value-format="YYYY-MM-DD HH:mm:ss"
+          />
+        </el-form-item>
+        <el-form-item>
+          <el-button @click="handleQuery">
+            <Icon class="mr-5px" icon="ep:search" />
+            搜索
+          </el-button>
+          <el-button @click="resetQuery">
+            <Icon class="mr-5px" icon="ep:refresh" />
+            重置
           </el-button>
           <el-button
-            v-hasPermi="['product:spu:update']"
-            link
+            v-hasPermi="['product:spu:create']"
+            plain
             type="primary"
-            @click="openForm(row.id)"
+            @click="openForm(undefined)"
           >
-            修改
+            <Icon class="mr-5px" icon="ep:plus" />
+            新增
           </el-button>
-          <template v-if="queryParams.tabType === 4">
-            <el-button
-              v-hasPermi="['product:spu:delete']"
-              link
-              type="danger"
-              @click="handleDelete(row.id)"
-            >
-              删除
+          <el-button
+            v-hasPermi="['product:spu:export']"
+            :loading="exportLoading"
+            plain
+            type="success"
+            @click="handleExport"
+          >
+            <Icon class="mr-5px" icon="ep:download" />
+            导出
+          </el-button>
+          <el-button v-hasPermi="['product:spu:update']" plain @click="handleErpSyncAll">
+            ERP 全量同步
+          </el-button>
+        </el-form-item>
+      </el-form>
+    </ContentWrap>
+
+    <!-- 列表 -->
+    <ContentWrap>
+      <el-tabs v-model="queryParams.tabType" @tab-click="handleTabClick">
+        <el-tab-pane
+          v-for="item in tabsData"
+          :key="item.type"
+          :label="item.name + '(' + item.count + ')'"
+          :name="item.type"
+        />
+      </el-tabs>
+      <el-table v-loading="loading" :data="list">
+        <el-table-column type="expand">
+          <template #default="{ row }">
+            <el-form class="spu-table-expand" label-position="left">
+              <el-row>
+                <el-col :span="24">
+                  <el-row>
+                    <el-col :span="8">
+                      <el-form-item label="商品分类:">
+                        <span>{{ formatCategoryName(row.categoryId) }}</span>
+                      </el-form-item>
+                    </el-col>
+                    <el-col :span="8">
+                      <el-form-item label="市场价:">
+                        <span>{{ fenToYuan(row.marketPrice) }}</span>
+                      </el-form-item>
+                    </el-col>
+                    <el-col :span="8">
+                      <el-form-item label="成本价:">
+                        <span>{{ fenToYuan(row.costPrice) }}</span>
+                      </el-form-item>
+                    </el-col>
+                  </el-row>
+                </el-col>
+              </el-row>
+              <el-row>
+                <el-col :span="24">
+                  <el-row>
+                    <el-col :span="8">
+                      <el-form-item label="浏览量:">
+                        <span>{{ row.browseCount }}</span>
+                      </el-form-item>
+                    </el-col>
+                    <el-col :span="8">
+                      <el-form-item label="虚拟销量:">
+                        <span>{{ row.virtualSalesCount }}</span>
+                      </el-form-item>
+                    </el-col>
+                  </el-row>
+                </el-col>
+              </el-row>
+            </el-form>
+          </template>
+        </el-table-column>
+        <el-table-column label="商品编号" min-width="140" prop="id" />
+        <el-table-column label="商品信息" min-width="300">
+          <template #default="{ row }">
+            <div class="flex">
+              <el-image
+                fit="cover"
+                :src="row.picUrl"
+                class="flex-none w-50px h-50px"
+                @click="imagePreview(row.picUrl)"
+              />
+              <div class="ml-4 overflow-hidden">
+                <el-tooltip effect="dark" :content="row.name" placement="top">
+                  <div>
+                    {{ row.name }}
+                  </div>
+                </el-tooltip>
+              </div>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column align="center" label="价格" min-width="160" prop="price">
+          <template #default="{ row }"> ¥ {{ fenToYuan(row.price) }}</template>
+        </el-table-column>
+        <el-table-column align="center" label="销量" min-width="90" prop="salesCount" />
+        <el-table-column
+          v-if="inventoryEnabled"
+          align="center"
+          label="库存"
+          min-width="90"
+          prop="stock"
+        />
+        <el-table-column align="center" label="ERP 编码" min-width="150">
+          <template #default="{ row }">{{ erpBySpuId[row.id]?.erpProductCode || '-' }}</template>
+        </el-table-column>
+        <el-table-column align="center" label="ERP 状态" min-width="100">
+          <template #default="{ row }">{{ erpBySpuId[row.id]?.syncStatus || '未映射' }}</template>
+        </el-table-column>
+        <el-table-column v-if="inventoryEnabled" align="center" label="ERP 库存" min-width="90">
+          <template #default="{ row }">{{ erpBySpuId[row.id]?.sellableStock ?? '-' }}</template>
+        </el-table-column>
+        <el-table-column align="center" label="最后同步" min-width="180">
+          <template #default="{ row }">{{ erpBySpuId[row.id]?.lastSyncedAt || '-' }}</template>
+        </el-table-column>
+        <el-table-column align="center" label="排序" min-width="70" prop="sort" />
+        <el-table-column
+          align="center"
+          :label="inventoryEnabled ? '销售状态' : '展示状态'"
+          min-width="80"
+        >
+          <template #default="{ row }">
+            <template v-if="row.status >= 0">
+              <el-switch
+                v-model="row.status"
+                :active-value="1"
+                :inactive-value="0"
+                active-text="上架"
+                inactive-text="下架"
+                inline-prompt
+                @change="handleStatusChange(row)"
+              />
+            </template>
+            <template v-else>
+              <el-tag type="info">回收站</el-tag>
+            </template>
+          </template>
+        </el-table-column>
+        <el-table-column
+          :formatter="dateFormatter"
+          align="center"
+          label="创建时间"
+          prop="createTime"
+          width="180"
+        />
+        <el-table-column align="center" fixed="right" label="操作" min-width="260">
+          <template #default="{ row }">
+            <el-button link type="primary" @click="openDetail(row.id)"> 详情 </el-button>
+            <el-button link type="primary" @click="openFrontendPreview(row.id)">
+              前台预览
+            </el-button>
+            <el-button v-hasPermi="['product:spu:update']" link @click="handleErpSync(row.id)">
+              同步 ERP
             </el-button>
             <el-button
               v-hasPermi="['product:spu:update']"
               link
               type="primary"
-              @click="handleStatus02Change(row, ProductSpuStatusEnum.DISABLE.status)"
+              @click="openForm(row.id)"
             >
-              恢复
+              修改
             </el-button>
+            <template v-if="queryParams.tabType === 4">
+              <el-button
+                v-hasPermi="['product:spu:delete']"
+                link
+                type="danger"
+                @click="handleDelete(row.id)"
+              >
+                删除
+              </el-button>
+              <el-button
+                v-hasPermi="['product:spu:update']"
+                link
+                type="primary"
+                @click="handleStatus02Change(row, ProductSpuStatusEnum.DISABLE.status)"
+              >
+                恢复
+              </el-button>
+            </template>
+            <template v-else>
+              <el-button
+                v-hasPermi="['product:spu:update']"
+                link
+                type="danger"
+                @click="handleStatus02Change(row, ProductSpuStatusEnum.RECYCLE.status)"
+              >
+                回收
+              </el-button>
+            </template>
           </template>
-          <template v-else>
-            <el-button
-              v-hasPermi="['product:spu:update']"
-              link
-              type="danger"
-              @click="handleStatus02Change(row, ProductSpuStatusEnum.RECYCLE.status)"
-            >
-              回收
-            </el-button>
-          </template>
-        </template>
-      </el-table-column>
-    </el-table>
-    <!-- 分页 -->
-    <Pagination
-      v-model:limit="queryParams.pageSize"
-      v-model:page="queryParams.pageNo"
-      :total="total"
-      @pagination="getList"
-    />
-  </ContentWrap>
+        </el-table-column>
+      </el-table>
+      <!-- 分页 -->
+      <Pagination
+        v-model:limit="queryParams.pageSize"
+        v-model:page="queryParams.pageNo"
+        :total="total"
+        @pagination="getList"
+      />
+    </ContentWrap>
+  </template>
 </template>
 <script lang="ts" setup>
 import { TabsPaneContext } from 'element-plus'
@@ -259,6 +282,7 @@ import { fenToYuan } from '@/utils'
 import download from '@/utils/download'
 import * as ProductSpuApi from '@/api/mall/product/spu'
 import * as ProductCategoryApi from '@/api/mall/product/category'
+import { useTenantBusinessProfile } from '@/hooks/web/useTenantBusinessProfile'
 
 defineOptions({ name: 'ProductSpu' })
 
@@ -272,34 +296,30 @@ const exportLoading = ref(false) // 导出的加载中
 const total = ref(0) // 列表的总页数
 const list = ref<ProductSpuApi.Spu[]>([]) // 列表的数据
 const erpBySpuId = ref<Record<number, ProductSpuApi.ErpIntegration>>({})
-// tabs 数据
-const tabsData = ref([
-  {
-    name: '出售中',
-    type: 0,
-    count: 0
-  },
-  {
-    name: '仓库中',
-    type: 1,
-    count: 0
-  },
-  {
-    name: '已售罄',
-    type: 2,
-    count: 0
-  },
-  {
-    name: '警戒库存',
-    type: 3,
-    count: 0
-  },
-  {
-    name: '回收站',
-    type: 4,
-    count: 0
-  }
-])
+const { profileLoading, profileLoaded, profileError, inventoryEnabled, loadTenantBusinessProfile } =
+  useTenantBusinessProfile()
+const tabCounts = ref([0, 0, 0, 0, 0])
+const visibleTabTypes = computed(() => (inventoryEnabled.value ? [0, 1, 2, 3, 4] : [0, 1, 4]))
+const tabsData = computed(() =>
+  visibleTabTypes.value.map((type) => ({
+    type,
+    name:
+      type === 0
+        ? inventoryEnabled.value
+          ? '出售中'
+          : '展示中'
+        : type === 1
+          ? inventoryEnabled.value
+            ? '仓库中'
+            : '未展示'
+          : type === 2
+            ? '已售罄'
+            : type === 3
+              ? '警戒库存'
+              : '回收站',
+    count: tabCounts.value[type]
+  }))
+)
 
 const queryParams = ref({
   pageNo: 1,
@@ -313,13 +333,19 @@ const queryFormRef = ref() // 搜索的表单Ref
 
 /** 查询列表 */
 const getList = async () => {
+  if (!profileLoaded.value) return
+  if (!inventoryEnabled.value && [2, 3].includes(Number(queryParams.value.tabType))) {
+    queryParams.value.tabType = 0
+  }
   loading.value = true
   try {
     const data = await ProductSpuApi.getSpuPage(queryParams.value)
     list.value = data.list
     total.value = data.total
     const integrations = await Promise.all(
-      data.list.map(async (spu) => [spu.id, (await ProductSpuApi.getErpIntegration(spu.id!))[0]] as const)
+      data.list.map(
+        async (spu) => [spu.id, (await ProductSpuApi.getErpIntegration(spu.id!))[0]] as const
+      )
     )
     erpBySpuId.value = Object.fromEntries(integrations.filter(([, value]) => value))
   } finally {
@@ -329,7 +355,7 @@ const getList = async () => {
 
 /** 切换 Tab */
 const handleTabClick = (tab: TabsPaneContext) => {
-  queryParams.value.tabType = tab.paneName as number
+  queryParams.value.tabType = Number(tab.paneName)
   getList()
 }
 
@@ -349,7 +375,7 @@ const handleErpSyncAll = async () => {
 const getTabsCount = async () => {
   const res = await ProductSpuApi.getTabsCount()
   for (let objName in res) {
-    tabsData.value[Number(objName)].count = res[objName]
+    tabCounts.value[Number(objName)] = res[objName]
   }
 }
 
@@ -469,9 +495,13 @@ const formatCategoryName = (categoryId: number) => {
   return treeToString(categoryList.value, categoryId)
 }
 
+const pageInitialized = ref(false)
+
 /** 激活时 */
 onActivated(() => {
-  getList()
+  if (pageInitialized.value && profileLoaded.value) {
+    getList()
+  }
 })
 
 /** 初始化 **/
@@ -480,12 +510,21 @@ onMounted(async () => {
   if (route.query.categoryId) {
     queryParams.value.categoryId = route.query.categoryId
   }
+  try {
+    await loadTenantBusinessProfile()
+  } catch {
+    return
+  }
+  if (!inventoryEnabled.value && [2, 3].includes(Number(queryParams.value.tabType))) {
+    queryParams.value.tabType = 0
+  }
   // 获得商品信息
   await getTabsCount()
   await getList()
   // 获得分类树
   const data = await ProductCategoryApi.getCategoryList({})
   categoryList.value = handleTree(data, 'id', 'parentId')
+  pageInitialized.value = true
 })
 </script>
 <style lang="scss" scoped>
