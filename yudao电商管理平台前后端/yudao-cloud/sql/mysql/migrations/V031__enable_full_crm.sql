@@ -488,8 +488,8 @@ INSERT INTO `system_tenant_package`
 (`name`, `status`, `remark`, `menu_ids`, `creator`, `create_time`,
  `updater`, `update_time`, `deleted`)
 SELECT 'Oakved CRM 全功能', source.`status`, @oakved_crm_package_marker,
-       source.`menu_ids`, 'V030', CURRENT_TIMESTAMP,
-       'V030', CURRENT_TIMESTAMP, b'0'
+       source.`menu_ids`, 'V031', CURRENT_TIMESTAMP,
+       'V031', CURRENT_TIMESTAMP, b'0'
 FROM `system_tenant_package` AS source
 WHERE source.`id` = @oakved_crm_source_package_id
   AND source.`deleted` = b'0'
@@ -570,13 +570,13 @@ SET `menu_ids` = (
         ORDER BY `menu_id`
       ) AS ordered_menu
     ),
-    `updater` = 'V030',
+    `updater` = 'V031',
     `update_time` = CURRENT_TIMESTAMP
 WHERE `id` = @oakved_crm_package_id;
 
 UPDATE `system_tenant`
 SET `package_id` = @oakved_crm_package_id,
-    `updater` = 'V030',
+    `updater` = 'V031',
     `update_time` = CURRENT_TIMESTAMP
 WHERE `id` = @oakved_crm_target_tenant_id
   AND `deleted` = b'0';
@@ -584,8 +584,8 @@ WHERE `id` = @oakved_crm_target_tenant_id
 INSERT INTO `system_role_menu`
 (`role_id`, `menu_id`, `creator`, `create_time`, `updater`, `update_time`,
  `deleted`, `tenant_id`)
-SELECT role.`id`, scope.`menu_id`, 'V030', CURRENT_TIMESTAMP,
-       'V030', CURRENT_TIMESTAMP, b'0', @oakved_crm_target_tenant_id
+SELECT role.`id`, scope.`menu_id`, 'V031', CURRENT_TIMESTAMP,
+       'V031', CURRENT_TIMESTAMP, b'0', @oakved_crm_target_tenant_id
 FROM `system_role` AS role
 CROSS JOIN `oakved_crm_menu_scope` AS scope
 WHERE role.`tenant_id` = @oakved_crm_target_tenant_id

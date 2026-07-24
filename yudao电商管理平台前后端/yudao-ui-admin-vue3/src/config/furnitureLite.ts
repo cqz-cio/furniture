@@ -1,99 +1,7 @@
 export type FurnitureLiteRoute = {
   path: string
   children?: FurnitureLiteRoute[]
-  [key: string]: unknown
 }
-
-const allowedMenuPaths = new Set([
-  '/index',
-  '/dashboard',
-  '/seo',
-  '/seo/metadata',
-  '/seo/site-config',
-  '/mall/home',
-  '/mall/product',
-  '/mall/product/spu',
-  '/mall/product/category',
-  '/mall/product/brand',
-  '/mall/product/property',
-  '/mall/product/comment',
-  '/mall/statistics',
-  '/mall/statistics/product',
-  '/mall/trade',
-  '/mall/trade/order',
-  '/mall/trade/after-sale',
-  '/mall/trade/delivery',
-  '/mall/trade/delivery/express',
-  '/mall/trade/delivery/express/express-template',
-  '/mall/trade/delivery/express-template',
-  '/mall/trade/delivery/pick-up-store',
-  '/member',
-  '/member/user',
-  '/member/membership',
-  '/member/gift-registry',
-  '/member/trade-application',
-  '/member/level',
-  '/member/tag',
-  '/member/group',
-  '/pay',
-  '/pay/app',
-  '/pay/order',
-  '/pay/refund',
-  '/ai',
-  '/ai/console',
-  '/ai/console/chat',
-  '/ai/console/image',
-  '/ai/console/knowledge',
-  '/ai/console/mind-map',
-  '/ai/console/model',
-  '/ai/console/music',
-  '/ai/console/workflow',
-  '/ai/console/write',
-  '/ai/chat',
-  '/ai/chat/index',
-  '/ai/chat/manager',
-  '/ai/model',
-  '/ai/model/model',
-  '/ai/model/api-key',
-  '/ai/model/apiKey',
-  '/ai/model/chat-role',
-  '/ai/model/chatRole',
-  '/ai/model/tool',
-  '/ai/knowledge',
-  '/ai/knowledge/knowledge',
-  '/ai/knowledge/document',
-  '/ai/knowledge/segment',
-  '/ai/workflow',
-  '/ai/write',
-  '/ai/write/index',
-  '/ai/write/manager',
-  '/ai/image',
-  '/ai/image/index',
-  '/ai/image/manager',
-  '/ai/image/square',
-  '/ai/music',
-  '/ai/music/index',
-  '/ai/music/manager',
-  '/ai/mind-map',
-  '/ai/mind-map/index',
-  '/ai/mind-map/manager',
-  '/ai/mindmap',
-  '/ai/mindmap/index',
-  '/ai/mindmap/manager',
-  '/infra/file',
-  '/infra/file-config',
-  '/infra/file/file-config',
-  '/system/user',
-  '/system/role',
-  '/system/menu',
-  '/system/tenant',
-  '/system/tenant/list',
-  '/system/messages/mail/mail-account',
-  '/system/messages/mail/mail-template',
-  '/system/messages/mail/mail-log'
-])
-
-const allowedMenuPrefixes = ['/crm']
 
 const deniedFixedRoutePrefixes = ['/bpm', '/iot', '/mes', '/diy', '/codegen', '/job']
 
@@ -120,10 +28,6 @@ const normalizeRoutePath = (path: string, parentPath = ''): string => {
   return normalizedPath.replace(/\/$/, '')
 }
 
-const isPathAllowed = (path: string): boolean =>
-  allowedMenuPaths.has(path) ||
-  allowedMenuPrefixes.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))
-
 const isPathDenied = (path: string): boolean =>
   deniedFixedRoutePrefixes.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))
 
@@ -148,17 +52,23 @@ export const isDocAlertVisible = (): boolean =>
 export const isDevLinksVisible = (): boolean =>
   !isFalseEnvValue(import.meta.env.VITE_SHOW_DEV_LINKS)
 
-export const filterFurnitureLiteMenus = <T extends FurnitureLiteRoute>(routes: T[]): T[] => {
+export const filterFurnitureLiteMenus = <T extends FurnitureLiteRoute>(
+  routes: T[],
+  synchronizedMenuPaths: Iterable<string> = []
+): T[] => {
   if (!isFurnitureLiteMode()) {
     return routes
   }
 
+  const allowedMenuPaths = new Set(
+    Array.from(synchronizedMenuPaths, (path) => normalizeRoutePath(path))
+  )
   const filterRoutes = (items: T[], parentPath = ''): T[] =>
     items.reduce<T[]>((filteredRoutes, route) => {
       const fullPath = normalizeRoutePath(route.path, parentPath)
       const children = route.children ? filterRoutes(route.children as T[], fullPath) : undefined
 
-      if (!isPathAllowed(fullPath) && (!children || children.length === 0)) {
+      if (!allowedMenuPaths.has(fullPath) && (!children || children.length === 0)) {
         return filteredRoutes
       }
 
