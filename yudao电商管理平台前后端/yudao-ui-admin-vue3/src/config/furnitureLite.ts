@@ -85,7 +85,8 @@ const allowedMenuPaths = new Set([
   '/infra/file/file-config',
   '/system/user',
   '/system/role',
-  '/system/menu'
+  '/system/menu',
+  '/system/tenant'
 ])
 
 const deniedFixedRoutePrefixes = ['/bpm', '/crm', '/iot', '/mes', '/diy', '/codegen', '/job']

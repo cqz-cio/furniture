@@ -87,6 +87,14 @@ describe("tenant business mode ERP contract", () => {
     expect(hook).not.toMatch(/\b(121|162)\b/);
   });
 
+  it("keeps tenant management visible to authorized furniture-lite administrators", () => {
+    const config = read(`${admin}config/furnitureLite.ts`);
+    const allowedMenuBlock =
+      config.match(/const allowedMenuPaths = new Set\(\[[\s\S]*?\]\)/)?.[0] || "";
+
+    expect(allowedMenuBlock).toContain("'/system/tenant'");
+  });
+
   it("does not hardcode known tenant IDs in product frontend business logic", () => {
     const productSource = [
       read(`${admin}views/mall/product/spu/index.vue`),
