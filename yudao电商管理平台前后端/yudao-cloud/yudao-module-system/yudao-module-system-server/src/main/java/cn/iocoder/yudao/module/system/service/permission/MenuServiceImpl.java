@@ -46,8 +46,12 @@ public class MenuServiceImpl implements MenuService {
     @Resource
     @Lazy // 延迟，避免循环依赖报错
     private TenantService tenantService;
+    @Resource
+    @Lazy
+    private FurnitureNavigationPermissionService furnitureNavigationPermissionService;
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     @CacheEvict(value = RedisKeyConstants.PERMISSION_MENU_ID_LIST, key = "#createReqVO.permission",
             condition = "#createReqVO.permission != null")
     public Long createMenu(MenuSaveVO createReqVO) {
@@ -61,11 +65,13 @@ public class MenuServiceImpl implements MenuService {
         MenuDO menu = BeanUtils.toBean(createReqVO, MenuDO.class);
         initMenuProperty(menu);
         menuMapper.insert(menu);
+        furnitureNavigationPermissionService.syncMenuPermissions();
         // 返回
         return menu.getId();
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     @CacheEvict(value = RedisKeyConstants.PERMISSION_MENU_ID_LIST,
             allEntries = true) // allEntries 清空所有缓存，因为 permission 如果变更，涉及到新老两个 permission。直接清理，简单有效
     public void updateMenu(MenuSaveVO updateReqVO) {
@@ -83,6 +89,7 @@ public class MenuServiceImpl implements MenuService {
         MenuDO updateObj = BeanUtils.toBean(updateReqVO, MenuDO.class);
         initMenuProperty(updateObj);
         menuMapper.updateById(updateObj);
+        furnitureNavigationPermissionService.syncMenuPermissions();
     }
 
     @Override
@@ -102,6 +109,7 @@ public class MenuServiceImpl implements MenuService {
         menuMapper.deleteById(id);
         // 删除授予给角色的权限
         permissionService.processMenuDeleted(id);
+        furnitureNavigationPermissionService.syncMenuPermissions();
     }
 
     @Override
@@ -120,6 +128,7 @@ public class MenuServiceImpl implements MenuService {
         menuMapper.deleteByIds(ids);
         // 删除授予给角色的权限
         ids.forEach(id -> permissionService.processMenuDeleted(id));
+        furnitureNavigationPermissionService.syncMenuPermissions();
     }
 
     @Override

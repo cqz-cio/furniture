@@ -2,7 +2,12 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 
 const source = readFileSync('src/config/furnitureLite.ts', 'utf8')
-const allowedMenuBlock = source.match(/const allowedMenuPaths = new Set\(\[[\s\S]*?\]\)/)?.[0] || ''
+const furnitureNavigationMenuPaths = JSON.parse(
+  readFileSync(
+    '../yudao-cloud/yudao-module-system/yudao-module-system-server/src/main/resources/navigation/furniture-lite-menu-paths.json',
+    'utf8'
+  )
+)
 const deniedFixedRoutePrefixesBlock =
   source.match(/const deniedFixedRoutePrefixes = \[[\s\S]*?\]/)?.[0] || ''
 
@@ -16,8 +21,8 @@ const requiredAiRoutes = [
 
 for (const route of requiredAiRoutes) {
   assert.ok(
-    allowedMenuBlock.includes(`'${route}'`) || allowedMenuBlock.includes(`"${route}"`),
-    `furniture-lite mode must allow AI menu route ${route}`
+    furnitureNavigationMenuPaths.includes(route),
+    `the backend furniture navigation catalog must allow AI menu route ${route}`
   )
 }
 

@@ -44,6 +44,8 @@ public class MenuServiceImplTest extends BaseDbUnitTest {
     private PermissionService permissionService;
     @MockitoBean
     private TenantService tenantService;
+    @MockitoBean
+    private FurnitureNavigationPermissionService furnitureNavigationPermissionService;
 
     @Test
     public void testCreateMenu_success() {
@@ -63,6 +65,7 @@ public class MenuServiceImplTest extends BaseDbUnitTest {
         // 校验记录的属性是否正确
         MenuDO dbMenu = menuMapper.selectById(menuId);
         assertPojoEquals(reqVO, dbMenu, "id");
+        verify(furnitureNavigationPermissionService).syncMenuPermissions();
     }
 
     @Test
@@ -83,6 +86,7 @@ public class MenuServiceImplTest extends BaseDbUnitTest {
         // 校验记录的属性是否正确
         MenuDO dbMenu = menuMapper.selectById(sonId);
         assertPojoEquals(reqVO, dbMenu);
+        verify(furnitureNavigationPermissionService).syncMenuPermissions();
     }
 
     @Test
@@ -107,6 +111,7 @@ public class MenuServiceImplTest extends BaseDbUnitTest {
         MenuDO dbMenuDO = menuMapper.selectById(id);
         assertNull(dbMenuDO);
         verify(permissionService).processMenuDeleted(id);
+        verify(furnitureNavigationPermissionService).syncMenuPermissions();
     }
 
     @Test

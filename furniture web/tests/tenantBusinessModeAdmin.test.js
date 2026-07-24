@@ -88,12 +88,14 @@ describe("tenant business mode ERP contract", () => {
   });
 
   it("keeps tenant management visible to authorized furniture-lite administrators", () => {
-    const config = read(`${admin}config/furnitureLite.ts`);
-    const allowedMenuBlock =
-      config.match(/const allowedMenuPaths = new Set\(\[[\s\S]*?\]\)/)?.[0] || "";
+    const menuPaths = JSON.parse(
+      read(
+        `${cloud}yudao-module-system/yudao-module-system-server/src/main/resources/navigation/furniture-lite-menu-paths.json`,
+      ),
+    );
 
-    expect(allowedMenuBlock).toContain("'/system/tenant'");
-    expect(allowedMenuBlock).toContain("'/system/tenant/list'");
+    expect(menuPaths).toContain("/system/tenant");
+    expect(menuPaths).toContain("/system/tenant/list");
   });
 
   it("does not hardcode known tenant IDs in product frontend business logic", () => {

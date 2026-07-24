@@ -43,7 +43,11 @@ export const usePermissionStore = defineStore('permission', {
         if (roleRouters) {
           res = roleRouters as AppCustomRouteRecordRaw[]
         }
-        const filteredRoutes = filterFurnitureLiteMenus(res)
+        const userInfo = wsCache.get(CACHE_KEY.USER)
+        const filteredRoutes = filterFurnitureLiteMenus(
+          res,
+          userInfo?.furnitureNavigationMenuPaths
+        )
         const routerMap: AppRouteRecordRaw[] = generateRoute(filteredRoutes)
         // 动态路由，404一定要放到最后面
         // preschooler：vue-router@4以后已支持静态404路由，此处可不再追加
