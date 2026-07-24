@@ -57,11 +57,15 @@ describe("V023 approved legacy fulfillment migration facts", () => {
     const baseline = readFileSync(join(root, "oakved-baseline.sql"), "utf8").replace(/\r\n/g, "\n");
     const marker = `-- BEGIN ${migrationName}\n`;
     const start = baseline.indexOf(marker);
-    const end = baseline.indexOf("\n-- BEGIN Oakved demo catalog", start);
+    const sectionStart = start + marker.length;
+    const nextMarkerOffset = baseline.slice(sectionStart).search(
+      /\n-- BEGIN (?:V\d{3}__|Oakved demo catalog)/,
+    );
+    const end = nextMarkerOffset < 0 ? -1 : sectionStart + nextMarkerOffset;
 
     expect(start).toBeGreaterThanOrEqual(0);
     expect(end).toBeGreaterThan(start);
-    expect(normalize(baseline.slice(start + marker.length, end))).toBe(migration);
+    expect(normalize(baseline.slice(sectionStart, end))).toBe(migration);
   });
 
   it("keeps the H2 fixture and cleanup order aligned", () => {

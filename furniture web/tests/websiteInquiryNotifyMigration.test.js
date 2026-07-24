@@ -28,11 +28,15 @@ describe("V029 website inquiry notify migration", () => {
     ).replace(/\r\n/g, "\n");
     const marker = "-- BEGIN V029__website_inquiry_notify.sql\n";
     const start = baseline.indexOf(marker);
-    const end = baseline.indexOf("\n-- BEGIN Oakved demo catalog", start);
+    const sectionStart = start + marker.length;
+    const nextMarkerOffset = baseline.slice(sectionStart).search(
+      /\n-- BEGIN (?:V\d{3}__|Oakved demo catalog)/,
+    );
+    const end = nextMarkerOffset < 0 ? -1 : sectionStart + nextMarkerOffset;
 
     expect(start).toBeGreaterThanOrEqual(0);
     expect(end).toBeGreaterThan(start);
-    expect(baseline.slice(start + marker.length, end).replace(/\s+$/, "") + "\n")
+    expect(baseline.slice(sectionStart, end).replace(/\s+$/, "") + "\n")
       .toBe(migration);
   });
 });

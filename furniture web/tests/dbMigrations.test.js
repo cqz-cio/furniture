@@ -12,11 +12,11 @@ describe("database migration readiness", () => {
 
   it("discovers the complete contiguous numbered catalog", () => {
     const checks = buildMigrationChecks();
-    const expectedVersions = Array.from({ length: 29 }, (_, index) => index + 1);
+    const expectedVersions = Array.from({ length: 30 }, (_, index) => index + 1);
 
     expect(checks).toHaveLength(expectedVersions.length);
     expect(checks[0].fileName).toBe("V001__module_tables.sql");
-    expect(checks.slice(-7).map((check) => check.fileName)).toEqual([
+    expect(checks.slice(-8).map((check) => check.fileName)).toEqual([
       "V023__trade_fulfillment_legacy_migration_fact.sql",
       "V024__normalize_dashboard_route_path.sql",
       "V025__expose_oakved_mail_management.sql",
@@ -24,8 +24,9 @@ describe("database migration readiness", () => {
       "V027__repair_seo_analysis_menu_registration.sql",
       "V028__tenant_business_mode.sql",
       "V029__website_inquiry_notify.sql",
+      "V030__align_furniture_navigation_permissions.sql",
     ]);
-    expect(checks.at(-1).fileName).toBe("V029__website_inquiry_notify.sql");
+    expect(checks.at(-1).fileName).toBe("V030__align_furniture_navigation_permissions.sql");
     expect(checks.map((check) => check.version)).toEqual(expectedVersions);
   });
 
@@ -35,7 +36,7 @@ describe("database migration readiness", () => {
     expect(result.ok).toBe(true);
     expect(result.errors).toEqual([]);
     expect(result.checked.map((check) => check.version)).toEqual(
-      Array.from({ length: 29 }, (_, index) => index + 1),
+      Array.from({ length: 30 }, (_, index) => index + 1),
     );
   });
 
