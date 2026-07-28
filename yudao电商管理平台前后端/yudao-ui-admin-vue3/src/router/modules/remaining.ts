@@ -514,7 +514,7 @@ const remainingRouter: AppRouteRecordRaw[] = [
         path: 'clue/detail/:id',
         name: 'CrmClueDetail',
         meta: {
-          title: '线索详情',
+          title: '询盘详情',
           noCache: true,
           hidden: true,
           activeMenu: '/crm/clue'
@@ -525,7 +525,7 @@ const remainingRouter: AppRouteRecordRaw[] = [
         path: 'customer/detail/:id',
         name: 'CrmCustomerDetail',
         meta: {
-          title: '客户详情',
+          title: '客户档案详情',
           noCache: true,
           hidden: true,
           activeMenu: '/crm/customer'

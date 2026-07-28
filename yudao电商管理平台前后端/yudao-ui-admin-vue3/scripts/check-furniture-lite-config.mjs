@@ -156,10 +156,20 @@ assert.ok(
 
 const requiredCrmRoutes = [
   '/crm',
-  '/crm/backlog',
   '/crm/clue',
   '/crm/customer',
-  '/crm/contact',
+  '/crm/contact'
+]
+
+for (const route of requiredCrmRoutes) {
+  assert.ok(
+    furnitureNavigationMenuPaths.includes(route),
+    `the backend furniture navigation catalog must allow CRM menu route ${route}`
+  )
+}
+
+for (const route of [
+  '/crm/backlog',
   '/crm/customer/pool',
   '/crm/business',
   '/crm/contract',
@@ -167,23 +177,11 @@ const requiredCrmRoutes = [
   '/crm/receivable-plan',
   '/crm/product',
   '/crm/statistics',
-  '/crm/statistics/customer',
-  '/crm/statistics/ranking',
-  '/crm/statistics/performance',
-  '/crm/statistics/portrait',
-  '/crm/statistics/funnel',
-  '/crm/config',
-  '/crm/config/customer-pool-config',
-  '/crm/config/customer-limit-config',
-  '/crm/config/product/category',
-  '/crm/config/business-status',
-  '/crm/config/contract-config'
-]
-
-for (const route of requiredCrmRoutes) {
+  '/crm/config'
+]) {
   assert.ok(
-    furnitureNavigationMenuPaths.includes(route),
-    `the backend furniture navigation catalog must allow CRM menu route ${route}`
+    !furnitureNavigationMenuPaths.includes(route),
+    `the inquiry-center navigation catalog must hide unused CRM route ${route}`
   )
 }
 

@@ -18,7 +18,10 @@
     <el-descriptions :column="5" direction="vertical">
       <el-descriptions-item label="客户名称">{{ contact.customerName }}</el-descriptions-item>
       <el-descriptions-item label="职务">{{ contact.post }}</el-descriptions-item>
-      <el-descriptions-item label="手机">{{ contact.mobile }}</el-descriptions-item>
+      <el-descriptions-item label="电话 / WhatsApp">
+        {{ contact.telephone || contact.mobile || '-' }}
+      </el-descriptions-item>
+      <el-descriptions-item label="邮箱">{{ contact.email || '-' }}</el-descriptions-item>
       <el-descriptions-item label="创建时间">
         {{ formatDate(contact.createTime) }}
       </el-descriptions-item>

@@ -2,6 +2,7 @@ package cn.iocoder.yudao.module.crm.controller.admin.clue.vo;
 
 import cn.iocoder.yudao.framework.common.pojo.PageParam;
 import cn.iocoder.yudao.framework.common.validation.InEnum;
+import cn.iocoder.yudao.module.crm.enums.clue.CrmInquiryProcessStatusEnum;
 import cn.iocoder.yudao.module.crm.enums.common.CrmSceneTypeEnum;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
@@ -21,6 +22,25 @@ public class CrmCluePageReqVO extends PageParam {
 
     @Schema(description = "线索名称", example = "线索xxx")
     private String name;
+
+    @Schema(description = "联系人姓名", example = "Alex Morgan")
+    private String contactName;
+
+    @Schema(description = "公司名称", example = "Northstar Interiors")
+    private String companyName;
+
+    @Schema(description = "邮箱", example = "alex@example.com")
+    private String email;
+
+    @Schema(description = "询盘主题", example = "Hotel dining chair project")
+    private String inquirySubject;
+
+    @Schema(description = "处理状态", example = "10")
+    @InEnum(CrmInquiryProcessStatusEnum.class)
+    private Integer processStatus;
+
+    @Schema(description = "关联客户编号", example = "1024")
+    private Long customerId;
 
     @Schema(description = "转化状态", example = "2048")
     private Boolean transformStatus;
@@ -50,5 +70,9 @@ public class CrmCluePageReqVO extends PageParam {
     @Schema(description = "创建时间", example = "[2023-01-01 00:00:00, 2023-01-31 23:59:59]")
     @DateTimeFormat(pattern = FORMAT_YEAR_MONTH_DAY_HOUR_MINUTE_SECOND)
     private LocalDateTime[] createTime;
+
+    @Schema(description = "网页提交时间", example = "[2026-07-01 00:00:00, 2026-07-31 23:59:59]")
+    @DateTimeFormat(pattern = FORMAT_YEAR_MONTH_DAY_HOUR_MINUTE_SECOND)
+    private LocalDateTime[] submittedAt;
 
 }

@@ -30,7 +30,7 @@ public class AppWebsiteInquiryController {
 
     @PostMapping("/notify")
     @PermitAll
-    @Operation(summary = "将官网询盘发送为 ERP 站内信")
+    @Operation(summary = "将官网询盘写入 ERP 询盘中心")
     public CommonResult<Long> notifyInquiry(
             @RequestHeader(value = HEADER_SHARED_SECRET, required = false) String sharedSecret,
             @Valid @RequestBody AppWebsiteInquirySubmitReqVO reqVO) {

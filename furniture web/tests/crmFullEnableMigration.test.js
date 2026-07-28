@@ -84,7 +84,7 @@ describe("V031 full CRM enablement", () => {
     expect(migration).toContain("role_menu.`menu_id` = scope.`menu_id`");
   });
 
-  it("allows CRM dynamic and fixed routes in furniture-lite mode", () => {
+  it("lets the inquiry-center migration narrow furniture-lite CRM navigation", () => {
     const source = read(`${admin}src/config/furnitureLite.ts`);
     const navigationCatalog = JSON.parse(
       read(
@@ -96,7 +96,10 @@ describe("V031 full CRM enablement", () => {
 
     expect(navigationCatalog).toContain("/crm");
     expect(navigationCatalog).toContain("/crm/clue");
-    expect(navigationCatalog).toContain("/crm/config/contract-config");
+    expect(navigationCatalog).toContain("/crm/customer");
+    expect(navigationCatalog).toContain("/crm/contact");
+    expect(navigationCatalog).not.toContain("/crm/business");
+    expect(navigationCatalog).not.toContain("/crm/config/contract-config");
     expect(source).toContain("synchronizedMenuPaths");
     expect(deniedPrefixes).not.toContain("'/crm'");
   });
@@ -109,12 +112,16 @@ describe("V031 full CRM enablement", () => {
     ).replace(/\r\n/g, "\n");
     const marker = "-- BEGIN V031__enable_full_crm.sql\n";
     const start = baseline.indexOf(marker);
-    const end = baseline.indexOf("\n-- BEGIN Oakved demo catalog", start);
+    const sectionStart = start + marker.length;
+    const nextMarkerOffset = baseline.slice(sectionStart).search(
+      /\n-- BEGIN (?:V\d{3}__|Oakved demo catalog)/,
+    );
+    const end = nextMarkerOffset < 0 ? -1 : sectionStart + nextMarkerOffset;
 
     expect(start).toBeGreaterThanOrEqual(0);
     expect(end).toBeGreaterThan(start);
     expect(
-      baseline.slice(start + marker.length, end).replace(/\s+$/, "") + "\n",
+      baseline.slice(sectionStart, end).replace(/\s+$/, "") + "\n",
     ).toBe(migration);
   });
 });

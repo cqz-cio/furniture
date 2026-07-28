@@ -2,7 +2,6 @@ package cn.iocoder.yudao.module.crm.controller.admin.clue.vo;
 
 import cn.iocoder.yudao.framework.common.validation.InEnum;
 import cn.iocoder.yudao.framework.common.validation.Mobile;
-import cn.iocoder.yudao.framework.common.validation.Telephone;
 import cn.iocoder.yudao.framework.excel.core.annotations.DictFormat;
 import cn.iocoder.yudao.module.crm.enums.customer.CrmCustomerLevelEnum;
 import cn.iocoder.yudao.module.crm.framework.operatelog.core.CrmCustomerIndustryParseFunction;
@@ -35,6 +34,26 @@ public class CrmClueSaveReqVO {
     @NotEmpty(message = "线索名称不能为空")
     private String name;
 
+    @Schema(description = "联系人姓名", example = "Alex Morgan")
+    @Size(max = 60, message = "联系人姓名不能超过 60 个字符")
+    private String contactName;
+
+    @Schema(description = "公司名称", example = "Northstar Interiors")
+    @Size(max = 80, message = "公司名称不能超过 80 个字符")
+    private String companyName;
+
+    @Schema(description = "国家或地区电话区号", example = "+44")
+    @Size(max = 8, message = "电话区号不能超过 8 个字符")
+    private String countryCode;
+
+    @Schema(description = "询盘主题", example = "Hotel dining chair project")
+    @Size(max = 100, message = "询盘主题不能超过 100 个字符")
+    private String inquirySubject;
+
+    @Schema(description = "询盘内容")
+    @Size(max = 4000, message = "询盘内容不能超过 4000 个字符")
+    private String inquiryMessage;
+
     @Schema(description = "最后跟进时间")
     @DateTimeFormat(pattern = FORMAT_YEAR_MONTH_DAY_HOUR_MINUTE_SECOND)
     @DiffLogField(name = "最后跟进时间")
@@ -56,7 +75,7 @@ public class CrmClueSaveReqVO {
 
     @Schema(description = "电话", example = "18000000000")
     @DiffLogField(name = "电话")
-    @Telephone
+    @Size(max = 64, message = "电话长度不能超过 64 个字符")
     private String telephone;
 
     @Schema(description = "QQ", example = "123456789")

@@ -117,7 +117,9 @@ describe("furniture navigation permission auto-sync", () => {
     expect(catalog).toContain("/dashboard");
     expect(catalog).toContain("/crm");
     expect(catalog).toContain("/crm/clue");
-    expect(catalog).toContain("/crm/config/contract-config");
+    expect(catalog).toContain("/crm/customer");
+    expect(catalog).toContain("/crm/contact");
+    expect(catalog).not.toContain("/crm/config/contract-config");
     expect(catalog).toContain("/system/role");
     expect(catalog).toContain("/system/messages/mail/mail-account");
     expect(catalog).toContain("/system/messages/mail/mail-template");

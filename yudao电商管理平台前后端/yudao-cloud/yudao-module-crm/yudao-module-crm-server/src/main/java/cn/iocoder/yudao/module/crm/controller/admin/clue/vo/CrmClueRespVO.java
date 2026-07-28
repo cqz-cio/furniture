@@ -62,6 +62,65 @@ public class CrmClueRespVO {
     @ExcelProperty("客户名称")
     private String customerName;
 
+    @Schema(description = "联系人编号", example = "521")
+    private Long contactId;
+
+    @Schema(description = "外部询盘编号", example = "2e82ae0d-5db2-4e94-bda0-0db994493885")
+    @ExcelProperty("外部询盘编号")
+    private String externalInquiryId;
+
+    @Schema(description = "联系人姓名", example = "Alex Morgan")
+    @ExcelProperty("联系人姓名")
+    private String contactName;
+
+    @Schema(description = "公司名称", example = "Northstar Interiors")
+    @ExcelProperty("公司名称")
+    private String companyName;
+
+    @Schema(description = "国家或地区电话区号", example = "+44")
+    @ExcelProperty("电话区号")
+    private String countryCode;
+
+    @Schema(description = "询盘主题", example = "Hotel dining chair project")
+    @ExcelProperty("询盘主题")
+    private String inquirySubject;
+
+    @Schema(description = "询盘内容")
+    @ExcelProperty("询盘内容")
+    private String inquiryMessage;
+
+    @Schema(description = "提交页面", example = "/products/dining-room")
+    @ExcelProperty("提交页面")
+    private String sourcePage;
+
+    @Schema(description = "浏览器语言", example = "en-GB")
+    @ExcelProperty("浏览器语言")
+    private String locale;
+
+    @Schema(description = "UTM 来源", example = "google")
+    @ExcelProperty("UTM 来源")
+    private String utmSource;
+
+    @Schema(description = "UTM 媒介", example = "cpc")
+    @ExcelProperty("UTM 媒介")
+    private String utmMedium;
+
+    @Schema(description = "UTM 活动", example = "summer-hotel")
+    @ExcelProperty("UTM 活动")
+    private String utmCampaign;
+
+    @Schema(description = "网页提交时间")
+    @ExcelProperty("提交时间")
+    private LocalDateTime submittedAt;
+
+    @Schema(description = "处理状态", example = "10")
+    @ExcelProperty("处理状态")
+    private Integer processStatus;
+
+    @Schema(description = "处理完成时间")
+    @ExcelProperty("处理完成时间")
+    private LocalDateTime processedAt;
+
     @Schema(description = "手机号", example = "18000000000")
     @ExcelProperty("手机号")
     private String mobile;
