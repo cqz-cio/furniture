@@ -138,6 +138,10 @@ public class CrmClueServiceImpl implements CrmClueService {
                 .setTelephone(normalize(reqDTO.getPhone()))
                 .setEmail(normalize(reqDTO.getEmail()).toLowerCase(Locale.ROOT))
                 .setSource(6); // CRM 客户来源：线上咨询
+        // 官网接口没有登录态，显式使用租户联系人作为审计操作人，避免公共接口插入时审计字段为空。
+        String auditUserId = reqDTO.getOwnerUserId().toString();
+        inquiry.setCreator(auditUserId);
+        inquiry.setUpdater(auditUserId);
         try {
             clueMapper.insert(inquiry);
         } catch (DuplicateKeyException ex) {
@@ -152,7 +156,7 @@ public class CrmClueServiceImpl implements CrmClueService {
                 .setBizType(CrmBizTypeEnum.CRM_CLUE.getType())
                 .setBizId(inquiry.getId())
                 .setUserId(inquiry.getOwnerUserId())
-                .setLevel(CrmPermissionLevelEnum.OWNER.getLevel()));
+                .setLevel(CrmPermissionLevelEnum.OWNER.getLevel()), reqDTO.getOwnerUserId());
         return new CrmWebsiteInquiryCreateRespDTO(inquiry.getId(), true);
     }
 

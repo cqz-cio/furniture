@@ -37,6 +37,17 @@ public interface CrmPermissionService {
     Long createPermission(@Valid CrmPermissionCreateReqBO createReqBO);
 
     /**
+     * 创建数据权限，并显式指定审计操作人。
+     *
+     * 用于官网询盘等没有登录态、但已完成服务端身份校验的内部调用。
+     *
+     * @param createReqBO 创建信息
+     * @param operatorUserId 审计操作人编号
+     * @return 编号
+     */
+    Long createPermission(@Valid CrmPermissionCreateReqBO createReqBO, @Valid Long operatorUserId);
+
+    /**
      * 创建数据权限
      *
      * @param createReqBOs 创建信息

@@ -87,7 +87,9 @@ class CrmClueServiceImplTest {
         assertEquals("7700 900123", inquiry.getTelephone());
         assertEquals("Hotel dining chair project", inquiry.getInquirySubject());
         assertEquals(CrmInquiryProcessStatusEnum.PENDING.getStatus(), inquiry.getProcessStatus());
-        verify(crmPermissionService).createPermission(any(CrmPermissionCreateReqBO.class));
+        assertEquals(USER_ID.toString(), inquiry.getCreator());
+        assertEquals(USER_ID.toString(), inquiry.getUpdater());
+        verify(crmPermissionService).createPermission(any(CrmPermissionCreateReqBO.class), eq(USER_ID));
     }
 
     @Test
