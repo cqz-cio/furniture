@@ -43,6 +43,10 @@ public class TenantDO extends BaseDO {
      */
     private String name;
     /**
+     * 租户编码，唯一且创建后不可修改
+     */
+    private String code;
+    /**
      * 联系人的用户编号
      *
      * 关联 {@link AdminUserDO#getId()}

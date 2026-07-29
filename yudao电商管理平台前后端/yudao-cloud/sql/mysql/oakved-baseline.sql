@@ -8796,6 +8796,50 @@ DROP TEMPORARY TABLE `oakved_navigation_menu_scope`;
 DROP TEMPORARY TABLE `oakved_navigation_route_scope`;
 DROP TEMPORARY TABLE `oakved_navigation_path_scope`;
 
+-- BEGIN V028__tenant_sku_code.sql
+-- Give each tenant a stable code and use it as the ERP SKU prefix.
+
+ALTER TABLE `system_tenant`
+  ADD COLUMN `code` varchar(16) NULL
+    COMMENT '租户编码：大写字母和数字，创建后不可修改'
+    AFTER `name`;
+
+UPDATE `system_tenant`
+SET `code` = CASE
+  WHEN `id` = 1 THEN 'SYSTEM'
+  WHEN `id` = 121 THEN 'OAKVED'
+  WHEN `id` = 162 THEN 'VANZ'
+  ELSE CONCAT('T', UPPER(CONV(`id`, 10, 36)))
+END
+WHERE `code` IS NULL OR `code` = '';
+
+ALTER TABLE `system_tenant`
+  MODIFY COLUMN `code` varchar(16) NOT NULL
+    COMMENT '租户编码：大写字母和数字，创建后不可修改',
+  ADD UNIQUE KEY `uk_system_tenant_code_deleted` (`code`, `deleted`);
+
+UPDATE `erp_product` AS product
+INNER JOIN `mall_erp_product_mapping` AS mapping
+  ON mapping.`erp_product_id` = product.`id`
+ AND mapping.`tenant_id` = product.`tenant_id`
+ AND mapping.`deleted` = b'0'
+INNER JOIN `system_tenant` AS tenant
+  ON tenant.`id` = mapping.`tenant_id`
+ AND tenant.`deleted` = b'0'
+SET product.`bar_code` = CONCAT(tenant.`code`, '-', mapping.`tenant_id`, '-', mapping.`mall_sku_id`),
+    product.`updater` = 'V028-tenant-sku-code',
+    product.`update_time` = CURRENT_TIMESTAMP
+WHERE product.`deleted` = b'0';
+
+UPDATE `mall_erp_product_mapping` AS mapping
+INNER JOIN `system_tenant` AS tenant
+  ON tenant.`id` = mapping.`tenant_id`
+ AND tenant.`deleted` = b'0'
+SET mapping.`erp_product_code` = CONCAT(tenant.`code`, '-', mapping.`tenant_id`, '-', mapping.`mall_sku_id`),
+    mapping.`updater` = 'V028-tenant-sku-code',
+    mapping.`update_time` = CURRENT_TIMESTAMP
+WHERE mapping.`deleted` = b'0';
+
 -- BEGIN Oakved demo catalog
 -- Oakved demo catalog: tenant 121, 26 mall products, ERP products, stock and mappings.
 SET @tenant_id = 121;
@@ -8928,7 +8972,7 @@ INSERT INTO erp_warehouse(name,address,sort,remark,principal,warehouse_price,tru
   VALUES('Main Warehouse','',10,'Tenant 121 demo inventory','',0,0,0,b'1',@erp_user,@erp_user,@tenant_id)
   ON DUPLICATE KEY UPDATE status=VALUES(status),default_status=VALUES(default_status),updater=VALUES(updater),update_time=CURRENT_TIMESTAMP;
 INSERT INTO erp_product(name,bar_code,category_id,unit_id,status,standard,remark,expiry_day,weight,purchase_price,sale_price,min_price,creator,updater,tenant_id)
-SELECT p.name,CONCAT('RH-121-',s.id),c.id,u.id,0,CONCAT('Mall SKU ',s.id),'Synchronized from tenant 121 mall catalog',0,
+SELECT p.name,CONCAT('OAKVED-121-',s.id),c.id,u.id,0,CONCAT('Mall SKU ',s.id),'Synchronized from tenant 121 mall catalog',0,
   COALESCE(s.weight,0),s.cost_price/100,s.price/100,s.price/100,@erp_user,@erp_user,@tenant_id
 FROM product_sku s JOIN product_spu p ON p.id=s.spu_id AND p.tenant_id=s.tenant_id AND p.deleted=b'0'
 JOIN product_category pc ON pc.id=p.category_id AND pc.tenant_id=p.tenant_id AND pc.deleted=b'0'
@@ -8940,7 +8984,7 @@ ON DUPLICATE KEY UPDATE name=VALUES(name),category_id=VALUES(category_id),purcha
 INSERT INTO mall_erp_product_mapping(mall_spu_id,mall_sku_id,erp_product_id,erp_product_code,sync_status,last_synced_at,last_error,version,creator,updater,tenant_id)
 SELECT s.spu_id,s.id,e.id,e.bar_code,'SUCCESS',CURRENT_TIMESTAMP,'',0,@erp_user,@erp_user,@tenant_id
 FROM product_sku s JOIN product_spu p ON p.id=s.spu_id AND p.tenant_id=s.tenant_id AND p.deleted=b'0'
-JOIN erp_product e ON e.tenant_id=@tenant_id AND e.bar_code=CONCAT('RH-121-',s.id) AND e.deleted=b'0'
+JOIN erp_product e ON e.tenant_id=@tenant_id AND e.bar_code=CONCAT('OAKVED-121-',s.id) AND e.deleted=b'0'
 WHERE s.tenant_id=@tenant_id AND s.deleted=b'0' AND p.creator=@seed_user AND p.status=1
 ON DUPLICATE KEY UPDATE erp_product_id=VALUES(erp_product_id),sync_status='SUCCESS',last_synced_at=CURRENT_TIMESTAMP,last_error='',updater=VALUES(updater),update_time=CURRENT_TIMESTAMP;
 INSERT INTO erp_stock(product_id,warehouse_id,count,creator,updater,tenant_id)
@@ -9001,4 +9045,5 @@ INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256)
 INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('025','tenant business mode','V025__tenant_business_mode.sql','bfcf181ca6c10222e8f61adf1633fd78eef550b325d823f7cb0d5ffd8b8ceeef') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
 INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('026','website inquiry notify','V026__website_inquiry_notify.sql','618a9b14b493aeeff26fbd923ca21ca9bd94a0e39f8ded431cfb1331c847dac2') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
 INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('027','align furniture navigation permissions','V027__align_furniture_navigation_permissions.sql','356277b0a13704ffdfd3f837eb59fb6e4c02ef733000aaf00c66119a90ab7319') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
+INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('028','tenant sku code','V028__tenant_sku_code.sql','fc60d04a3a9a0e7f52a4bfce39381c7efe8caf251f64973f9ef2f434da4928d2') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
 SET FOREIGN_KEY_CHECKS = 1;

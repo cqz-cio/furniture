@@ -79,6 +79,9 @@ public class AppProductSpuDetailRespVO {
         @Schema(description = "商品 SKU 编号", example = "1")
         private Long id;
 
+        @Schema(description = "租户商品 SKU 编码", example = "VANZ-162-78")
+        private String skuCode;
+
         /**
          * 商品属性数组
          */

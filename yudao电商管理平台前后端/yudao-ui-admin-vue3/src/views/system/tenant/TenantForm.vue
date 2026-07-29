@@ -10,6 +10,18 @@
       <el-form-item label="租户名" prop="name">
         <el-input v-model="formData.name" placeholder="请输入租户名" />
       </el-form-item>
+      <el-form-item label="租户编码" prop="code">
+        <el-input
+          v-model="formData.code"
+          :disabled="formType === 'update'"
+          maxlength="16"
+          placeholder="例如 VANZ"
+          @input="handleTenantCodeInput"
+        />
+        <div class="text-12px text-gray-500">
+          用于生成 SKU，创建后不可修改
+        </div>
+      </el-form-item>
       <el-form-item label="租户套餐" prop="packageId">
         <el-select v-model="formData.packageId" clearable placeholder="请选择租户套餐">
           <el-option
@@ -107,6 +119,7 @@ const businessModeOptions = [
 const formData = ref({
   id: undefined,
   name: undefined,
+  code: '',
   packageId: undefined,
   businessMode: 'B2C',
   contactName: undefined,
@@ -121,6 +134,14 @@ const formData = ref({
 })
 const formRules = reactive({
   name: [{ required: true, message: '租户名不能为空', trigger: 'blur' }],
+  code: [
+    { required: true, message: '租户编码不能为空', trigger: 'blur' },
+    {
+      pattern: /^[A-Z][A-Z0-9]{0,15}$/,
+      message: '只能输入大写字母和数字，并以字母开头',
+      trigger: 'blur'
+    }
+  ],
   packageId: [{ required: true, message: '租户套餐不能为空', trigger: 'blur' }],
   businessMode: [{ required: true, message: '业务模式不能为空', trigger: 'change' }],
   contactName: [{ required: true, message: '联系人不能为空', trigger: 'blur' }],
@@ -132,6 +153,10 @@ const formRules = reactive({
 })
 const formRef = ref() // 表单 Ref
 const packageList = ref([] as TenantPackageApi.TenantPackageVO[]) // 租户套餐
+
+const handleTenantCodeInput = (value: string) => {
+  formData.value.code = value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 16)
+}
 
 /** 打开弹窗 */
 const open = async (type: string, id?: number) => {
@@ -184,6 +209,7 @@ const resetForm = () => {
   formData.value = {
     id: undefined,
     name: undefined,
+    code: '',
     packageId: undefined,
     businessMode: 'B2C',
     contactName: undefined,
