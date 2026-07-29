@@ -3,6 +3,7 @@ import request from '@/config/axios'
 export interface TenantVO {
   id: number
   name: string
+  code: string
   contactName: string
   contactMobile: string
   status: number

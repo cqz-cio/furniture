@@ -6,6 +6,7 @@ import cn.iocoder.yudao.module.system.enums.tenant.TenantBusinessModeEnum;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -25,6 +26,13 @@ public class TenantSaveReqVO {
     @Schema(description = "租户名", requiredMode = Schema.RequiredMode.REQUIRED, example = "芋道")
     @NotNull(message = "租户名不能为空")
     private String name;
+
+    @Schema(description = "租户编码，用于生成 SKU，创建后不可修改", requiredMode = Schema.RequiredMode.REQUIRED,
+            example = "VANZ")
+    @NotBlank(message = "租户编码不能为空")
+    @Size(max = 16, message = "租户编码长度不能超过 16 个字符")
+    @Pattern(regexp = "^[A-Z][A-Z0-9]{0,15}$", message = "租户编码必须以大写字母开头，且只能包含大写字母和数字")
+    private String code;
 
     @Schema(description = "联系人", requiredMode = Schema.RequiredMode.REQUIRED, example = "芋艿")
     @NotNull(message = "联系人不能为空")

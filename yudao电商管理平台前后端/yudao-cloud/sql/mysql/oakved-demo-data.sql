@@ -130,7 +130,7 @@ INSERT INTO erp_warehouse(name,address,sort,remark,principal,warehouse_price,tru
   VALUES('Main Warehouse','',10,'Tenant 121 demo inventory','',0,0,0,b'1',@erp_user,@erp_user,@tenant_id)
   ON DUPLICATE KEY UPDATE status=VALUES(status),default_status=VALUES(default_status),updater=VALUES(updater),update_time=CURRENT_TIMESTAMP;
 INSERT INTO erp_product(name,bar_code,category_id,unit_id,status,standard,remark,expiry_day,weight,purchase_price,sale_price,min_price,creator,updater,tenant_id)
-SELECT p.name,CONCAT('RH-121-',s.id),c.id,u.id,0,CONCAT('Mall SKU ',s.id),'Synchronized from tenant 121 mall catalog',0,
+SELECT p.name,CONCAT('OAKVED-121-',s.id),c.id,u.id,0,CONCAT('Mall SKU ',s.id),'Synchronized from tenant 121 mall catalog',0,
   COALESCE(s.weight,0),s.cost_price/100,s.price/100,s.price/100,@erp_user,@erp_user,@tenant_id
 FROM product_sku s JOIN product_spu p ON p.id=s.spu_id AND p.tenant_id=s.tenant_id AND p.deleted=b'0'
 JOIN product_category pc ON pc.id=p.category_id AND pc.tenant_id=p.tenant_id AND pc.deleted=b'0'
@@ -142,7 +142,7 @@ ON DUPLICATE KEY UPDATE name=VALUES(name),category_id=VALUES(category_id),purcha
 INSERT INTO mall_erp_product_mapping(mall_spu_id,mall_sku_id,erp_product_id,erp_product_code,sync_status,last_synced_at,last_error,version,creator,updater,tenant_id)
 SELECT s.spu_id,s.id,e.id,e.bar_code,'SUCCESS',CURRENT_TIMESTAMP,'',0,@erp_user,@erp_user,@tenant_id
 FROM product_sku s JOIN product_spu p ON p.id=s.spu_id AND p.tenant_id=s.tenant_id AND p.deleted=b'0'
-JOIN erp_product e ON e.tenant_id=@tenant_id AND e.bar_code=CONCAT('RH-121-',s.id) AND e.deleted=b'0'
+JOIN erp_product e ON e.tenant_id=@tenant_id AND e.bar_code=CONCAT('OAKVED-121-',s.id) AND e.deleted=b'0'
 WHERE s.tenant_id=@tenant_id AND s.deleted=b'0' AND p.creator=@seed_user AND p.status=1
 ON DUPLICATE KEY UPDATE erp_product_id=VALUES(erp_product_id),sync_status='SUCCESS',last_synced_at=CURRENT_TIMESTAMP,last_error='',updater=VALUES(updater),update_time=CURRENT_TIMESTAMP;
 INSERT INTO erp_stock(product_id,warehouse_id,count,creator,updater,tenant_id)

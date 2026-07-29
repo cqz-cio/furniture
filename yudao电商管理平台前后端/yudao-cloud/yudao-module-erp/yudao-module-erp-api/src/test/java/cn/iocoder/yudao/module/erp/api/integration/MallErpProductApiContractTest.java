@@ -29,12 +29,12 @@ class MallErpProductApiContractTest {
         assertEquals(CommonResult.class, validate.getReturnType());
 
         MallErpProductDTO product = new MallErpProductDTO()
-                .setErpProductId(9L).setErpProductCode("RH-121-26")
+                .setErpProductId(9L).setErpProductCode("OAKVED-121-26")
                 .setBaseName("Walnut Four-Door Sideboard")
                 .setCostPrice(new BigDecimal("1700.00"))
                 .setEnabled(true).setSellableStock(new BigDecimal("12"));
         assertEquals(9L, product.getErpProductId());
-        assertEquals("RH-121-26", product.getErpProductCode());
+        assertEquals("OAKVED-121-26", product.getErpProductCode());
         assertEquals(new BigDecimal("12"), product.getSellableStock());
 
         MallErpStockRequestDTO request = new MallErpStockRequestDTO().setMallSkuId(26L).setCount(new BigDecimal("2"));

@@ -10243,6 +10243,50 @@ DROP TEMPORARY TABLE `oakved_inquiry_allowed_crm_scope`;
 DROP TEMPORARY TABLE `oakved_inquiry_full_crm_scope`;
 DROP TEMPORARY TABLE `oakved_inquiry_guard`;
 
+-- BEGIN V033__tenant_sku_code.sql
+-- Give each tenant a stable code and use it as the ERP SKU prefix.
+
+ALTER TABLE `system_tenant`
+  ADD COLUMN `code` varchar(16) NULL
+    COMMENT '租户编码：大写字母和数字，创建后不可修改'
+    AFTER `name`;
+
+UPDATE `system_tenant`
+SET `code` = CASE
+  WHEN `id` = 1 THEN 'SYSTEM'
+  WHEN `id` = 121 THEN 'OAKVED'
+  WHEN `id` = 162 THEN 'VANZ'
+  ELSE CONCAT('T', UPPER(CONV(`id`, 10, 36)))
+END
+WHERE `code` IS NULL OR `code` = '';
+
+ALTER TABLE `system_tenant`
+  MODIFY COLUMN `code` varchar(16) NOT NULL
+    COMMENT '租户编码：大写字母和数字，创建后不可修改',
+  ADD UNIQUE KEY `uk_system_tenant_code_deleted` (`code`, `deleted`);
+
+UPDATE `erp_product` AS product
+INNER JOIN `mall_erp_product_mapping` AS mapping
+  ON mapping.`erp_product_id` = product.`id`
+ AND mapping.`tenant_id` = product.`tenant_id`
+ AND mapping.`deleted` = b'0'
+INNER JOIN `system_tenant` AS tenant
+  ON tenant.`id` = mapping.`tenant_id`
+ AND tenant.`deleted` = b'0'
+SET product.`bar_code` = CONCAT(tenant.`code`, '-', mapping.`tenant_id`, '-', mapping.`mall_sku_id`),
+    product.`updater` = 'V033-tenant-sku-code',
+    product.`update_time` = CURRENT_TIMESTAMP
+WHERE product.`deleted` = b'0';
+
+UPDATE `mall_erp_product_mapping` AS mapping
+INNER JOIN `system_tenant` AS tenant
+  ON tenant.`id` = mapping.`tenant_id`
+ AND tenant.`deleted` = b'0'
+SET mapping.`erp_product_code` = CONCAT(tenant.`code`, '-', mapping.`tenant_id`, '-', mapping.`mall_sku_id`),
+    mapping.`updater` = 'V033-tenant-sku-code',
+    mapping.`update_time` = CURRENT_TIMESTAMP
+WHERE mapping.`deleted` = b'0';
+
 -- BEGIN Oakved demo catalog
 -- Oakved demo catalog: tenant 121, 26 mall products, ERP products, stock and mappings.
 SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -10454,4 +10498,5 @@ INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256)
 INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('030','align furniture navigation permissions','V030__align_furniture_navigation_permissions.sql','705ddce3e98b2dc93c2848727d9db36cf4e6e3ff3e6a5b4e7bf950b22ecd7adb') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
 INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('031','enable full crm','V031__enable_full_crm.sql','8db3c24395c642780cf0dbe743e05bc8806c512f5ad8997348f7c27aafaaf06f') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
 INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('032','crm inquiry center','V032__crm_inquiry_center.sql','71987e66e41027daca5a052c33610629462c2d85b670eb5b80dcacd5de3b5665') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
+INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('033','tenant sku code','V033__tenant_sku_code.sql','f2a36479fd43cf4a529455b6419172b03291f334df95a23f8742bc97f9b6c1df') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
 SET FOREIGN_KEY_CHECKS = 1;

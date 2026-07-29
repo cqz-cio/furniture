@@ -5,6 +5,7 @@ import cn.iocoder.yudao.framework.common.pojo.CommonResult;
 import cn.iocoder.yudao.framework.common.pojo.PageResult;
 import cn.iocoder.yudao.framework.common.util.object.BeanUtils;
 import cn.iocoder.yudao.module.erp.api.integration.MallErpProductApi;
+import cn.iocoder.yudao.module.erp.api.integration.dto.MallErpProductDTO;
 import cn.iocoder.yudao.module.product.controller.app.spu.vo.AppProductSpuDetailRespVO;
 import cn.iocoder.yudao.module.product.controller.app.spu.vo.AppProductSpuPageReqVO;
 import cn.iocoder.yudao.module.product.controller.app.spu.vo.AppProductSpuRespVO;
@@ -134,10 +135,22 @@ public class AppProductSpuController {
         // 拼接返回
         spu.setSalesCount(spu.getSalesCount() + spu.getVirtualSalesCount());
         AppProductSpuDetailRespVO spuVO = BeanUtils.toBean(spu, AppProductSpuDetailRespVO.class)
-                .setSkus(BeanUtils.toBean(skus, AppProductSpuDetailRespVO.Sku.class));
+                .setSkus(toPublicSkuVOs(skus));
         ProductCategoryDO category = productCategoryService.getCategory(spu.getCategoryId());
         spuVO.setCategoryName(category == null ? null : category.getName());
         return success(spuVO);
+    }
+
+    private List<AppProductSpuDetailRespVO.Sku> toPublicSkuVOs(List<ProductSkuDO> skus) {
+        List<AppProductSpuDetailRespVO.Sku> skuVOs =
+                BeanUtils.toBean(skus, AppProductSpuDetailRespVO.Sku.class);
+        for (int i = 0; i < skus.size(); i++) {
+            MallErpProductDTO erpProduct = mallErpProductApi.getByMallSkuId(skus.get(i).getId()).getCheckedData();
+            if (erpProduct != null) {
+                skuVOs.get(i).setSkuCode(erpProduct.getErpProductCode());
+            }
+        }
+        return skuVOs;
     }
 
     private void overlayCategoryNames(List<AppProductSpuRespVO> spus) {

@@ -156,6 +156,7 @@ public class TenantServiceImplTest extends BaseDbUnitTest {
         TenantSaveReqVO reqVO = randomPojo(TenantSaveReqVO.class, o -> {
             o.setContactName("芋道");
             o.setContactMobile("15601691300");
+            o.setCode("VANZ");
             o.setPackageId(100L);
             o.setBusinessMode(TenantBusinessModeEnum.B2B.getCode());
             o.setStatus(randomCommonStatus());
@@ -182,12 +183,14 @@ public class TenantServiceImplTest extends BaseDbUnitTest {
     public void testUpdateTenant_success() {
         // mock 数据
         TenantDO dbTenant = randomPojo(TenantDO.class, o -> o
+                .setCode("VANZ")
                 .setStatus(randomCommonStatus())
                 .setBusinessMode(TenantBusinessModeEnum.B2C.getCode()));
         tenantMapper.insert(dbTenant);// @Sql: 先插入出一条存在的数据
         // 准备参数
         TenantSaveReqVO reqVO = randomPojo(TenantSaveReqVO.class, o -> {
             o.setId(dbTenant.getId()); // 设置更新的 ID
+            o.setCode(dbTenant.getCode());
             o.setBusinessMode(TenantBusinessModeEnum.B2B.getCode());
             o.setStatus(randomCommonStatus());
             o.setWebsites(singletonList(randomString()));
@@ -214,6 +217,30 @@ public class TenantServiceImplTest extends BaseDbUnitTest {
         // verify 设置角色权限
         verify(permissionService).assignRoleMenu(eq(100L), eq(asSet(200L, 201L)));
         verify(permissionService).assignRoleMenu(eq(101L), eq(asSet(201L)));
+    }
+
+    @Test
+    public void testCreateTenant_codeDuplicate() {
+        TenantDO dbTenant = randomPojo(TenantDO.class, o -> o.setCode("VANZ"));
+        tenantMapper.insert(dbTenant);
+        TenantSaveReqVO reqVO = randomPojo(TenantSaveReqVO.class, o -> o.setCode("VANZ"));
+
+        assertServiceException(() -> tenantService.createTenant(reqVO), TENANT_CODE_DUPLICATE, "VANZ");
+    }
+
+    @Test
+    public void testUpdateTenant_codeCanNotUpdate() {
+        TenantDO dbTenant = randomPojo(TenantDO.class, o -> o
+                .setCode("VANZ")
+                .setPackageId(100L));
+        tenantMapper.insert(dbTenant);
+        TenantSaveReqVO reqVO = randomPojo(TenantSaveReqVO.class, o -> {
+            o.setId(dbTenant.getId());
+            o.setCode("OTHER");
+            o.setName(dbTenant.getName());
+        });
+
+        assertServiceException(() -> tenantService.updateTenant(reqVO), TENANT_CODE_CAN_NOT_UPDATE);
     }
 
     @Test

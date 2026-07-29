@@ -2,7 +2,9 @@ package cn.iocoder.yudao.module.system.api.tenant;
 
 import cn.iocoder.yudao.framework.common.biz.system.tenant.TenantCommonApi;
 import cn.iocoder.yudao.framework.common.pojo.CommonResult;
+import cn.iocoder.yudao.framework.common.util.object.BeanUtils;
 import cn.iocoder.yudao.framework.tenant.core.aop.TenantIgnore;
+import cn.iocoder.yudao.module.system.api.tenant.dto.TenantRespDTO;
 import cn.iocoder.yudao.module.system.service.tenant.TenantService;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.RestController;
@@ -14,7 +16,7 @@ import static cn.iocoder.yudao.framework.common.pojo.CommonResult.success;
 
 @RestController // 提供 RESTful API 接口，给 Feign 调用
 @Validated
-public class TenantApiImpl implements TenantCommonApi {
+public class TenantApiImpl implements TenantCommonApi, TenantApi {
 
     @Resource
     private TenantService tenantService;
@@ -30,6 +32,12 @@ public class TenantApiImpl implements TenantCommonApi {
     public CommonResult<Boolean> validTenant(Long id) {
         tenantService.validTenant(id);
         return success(true);
+    }
+
+    @Override
+    @TenantIgnore
+    public CommonResult<TenantRespDTO> getTenant(Long id) {
+        return success(BeanUtils.toBean(tenantService.getTenant(id), TenantRespDTO.class));
     }
 
 }

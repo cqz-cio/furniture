@@ -100,6 +100,8 @@ public class TenantServiceImpl implements TenantService {
     public Long createTenant(TenantSaveReqVO createReqVO) {
         // 校验租户名称是否重复
         validTenantNameDuplicate(createReqVO.getName(), null);
+        // 校验租户编码是否重复
+        validTenantCodeDuplicate(createReqVO.getCode());
         // 校验租户域名是否重复
         validTenantWebsiteDuplicate(createReqVO.getWebsites(), null);
         // 校验套餐被禁用
@@ -146,6 +148,9 @@ public class TenantServiceImpl implements TenantService {
         TenantDO tenant = validateUpdateTenant(updateReqVO.getId());
         // 校验租户名称是否重复
         validTenantNameDuplicate(updateReqVO.getName(), updateReqVO.getId());
+        if (!Objects.equals(tenant.getCode(), updateReqVO.getCode())) {
+            throw exception(TENANT_CODE_CAN_NOT_UPDATE);
+        }
         // 校验租户域名是否重复
         validTenantWebsiteDuplicate(updateReqVO.getWebsites(), updateReqVO.getId());
         // 校验套餐被禁用
@@ -171,6 +176,13 @@ public class TenantServiceImpl implements TenantService {
         }
         if (!tenant.getId().equals(id)) {
             throw exception(TENANT_NAME_DUPLICATE, name);
+        }
+    }
+
+    private void validTenantCodeDuplicate(String code) {
+        TenantDO tenant = tenantMapper.selectByCode(code);
+        if (tenant != null) {
+            throw exception(TENANT_CODE_DUPLICATE, code);
         }
     }
 

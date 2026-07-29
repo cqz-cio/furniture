@@ -112,6 +112,7 @@
       <el-table-column type="selection" width="55" />
       <el-table-column label="租户编号" align="center" prop="id" />
       <el-table-column label="租户名" align="center" prop="name" />
+      <el-table-column label="租户编码" align="center" prop="code" />
       <el-table-column label="业务模式" align="center" prop="businessMode">
         <template #default="{ row }">
           {{ formatBusinessMode(row.businessMode) }}

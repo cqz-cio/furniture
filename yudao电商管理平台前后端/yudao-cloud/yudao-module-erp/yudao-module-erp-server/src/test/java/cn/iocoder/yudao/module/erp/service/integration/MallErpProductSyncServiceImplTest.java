@@ -29,6 +29,8 @@ class MallErpProductSyncServiceImplTest {
     private MallErpProductMappingMapper mappingMapper;
     @Mock
     private ErpProductMapper productMapper;
+    @Mock
+    private MallErpProductCodeGenerator productCodeGenerator;
 
     @BeforeEach
     void setUp() {

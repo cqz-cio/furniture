@@ -43,6 +43,7 @@ public class MallErpProductSyncServiceImpl implements MallErpProductSyncService 
 
     private final ProductSkuApi productSkuApi;
     private final ProductSpuApi productSpuApi;
+    private final MallErpProductCodeGenerator productCodeGenerator;
     private final ErpProductMapper erpProductMapper;
     private final ErpProductUnitMapper unitMapper;
     private final ErpProductCategoryMapper categoryMapper;
@@ -76,7 +77,8 @@ public class MallErpProductSyncServiceImpl implements MallErpProductSyncService 
         if (!mallSpuId.equals(sku.getSpuId())) {
             throw new IllegalArgumentException("SKU does not belong to the requested SPU");
         }
-        String productCode = "RH-" + TenantContextHolder.getTenantId() + "-" + mallSkuId;
+        String productCode = productCodeGenerator.generate(
+                TenantContextHolder.getRequiredTenantId(), mallSkuId);
         MallErpProductMappingDO mapping = mappingMapper.selectByMallSkuId(mallSkuId);
         ErpProductDO product = mapping == null ? new ErpProductDO() : erpProductMapper.selectById(mapping.getErpProductId());
         if (product == null) {
@@ -107,6 +109,7 @@ public class MallErpProductSyncServiceImpl implements MallErpProductSyncService 
             mapping.setVersion(0);
             mappingMapper.insert(mapping);
         } else {
+            mapping.setErpProductCode(productCode);
             erpProductMapper.updateById(product);
         }
         mapping.setSyncStatus("SUCCESS");

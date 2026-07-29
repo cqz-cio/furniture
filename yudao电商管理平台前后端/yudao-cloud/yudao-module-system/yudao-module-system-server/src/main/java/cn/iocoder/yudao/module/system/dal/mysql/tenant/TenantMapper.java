@@ -27,6 +27,10 @@ public interface TenantMapper extends BaseMapperX<TenantDO> {
         return selectOne(TenantDO::getName, name);
     }
 
+    default TenantDO selectByCode(String code) {
+        return selectOne(TenantDO::getCode, code);
+    }
+
     default List<TenantDO> selectListByWebsite(String website) {
         return selectList(new LambdaQueryWrapperX<TenantDO>()
                 .apply(MyBatisUtils.findInSet("websites", website)));
