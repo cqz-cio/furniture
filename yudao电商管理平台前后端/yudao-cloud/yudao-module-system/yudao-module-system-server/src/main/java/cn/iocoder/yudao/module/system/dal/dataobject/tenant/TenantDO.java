@@ -79,6 +79,11 @@ public class TenantDO extends BaseDO {
      */
     private String businessMode;
     /**
+     * 网站公开商品字段
+     */
+    @TableField(typeHandler = StringListTypeHandler.class)
+    private List<String> websiteProductFields;
+    /**
      * 租户套餐编号
      *
      * 关联 {@link TenantPackageDO#getId()}

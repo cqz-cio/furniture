@@ -13,6 +13,9 @@ export const useTenantBusinessProfile = () => {
   const profileLoaded = computed(() => profile.value !== undefined)
   const businessMode = computed(() => profile.value?.businessMode)
   const inventoryEnabled = computed(() => profile.value?.inventoryEnabled === true)
+  const websiteProductFields = computed(() => profile.value?.websiteProductFields || [])
+  const websiteProductFieldEnabled = (field: string) =>
+    websiteProductFields.value.includes(field)
 
   const loadTenantBusinessProfile = async () => {
     profile.value = undefined
@@ -36,6 +39,8 @@ export const useTenantBusinessProfile = () => {
     profileError,
     businessMode,
     inventoryEnabled,
+    websiteProductFields,
+    websiteProductFieldEnabled,
     loadTenantBusinessProfile
   }
 }

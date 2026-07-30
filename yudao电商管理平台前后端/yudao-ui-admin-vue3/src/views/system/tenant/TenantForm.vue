@@ -39,6 +39,28 @@
           </el-radio>
         </el-radio-group>
       </el-form-item>
+      <el-form-item v-if="formData.businessMode === 'B2B'" label="网站字段">
+        <div class="tenant-product-field-config">
+          <div class="tenant-product-field-config__hint">
+            商品名称和图片固定开放；以下配置同时控制公开商品接口和家具 2B 网站展示。
+          </div>
+          <el-checkbox-group
+            v-model="formData.websiteProductFields"
+            class="tenant-product-field-config__options"
+          >
+            <el-checkbox
+              v-for="item in websiteProductFieldOptions"
+              :key="item.value"
+              :value="item.value"
+            >
+              {{ item.label }}
+            </el-checkbox>
+          </el-checkbox-group>
+          <el-button link type="primary" @click="useRecommendedB2BProductFields">
+            恢复 ToB 推荐字段
+          </el-button>
+        </div>
+      </el-form-item>
       <el-form-item label="联系人" prop="contactName">
         <el-input v-model="formData.contactName" placeholder="请输入联系人" />
       </el-form-item>
@@ -116,12 +138,51 @@ const businessModeOptions = [
   { label: 'ToC（零售型）', value: 'B2C' },
   { label: 'ToB（询盘型）', value: 'B2B' }
 ]
+const websiteProductFieldOptions = [
+  { label: '商品分类', value: 'category' },
+  { label: '新品/精品标识', value: 'badges' },
+  { label: '商品简介', value: 'introduction' },
+  { label: '销售价格', value: 'price' },
+  { label: '市场价格', value: 'marketPrice' },
+  { label: '库存/可售状态', value: 'inventory' },
+  { label: '内部商品编号', value: 'productId' },
+  { label: 'SKU 编码', value: 'skuCode' },
+  { label: '系列名称', value: 'collection' },
+  { label: '主图说明', value: 'heroNote' },
+  { label: '面料/饰面选项', value: 'fabricSelector' },
+  { label: '营销选项组', value: 'optionGroups' },
+  { label: '商品亮点', value: 'highlights' },
+  { label: '商品详情', value: 'description' },
+  { label: '规格详情区', value: 'accordions' },
+  { label: 'SKU 规格属性', value: 'skuProperties' },
+  { label: '重量/体积', value: 'skuMeasurements' },
+  { label: '相关商品', value: 'relatedProducts' },
+  { label: '相关链接', value: 'relatedLinks' },
+  { label: '商品销量', value: 'salesCount' }
+]
+const recommendedB2BProductFields = [
+  'category',
+  'badges',
+  'introduction',
+  'skuCode',
+  'collection',
+  'heroNote',
+  'fabricSelector',
+  'optionGroups',
+  'highlights',
+  'description',
+  'accordions',
+  'skuProperties',
+  'relatedProducts',
+  'relatedLinks'
+]
 const formData = ref({
   id: undefined,
   name: undefined,
   code: '',
   packageId: undefined,
   businessMode: 'B2C',
+  websiteProductFields: [...recommendedB2BProductFields],
   contactName: undefined,
   contactMobile: undefined,
   accountCount: undefined,
@@ -158,6 +219,10 @@ const handleTenantCodeInput = (value: string) => {
   formData.value.code = value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 16)
 }
 
+const useRecommendedB2BProductFields = () => {
+  formData.value.websiteProductFields = [...recommendedB2BProductFields]
+}
+
 /** 打开弹窗 */
 const open = async (type: string, id?: number) => {
   dialogVisible.value = true
@@ -168,7 +233,13 @@ const open = async (type: string, id?: number) => {
   if (id) {
     formLoading.value = true
     try {
-      formData.value = await TenantApi.getTenant(id)
+      const tenant = await TenantApi.getTenant(id)
+      formData.value = {
+        ...tenant,
+        websiteProductFields: Array.isArray(tenant.websiteProductFields)
+          ? tenant.websiteProductFields
+          : [...recommendedB2BProductFields]
+      }
     } finally {
       formLoading.value = false
     }
@@ -212,6 +283,7 @@ const resetForm = () => {
     code: '',
     packageId: undefined,
     businessMode: 'B2C',
+    websiteProductFields: [...recommendedB2BProductFields],
     contactName: undefined,
     contactMobile: undefined,
     accountCount: undefined,
@@ -224,3 +296,22 @@ const resetForm = () => {
   formRef.value?.resetFields()
 }
 </script>
+
+<style scoped>
+.tenant-product-field-config {
+  width: 100%;
+}
+
+.tenant-product-field-config__hint {
+  margin-bottom: 8px;
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.tenant-product-field-config__options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: 100%;
+}
+</style>

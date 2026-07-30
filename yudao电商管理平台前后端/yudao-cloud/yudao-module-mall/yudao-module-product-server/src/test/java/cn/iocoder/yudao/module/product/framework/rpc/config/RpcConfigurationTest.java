@@ -1,6 +1,7 @@
 package cn.iocoder.yudao.module.product.framework.rpc.config;
 
 import cn.iocoder.yudao.module.erp.api.integration.MallErpProductApi;
+import cn.iocoder.yudao.module.system.api.tenant.TenantApi;
 import org.junit.jupiter.api.Test;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 
@@ -15,6 +16,7 @@ class RpcConfigurationTest {
         EnableFeignClients annotation = RpcConfiguration.class.getAnnotation(EnableFeignClients.class);
 
         assertTrue(Arrays.asList(annotation.clients()).contains(MallErpProductApi.class));
+        assertTrue(Arrays.asList(annotation.clients()).contains(TenantApi.class));
     }
 
 }

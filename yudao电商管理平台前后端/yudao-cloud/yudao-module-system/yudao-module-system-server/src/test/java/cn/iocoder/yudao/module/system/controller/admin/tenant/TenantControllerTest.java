@@ -7,6 +7,7 @@ import cn.iocoder.yudao.module.system.controller.admin.tenant.vo.tenant.TenantBu
 import cn.iocoder.yudao.module.system.controller.admin.tenant.vo.tenant.TenantSaveReqVO;
 import cn.iocoder.yudao.module.system.dal.dataobject.tenant.TenantDO;
 import cn.iocoder.yudao.module.system.enums.tenant.TenantBusinessModeEnum;
+import cn.iocoder.yudao.module.system.enums.tenant.TenantProductFieldEnum;
 import cn.iocoder.yudao.module.system.service.tenant.TenantService;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
@@ -14,6 +15,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+
+import java.util.List;
 
 import static cn.iocoder.yudao.framework.test.core.util.AssertUtils.assertServiceException;
 import static cn.iocoder.yudao.module.system.enums.ErrorCodeConstants.TENANT_NOT_EXISTS;
@@ -49,6 +52,10 @@ public class TenantControllerTest extends BaseMockitoUnitTest {
         assertEquals(effectiveTenantId, result.getData().getTenantId());
         assertEquals(TenantBusinessModeEnum.B2B.getCode(), result.getData().getBusinessMode());
         assertFalse(result.getData().getInventoryEnabled());
+        assertTrue(result.getData().getWebsiteProductFields()
+                .contains(TenantProductFieldEnum.SKU_CODE.getCode()));
+        assertFalse(result.getData().getWebsiteProductFields()
+                .contains(TenantProductFieldEnum.PRICE.getCode()));
         verify(tenantService).getTenant(effectiveTenantId);
     }
 
@@ -65,6 +72,7 @@ public class TenantControllerTest extends BaseMockitoUnitTest {
 
         assertEquals(TenantBusinessModeEnum.B2C.getCode(), profile.getBusinessMode());
         assertTrue(profile.getInventoryEnabled());
+        assertEquals(TenantProductFieldEnum.values().length, profile.getWebsiteProductFields().size());
     }
 
     @Test
@@ -82,6 +90,18 @@ public class TenantControllerTest extends BaseMockitoUnitTest {
 
         assertTrue(validator.validate(reqVO).stream()
                 .anyMatch(violation -> "businessMode".equals(violation.getPropertyPath().toString())));
+    }
+
+    @Test
+    public void testTenantSaveReqVO_invalidWebsiteProductField() {
+        Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
+        TenantSaveReqVO reqVO = new TenantSaveReqVO()
+                .setBusinessMode(TenantBusinessModeEnum.B2B.getCode())
+                .setWebsiteProductFields(List.of("skuCode", "unknownField"));
+
+        assertTrue(validator.validate(reqVO).stream()
+                .anyMatch(violation -> "websiteProductFieldsValid"
+                        .equals(violation.getPropertyPath().toString())));
     }
 
 }
