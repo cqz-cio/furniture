@@ -4,7 +4,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 import jakarta.validation.constraints.NotNull;
-import java.util.Collections;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.Size;
+
 import java.util.Set;
 
 @Schema(description = "管理后台 - 赋予用户角色 Request VO")
@@ -15,7 +17,9 @@ public class PermissionAssignUserRoleReqVO {
     @NotNull(message = "用户编号不能为空")
     private Long userId;
 
-    @Schema(description = "角色编号列表", example = "1,3,5")
-    private Set<Long> roleIds = Collections.emptySet(); // 兜底
+    @Schema(description = "唯一角色编号列表", requiredMode = Schema.RequiredMode.REQUIRED, example = "1")
+    @NotEmpty(message = "角色不能为空")
+    @Size(min = 1, max = 1, message = "一个账号只能绑定一个角色")
+    private Set<Long> roleIds;
 
 }

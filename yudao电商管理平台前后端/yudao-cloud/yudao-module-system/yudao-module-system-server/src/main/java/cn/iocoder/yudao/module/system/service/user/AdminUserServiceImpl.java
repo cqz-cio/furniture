@@ -62,8 +62,6 @@ public class AdminUserServiceImpl implements AdminUserService {
 
     static final String USER_INIT_PASSWORD_KEY = "system.user.init-password";
 
-    static final String USER_REGISTER_ENABLED_KEY = "system.user.register-enabled";
-
     @Resource
     private AdminUserMapper userMapper;
 
@@ -113,6 +111,8 @@ public class AdminUserServiceImpl implements AdminUserService {
             userPostMapper.insertBatch(convertList(user.getPostIds(),
                     postId -> new UserPostDO().setUserId(user.getId()).setPostId(postId)));
         }
+        // 2.3 账号创建时必须在同一事务中绑定唯一角色
+        permissionService.assignUserRole(user.getId(), Collections.singleton(createReqVO.getRoleId()));
 
         // 3. 记录操作日志上下文
         LogRecordContext.putVariable("user", user);
@@ -121,26 +121,8 @@ public class AdminUserServiceImpl implements AdminUserService {
 
     @Override
     public Long registerUser(AuthRegisterReqVO registerReqVO) {
-        // 1.1 校验是否开启注册
-        if (ObjUtil.notEqual(configApi.getConfigValueByKey(USER_REGISTER_ENABLED_KEY).getCheckedData(), "true")) {
-            throw exception(USER_REGISTER_DISABLED);
-        }
-        // 1.2 校验账户配合
-        tenantService.handleTenantInfo(tenant -> {
-            long count = userMapper.selectCount();
-            if (count >= tenant.getAccountCount()) {
-                throw exception(USER_COUNT_MAX, tenant.getAccountCount());
-            }
-        });
-        // 1.3 校验正确性
-        validateUserForCreateOrUpdate(null, registerReqVO.getUsername(), null, null, null, null);
-
-        // 2. 插入用户
-        AdminUserDO user = BeanUtils.toBean(registerReqVO, AdminUserDO.class);
-        user.setStatus(CommonStatusEnum.ENABLE.getStatus()); // 默认开启
-        user.setPassword(encodePassword(registerReqVO.getPassword())); // 加密密码
-        userMapper.insert(user);
-        return user.getId();
+        // ERP 账号必须由管理员明确绑定租户和角色，禁止公开注册产生无角色账号。
+        throw exception(USER_REGISTER_DISABLED);
     }
 
     @Override
@@ -158,6 +140,8 @@ public class AdminUserServiceImpl implements AdminUserService {
         userMapper.updateById(updateObj);
         // 2.2 更新岗位
         updateUserPost(updateReqVO, updateObj);
+        // 2.3 同步唯一角色
+        permissionService.assignUserRole(updateReqVO.getId(), Collections.singleton(updateReqVO.getRoleId()));
 
         // 3. 记录操作日志上下文
         LogRecordContext.putVariable(DiffParseFunction.OLD_OBJECT, BeanUtils.toBean(oldUser, UserSaveReqVO.class));
@@ -474,7 +458,7 @@ public class AdminUserServiceImpl implements AdminUserService {
 
     @Override
     @Transactional(rollbackFor = Exception.class) // 添加事务，异常则回滚所有导入
-    public UserImportRespVO importUserList(List<UserImportExcelVO> importUsers, boolean isUpdateSupport) {
+    public UserImportRespVO importUserList(List<UserImportExcelVO> importUsers, boolean isUpdateSupport, Long roleId) {
         // 1.1 参数校验
         if (CollUtil.isEmpty(importUsers)) {
             throw exception(USER_IMPORT_LIST_IS_EMPTY);
@@ -493,7 +477,8 @@ public class AdminUserServiceImpl implements AdminUserService {
             int currentIndex = index.getAndIncrement();
             // 2.1.1 校验字段是否符合要求
             try {
-                ValidationUtils.validate(BeanUtils.toBean(importUser, UserSaveReqVO.class).setPassword(initPassword));
+                ValidationUtils.validate(BeanUtils.toBean(importUser, UserSaveReqVO.class)
+                        .setPassword(initPassword).setRoleId(roleId));
             } catch (ConstraintViolationException ex) {
                 String key = StrUtil.blankToDefault(importUser.getUsername(), "第 " + currentIndex + " 行");
                 respVO.getFailureUsernames().put(key, ex.getMessage());
@@ -511,8 +496,10 @@ public class AdminUserServiceImpl implements AdminUserService {
             // 2.2.1 判断如果不存在，在进行插入
             AdminUserDO existUser = userMapper.selectByUsername(importUser.getUsername());
             if (existUser == null) {
-                userMapper.insert(BeanUtils.toBean(importUser, AdminUserDO.class)
-                        .setPassword(encodePassword(initPassword)).setPostIds(new HashSet<>())); // 设置默认密码及空岗位编号数组
+                AdminUserDO user = BeanUtils.toBean(importUser, AdminUserDO.class)
+                        .setPassword(encodePassword(initPassword)).setPostIds(new HashSet<>()); // 设置默认密码及空岗位编号数组
+                userMapper.insert(user);
+                permissionService.assignUserRole(user.getId(), Collections.singleton(roleId));
                 respVO.getCreateUsernames().add(importUser.getUsername());
                 return;
             }
@@ -524,6 +511,7 @@ public class AdminUserServiceImpl implements AdminUserService {
             AdminUserDO updateUser = BeanUtils.toBean(importUser, AdminUserDO.class);
             updateUser.setId(existUser.getId());
             userMapper.updateById(updateUser);
+            permissionService.assignUserRole(existUser.getId(), Collections.singleton(roleId));
             respVO.getUpdateUsernames().add(importUser.getUsername());
         });
         return respVO;

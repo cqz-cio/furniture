@@ -1,15 +1,30 @@
 <template>
   <Dialog v-model="dialogVisible" title="分配角色">
-    <el-form ref="formRef" v-loading="formLoading" :model="formData" label-width="80px">
+    <el-form
+      ref="formRef"
+      v-loading="formLoading"
+      :model="formData"
+      :rules="formRules"
+      label-width="80px"
+    >
       <el-form-item label="用户名称">
         <el-input v-model="formData.username" :disabled="true" />
       </el-form-item>
       <el-form-item label="用户昵称">
         <el-input v-model="formData.nickname" :disabled="true" />
       </el-form-item>
-      <el-form-item label="角色">
-        <el-select v-model="formData.roleIds" multiple placeholder="请选择角色">
-          <el-option v-for="item in roleList" :key="item.id" :label="item.name" :value="item.id" />
+      <el-form-item label="角色" prop="roleId">
+        <el-select
+          v-model="formData.roleId"
+          :disabled="isCurrentSuperAdmin"
+          placeholder="请选择唯一角色"
+        >
+          <el-option
+            v-for="item in assignableRoleList"
+            :key="item.id"
+            :label="item.name"
+            :value="item.id"
+          />
         </el-select>
       </el-form-item>
     </el-form>
@@ -31,14 +46,28 @@ const message = useMessage() // 消息弹窗
 
 const dialogVisible = ref(false) // 弹窗的是否展示
 const formLoading = ref(false) // 表单的加载中：1）修改时的数据加载；2）提交的按钮禁用
-const formData = ref({
+const formData = ref<{
+  id: number
+  nickname: string
+  username: string
+  roleId?: number
+}>({
   id: -1,
   nickname: '',
   username: '',
-  roleIds: []
+  roleId: undefined
 })
+const formRules = {
+  roleId: [{ required: true, message: '角色不能为空', trigger: 'change' }]
+}
 const formRef = ref() // 表单 Ref
 const roleList = ref([] as RoleApi.RoleVO[]) // 角色的列表
+const isCurrentSuperAdmin = computed(() =>
+  roleList.value.some((item) => item.id === formData.value.roleId && item.code === 'super_admin')
+)
+const assignableRoleList = computed(() =>
+  roleList.value.filter((item) => item.code !== 'super_admin' || isCurrentSuperAdmin.value)
+)
 
 /** 打开弹窗 */
 const open = async (row: UserApi.UserVO) => {
@@ -51,7 +80,8 @@ const open = async (row: UserApi.UserVO) => {
   // 获得角色拥有的菜单集合
   formLoading.value = true
   try {
-    formData.value.roleIds = await PermissionApi.getUserRoleList(row.id)
+    const roleIds = await PermissionApi.getUserRoleList(row.id)
+    formData.value.roleId = roleIds.length === 1 ? roleIds[0] : undefined
   } finally {
     formLoading.value = false
   }
@@ -72,7 +102,7 @@ const submitForm = async () => {
   try {
     await PermissionApi.assignUserRole({
       userId: formData.value.id,
-      roleIds: formData.value.roleIds
+      roleIds: [formData.value.roleId!]
     })
     message.success(t('common.updateSuccess'))
     dialogVisible.value = false
@@ -89,7 +119,7 @@ const resetForm = () => {
     id: -1,
     nickname: '',
     username: '',
-    roleIds: []
+    roleId: undefined
   }
   formRef.value?.resetFields()
 }

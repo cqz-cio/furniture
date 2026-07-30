@@ -29,8 +29,12 @@ import java.util.Set;
 import static cn.hutool.core.collection.ListUtil.toList;
 import static cn.iocoder.yudao.framework.common.util.collection.SetUtils.asSet;
 import static cn.iocoder.yudao.framework.test.core.util.AssertUtils.assertPojoEquals;
+import static cn.iocoder.yudao.framework.test.core.util.AssertUtils.assertServiceException;
 import static cn.iocoder.yudao.framework.test.core.util.RandomUtils.randomLongId;
 import static cn.iocoder.yudao.framework.test.core.util.RandomUtils.randomPojo;
+import static cn.iocoder.yudao.module.system.enums.ErrorCodeConstants.AUTH_LOGIN_ROLE_INVALID;
+import static cn.iocoder.yudao.module.system.enums.ErrorCodeConstants.USER_ROLE_REQUIRED;
+import static cn.iocoder.yudao.module.system.enums.ErrorCodeConstants.USER_ROLE_TENANT_MISMATCH;
 import static java.util.Collections.singleton;
 import static java.util.Collections.singletonList;
 import static org.junit.jupiter.api.Assertions.*;
@@ -246,7 +250,15 @@ public class PermissionServiceTest extends BaseDbUnitTest {
     public void testAssignUserRole() {
         // 准备参数
         Long userId = 1L;
-        Set<Long> roleIds = asSet(200L, 300L);
+        Set<Long> roleIds = singleton(300L);
+        AdminUserDO user = randomPojo(AdminUserDO.class, o -> o.setId(userId).setTenantId(1L));
+        when(userService.getUser(userId)).thenReturn(user);
+        RoleDO role = randomPojo(RoleDO.class, o -> {
+            o.setId(300L);
+            o.setTenantId(1L);
+            o.setStatus(CommonStatusEnum.ENABLE.getStatus());
+        });
+        when(roleService.getRole(300L)).thenReturn(role);
         // mock 数据
         UserRoleDO userRole01 = randomPojo(UserRoleDO.class).setUserId(1L).setRoleId(100L);
         userRoleMapper.insert(userRole01);
@@ -257,11 +269,52 @@ public class PermissionServiceTest extends BaseDbUnitTest {
         permissionService.assignUserRole(userId, roleIds);
         // 断言
         List<UserRoleDO> userRoleDOList = userRoleMapper.selectList();
-        assertEquals(2, userRoleDOList.size());
+        assertEquals(1, userRoleDOList.size());
         assertEquals(1L, userRoleDOList.get(0).getUserId());
-        assertEquals(200L, userRoleDOList.get(0).getRoleId());
-        assertEquals(1L, userRoleDOList.get(1).getUserId());
-        assertEquals(300L, userRoleDOList.get(1).getRoleId());
+        assertEquals(300L, userRoleDOList.get(0).getRoleId());
+    }
+
+    @Test
+    public void testAssignUserRole_rejectsMultipleRoles() {
+        assertServiceException(() -> permissionService.assignUserRole(1L, asSet(200L, 300L)),
+                USER_ROLE_REQUIRED);
+    }
+
+    @Test
+    public void testAssignUserRole_rejectsTenantMismatch() {
+        Long userId = 1L;
+        when(userService.getUser(userId))
+                .thenReturn(randomPojo(AdminUserDO.class, o -> o.setId(userId).setTenantId(1L)));
+        when(roleService.getRole(300L)).thenReturn(randomPojo(RoleDO.class, o -> {
+            o.setId(300L);
+            o.setTenantId(2L);
+            o.setStatus(CommonStatusEnum.ENABLE.getStatus());
+        }));
+
+        assertServiceException(() -> permissionService.assignUserRole(userId, singleton(300L)),
+                USER_ROLE_TENANT_MISMATCH);
+    }
+
+    @Test
+    public void testValidateUserRoleForLogin_success() {
+        Long userId = 1L;
+        Long roleId = 300L;
+        userRoleMapper.insert(new UserRoleDO().setUserId(userId).setRoleId(roleId));
+        when(userService.getUser(userId))
+                .thenReturn(randomPojo(AdminUserDO.class, o -> o.setId(userId).setTenantId(162L)));
+        when(roleService.getRole(roleId)).thenReturn(randomPojo(RoleDO.class, o -> {
+            o.setId(roleId);
+            o.setTenantId(162L);
+            o.setStatus(CommonStatusEnum.ENABLE.getStatus());
+        }));
+
+        permissionService.validateUserRoleForLogin(userId);
+    }
+
+    @Test
+    public void testValidateUserRoleForLogin_requiresExactlyOneRole() {
+        assertServiceException(() -> permissionService.validateUserRoleForLogin(1L),
+                AUTH_LOGIN_ROLE_INVALID);
     }
 
     @Test

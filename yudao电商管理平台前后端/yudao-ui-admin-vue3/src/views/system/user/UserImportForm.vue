@@ -1,9 +1,16 @@
 <template>
   <Dialog v-model="dialogVisible" title="用户导入" width="400">
+    <el-form label-width="70px">
+      <el-form-item label="角色" required>
+        <el-select v-model="roleId" placeholder="请选择导入账号的唯一角色">
+          <el-option v-for="item in roleList" :key="item.id" :label="item.name" :value="item.id" />
+        </el-select>
+      </el-form-item>
+    </el-form>
     <el-upload
       ref="uploadRef"
       v-model:file-list="fileList"
-      :action="importUrl + '?updateSupport=' + updateSupport"
+      :action="uploadUrl"
       :auto-upload="false"
       :disabled="formLoading"
       :headers="uploadHeaders"
@@ -42,6 +49,7 @@
 </template>
 <script lang="ts" setup>
 import * as UserApi from '@/api/system/user'
+import * as RoleApi from '@/api/system/role'
 import { getAccessToken, getTenantId } from '@/utils/auth'
 import download from '@/utils/download'
 
@@ -54,16 +62,23 @@ const formLoading = ref(false) // 表单的加载中
 const uploadRef = ref()
 const importUrl =
   import.meta.env.VITE_BASE_URL + import.meta.env.VITE_API_URL + '/system/user/import'
+const uploadUrl = computed(
+  () => importUrl + '?updateSupport=' + updateSupport.value + '&roleId=' + (roleId.value || '')
+)
 const uploadHeaders = ref() // 上传 Header 头
 const fileList = ref([]) // 文件列表
 const updateSupport = ref(0) // 是否更新已经存在的用户数据
+const roleId = ref<number>()
+const roleList = ref([] as RoleApi.RoleVO[])
 
 /** 打开弹窗 */
-const open = () => {
+const open = async () => {
   dialogVisible.value = true
   updateSupport.value = 0
+  roleId.value = undefined
   fileList.value = []
   resetForm()
+  roleList.value = (await RoleApi.getSimpleRoleList()).filter((item) => item.code !== 'super_admin')
 }
 defineExpose({ open }) // 提供 open 方法，用于打开弹窗
 
@@ -71,6 +86,10 @@ defineExpose({ open }) // 提供 open 方法，用于打开弹窗
 const submitForm = async () => {
   if (fileList.value.length == 0) {
     message.error('请上传文件')
+    return
+  }
+  if (!roleId.value) {
+    message.error('请选择导入账号的角色')
     return
   }
   // 提交请求

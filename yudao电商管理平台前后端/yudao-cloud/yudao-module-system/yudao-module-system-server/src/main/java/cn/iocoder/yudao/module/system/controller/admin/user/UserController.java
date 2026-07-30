@@ -13,6 +13,7 @@ import cn.iocoder.yudao.module.system.dal.dataobject.dept.DeptDO;
 import cn.iocoder.yudao.module.system.dal.dataobject.user.AdminUserDO;
 import cn.iocoder.yudao.module.system.enums.common.SexEnum;
 import cn.iocoder.yudao.module.system.service.dept.DeptService;
+import cn.iocoder.yudao.module.system.service.permission.PermissionService;
 import cn.iocoder.yudao.module.system.service.user.AdminUserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -31,6 +32,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static cn.iocoder.yudao.framework.apilog.core.enums.OperateTypeEnum.EXPORT;
 import static cn.iocoder.yudao.framework.common.pojo.CommonResult.success;
@@ -47,6 +49,8 @@ public class UserController {
     private AdminUserService userService;
     @Resource
     private DeptService deptService;
+    @Resource
+    private PermissionService permissionService;
 
     @PostMapping("/create")
     @Operation(summary = "新增用户")
@@ -149,7 +153,12 @@ public class UserController {
         }
         // 拼接数据
         DeptDO dept = deptService.getDept(user.getDeptId());
-        return success(UserConvert.INSTANCE.convert(user, dept));
+        UserRespVO userVO = UserConvert.INSTANCE.convert(user, dept);
+        Set<Long> roleIds = permissionService.getUserRoleIdListByUserId(user.getId());
+        if (roleIds.size() == 1) {
+            userVO.setRoleId(CollUtil.getFirst(roleIds));
+        }
+        return success(userVO);
     }
 
     @GetMapping("/export-excel")
@@ -185,13 +194,15 @@ public class UserController {
     @Operation(summary = "导入用户")
     @Parameters({
             @Parameter(name = "file", description = "Excel 文件", required = true),
-            @Parameter(name = "updateSupport", description = "是否支持更新，默认为 false", example = "true")
+            @Parameter(name = "updateSupport", description = "是否支持更新，默认为 false", example = "true"),
+            @Parameter(name = "roleId", description = "导入账号统一绑定的唯一角色", required = true, example = "2")
     })
     @PreAuthorize("@ss.hasPermission('system:user:import')")
     public CommonResult<UserImportRespVO> importExcel(@RequestParam("file") MultipartFile file,
-                                                      @RequestParam(value = "updateSupport", required = false, defaultValue = "false") Boolean updateSupport) throws Exception {
+                                                      @RequestParam(value = "updateSupport", required = false, defaultValue = "false") Boolean updateSupport,
+                                                      @RequestParam("roleId") Long roleId) throws Exception {
         List<UserImportExcelVO> list = ExcelUtils.read(file, UserImportExcelVO.class);
-        return success(userService.importUserList(list, updateSupport));
+        return success(userService.importUserList(list, updateSupport, roleId));
     }
 
 }

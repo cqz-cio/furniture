@@ -12,6 +12,7 @@ import cn.iocoder.yudao.module.system.dal.dataobject.permission.MenuDO;
 import cn.iocoder.yudao.module.system.dal.dataobject.permission.RoleDO;
 import cn.iocoder.yudao.module.system.dal.dataobject.permission.RoleMenuDO;
 import cn.iocoder.yudao.module.system.dal.dataobject.permission.UserRoleDO;
+import cn.iocoder.yudao.module.system.dal.dataobject.user.AdminUserDO;
 import cn.iocoder.yudao.module.system.dal.mysql.permission.RoleMenuMapper;
 import cn.iocoder.yudao.module.system.dal.mysql.permission.UserRoleMapper;
 import cn.iocoder.yudao.module.system.dal.redis.RedisKeyConstants;
@@ -33,8 +34,10 @@ import jakarta.annotation.Resource;
 import java.util.*;
 import java.util.function.Supplier;
 
+import static cn.iocoder.yudao.framework.common.exception.util.ServiceExceptionUtil.exception;
 import static cn.iocoder.yudao.framework.common.util.collection.CollectionUtils.convertSet;
 import static cn.iocoder.yudao.framework.common.util.json.JsonUtils.toJsonString;
+import static cn.iocoder.yudao.module.system.enums.ErrorCodeConstants.*;
 
 /**
  * 权限 Service 实现类
@@ -44,6 +47,8 @@ import static cn.iocoder.yudao.framework.common.util.json.JsonUtils.toJsonString
 @Service
 @Slf4j
 public class PermissionServiceImpl implements PermissionService {
+
+    private static final String TENANT_VISIT_PERMISSION = "system:tenant:visit";
 
     @Resource
     private RoleMenuMapper roleMenuMapper;
@@ -142,7 +147,11 @@ public class PermissionServiceImpl implements PermissionService {
         // 获得角色拥有菜单编号
         Set<Long> dbMenuIds = convertSet(roleMenuMapper.selectListByRoleId(roleId), RoleMenuDO::getMenuId);
         // 计算新增和删除的菜单编号
-        Set<Long> menuIdList = CollUtil.emptyIfNull(menuIds);
+        Set<Long> menuIdList = new HashSet<>(CollUtil.emptyIfNull(menuIds));
+        // 只有平台超级管理员可以拥有跨租户访问权限，避免套餐或角色配置误授予普通租户。
+        if (!roleService.hasAnySuperAdmin(Collections.singleton(roleId))) {
+            menuIdList.removeAll(menuService.getMenuIdListByPermissionFromCache(TENANT_VISIT_PERMISSION));
+        }
         Collection<Long> createMenuIds = CollUtil.subtract(menuIdList, dbMenuIds);
         Collection<Long> deleteMenuIds = CollUtil.subtract(dbMenuIds, menuIdList);
         // 执行新增和删除。对于已经授权的菜单，不用做任何处理
@@ -206,24 +215,51 @@ public class PermissionServiceImpl implements PermissionService {
     @DSTransactional // 多数据源，使用 @DSTransactional 保证本地事务，以及数据源的切换
     @CacheEvict(value = RedisKeyConstants.USER_ROLE_ID_LIST, key = "#userId")
     public void assignUserRole(Long userId, Set<Long> roleIds) {
-        // 获得角色拥有角色编号
-        Set<Long> dbRoleIds = convertSet(userRoleMapper.selectListByUserId(userId),
-                UserRoleDO::getRoleId);
-        // 计算新增和删除的角色编号
-        Set<Long> roleIdList = CollUtil.emptyIfNull(roleIds);
-        Collection<Long> createRoleIds = CollUtil.subtract(roleIdList, dbRoleIds);
-        Collection<Long> deleteMenuIds = CollUtil.subtract(dbRoleIds, roleIdList);
-        // 执行新增和删除。对于已经授权的角色，不用做任何处理
-        if (!CollectionUtil.isEmpty(createRoleIds)) {
-            userRoleMapper.insertBatch(CollectionUtils.convertList(createRoleIds, roleId -> {
-                UserRoleDO entity = new UserRoleDO();
-                entity.setUserId(userId);
-                entity.setRoleId(roleId);
-                return entity;
-            }));
+        if (roleIds == null || roleIds.size() != 1) {
+            throw exception(USER_ROLE_REQUIRED);
         }
-        if (!CollectionUtil.isEmpty(deleteMenuIds)) {
-            userRoleMapper.deleteListByUserIdAndRoleIdIds(userId, deleteMenuIds);
+        AdminUserDO user = userService.getUser(userId);
+        if (user == null) {
+            throw exception(USER_NOT_EXISTS);
+        }
+        roleService.validateRoleList(roleIds);
+        Long roleId = CollUtil.getFirst(roleIds);
+        RoleDO role = roleService.getRole(roleId);
+        if (role == null) {
+            throw exception(ROLE_NOT_EXISTS);
+        }
+        if (!Objects.equals(user.getTenantId(), role.getTenantId())) {
+            throw exception(USER_ROLE_TENANT_MISMATCH);
+        }
+
+        List<UserRoleDO> dbUserRoles = userRoleMapper.selectListByUserId(userId);
+        Set<Long> dbRoleIds = convertSet(dbUserRoles, UserRoleDO::getRoleId);
+        boolean hadSuperAdminRole = roleService.hasAnySuperAdmin(dbRoleIds);
+        boolean assigningSuperAdminRole = roleService.hasAnySuperAdmin(roleIds);
+        if (hadSuperAdminRole != assigningSuperAdminRole) {
+            throw exception(USER_SUPER_ADMIN_ROLE_FORBIDDEN);
+        }
+        if (dbUserRoles.size() == 1 && Objects.equals(dbUserRoles.get(0).getRoleId(), roleId)) {
+            return;
+        }
+
+        // 先逻辑删除历史映射，再写入唯一映射；数据库唯一索引负责最后一道并发兜底。
+        userRoleMapper.deleteListByUserId(userId);
+        userRoleMapper.insert(new UserRoleDO().setUserId(userId).setRoleId(roleId));
+    }
+
+    @Override
+    public void validateUserRoleForLogin(Long userId) {
+        List<UserRoleDO> userRoles = userRoleMapper.selectListByUserId(userId);
+        if (userRoles.size() != 1) {
+            throw exception(AUTH_LOGIN_ROLE_INVALID);
+        }
+        AdminUserDO user = userService.getUser(userId);
+        RoleDO role = roleService.getRole(userRoles.get(0).getRoleId());
+        if (user == null || role == null
+                || !CommonStatusEnum.ENABLE.getStatus().equals(role.getStatus())
+                || !Objects.equals(user.getTenantId(), role.getTenantId())) {
+            throw exception(AUTH_LOGIN_ROLE_INVALID);
         }
     }
 

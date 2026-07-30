@@ -15,6 +15,7 @@ import cn.iocoder.yudao.framework.tenant.core.util.TenantUtils;
 import cn.iocoder.yudao.module.system.controller.admin.permission.vo.role.RoleSaveReqVO;
 import cn.iocoder.yudao.module.system.controller.admin.tenant.vo.tenant.TenantPageReqVO;
 import cn.iocoder.yudao.module.system.controller.admin.tenant.vo.tenant.TenantSaveReqVO;
+import cn.iocoder.yudao.module.system.controller.admin.user.vo.user.UserSaveReqVO;
 import cn.iocoder.yudao.module.system.convert.tenant.TenantConvert;
 import cn.iocoder.yudao.module.system.dal.dataobject.permission.MenuDO;
 import cn.iocoder.yudao.module.system.dal.dataobject.permission.RoleDO;
@@ -43,7 +44,6 @@ import java.util.Set;
 
 import static cn.iocoder.yudao.framework.common.exception.util.ServiceExceptionUtil.exception;
 import static cn.iocoder.yudao.module.system.enums.ErrorCodeConstants.*;
-import static java.util.Collections.singleton;
 
 /**
  * 租户 Service 实现类
@@ -123,11 +123,9 @@ public class TenantServiceImpl implements TenantService {
     }
 
     private Long createUser(Long roleId, TenantSaveReqVO createReqVO) {
-        // 创建用户
-        Long userId = userService.createUser(TenantConvert.INSTANCE.convert02(createReqVO));
-        // 分配角色
-        permissionService.assignUserRole(userId, singleton(roleId));
-        return userId;
+        // 创建用户时在同一事务中绑定租户管理员角色
+        UserSaveReqVO userReqVO = TenantConvert.INSTANCE.convert02(createReqVO).setRoleId(roleId);
+        return userService.createUser(userReqVO);
     }
 
     private Long createRole(TenantPackageDO tenantPackage) {

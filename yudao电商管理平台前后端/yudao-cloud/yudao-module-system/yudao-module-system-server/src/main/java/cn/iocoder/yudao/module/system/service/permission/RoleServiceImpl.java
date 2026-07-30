@@ -112,6 +112,7 @@ public class RoleServiceImpl implements RoleService {
     public void deleteRole(Long id) {
         // 1. 校验是否可以更新
         RoleDO role = validateRoleForUpdate(id);
+        validateRoleNotAssigned(id);
 
         // 2.1 标记删除
         roleMapper.deleteById(id);
@@ -126,7 +127,10 @@ public class RoleServiceImpl implements RoleService {
     @Transactional(rollbackFor = Exception.class)
     public void deleteRoleList(List<Long> ids) {
         // 1. 校验是否可以删除
-        ids.forEach(this::validateRoleForUpdate);
+        ids.forEach(id -> {
+            validateRoleForUpdate(id);
+            validateRoleNotAssigned(id);
+        });
 
         // 2.1 标记删除
         roleMapper.deleteByIds(ids);
@@ -182,6 +186,12 @@ public class RoleServiceImpl implements RoleService {
             throw exception(ROLE_CAN_NOT_UPDATE_SYSTEM_TYPE_ROLE);
         }
         return role;
+    }
+
+    private void validateRoleNotAssigned(Long id) {
+        if (CollUtil.isNotEmpty(permissionService.getUserRoleIdListByRoleId(Collections.singleton(id)))) {
+            throw exception(ROLE_HAS_USER);
+        }
     }
 
     @Override
