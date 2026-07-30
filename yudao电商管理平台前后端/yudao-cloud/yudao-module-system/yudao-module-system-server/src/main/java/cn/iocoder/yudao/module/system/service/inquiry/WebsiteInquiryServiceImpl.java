@@ -7,6 +7,7 @@ import cn.iocoder.yudao.module.crm.api.inquiry.dto.CrmWebsiteInquiryCreateRespDT
 import cn.iocoder.yudao.module.system.controller.app.inquiry.vo.AppWebsiteInquirySubmitReqVO;
 import cn.iocoder.yudao.module.system.dal.dataobject.tenant.TenantDO;
 import cn.iocoder.yudao.module.system.framework.inquiry.config.WebsiteInquiryProperties;
+import cn.iocoder.yudao.module.system.service.inquiry.mail.WebsiteInquiryMailService;
 import cn.iocoder.yudao.module.system.service.notify.NotifySendService;
 import cn.iocoder.yudao.module.system.service.tenant.TenantService;
 import jakarta.annotation.Resource;
@@ -47,6 +48,8 @@ public class WebsiteInquiryServiceImpl implements WebsiteInquiryService {
     private NotifySendService notifySendService;
     @Resource
     private CrmWebsiteInquiryApi crmWebsiteInquiryApi;
+    @Resource
+    private WebsiteInquiryMailService websiteInquiryMailService;
 
     @Override
     public Long notifyInquiry(String sharedSecret, AppWebsiteInquirySubmitReqVO reqVO) {
@@ -88,6 +91,13 @@ public class WebsiteInquiryServiceImpl implements WebsiteInquiryService {
                 log.warn("Website inquiry {} persisted, but the ERP notification failed",
                         createResult.getInquiryId(), ex);
             }
+        }
+        // 邮件也是入库后的旁路：配置缺失或发送失败只记录投递状态，不能回滚询盘。
+        try {
+            websiteInquiryMailService.ensureDeliveryAndSend(createResult.getInquiryId());
+        } catch (RuntimeException ex) {
+            log.warn("Website inquiry {} persisted, but the ERP mail relay could not be queued",
+                    createResult.getInquiryId(), ex);
         }
         return createResult.getInquiryId();
     }

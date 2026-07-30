@@ -13,7 +13,12 @@
             {{ clue.companyName || '待补充' }}
           </el-descriptions-item>
           <el-descriptions-item label="联系人">{{ clue.contactName || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="邮箱">{{ clue.email || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="邮箱">
+            <el-link v-if="clue.email" :href="`mailto:${clue.email}`" type="primary">
+              {{ clue.email }}
+            </el-link>
+            <span v-else>-</span>
+          </el-descriptions-item>
           <el-descriptions-item label="电话区号">
             {{ clue.countryCode || '-' }}
           </el-descriptions-item>
@@ -32,7 +37,9 @@
           </el-descriptions-item>
           <el-descriptions-item label="UTM 来源">{{ clue.utmSource || '-' }}</el-descriptions-item>
           <el-descriptions-item label="UTM 媒介">{{ clue.utmMedium || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="UTM 活动">{{ clue.utmCampaign || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="UTM 活动">{{
+            clue.utmCampaign || '-'
+          }}</el-descriptions-item>
         </el-descriptions>
       </el-collapse-item>
 
@@ -44,7 +51,9 @@
           <el-descriptions-item label="处理状态">
             <el-tag :type="statusMeta.type">{{ statusMeta.label }}</el-tag>
           </el-descriptions-item>
-          <el-descriptions-item label="处理人">{{ clue.ownerUserName || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="处理人">{{
+            clue.ownerUserName || '-'
+          }}</el-descriptions-item>
           <el-descriptions-item label="处理完成时间">
             {{ formatOptionalDate(clue.processedAt) }}
           </el-descriptions-item>

@@ -377,6 +377,8 @@ yudao:
     tenant-id: ${VANZ_WEBSITE_INQUIRY_TENANT_ID:162}
     shared-secret: ${VANZ_WEBSITE_INQUIRY_SHARED_SECRET:}
     template-code: ${VANZ_WEBSITE_INQUIRY_TEMPLATE_CODE:vanz_website_inquiry}
+    mail-retry-enabled: ${VANZ_WEBSITE_INQUIRY_MAIL_RETRY_ENABLED:true}
+    mail-retry-interval-ms: ${VANZ_WEBSITE_INQUIRY_MAIL_RETRY_INTERVAL_MS:60000}
   furniture-navigation:
     enabled: ${OAKVED_FURNITURE_NAVIGATION_SYNC_ENABLED:true}
     tenant-ids: ${OAKVED_FURNITURE_NAVIGATION_TENANT_IDS:121,162}

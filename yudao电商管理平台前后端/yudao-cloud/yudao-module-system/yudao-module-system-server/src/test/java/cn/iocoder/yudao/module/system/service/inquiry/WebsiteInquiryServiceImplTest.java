@@ -8,6 +8,7 @@ import cn.iocoder.yudao.module.crm.api.inquiry.dto.CrmWebsiteInquiryCreateRespDT
 import cn.iocoder.yudao.module.system.controller.app.inquiry.vo.AppWebsiteInquirySubmitReqVO;
 import cn.iocoder.yudao.module.system.dal.dataobject.tenant.TenantDO;
 import cn.iocoder.yudao.module.system.framework.inquiry.config.WebsiteInquiryProperties;
+import cn.iocoder.yudao.module.system.service.inquiry.mail.WebsiteInquiryMailService;
 import cn.iocoder.yudao.module.system.service.notify.NotifySendService;
 import cn.iocoder.yudao.module.system.service.tenant.TenantService;
 import org.junit.jupiter.api.AfterEach;
@@ -42,6 +43,8 @@ class WebsiteInquiryServiceImplTest extends BaseMockitoUnitTest {
     private NotifySendService notifySendService;
     @Mock
     private CrmWebsiteInquiryApi crmWebsiteInquiryApi;
+    @Mock
+    private WebsiteInquiryMailService websiteInquiryMailService;
 
     @AfterEach
     void tearDown() {
@@ -89,6 +92,7 @@ class WebsiteInquiryServiceImplTest extends BaseMockitoUnitTest {
         assertEquals("-", params.get("companyName"));
         assertEquals("Hotel dining chair project", params.get("subject"));
         assertEquals("google", params.get("utmSource"));
+        verify(websiteInquiryMailService).ensureDeliveryAndSend(7001L);
     }
 
     @Test
@@ -107,6 +111,7 @@ class WebsiteInquiryServiceImplTest extends BaseMockitoUnitTest {
 
         assertEquals(7001L, inquiryId);
         verify(notifySendService, never()).sendSingleNotifyToAdmin(any(), any(), any());
+        verify(websiteInquiryMailService).ensureDeliveryAndSend(7001L);
     }
 
     @Test

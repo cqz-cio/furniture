@@ -74,6 +74,19 @@ public interface MailSendService {
                         File... attachments);
 
     /**
+     * 发送已经安全渲染完成的 HTML 邮件。
+     *
+     * <p>该入口仍然复用系统邮件账号、模板元数据、异步发送和邮件日志，
+     * 但不会再次对标题或正文做模板替换。</p>
+     */
+    Long sendPreparedMail(Collection<String> toMails, Collection<String> ccMails,
+                          Collection<String> bccMails, Collection<String> replyToMails,
+                          Long userId, Integer userType,
+                          String templateCode, Map<String, Object> logParams,
+                          String title, String htmlContent, Long websiteInquiryDeliveryId,
+                          File... attachments);
+
+    /**
      * 执行真正的邮件发送
      * 注意，该方法仅仅提供给 MQ Consumer 使用
      *

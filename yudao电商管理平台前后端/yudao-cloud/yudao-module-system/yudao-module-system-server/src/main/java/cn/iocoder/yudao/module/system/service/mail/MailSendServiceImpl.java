@@ -16,7 +16,7 @@ import com.google.common.annotations.VisibleForTesting;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.hutool.extra.mail.MailAccount;
-import org.dromara.hutool.extra.mail.MailUtil;
+import org.dromara.hutool.extra.mail.Mail;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
@@ -87,18 +87,77 @@ public class MailSendServiceImpl implements MailSendService {
             throw exception(MAIL_SEND_MAIL_NOT_EXISTS);
         }
 
-        // 创建发送日志。如果模板被禁用，则不发送短信，只记录日志
+        // 创建发送日志。如果模板被禁用，则不发送邮件，只记录日志
         Boolean isSend = CommonStatusEnum.ENABLE.getStatus().equals(template.getStatus());
         String title = mailTemplateService.formatMailTemplateContent(template.getTitle(), templateParams);
         String content = mailTemplateService.formatMailTemplateContent(template.getContent(), templateParams);
-        Long sendLogId = mailLogService.createMailLog(userId, userType, toMailSet, ccMailSet, bccMailSet,
-                account, template, content, templateParams, isSend);
-        // 发送 MQ 消息，异步执行发送短信
+        Long sendLogId = createLogAndPublish(userId, userType, toMailSet, ccMailSet, bccMailSet, null,
+                account, template, title, content, templateParams, isSend, false, null, attachments);
+        return sendLogId;
+    }
+
+    @Override
+    public Long sendPreparedMail(Collection<String> toMails, Collection<String> ccMails,
+                                 Collection<String> bccMails, Collection<String> replyToMails,
+                                 Long userId, Integer userType,
+                                 String templateCode, Map<String, Object> logParams,
+                                 String title, String htmlContent, Long websiteInquiryDeliveryId,
+                                 File... attachments) {
+        MailTemplateDO template = validateMailTemplate(templateCode);
+        MailAccountDO account = validateMailAccount(template.getAccountId());
+        if (StrUtil.isBlank(title) || StrUtil.isBlank(htmlContent)) {
+            throw exception(MAIL_SEND_TEMPLATE_PARAM_MISS, "renderedContent");
+        }
+
+        Collection<String> toMailSet = collectValidMails(getUserMail(userId, userType), toMails);
+        Collection<String> ccMailSet = collectValidMails(null, ccMails);
+        Collection<String> bccMailSet = collectValidMails(null, bccMails);
+        Collection<String> replyToMailSet = collectValidMails(null, replyToMails);
+        if (CollUtil.isEmpty(toMailSet)) {
+            throw exception(MAIL_SEND_MAIL_NOT_EXISTS);
+        }
+
+        Boolean isSend = CommonStatusEnum.ENABLE.getStatus().equals(template.getStatus());
+        return createLogAndPublish(userId, userType, toMailSet, ccMailSet, bccMailSet, replyToMailSet,
+                account, template, title, htmlContent, logParams, isSend,
+                true, websiteInquiryDeliveryId, attachments);
+    }
+
+    private Long createLogAndPublish(Long userId, Integer userType,
+                                     Collection<String> toMails, Collection<String> ccMails,
+                                     Collection<String> bccMails, Collection<String> replyToMails,
+                                     MailAccountDO account, MailTemplateDO template,
+                                     String title, String content, Map<String, Object> logParams,
+                                     Boolean isSend, boolean prepared,
+                                     Long websiteInquiryDeliveryId, File[] attachments) {
+        Long sendLogId = prepared
+                ? mailLogService.createPreparedMailLog(userId, userType, toMails, ccMails, bccMails,
+                        account, template, title, content, logParams, isSend)
+                : mailLogService.createMailLog(userId, userType, toMails, ccMails, bccMails,
+                        account, template, content, logParams, isSend);
+        // 发送 Spring Event，异步执行邮件发送
         if (isSend) {
-            mailProducer.sendMailSendMessage(sendLogId, toMailSet, ccMailSet, bccMailSet,
-                    account.getId(), template.getNickname(), title, content, attachments);
+            if (CollUtil.isEmpty(replyToMails) && websiteInquiryDeliveryId == null) {
+                mailProducer.sendMailSendMessage(sendLogId, toMails, ccMails, bccMails,
+                        account.getId(), template.getNickname(), title, content, attachments);
+            } else {
+                mailProducer.sendMailSendMessage(sendLogId, toMails, ccMails, bccMails, replyToMails,
+                        account.getId(), template.getNickname(), title, content, attachments,
+                        websiteInquiryDeliveryId);
+            }
         }
         return sendLogId;
+    }
+
+    private Collection<String> collectValidMails(String firstMail, Collection<String> mails) {
+        Collection<String> result = new LinkedHashSet<>();
+        if (Validator.isEmail(firstMail)) {
+            result.add(firstMail);
+        }
+        if (CollUtil.isNotEmpty(mails)) {
+            mails.stream().filter(Validator::isEmail).forEach(result::add);
+        }
+        return result;
     }
 
     private String getUserMail(Long userId, Integer userType) {
@@ -119,13 +178,28 @@ public class MailSendServiceImpl implements MailSendService {
 
     @Override
     public void doSendMail(MailSendMessage message) {
-        // 1. 创建发送账号
-        MailAccountDO account = validateMailAccount(message.getAccountId());
-        MailAccount mailAccount  = buildMailAccount(account, message.getNickname());
-        // 2. 发送邮件
         try {
-            String messageId = MailUtil.send(mailAccount, message.getToMails(), message.getCcMails(), message.getBccMails(),
-                    message.getTitle(), message.getContent(), true, message.getAttachments());
+            // 1. 创建发送账号
+            MailAccountDO account = validateMailAccount(message.getAccountId());
+            MailAccount mailAccount = buildMailAccount(account, message.getNickname());
+            // 2. 发送邮件
+            Mail mail = Mail.of(mailAccount)
+                    .setTos(message.getToMails().toArray(String[]::new))
+                    .setTitle(message.getTitle())
+                    .setContent(message.getContent(), true);
+            if (CollUtil.isNotEmpty(message.getCcMails())) {
+                mail.setCcs(message.getCcMails().toArray(String[]::new));
+            }
+            if (CollUtil.isNotEmpty(message.getBccMails())) {
+                mail.setBccs(message.getBccMails().toArray(String[]::new));
+            }
+            if (CollUtil.isNotEmpty(message.getReplyToMails())) {
+                mail.setReply(message.getReplyToMails().toArray(String[]::new));
+            }
+            if (message.getAttachments() != null && message.getAttachments().length > 0) {
+                mail.setFiles(message.getAttachments());
+            }
+            String messageId = mail.send();
             // 3. 更新结果（成功）
             mailLogService.updateMailSendResult(message.getLogId(), messageId, null);
         } catch (Exception e) {

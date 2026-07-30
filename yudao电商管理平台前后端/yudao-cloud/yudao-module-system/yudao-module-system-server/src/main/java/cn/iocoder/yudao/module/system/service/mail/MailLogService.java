@@ -55,6 +55,19 @@ public interface MailLogService {
                        String templateContent, Map<String, Object> templateParams, Boolean isSend);
 
     /**
+     * 创建已经完成安全渲染的邮件日志。
+     *
+     * <p>普通邮件继续使用模板原始标题；询盘邮件使用本方法记录实际发送标题，
+     * 便于在 ERP 邮件日志中准确追踪。</p>
+     */
+    Long createPreparedMailLog(Long userId, Integer userType,
+                               Collection<String> toMails, Collection<String> ccMails,
+                               Collection<String> bccMails, MailAccountDO account,
+                               MailTemplateDO template, String renderedTitle,
+                               String renderedContent, Map<String, Object> logParams,
+                               Boolean isSend);
+
+    /**
      * 更新邮件发送结果
      *
      * @param logId  日志编号

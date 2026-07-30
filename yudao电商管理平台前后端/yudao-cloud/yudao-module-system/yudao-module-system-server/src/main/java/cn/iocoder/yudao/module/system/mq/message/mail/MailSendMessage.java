@@ -34,6 +34,10 @@ public class MailSendMessage {
      */
     private Collection<String> bccMails;
     /**
+     * 回复邮箱地址
+     */
+    private Collection<String> replyToMails;
+    /**
      * 邮件账号编号
      */
     @NotNull(message = "邮件账号编号不能为空")
@@ -58,5 +62,15 @@ public class MailSendMessage {
      * 附件
      */
     private File[] attachments;
+
+    /**
+     * 关联的官网询盘邮件投递编号。普通系统邮件为空。
+     */
+    private Long websiteInquiryDeliveryId;
+
+    /**
+     * 关联询盘所属租户。异步线程回写投递结果时使用。
+     */
+    private Long websiteInquiryTenantId;
 
 }

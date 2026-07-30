@@ -32,4 +32,9 @@ public class WebsiteInquiryProperties {
      */
     private String templateCode = "vanz_website_inquiry";
 
+    /**
+     * 是否启用询盘邮件失败重试。
+     */
+    private boolean mailRetryEnabled = true;
+
 }
