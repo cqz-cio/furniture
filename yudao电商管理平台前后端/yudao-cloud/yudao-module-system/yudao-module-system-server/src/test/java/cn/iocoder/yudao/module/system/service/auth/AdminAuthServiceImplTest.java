@@ -3,6 +3,7 @@ package cn.iocoder.yudao.module.system.service.auth;
 import cn.hutool.core.util.ReflectUtil;
 import cn.iocoder.yudao.framework.common.enums.CommonStatusEnum;
 import cn.iocoder.yudao.framework.common.enums.UserTypeEnum;
+import cn.iocoder.yudao.framework.common.exception.ServiceException;
 import cn.iocoder.yudao.framework.test.core.ut.BaseDbUnitTest;
 import cn.iocoder.yudao.module.system.api.sms.SmsCodeApi;
 import cn.iocoder.yudao.module.system.api.social.dto.SocialUserBindReqDTO;
@@ -17,6 +18,7 @@ import cn.iocoder.yudao.module.system.enums.social.SocialTypeEnum;
 import cn.iocoder.yudao.module.system.service.logger.LoginLogService;
 import cn.iocoder.yudao.module.system.service.member.MemberService;
 import cn.iocoder.yudao.module.system.service.oauth2.OAuth2TokenService;
+import cn.iocoder.yudao.module.system.service.permission.PermissionService;
 import cn.iocoder.yudao.module.system.service.social.SocialUserService;
 import cn.iocoder.yudao.module.system.service.user.AdminUserService;
 import com.anji.captcha.model.common.ResponseModel;
@@ -58,6 +60,8 @@ public class AdminAuthServiceImplTest extends BaseDbUnitTest {
     private SmsCodeApi smsCodeApi;
     @MockitoBean
     private OAuth2TokenService oauth2TokenService;
+    @MockitoBean
+    private PermissionService permissionService;
     @MockitoBean
     private MemberService memberService;
     @MockitoBean
@@ -171,6 +175,7 @@ public class AdminAuthServiceImplTest extends BaseDbUnitTest {
         // 调用，并校验
         AuthLoginRespVO loginRespVO = authService.login(reqVO);
         assertPojoEquals(accessTokenDO, loginRespVO);
+        verify(permissionService).validateUserRoleForLogin(user.getId());
         // 校验调用参数
         verify(loginLogService).createLoginLog(
                 argThat(o -> o.getLogType().equals(LoginLogTypeEnum.LOGIN_USERNAME.getType())
@@ -323,6 +328,20 @@ public class AdminAuthServiceImplTest extends BaseDbUnitTest {
         AuthLoginRespVO loginRespVO = authService.refreshToken(refreshToken);
         // 断言
         assertPojoEquals(accessTokenDO, loginRespVO);
+        verify(permissionService).validateUserRoleForLogin(accessTokenDO.getUserId());
+    }
+
+    @Test
+    public void testRefreshToken_roleInvalid() {
+        String refreshToken = randomString();
+        OAuth2AccessTokenDO accessTokenDO = randomPojo(OAuth2AccessTokenDO.class);
+        when(oauth2TokenService.refreshAccessToken(eq(refreshToken), eq("default")))
+                .thenReturn(accessTokenDO);
+        doThrow(new ServiceException(AUTH_LOGIN_ROLE_INVALID))
+                .when(permissionService).validateUserRoleForLogin(accessTokenDO.getUserId());
+
+        assertServiceException(() -> authService.refreshToken(refreshToken), AUTH_LOGIN_ROLE_INVALID);
+        verify(oauth2TokenService).removeAccessToken(accessTokenDO.getAccessToken());
     }
 
     @Test

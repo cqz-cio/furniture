@@ -2,9 +2,12 @@ import request from '@/config/axios'
 
 export interface UserVO {
   id: number
+  tenantId?: number
+  roleId?: number
   username: string
   nickname: string
   deptId: number
+  deptName?: string
   postIds: string[]
   email: string
   mobile: string

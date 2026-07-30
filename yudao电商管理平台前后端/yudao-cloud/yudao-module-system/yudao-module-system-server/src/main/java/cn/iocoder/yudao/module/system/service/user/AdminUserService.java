@@ -193,9 +193,10 @@ public interface AdminUserService {
      *
      * @param importUsers     导入用户列表
      * @param isUpdateSupport 是否支持更新
+     * @param roleId          导入账号统一绑定的唯一角色
      * @return 导入结果
      */
-    UserImportRespVO importUserList(List<UserImportExcelVO> importUsers, boolean isUpdateSupport);
+    UserImportRespVO importUserList(List<UserImportExcelVO> importUsers, boolean isUpdateSupport, Long roleId);
 
     /**
      * 获得指定状态的用户们

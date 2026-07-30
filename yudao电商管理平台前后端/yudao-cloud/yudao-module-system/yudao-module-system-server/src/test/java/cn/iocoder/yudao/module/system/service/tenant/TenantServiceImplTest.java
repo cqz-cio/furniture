@@ -149,6 +149,7 @@ public class TenantServiceImplTest extends BaseDbUnitTest {
             assertEquals("yuanma", user.getPassword());
             assertEquals("芋道", user.getNickname());
             assertEquals("15601691300", user.getMobile());
+            assertEquals(200L, user.getRoleId());
             return true;
         }))).thenReturn(300L);
 
@@ -175,8 +176,6 @@ public class TenantServiceImplTest extends BaseDbUnitTest {
         assertEquals(300L, tenant.getContactUserId());
         // verify 分配权限
         verify(permissionService).assignRoleMenu(eq(200L), same(tenantPackage.getMenuIds()));
-        // verify 分配角色
-        verify(permissionService).assignUserRole(eq(300L), eq(singleton(200L)));
     }
 
     @Test

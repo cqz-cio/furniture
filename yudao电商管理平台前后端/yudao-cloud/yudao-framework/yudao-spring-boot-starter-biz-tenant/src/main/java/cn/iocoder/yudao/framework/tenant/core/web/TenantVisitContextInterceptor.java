@@ -20,7 +20,8 @@ import static cn.iocoder.yudao.framework.common.exception.util.ServiceExceptionU
 @Slf4j
 public class TenantVisitContextInterceptor implements HandlerInterceptor {
 
-    private static final String PERMISSION = "system:tenant:visit";
+    private static final Long PLATFORM_TENANT_ID = 1L;
+    private static final String SUPER_ADMIN_ROLE = "super_admin";
 
     private final TenantProperties tenantProperties;
 
@@ -43,7 +44,8 @@ public class TenantVisitContextInterceptor implements HandlerInterceptor {
         }
 
         // 校验用户是否可切换租户
-        if (!securityFrameworkService.hasAnyPermissions(PERMISSION)) {
+        if (!ObjUtil.equal(loginUser.getTenantId(), PLATFORM_TENANT_ID)
+                || !securityFrameworkService.hasAnyRoles(SUPER_ADMIN_ROLE)) {
             throw exception0(GlobalErrorCodeConstants.FORBIDDEN.getCode(), "您无权切换租户");
         }
 

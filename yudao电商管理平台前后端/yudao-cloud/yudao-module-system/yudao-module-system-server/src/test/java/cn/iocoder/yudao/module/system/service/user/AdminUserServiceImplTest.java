@@ -131,6 +131,7 @@ public class AdminUserServiceImplTest extends BaseDbUnitTest {
         assertPojoEquals(reqVO, user, "password", "id");
         assertEquals("yudaoyuanma", user.getPassword());
         assertEquals(CommonStatusEnum.ENABLE.getStatus(), user.getStatus());
+        verify(permissionService).assignUserRole(userId, singleton(reqVO.getRoleId()));
         // 断言关联岗位
         List<UserPostDO> userPosts = userPostMapper.selectListByUserId(user.getId());
         assertEquals(1L, userPosts.get(0).getPostId());
@@ -185,6 +186,7 @@ public class AdminUserServiceImplTest extends BaseDbUnitTest {
         // 断言
         AdminUserDO user = userMapper.selectById(reqVO.getId());
         assertPojoEquals(reqVO, user, "password");
+        verify(permissionService).assignUserRole(reqVO.getId(), singleton(reqVO.getRoleId()));
         // 断言关联岗位
         List<UserPostDO> userPosts = userPostMapper.selectListByUserId(user.getId());
         assertEquals(2L, userPosts.get(0).getPostId());
@@ -424,7 +426,7 @@ public class AdminUserServiceImplTest extends BaseDbUnitTest {
         doThrow(new ServiceException(DEPT_NOT_FOUND)).when(deptService).validateDeptList(any());
 
         // 调用
-        UserImportRespVO respVO = userService.importUserList(newArrayList(importUser), true);
+        UserImportRespVO respVO = userService.importUserList(newArrayList(importUser), true, 200L);
         // 断言
         assertEquals(0, respVO.getCreateUsernames().size());
         assertEquals(0, respVO.getUpdateUsernames().size());
@@ -454,7 +456,7 @@ public class AdminUserServiceImplTest extends BaseDbUnitTest {
         when(passwordEncoder.encode(eq("yudaoyuanma"))).thenReturn("java");
 
         // 调用
-        UserImportRespVO respVO = userService.importUserList(newArrayList(importUser), true);
+        UserImportRespVO respVO = userService.importUserList(newArrayList(importUser), true, 200L);
         // 断言
         assertEquals(1, respVO.getCreateUsernames().size());
         AdminUserDO user = userMapper.selectByUsername(respVO.getCreateUsernames().get(0));
@@ -488,7 +490,7 @@ public class AdminUserServiceImplTest extends BaseDbUnitTest {
         when(deptService.getDept(eq(dept.getId()))).thenReturn(dept);
 
         // 调用
-        UserImportRespVO respVO = userService.importUserList(newArrayList(importUser), false);
+        UserImportRespVO respVO = userService.importUserList(newArrayList(importUser), false, 200L);
         // 断言
         assertEquals(0, respVO.getCreateUsernames().size());
         assertEquals(0, respVO.getUpdateUsernames().size());
@@ -520,7 +522,7 @@ public class AdminUserServiceImplTest extends BaseDbUnitTest {
         when(deptService.getDept(eq(dept.getId()))).thenReturn(dept);
 
         // 调用
-        UserImportRespVO respVO = userService.importUserList(newArrayList(importUser), true);
+        UserImportRespVO respVO = userService.importUserList(newArrayList(importUser), true, 200L);
         // 断言
         assertEquals(0, respVO.getCreateUsernames().size());
         assertEquals(1, respVO.getUpdateUsernames().size());

@@ -82,6 +82,29 @@
         </el-col>
       </el-row>
       <el-row>
+        <el-col :span="12">
+          <el-form-item label="角色" prop="roleId">
+            <el-select
+              v-model="formData.roleId"
+              :disabled="isCurrentSuperAdmin"
+              placeholder="请选择唯一角色"
+            >
+              <el-option
+                v-for="item in assignableRoleList"
+                :key="item.id"
+                :label="item.name"
+                :value="item.id"
+              />
+            </el-select>
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
+          <el-form-item label="绑定租户">
+            <el-input :model-value="'租户 #' + (formData.tenantId || currentTenantId)" disabled />
+          </el-form-item>
+        </el-col>
+      </el-row>
+      <el-row>
         <el-col :span="24">
           <el-form-item label="备注">
             <el-input v-model="formData.remark" placeholder="请输入内容" type="textarea" />
@@ -101,7 +124,9 @@ import { CommonStatusEnum } from '@/utils/constants'
 import { defaultProps, handleTree } from '@/utils/tree'
 import * as PostApi from '@/api/system/post'
 import * as DeptApi from '@/api/system/dept'
+import * as RoleApi from '@/api/system/role'
 import * as UserApi from '@/api/system/user'
+import { getTenantId, getVisitTenantId } from '@/utils/auth'
 import { FormRules } from 'element-plus'
 
 defineOptions({ name: 'SystemUserForm' })
@@ -119,18 +144,20 @@ const formData = ref({
   mobile: '',
   email: '',
   id: undefined,
+  tenantId: undefined,
   username: '',
   password: '',
   sex: undefined,
   postIds: [],
   remark: '',
   status: CommonStatusEnum.ENABLE,
-  roleIds: []
+  roleId: undefined
 })
 const formRules = reactive<FormRules>({
   username: [{ required: true, message: '用户名称不能为空', trigger: 'blur' }],
   nickname: [{ required: true, message: '用户昵称不能为空', trigger: 'blur' }],
   password: [{ required: true, message: '用户密码不能为空', trigger: 'blur' }],
+  roleId: [{ required: true, message: '角色不能为空', trigger: 'change' }],
   email: [
     {
       type: 'email',
@@ -149,6 +176,14 @@ const formRules = reactive<FormRules>({
 const formRef = ref() // 表单 Ref
 const deptList = ref<Tree[]>([]) // 树形结构
 const postList = ref([] as PostApi.PostVO[]) // 岗位列表
+const roleList = ref([] as RoleApi.RoleVO[]) // 当前租户的角色列表
+const currentTenantId = computed(() => getVisitTenantId() || getTenantId())
+const isCurrentSuperAdmin = computed(() =>
+  roleList.value.some((item) => item.id === formData.value.roleId && item.code === 'super_admin')
+)
+const assignableRoleList = computed(() =>
+  roleList.value.filter((item) => item.code !== 'super_admin' || isCurrentSuperAdmin.value)
+)
 
 /** 打开弹窗 */
 const open = async (type: string, id?: number) => {
@@ -169,6 +204,8 @@ const open = async (type: string, id?: number) => {
   deptList.value = handleTree(await DeptApi.getSimpleDeptList())
   // 加载岗位列表
   postList.value = await PostApi.getSimplePostList()
+  // 加载当前租户的启用角色
+  roleList.value = await RoleApi.getSimpleRoleList()
 }
 defineExpose({ open }) // 提供 open 方法，用于打开弹窗
 
@@ -206,13 +243,14 @@ const resetForm = () => {
     mobile: '',
     email: '',
     id: undefined,
+    tenantId: undefined,
     username: '',
     password: '',
     sex: undefined,
     postIds: [],
     remark: '',
     status: CommonStatusEnum.ENABLE,
-    roleIds: []
+    roleId: undefined
   }
   formRef.value?.resetFields()
 }

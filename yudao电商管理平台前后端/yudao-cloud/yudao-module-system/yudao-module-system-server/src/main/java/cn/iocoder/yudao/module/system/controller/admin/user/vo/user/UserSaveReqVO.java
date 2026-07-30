@@ -41,6 +41,11 @@ public class UserSaveReqVO {
     @DiffLogField(name = "部门", function = DeptParseFunction.NAME)
     private Long deptId;
 
+    @Schema(description = "唯一角色编号", requiredMode = Schema.RequiredMode.REQUIRED, example = "2")
+    @NotNull(message = "角色不能为空")
+    @DiffLogField(name = "角色")
+    private Long roleId;
+
     @Schema(description = "岗位编号数组", example = "1")
     @DiffLogField(name = "岗位", function = PostParseFunction.NAME)
     private Set<Long> postIds;

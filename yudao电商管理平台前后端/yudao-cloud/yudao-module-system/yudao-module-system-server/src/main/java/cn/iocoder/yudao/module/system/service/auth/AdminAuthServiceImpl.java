@@ -24,6 +24,7 @@ import cn.iocoder.yudao.module.system.enums.sms.SmsSceneEnum;
 import cn.iocoder.yudao.module.system.service.logger.LoginLogService;
 import cn.iocoder.yudao.module.system.service.member.MemberService;
 import cn.iocoder.yudao.module.system.service.oauth2.OAuth2TokenService;
+import cn.iocoder.yudao.module.system.service.permission.PermissionService;
 import cn.iocoder.yudao.module.system.service.social.SocialUserService;
 import cn.iocoder.yudao.module.system.service.user.AdminUserService;
 import com.anji.captcha.model.common.ResponseModel;
@@ -59,6 +60,8 @@ public class AdminAuthServiceImpl implements AdminAuthService {
     private LoginLogService loginLogService;
     @Resource
     private OAuth2TokenService oauth2TokenService;
+    @Resource
+    private PermissionService permissionService;
     @Resource
     private SocialUserService socialUserService;
     @Resource
@@ -210,6 +213,8 @@ public class AdminAuthServiceImpl implements AdminAuthService {
     }
 
     private AuthLoginRespVO createTokenAfterLoginSuccess(Long userId, String username, LoginLogTypeEnum logType) {
+        // 账号必须绑定且仅绑定一个同租户的启用角色，才允许签发 Token。
+        permissionService.validateUserRoleForLogin(userId);
         // 插入登陆日志
         createLoginLog(userId, username, logType, LoginResultEnum.SUCCESS);
         // 创建访问令牌
@@ -222,6 +227,13 @@ public class AdminAuthServiceImpl implements AdminAuthService {
     @Override
     public AuthLoginRespVO refreshToken(String refreshToken) {
         OAuth2AccessTokenDO accessTokenDO = oauth2TokenService.refreshAccessToken(refreshToken, OAuth2ClientConstants.CLIENT_ID_DEFAULT);
+        try {
+            permissionService.validateUserRoleForLogin(accessTokenDO.getUserId());
+        } catch (RuntimeException ex) {
+            // 刷新期间角色关系失效时，立即撤销刚签发的访问令牌及对应刷新令牌。
+            oauth2TokenService.removeAccessToken(accessTokenDO.getAccessToken());
+            throw ex;
+        }
         return BeanUtils.toBean(accessTokenDO, AuthLoginRespVO.class);
     }
 

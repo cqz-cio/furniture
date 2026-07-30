@@ -28,18 +28,18 @@ public interface RedisKeyConstants {
     /**
      * 用户拥有的角色编号的缓存
      * <p>
-     * KEY 格式：user_role_ids:{userId}
+     * KEY 格式：user_role_ids_v2:{userId}
      * VALUE 数据类型：String 角色编号集合
      */
-    String USER_ROLE_ID_LIST = "user_role_ids";
+    String USER_ROLE_ID_LIST = "user_role_ids_v2";
 
     /**
      * 拥有指定菜单的角色编号的缓存
      * <p>
-     * KEY 格式：user_role_ids:{menuId}
+     * KEY 格式：menu_role_ids_v2:{menuId}
      * VALUE 数据类型：String 角色编号集合
      */
-    String MENU_ROLE_ID_LIST = "menu_role_ids";
+    String MENU_ROLE_ID_LIST = "menu_role_ids_v2";
 
     /**
      * 拥有权限对应的菜单编号数组的缓存
@@ -60,12 +60,12 @@ public interface RedisKeyConstants {
     /**
      * 访问令牌的缓存
      * <p>
-     * KEY 格式：oauth2_access_token:{token}
+     * KEY 格式：oauth2_access_token_v2:{token}
      * VALUE 数据类型：String 访问令牌信息 {@link OAuth2AccessTokenDO}
      * <p>
      * 由于动态过期时间，使用 RedisTemplate 操作
      */
-    String OAUTH2_ACCESS_TOKEN = "oauth2_access_token:%s";
+    String OAUTH2_ACCESS_TOKEN = "oauth2_access_token_v2:%s";
 
     /**
      * 站内信模版的缓存

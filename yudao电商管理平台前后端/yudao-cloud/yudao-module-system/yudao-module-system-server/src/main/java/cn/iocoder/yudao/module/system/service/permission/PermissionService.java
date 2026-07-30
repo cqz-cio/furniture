@@ -86,12 +86,19 @@ public interface PermissionService {
     // ========== 用户-角色的相关方法  ==========
 
     /**
-     * 设置用户角色
+     * 设置用户唯一角色
      *
-     * @param userId  角色编号
-     * @param roleIds 角色编号集合
+     * @param userId  用户编号
+     * @param roleIds 唯一角色编号集合
      */
     void assignUserRole(Long userId, Set<Long> roleIds);
+
+    /**
+     * 校验用户是否绑定且仅绑定一个同租户的启用角色。
+     *
+     * @param userId 用户编号
+     */
+    void validateUserRoleForLogin(Long userId);
 
     /**
      * 处理用户删除时，删除关联授权数据
