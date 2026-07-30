@@ -48,6 +48,7 @@ import java.util.Objects;
 import static cn.iocoder.yudao.framework.common.exception.util.ServiceExceptionUtil.exception;
 import static cn.iocoder.yudao.framework.common.util.collection.CollectionUtils.convertList;
 import static cn.iocoder.yudao.framework.common.util.collection.CollectionUtils.singleton;
+import static cn.iocoder.yudao.framework.security.core.util.SecurityFrameworkUtils.skipPermissionCheck;
 import static cn.iocoder.yudao.module.crm.enums.ErrorCodeConstants.CLUE_NOT_EXISTS;
 import static cn.iocoder.yudao.module.crm.enums.ErrorCodeConstants.CLUE_TRANSFORM_FAIL_ALREADY;
 import static cn.iocoder.yudao.module.crm.enums.ErrorCodeConstants.INQUIRY_COMPANY_NAME_REQUIRED;
@@ -292,6 +293,10 @@ public class CrmClueServiceImpl implements CrmClueService {
             }
             companyName = normalize(clue.getName());
         }
+        // 跨租户访问的平台管理员并不属于被访问租户。此时沿用询盘负责人，
+        // 避免新客户和联系人被错误归属给租户内不存在的平台账号。
+        Long conversionOwnerUserId = skipPermissionCheck() && clue.getOwnerUserId() != null
+                ? clue.getOwnerUserId() : userId;
 
         // 2.1 按公司名称复用客户；没有匹配项时创建客户档案。
         CrmCustomerDO customer = customerMapper.selectByCustomerName(companyName);
@@ -308,11 +313,12 @@ public class CrmClueServiceImpl implements CrmClueService {
             customerReqBO.setTelephone(buildFullPhone(clue.getCountryCode(), clue.getTelephone()));
             customerReqBO.setEmail(normalize(clue.getEmail()).toLowerCase(Locale.ROOT));
             customerReqBO.setRemark(buildConversionRemark(clue));
-            customerId = customerService.createCustomer(customerReqBO, userId);
-            contactOwnerUserId = userId;
+            customerId = customerService.createCustomer(customerReqBO, conversionOwnerUserId);
+            contactOwnerUserId = conversionOwnerUserId;
         } else {
             customerId = customer.getId();
-            contactOwnerUserId = customer.getOwnerUserId() != null ? customer.getOwnerUserId() : userId;
+            contactOwnerUserId = customer.getOwnerUserId() != null
+                    ? customer.getOwnerUserId() : conversionOwnerUserId;
         }
 
         // 2.2 按“客户 + 邮箱”优先查重，再以电话兜底；没有匹配项时创建联系人。

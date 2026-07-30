@@ -1,6 +1,7 @@
 package cn.iocoder.yudao.module.crm.service.clue;
 
 import cn.iocoder.yudao.framework.common.exception.ServiceException;
+import cn.iocoder.yudao.framework.security.core.util.SecurityFrameworkUtils;
 import cn.iocoder.yudao.module.crm.api.inquiry.dto.CrmWebsiteInquiryCreateReqDTO;
 import cn.iocoder.yudao.module.crm.api.inquiry.dto.CrmWebsiteInquiryCreateRespDTO;
 import cn.iocoder.yudao.module.crm.controller.admin.clue.vo.CrmClueTransformRespVO;
@@ -22,6 +23,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
@@ -35,6 +37,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -163,6 +166,42 @@ class CrmClueServiceImplTest {
         assertEquals(CrmInquiryProcessStatusEnum.PROCESSED.getStatus(),
                 inquiryUpdate.getProcessStatus());
         verify(clueMapper, never()).deleteById(INQUIRY_ID);
+    }
+
+    @Test
+    void transformClue_crossTenantVisitUsesInquiryOwnerForCreatedRecords() {
+        Long platformUserId = 1L;
+        CrmClueDO inquiry = createInquiry();
+        when(clueMapper.selectById(INQUIRY_ID)).thenReturn(inquiry);
+        when(customerMapper.selectByCustomerName("Northstar Interiors")).thenReturn(null);
+        when(customerService.createCustomer(any(CrmCustomerCreateReqBO.class), eq(USER_ID)))
+                .thenReturn(CUSTOMER_ID);
+        when(contactMapper.selectListByCustomerId(CUSTOMER_ID)).thenReturn(Collections.emptyList());
+        when(followUpRecordService.getFollowUpRecordByBiz(any(), any()))
+                .thenReturn(Collections.emptyList());
+        doAnswer(invocation -> {
+            invocation.<CrmContactDO>getArgument(0).setId(CONTACT_ID);
+            return 1;
+        }).when(contactMapper).insert(any(CrmContactDO.class));
+
+        try (MockedStatic<SecurityFrameworkUtils> securityFrameworkUtils =
+                     mockStatic(SecurityFrameworkUtils.class)) {
+            securityFrameworkUtils.when(SecurityFrameworkUtils::skipPermissionCheck).thenReturn(true);
+
+            CrmClueTransformRespVO result = clueService.transformClue(INQUIRY_ID, platformUserId);
+
+            assertEquals(CUSTOMER_ID, result.getCustomerId());
+            assertEquals(CONTACT_ID, result.getContactId());
+        }
+
+        verify(customerService).createCustomer(any(CrmCustomerCreateReqBO.class), eq(USER_ID));
+        ArgumentCaptor<CrmContactDO> contactCaptor = ArgumentCaptor.forClass(CrmContactDO.class);
+        verify(contactMapper).insert(contactCaptor.capture());
+        assertEquals(USER_ID, contactCaptor.getValue().getOwnerUserId());
+        ArgumentCaptor<CrmPermissionCreateReqBO> permissionCaptor =
+                ArgumentCaptor.forClass(CrmPermissionCreateReqBO.class);
+        verify(crmPermissionService).createPermission(permissionCaptor.capture());
+        assertEquals(USER_ID, permissionCaptor.getValue().getUserId());
     }
 
     @Test
