@@ -46,6 +46,9 @@ public class AppProductSpuDetailRespVO {
     @Schema(description = "家具 Web 详情页配置")
     private Map<String, Object> detailConfig;
 
+    @Schema(description = "当前租户网站商品字段策略", requiredMode = Schema.RequiredMode.REQUIRED)
+    private AppProductFieldPolicyRespVO displayPolicy;
+
     // ========== 营销相关字段 =========
 
     // ========== SKU 相关字段 =========

@@ -8840,6 +8840,16 @@ SET mapping.`erp_product_code` = CONCAT(tenant.`code`, '-', mapping.`tenant_id`,
     mapping.`update_time` = CURRENT_TIMESTAMP
 WHERE mapping.`deleted` = b'0';
 
+-- BEGIN V029__tenant_b2b_product_fields.sql
+-- Align the furniture B2B website product fields with an ERP-managed tenant policy.
+-- Product name, images and route IDs remain protocol fields; this list controls optional public content.
+
+ALTER TABLE `system_tenant`
+  ADD COLUMN `website_product_fields` varchar(1024) NOT NULL
+    DEFAULT 'category,badges,introduction,skuCode,collection,heroNote,fabricSelector,optionGroups,highlights,description,accordions,skuProperties,relatedProducts,relatedLinks'
+    COMMENT '网站公开商品字段，逗号分隔'
+    AFTER `business_mode`;
+
 -- BEGIN Oakved demo catalog
 -- Oakved demo catalog: tenant 121, 26 mall products, ERP products, stock and mappings.
 SET @tenant_id = 121;
@@ -9046,4 +9056,5 @@ INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256)
 INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('026','website inquiry notify','V026__website_inquiry_notify.sql','618a9b14b493aeeff26fbd923ca21ca9bd94a0e39f8ded431cfb1331c847dac2') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
 INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('027','align furniture navigation permissions','V027__align_furniture_navigation_permissions.sql','356277b0a13704ffdfd3f837eb59fb6e4c02ef733000aaf00c66119a90ab7319') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
 INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('028','tenant sku code','V028__tenant_sku_code.sql','fc60d04a3a9a0e7f52a4bfce39381c7efe8caf251f64973f9ef2f434da4928d2') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
+INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('029','tenant b2b product fields','V029__tenant_b2b_product_fields.sql','b2e78498b70c05147d5c4164780408fca253262562720a7b5e93466a0c9bac53') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
 SET FOREIGN_KEY_CHECKS = 1;

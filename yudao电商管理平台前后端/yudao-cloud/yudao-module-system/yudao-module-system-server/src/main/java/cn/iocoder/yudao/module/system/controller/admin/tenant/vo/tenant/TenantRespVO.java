@@ -48,6 +48,9 @@ public class TenantRespVO {
     @ExcelProperty("业务模式")
     private String businessMode;
 
+    @Schema(description = "网站公开商品字段")
+    private List<String> websiteProductFields;
+
     @Schema(description = "租户套餐编号", requiredMode = Schema.RequiredMode.REQUIRED, example = "1024")
     private Long packageId;
 

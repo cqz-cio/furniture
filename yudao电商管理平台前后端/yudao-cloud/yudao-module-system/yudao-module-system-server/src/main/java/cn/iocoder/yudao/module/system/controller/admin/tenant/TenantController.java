@@ -15,6 +15,7 @@ import cn.iocoder.yudao.module.system.controller.admin.tenant.vo.tenant.TenantRe
 import cn.iocoder.yudao.module.system.controller.admin.tenant.vo.tenant.TenantSaveReqVO;
 import cn.iocoder.yudao.module.system.dal.dataobject.tenant.TenantDO;
 import cn.iocoder.yudao.module.system.enums.tenant.TenantBusinessModeEnum;
+import cn.iocoder.yudao.module.system.enums.tenant.TenantProductFieldEnum;
 import cn.iocoder.yudao.module.system.service.tenant.TenantService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -92,7 +93,9 @@ public class TenantController {
         return success(new TenantBusinessProfileRespVO()
                 .setTenantId(effectiveTenantId)
                 .setBusinessMode(businessMode.getCode())
-                .setInventoryEnabled(businessMode.isInventoryEnabled()));
+                .setInventoryEnabled(businessMode.isInventoryEnabled())
+                .setWebsiteProductFields(TenantProductFieldEnum.resolve(
+                        businessMode.getCode(), tenant.getWebsiteProductFields())));
     }
 
     @PostMapping("/create")

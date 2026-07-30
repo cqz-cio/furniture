@@ -3,6 +3,7 @@ package cn.iocoder.yudao.module.system.controller.admin.tenant.vo.tenant;
 import cn.hutool.core.util.ObjectUtil;
 import cn.iocoder.yudao.framework.common.validation.InEnum;
 import cn.iocoder.yudao.module.system.enums.tenant.TenantBusinessModeEnum;
+import cn.iocoder.yudao.module.system.enums.tenant.TenantProductFieldEnum;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.AssertTrue;
@@ -53,6 +54,9 @@ public class TenantSaveReqVO {
     @InEnum(value = TenantBusinessModeEnum.class, message = "业务模式必须是 {value}")
     private String businessMode;
 
+    @Schema(description = "网站公开商品字段", example = "[\"category\", \"skuCode\", \"description\"]")
+    private List<String> websiteProductFields;
+
     @Schema(description = "租户套餐编号", requiredMode = Schema.RequiredMode.REQUIRED, example = "1024")
     @NotNull(message = "租户套餐编号不能为空")
     private Long packageId;
@@ -81,6 +85,13 @@ public class TenantSaveReqVO {
     public boolean isUsernameValid() {
         return id != null // 修改时，不需要传递
                 || (ObjectUtil.isAllNotEmpty(username, password)); // 新增时，必须都传递 username、password
+    }
+
+    @AssertTrue(message = "网站公开商品字段包含不支持的字段")
+    @JsonIgnore
+    public boolean isWebsiteProductFieldsValid() {
+        return websiteProductFields == null
+                || websiteProductFields.stream().allMatch(TenantProductFieldEnum::contains);
     }
 
 }

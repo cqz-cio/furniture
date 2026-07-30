@@ -17,6 +17,8 @@ import cn.iocoder.yudao.module.product.service.category.ProductCategoryService;
 import cn.iocoder.yudao.module.product.service.history.ProductBrowseHistoryService;
 import cn.iocoder.yudao.module.product.service.sku.ProductSkuService;
 import cn.iocoder.yudao.module.product.service.spu.ProductSpuService;
+import cn.iocoder.yudao.module.product.service.spu.ProductWebsiteFieldPolicyService;
+import cn.iocoder.yudao.module.product.service.spu.ProductWebsiteFieldPolicyService.ProductWebsiteFieldPolicy;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -59,6 +61,8 @@ public class AppProductSpuController {
     private ProductCategoryService productCategoryService;
     @Resource
     private MallErpProductApi mallErpProductApi;
+    @Resource
+    private ProductWebsiteFieldPolicyService productWebsiteFieldPolicyService;
 
     @GetMapping("/list-by-ids")
     @Operation(summary = "获得商品 SPU 列表")
@@ -76,6 +80,8 @@ public class AppProductSpuController {
         list.forEach(spu -> spu.setSalesCount(spu.getSalesCount() + spu.getVirtualSalesCount()));
         List<AppProductSpuRespVO> voList = BeanUtils.toBean(list, AppProductSpuRespVO.class);
         overlayCategoryNames(voList);
+        ProductWebsiteFieldPolicy policy = productWebsiteFieldPolicyService.getCurrentPolicy();
+        voList.forEach(spu -> productWebsiteFieldPolicyService.applyPolicy(spu, policy));
         return success(voList);
     }
 
@@ -104,6 +110,8 @@ public class AppProductSpuController {
         pageResult.getList().forEach(spu -> spu.setSalesCount(spu.getSalesCount() + spu.getVirtualSalesCount()));
         PageResult<AppProductSpuRespVO> voPageResult = BeanUtils.toBean(pageResult, AppProductSpuRespVO.class);
         overlayCategoryNames(voPageResult.getList());
+        ProductWebsiteFieldPolicy policy = productWebsiteFieldPolicyService.getCurrentPolicy();
+        voPageResult.getList().forEach(spu -> productWebsiteFieldPolicyService.applyPolicy(spu, policy));
         return success(voPageResult);
     }
 
@@ -138,6 +146,8 @@ public class AppProductSpuController {
                 .setSkus(toPublicSkuVOs(skus));
         ProductCategoryDO category = productCategoryService.getCategory(spu.getCategoryId());
         spuVO.setCategoryName(category == null ? null : category.getName());
+        productWebsiteFieldPolicyService.applyPolicy(
+                spuVO, productWebsiteFieldPolicyService.getCurrentPolicy());
         return success(spuVO);
     }
 

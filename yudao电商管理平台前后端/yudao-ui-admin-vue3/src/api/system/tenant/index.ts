@@ -15,6 +15,7 @@ export interface TenantVO {
   accountCount: number
   websites: string[]
   businessMode: string
+  websiteProductFields: string[]
   createTime: Date
 }
 
@@ -22,6 +23,7 @@ export interface TenantBusinessProfile {
   tenantId: number
   businessMode: string
   inventoryEnabled: boolean
+  websiteProductFields: string[]
 }
 
 export interface TenantPageReqVO extends PageParam {

@@ -1,0 +1,122 @@
+package cn.iocoder.yudao.module.product.service.spu;
+
+import cn.iocoder.yudao.framework.common.pojo.CommonResult;
+import cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder;
+import cn.iocoder.yudao.module.product.controller.app.spu.vo.AppProductSpuDetailRespVO;
+import cn.iocoder.yudao.module.product.service.spu.ProductWebsiteFieldPolicyService.ProductWebsiteFieldPolicy;
+import cn.iocoder.yudao.module.system.api.tenant.TenantApi;
+import cn.iocoder.yudao.module.system.api.tenant.dto.TenantRespDTO;
+import cn.iocoder.yudao.module.system.enums.tenant.TenantBusinessModeEnum;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+class ProductWebsiteFieldPolicyServiceTest {
+
+    private final TenantApi tenantApi = mock(TenantApi.class);
+    private final ProductWebsiteFieldPolicyService service =
+            new ProductWebsiteFieldPolicyService(tenantApi);
+
+    @AfterEach
+    void tearDown() {
+        TenantContextHolder.clear();
+    }
+
+    @Test
+    void shouldFilterB2BProductResponseAndReturnSameDisplayPolicy() {
+        Long tenantId = 162L;
+        TenantContextHolder.setTenantId(tenantId);
+        TenantRespDTO tenant = new TenantRespDTO()
+                .setId(tenantId)
+                .setBusinessMode(TenantBusinessModeEnum.B2B.getCode())
+                .setWebsiteProductFields(List.of("category", "skuCode", "description"));
+        when(tenantApi.getTenant(tenantId)).thenReturn(CommonResult.success(tenant));
+
+        ProductWebsiteFieldPolicy policy = service.getCurrentPolicy();
+        Map<String, Object> detailConfig = new LinkedHashMap<>();
+        detailConfig.put("collection", "LUXE");
+        detailConfig.put("heroNote", "Shown in ivory linen");
+        detailConfig.put("fieldVisibility", Map.of("price", true));
+        AppProductSpuDetailRespVO.Sku sku = new AppProductSpuDetailRespVO.Sku()
+                .setId(78L)
+                .setSkuCode("VANZ-162-78")
+                .setPrice(10000)
+                .setMarketPrice(12000)
+                .setVipPrice(9000)
+                .setStock(8)
+                .setWeight(12D)
+                .setVolume(0.4D);
+        AppProductSpuDetailRespVO product = new AppProductSpuDetailRespVO()
+                .setId(77L)
+                .setCategoryName("Bedroom")
+                .setDescription("Public description")
+                .setPrice(10000)
+                .setMarketPrice(12000)
+                .setStock(8)
+                .setSalesCount(20)
+                .setDetailConfig(detailConfig)
+                .setSkus(List.of(sku));
+
+        service.applyPolicy(product, policy);
+
+        assertEquals("Bedroom", product.getCategoryName());
+        assertEquals("Public description", product.getDescription());
+        assertNull(product.getPrice());
+        assertNull(product.getMarketPrice());
+        assertNull(product.getStock());
+        assertNull(product.getSalesCount());
+        assertEquals("VANZ-162-78", product.getSkus().get(0).getSkuCode());
+        assertNull(product.getSkus().get(0).getPrice());
+        assertNull(product.getSkus().get(0).getVipPrice());
+        assertNull(product.getSkus().get(0).getWeight());
+        assertFalse(product.getDetailConfig().containsKey("collection"));
+        assertFalse(product.getDetailConfig().containsKey("fieldVisibility"));
+        assertEquals("erp-tenant", product.getDisplayPolicy().getSource());
+        assertTrue(product.getDisplayPolicy().getFields().get("skuCode"));
+        assertFalse(product.getDisplayPolicy().getFields().get("price"));
+    }
+
+    @Test
+    void shouldUseSafeB2BDefaultsForLegacyTenantWithoutConfiguration() {
+        Long tenantId = 163L;
+        TenantContextHolder.setTenantId(tenantId);
+        TenantRespDTO tenant = new TenantRespDTO()
+                .setId(tenantId)
+                .setBusinessMode(TenantBusinessModeEnum.B2B.getCode())
+                .setWebsiteProductFields(null);
+        when(tenantApi.getTenant(tenantId)).thenReturn(CommonResult.success(tenant));
+
+        ProductWebsiteFieldPolicy policy = service.getCurrentPolicy();
+
+        assertTrue(policy.allows("skuCode"));
+        assertTrue(policy.allows("description"));
+        assertFalse(policy.allows("price"));
+        assertFalse(policy.allows("inventory"));
+        assertFalse(policy.allows("productId"));
+    }
+
+    @Test
+    void shouldKeepB2CFieldsCompatible() {
+        Long tenantId = 1L;
+        TenantContextHolder.setTenantId(tenantId);
+        TenantRespDTO tenant = new TenantRespDTO()
+                .setId(tenantId)
+                .setBusinessMode(TenantBusinessModeEnum.B2C.getCode())
+                .setWebsiteProductFields(List.of());
+        when(tenantApi.getTenant(tenantId)).thenReturn(CommonResult.success(tenant));
+
+        ProductWebsiteFieldPolicy policy = service.getCurrentPolicy();
+
+        assertTrue(policy.allows("price"));
+        assertTrue(policy.allows("inventory"));
+        assertTrue(policy.allows("salesCount"));
+    }
+
+}
