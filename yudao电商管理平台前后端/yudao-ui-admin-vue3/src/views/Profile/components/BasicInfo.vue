@@ -1,12 +1,5 @@
 <template>
-  <Form ref="formRef" :labelWidth="200" :rules="rules" :schema="schema">
-    <template #sex="form">
-      <el-radio-group v-model="form['sex']">
-        <el-radio :value="1">{{ t('profile.user.man') }}</el-radio>
-        <el-radio :value="2">{{ t('profile.user.woman') }}</el-radio>
-      </el-radio-group>
-    </template>
-  </Form>
+  <Form ref="formRef" :labelWidth="200" :rules="rules" :schema="schema" />
   <div style="text-align: center">
     <XButton :title="t('common.save')" type="primary" @click="submit()" />
     <XButton :title="t('common.reset')" type="danger" @click="init()" />
@@ -16,11 +9,7 @@
 import type { FormRules } from 'element-plus'
 import { FormSchema } from '@/types/form'
 import type { FormExpose } from '@/components/Form'
-import {
-  getUserProfile,
-  updateUserProfile,
-  UserProfileUpdateReqVO
-} from '@/api/system/user/profile'
+import { getUserProfile, updateUserProfile } from '@/api/system/user/profile'
 import { useUserStore } from '@/store/modules/user'
 
 defineOptions({ name: 'BasicInfo' })
@@ -59,47 +48,17 @@ const schema = reactive<FormSchema[]>([
     field: 'nickname',
     label: t('profile.user.nickname'),
     component: 'Input'
-  },
-  {
-    field: 'mobile',
-    label: t('profile.user.mobile'),
-    component: 'Input'
-  },
-  {
-    field: 'email',
-    label: t('profile.user.email'),
-    component: 'Input'
-  },
-  {
-    field: 'sex',
-    label: t('profile.user.sex'),
-    component: 'InputNumber',
-    value: 0
   }
 ])
 const formRef = ref<FormExpose>() // 表单 Ref
-
-// 监听 userStore 中头像的变化，同步更新表单数据
-watch(
-  () => userStore.getUser.avatar,
-  (newAvatar) => {
-    if (newAvatar && formRef.value) {
-      // 直接更新表单模型中的头像字段
-      const formModel = formRef.value.formModel
-      if (formModel) {
-        formModel.avatar = newAvatar
-      }
-    }
-  }
-)
 
 const submit = () => {
   const elForm = unref(formRef)?.getElFormRef()
   if (!elForm) return
   elForm.validate(async (valid) => {
     if (valid) {
-      const data = unref(formRef)?.formModel as UserProfileUpdateReqVO
-      await updateUserProfile(data)
+      const formModel = unref(formRef)?.formModel
+      await updateUserProfile({ nickname: formModel?.nickname })
       message.success(t('common.updateSuccess'))
       const profile = await init()
       await userStore.setUserNicknameAction(profile.nickname)

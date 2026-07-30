@@ -10,28 +10,6 @@
         <div class="pull-right">{{ userInfo?.username }}</div>
       </li>
       <li class="list-group-item">
-        <Icon class="mr-5px" icon="ep:phone" />
-        {{ t('profile.user.mobile') }}
-        <div class="pull-right">{{ userInfo?.mobile }}</div>
-      </li>
-      <li class="list-group-item">
-        <Icon class="mr-5px" icon="fontisto:email" />
-        {{ t('profile.user.email') }}
-        <div class="pull-right">{{ userInfo?.email }}</div>
-      </li>
-      <li class="list-group-item">
-        <Icon class="mr-5px" icon="carbon:tree-view-alt" />
-        {{ t('profile.user.dept') }}
-        <div v-if="userInfo?.dept" class="pull-right">{{ userInfo?.dept.name }}</div>
-      </li>
-      <li class="list-group-item">
-        <Icon class="mr-5px" icon="ep:suitcase" />
-        {{ t('profile.user.posts') }}
-        <div v-if="userInfo?.posts" class="pull-right">
-          {{ userInfo?.posts.map((post) => post.name).join(',') }}
-        </div>
-      </li>
-      <li class="list-group-item">
         <Icon class="mr-5px" icon="icon-park-outline:peoples" />
         {{ t('profile.user.roles') }}
         <div v-if="userInfo?.roles" class="pull-right">
