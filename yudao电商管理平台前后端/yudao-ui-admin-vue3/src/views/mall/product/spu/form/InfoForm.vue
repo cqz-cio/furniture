@@ -12,6 +12,9 @@
         placeholder="请输入商品名称"
         type="textarea"
       />
+      <el-tag v-if="isB2B" class="ml-8px" effect="plain" size="small" type="success">
+        网站公开
+      </el-tag>
     </el-form-item>
     <el-form-item label="商品分类" prop="categoryId">
       <el-cascader
@@ -24,6 +27,15 @@
         placeholder="请选择商品分类"
       />
       <el-button :icon="RefreshRight" @click="refreshCategoryList" class="ml-1" size="small" />
+      <el-tag
+        v-if="isB2B"
+        class="ml-8px"
+        effect="plain"
+        size="small"
+        :type="fieldTagType('category')"
+      >
+        {{ fieldTagLabel('category') }}
+      </el-tag>
     </el-form-item>
     <el-form-item label="商品品牌" prop="brandId">
       <el-select v-model="formData.brandId" class="w-80!" placeholder="请选择商品品牌">
@@ -35,9 +47,15 @@
         />
       </el-select>
       <el-button :icon="RefreshRight" @click="refreshBrandList" class="ml-1" size="small" />
+      <el-tag v-if="isB2B" class="ml-8px" effect="plain" size="small" type="info">
+        ERP 内部
+      </el-tag>
     </el-form-item>
     <el-form-item label="商品关键字" prop="keyword">
       <el-input v-model="formData.keyword" class="w-80!" placeholder="请输入商品关键字" />
+      <el-tag v-if="isB2B" class="ml-8px" effect="plain" size="small" type="info">
+        ERP 内部
+      </el-tag>
     </el-form-item>
     <el-form-item label="商品简介" prop="introduction">
       <el-input
@@ -50,12 +68,27 @@
         placeholder="请输入商品简介"
         type="textarea"
       />
+      <el-tag
+        v-if="isB2B"
+        class="ml-8px"
+        effect="plain"
+        size="small"
+        :type="fieldTagType('introduction')"
+      >
+        {{ fieldTagLabel('introduction') }}
+      </el-tag>
     </el-form-item>
     <el-form-item label="商品封面图" prop="picUrl">
       <UploadImg v-model="formData.picUrl" :disabled="isDetail" height="80px" />
+      <el-tag v-if="isB2B" class="ml-8px" effect="plain" size="small" type="success">
+        网站公开
+      </el-tag>
     </el-form-item>
     <el-form-item label="商品轮播图" prop="sliderPicUrls">
       <UploadImgs v-model="formData.sliderPicUrls" :disabled="isDetail" />
+      <el-tag v-if="isB2B" class="ml-8px" effect="plain" size="small" type="success">
+        网站公开
+      </el-tag>
     </el-form-item>
   </el-form>
 </template>
@@ -70,6 +103,7 @@ import { CategoryVO } from '@/api/mall/product/category'
 import * as ProductBrandApi from '@/api/mall/product/brand'
 import { BrandVO } from '@/api/mall/product/brand'
 import { RefreshRight } from '@element-plus/icons-vue'
+import type { ProductFieldState } from '@/api/system/tenant'
 
 defineOptions({ name: 'ProductSpuInfoForm' })
 const props = defineProps({
@@ -77,8 +111,18 @@ const props = defineProps({
     type: Object as PropType<Spu>,
     default: () => {}
   },
-  isDetail: propTypes.bool.def(false) // 是否作为详情组件
+  isDetail: propTypes.bool.def(false), // 是否作为详情组件
+  businessMode: propTypes.string.def('B2C'),
+  fieldStates: {
+    type: Object as PropType<Record<string, ProductFieldState>>,
+    default: () => ({})
+  }
 })
+const isB2B = computed(() => props.businessMode === 'B2B')
+const fieldState = (field: string): ProductFieldState => props.fieldStates[field] || 'INTERNAL'
+const fieldTagLabel = (field: string) => (fieldState(field) === 'WEBSITE' ? '网站公开' : 'ERP 内部')
+const fieldTagType = (field: string): 'success' | 'info' =>
+  fieldState(field) === 'WEBSITE' ? 'success' : 'info'
 
 const message = useMessage() // 消息弹窗
 

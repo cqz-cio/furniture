@@ -6,6 +6,7 @@ import cn.iocoder.yudao.framework.test.core.ut.BaseMockitoUnitTest;
 import cn.iocoder.yudao.module.system.controller.admin.tenant.vo.tenant.TenantBusinessProfileRespVO;
 import cn.iocoder.yudao.module.system.controller.admin.tenant.vo.tenant.TenantSaveReqVO;
 import cn.iocoder.yudao.module.system.dal.dataobject.tenant.TenantDO;
+import cn.iocoder.yudao.module.system.enums.tenant.TenantAdminProductFieldPolicy;
 import cn.iocoder.yudao.module.system.enums.tenant.TenantBusinessModeEnum;
 import cn.iocoder.yudao.module.system.enums.tenant.TenantProductFieldEnum;
 import cn.iocoder.yudao.module.system.service.tenant.TenantService;
@@ -56,6 +57,12 @@ public class TenantControllerTest extends BaseMockitoUnitTest {
                 .contains(TenantProductFieldEnum.SKU_CODE.getCode()));
         assertFalse(result.getData().getWebsiteProductFields()
                 .contains(TenantProductFieldEnum.PRICE.getCode()));
+        assertEquals(TenantAdminProductFieldPolicy.INTERNAL,
+                result.getData().getProductFieldStates().get(TenantProductFieldEnum.PRICE.getCode()));
+        assertEquals(TenantAdminProductFieldPolicy.NOT_APPLICABLE,
+                result.getData().getProductFieldStates().get(TenantProductFieldEnum.MARKET_PRICE.getCode()));
+        assertEquals(TenantAdminProductFieldPolicy.NOT_APPLICABLE,
+                result.getData().getProductFieldStates().get(TenantAdminProductFieldPolicy.DELIVERY));
         verify(tenantService).getTenant(effectiveTenantId);
     }
 
@@ -73,6 +80,12 @@ public class TenantControllerTest extends BaseMockitoUnitTest {
         assertEquals(TenantBusinessModeEnum.B2C.getCode(), profile.getBusinessMode());
         assertTrue(profile.getInventoryEnabled());
         assertEquals(TenantProductFieldEnum.values().length, profile.getWebsiteProductFields().size());
+        assertEquals(TenantAdminProductFieldPolicy.WEBSITE,
+                profile.getProductFieldStates().get(TenantProductFieldEnum.PRICE.getCode()));
+        assertEquals(TenantAdminProductFieldPolicy.INTERNAL,
+                profile.getProductFieldStates().get(TenantAdminProductFieldPolicy.COST_PRICE));
+        assertEquals(TenantAdminProductFieldPolicy.WEBSITE,
+                profile.getProductFieldStates().get(TenantAdminProductFieldPolicy.DELIVERY));
     }
 
     @Test

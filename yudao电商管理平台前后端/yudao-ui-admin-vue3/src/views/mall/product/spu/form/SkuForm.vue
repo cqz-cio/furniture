@@ -8,10 +8,26 @@
     :rules="rules"
     label-width="120px"
   >
-    <el-form-item label="分销类型" prop="subCommissionType">
+    <el-alert
+      v-if="isB2B"
+      :closable="false"
+      class="mb-16px"
+      description="B2B 网站使用的 SKU 编码（例如 VANZ-162-78）由 ERP 同步自动生成，无需在这里填写。内部参考价和成本价可维护，但不会公开到 B2B 网站。"
+      show-icon
+      title="B2B 规格与 ERP 内部信息"
+      type="info"
+    />
+    <el-form-item v-if="!isB2B || showInactiveFields" prop="subCommissionType">
+      <template #label>
+        <span>分销类型</span>
+        <el-tag v-if="isB2B" class="ml-4px" effect="plain" size="small" type="warning">
+          B2C 专用
+        </el-tag>
+      </template>
       <el-radio-group
         v-model="formData.subCommissionType"
         class="w-80"
+        :disabled="isB2B"
         @change="changeSubCommissionType"
       >
         <el-radio :value="false">默认设置</el-radio>
@@ -31,6 +47,9 @@
         :prop-form-data="formData"
         :property-list="propertyList"
         :rule-config="ruleConfig"
+        :business-mode="businessMode"
+        :field-states="fieldStates"
+        :show-inactive-fields="showInactiveFields"
         :show-stock="showStock"
       />
     </el-form-item>
@@ -48,6 +67,9 @@
           :is-batch="true"
           :prop-form-data="formData"
           :property-list="propertyList"
+          :business-mode="businessMode"
+          :field-states="fieldStates"
+          :show-inactive-fields="showInactiveFields"
           :show-stock="showStock"
         />
       </el-form-item>
@@ -58,6 +80,9 @@
           :prop-form-data="formData"
           :property-list="propertyList"
           :rule-config="ruleConfig"
+          :business-mode="businessMode"
+          :field-states="fieldStates"
+          :show-inactive-fields="showInactiveFields"
           :show-stock="showStock"
         />
       </el-form-item>
@@ -80,6 +105,7 @@ import {
 import ProductAttributes from './ProductAttributes.vue'
 import ProductPropertyAddForm from './ProductPropertyAddForm.vue'
 import type { Spu } from '@/api/mall/product/spu'
+import type { ProductFieldState } from '@/api/system/tenant'
 
 defineOptions({ name: 'ProductSpuSkuForm' })
 
@@ -102,8 +128,21 @@ const allRuleConfig: RuleConfig[] = [
   },
   {
     name: 'costPrice',
-    rule: (arg) => arg >= 0.01,
+    rule: (arg) => arg >= 0,
     message: '商品成本价格必须大于等于 0.00 元！！！'
+  }
+]
+
+const b2bRuleConfig: RuleConfig[] = [
+  {
+    name: 'price',
+    rule: (arg) => arg >= 0,
+    message: '商品内部参考价格必须大于等于 0.00 元！！！'
+  },
+  {
+    name: 'costPrice',
+    rule: (arg) => arg >= 0,
+    message: '商品内部成本价格必须大于等于 0.00 元！！！'
   }
 ]
 
@@ -115,11 +154,21 @@ const props = defineProps({
     default: () => {}
   },
   isDetail: propTypes.bool.def(false), // 是否作为详情组件
-  showStock: propTypes.bool.def(true) // 是否展示并校验库存
+  showStock: propTypes.bool.def(true), // 是否展示并校验库存
+  businessMode: propTypes.string.def('B2C'),
+  fieldStates: {
+    type: Object as PropType<Record<string, ProductFieldState>>,
+    default: () => ({})
+  },
+  showInactiveFields: propTypes.bool.def(false)
 })
-const ruleConfig = computed<RuleConfig[]>(() =>
-  props.showStock ? allRuleConfig : allRuleConfig.filter((rule) => rule.name !== 'stock')
-)
+const isB2B = computed(() => props.businessMode === 'B2B')
+const ruleConfig = computed<RuleConfig[]>(() => {
+  if (isB2B.value) {
+    return b2bRuleConfig
+  }
+  return props.showStock ? allRuleConfig : allRuleConfig.filter((rule) => rule.name !== 'stock')
+})
 const attributesAddFormRef = ref() // 添加商品属性表单
 const formRef = ref() // 表单 Ref
 const propertyList = ref<PropertyAndValues[]>([]) // 商品属性列表
@@ -129,10 +178,10 @@ const formData = reactive<Spu>({
   subCommissionType: false, // 分销类型
   skus: []
 })
-const rules = reactive({
+const rules = computed(() => ({
   specType: [required],
-  subCommissionType: [required]
-})
+  ...(isB2B.value ? {} : { subCommissionType: [required] })
+}))
 
 /** 将传进来的值赋值给 formData */
 watch(
@@ -162,9 +211,11 @@ const validate = async () => {
     Object.assign(props.propFormData, formData)
   } catch (e) {
     message.error(
-      props.showStock
-        ? '【价格库存】不完善，请填写相关信息'
-        : '【价格与规格】不完善，请填写相关信息'
+      isB2B.value
+        ? '【规格与 ERP 内部信息】不完善，请填写相关信息'
+        : props.showStock
+          ? '【价格库存】不完善，请填写相关信息'
+          : '【价格与规格】不完善，请填写相关信息'
     )
     emit('update:activeName', 'sku')
     throw e // 目的截断之后的校验

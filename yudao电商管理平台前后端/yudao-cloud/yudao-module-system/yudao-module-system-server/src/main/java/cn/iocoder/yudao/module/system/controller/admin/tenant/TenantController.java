@@ -14,6 +14,7 @@ import cn.iocoder.yudao.module.system.controller.admin.tenant.vo.tenant.TenantPa
 import cn.iocoder.yudao.module.system.controller.admin.tenant.vo.tenant.TenantRespVO;
 import cn.iocoder.yudao.module.system.controller.admin.tenant.vo.tenant.TenantSaveReqVO;
 import cn.iocoder.yudao.module.system.dal.dataobject.tenant.TenantDO;
+import cn.iocoder.yudao.module.system.enums.tenant.TenantAdminProductFieldPolicy;
 import cn.iocoder.yudao.module.system.enums.tenant.TenantBusinessModeEnum;
 import cn.iocoder.yudao.module.system.enums.tenant.TenantProductFieldEnum;
 import cn.iocoder.yudao.module.system.service.tenant.TenantService;
@@ -90,12 +91,15 @@ public class TenantController {
             throw exception(TENANT_NOT_EXISTS);
         }
         TenantBusinessModeEnum businessMode = TenantBusinessModeEnum.of(tenant.getBusinessMode());
+        List<String> websiteProductFields = TenantProductFieldEnum.resolve(
+                businessMode.getCode(), tenant.getWebsiteProductFields());
         return success(new TenantBusinessProfileRespVO()
                 .setTenantId(effectiveTenantId)
                 .setBusinessMode(businessMode.getCode())
                 .setInventoryEnabled(businessMode.isInventoryEnabled())
-                .setWebsiteProductFields(TenantProductFieldEnum.resolve(
-                        businessMode.getCode(), tenant.getWebsiteProductFields())));
+                .setWebsiteProductFields(websiteProductFields)
+                .setProductFieldStates(TenantAdminProductFieldPolicy.resolve(
+                        businessMode.getCode(), websiteProductFields)));
     }
 
     @PostMapping("/create")
