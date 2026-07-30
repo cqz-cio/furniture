@@ -12,7 +12,7 @@ const admin =
 describe("tenant business mode ERP contract", () => {
   it("migrates all tenants to B2C by default and initializes the two known tenants", () => {
     const migration = read(
-      `${cloud}sql/mysql/migrations/V025__tenant_business_mode.sql`,
+      `${cloud}sql/mysql/migrations/V028__tenant_business_mode.sql`,
     );
 
     expect(migration).toContain("ADD COLUMN `business_mode` varchar(16) NOT NULL DEFAULT 'B2C'");

@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 const root = join(import.meta.dirname, "../../yudao电商管理平台前后端");
 const migrationPath = join(
   root,
-  "yudao-cloud/sql/mysql/migrations/V027__align_furniture_navigation_permissions.sql",
+  "yudao-cloud/sql/mysql/migrations/V030__align_furniture_navigation_permissions.sql",
 );
 const baselinePath = join(root, "yudao-cloud/sql/mysql/oakved-baseline.sql");
 const furnitureNavigationCatalogPath = join(
@@ -33,11 +33,11 @@ const extractMigrationRoutePaths = (source) => {
   const match = source.match(
     /-- BEGIN furniture-lite custom route paths([\s\S]*?)-- END furniture-lite custom route paths/,
   );
-  if (!match) throw new Error("Unable to find the furniture-lite path block in V027");
+  if (!match) throw new Error("Unable to find the furniture-lite path block in V030");
   return extractQuotedPaths(match[1]);
 };
 
-describe("V027 furniture navigation permission alignment", () => {
+describe("V030 furniture navigation permission alignment", () => {
   it("keeps the package migration aligned with every custom furniture-lite route", () => {
     const migration = readFileSync(migrationPath, "utf8");
     const navigationCatalog = JSON.parse(
@@ -77,18 +77,22 @@ describe("V027 furniture navigation permission alignment", () => {
     expect(migration).not.toMatch(/package\.`id` = 115|package_id\s*=\s*115/);
   });
 
-  it("keeps the generated baseline V027 section byte-equivalent", () => {
+  it("keeps the generated baseline V030 section byte-equivalent", () => {
     const migration = readFileSync(migrationPath, "utf8")
       .replace(/\r\n/g, "\n")
       .replace(/\s+$/, "") + "\n";
     const baseline = readFileSync(baselinePath, "utf8").replace(/\r\n/g, "\n");
-    const marker = "-- BEGIN V027__align_furniture_navigation_permissions.sql\n";
+    const marker = "-- BEGIN V030__align_furniture_navigation_permissions.sql\n";
     const start = baseline.indexOf(marker);
-    const end = baseline.indexOf("\n-- BEGIN Oakved demo catalog", start);
+    const sectionStart = start + marker.length;
+    const nextMarkerOffset = baseline.slice(sectionStart).search(
+      /\n-- BEGIN (?:V\d{3}__|Oakved demo catalog)/,
+    );
+    const end = nextMarkerOffset < 0 ? -1 : sectionStart + nextMarkerOffset;
 
     expect(start).toBeGreaterThanOrEqual(0);
     expect(end).toBeGreaterThan(start);
-    expect(baseline.slice(start + marker.length, end).replace(/\s+$/, "") + "\n")
+    expect(baseline.slice(sectionStart, end).replace(/\s+$/, "") + "\n")
       .toBe(migration);
   });
 });
@@ -111,7 +115,15 @@ describe("furniture navigation permission auto-sync", () => {
     );
 
     expect(catalog).toContain("/dashboard");
+    expect(catalog).toContain("/crm");
+    expect(catalog).toContain("/crm/clue");
+    expect(catalog).toContain("/crm/customer");
+    expect(catalog).toContain("/crm/contact");
+    expect(catalog).not.toContain("/crm/config/contract-config");
     expect(catalog).toContain("/system/role");
+    expect(catalog).toContain("/system/messages/mail/mail-account");
+    expect(catalog).toContain("/system/messages/mail/mail-template");
+    expect(catalog).toContain("/system/messages/mail/mail-log");
     expect(furnitureLiteConfig).not.toMatch(
       /const allowedMenuPaths = new Set\(\[[\s\S]*?\]\)/,
     );

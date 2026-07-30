@@ -22,13 +22,17 @@ import cn.iocoder.yudao.module.system.controller.admin.user.vo.user.UserPageReqV
 import cn.iocoder.yudao.module.system.controller.admin.user.vo.user.UserSaveReqVO;
 import cn.iocoder.yudao.module.system.dal.dataobject.dept.DeptDO;
 import cn.iocoder.yudao.module.system.dal.dataobject.dept.UserPostDO;
+import cn.iocoder.yudao.module.system.dal.dataobject.permission.RoleDO;
 import cn.iocoder.yudao.module.system.dal.dataobject.user.AdminUserDO;
 import cn.iocoder.yudao.module.system.dal.mysql.dept.UserPostMapper;
 import cn.iocoder.yudao.module.system.dal.mysql.user.AdminUserMapper;
+import cn.iocoder.yudao.module.system.enums.permission.RoleCodeEnum;
+import cn.iocoder.yudao.module.system.enums.permission.RoleTypeEnum;
 import cn.iocoder.yudao.module.system.service.dept.DeptService;
 import cn.iocoder.yudao.module.system.service.dept.PostService;
 import cn.iocoder.yudao.module.system.service.oauth2.OAuth2TokenService;
 import cn.iocoder.yudao.module.system.service.permission.PermissionService;
+import cn.iocoder.yudao.module.system.service.permission.RoleService;
 import cn.iocoder.yudao.module.system.service.tenant.TenantService;
 import com.google.common.annotations.VisibleForTesting;
 import com.mzt.logapi.context.LogRecordContext;
@@ -61,6 +65,7 @@ import static cn.iocoder.yudao.module.system.enums.LogRecordConstants.*;
 public class AdminUserServiceImpl implements AdminUserService {
 
     static final String USER_INIT_PASSWORD_KEY = "system.user.init-password";
+    static final String USER_REGISTER_ENABLED_KEY = "system.user.register-enabled";
 
     @Resource
     private AdminUserMapper userMapper;
@@ -71,6 +76,9 @@ public class AdminUserServiceImpl implements AdminUserService {
     private PostService postService;
     @Resource
     private PermissionService permissionService;
+    @Resource
+    @Lazy
+    private RoleService roleService;
     @Resource
     private PasswordEncoder passwordEncoder;
     @Resource
@@ -120,9 +128,36 @@ public class AdminUserServiceImpl implements AdminUserService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public Long registerUser(AuthRegisterReqVO registerReqVO) {
-        // ERP 账号必须由管理员明确绑定租户和角色，禁止公开注册产生无角色账号。
-        throw exception(USER_REGISTER_DISABLED);
+        // 1.1 校验是否开启注册
+        if (ObjUtil.notEqual(configApi.getConfigValueByKey(USER_REGISTER_ENABLED_KEY).getCheckedData(), "true")) {
+            throw exception(USER_REGISTER_DISABLED);
+        }
+        // 1.2 校验账户配额。handleTenantInfo 同时要求请求携带有效租户上下文。
+        tenantService.handleTenantInfo(tenant -> {
+            long count = userMapper.selectCount();
+            if (count >= tenant.getAccountCount()) {
+                throw exception(USER_COUNT_MAX, tenant.getAccountCount());
+            }
+        });
+        // 1.3 校验账号正确性
+        validateUserForCreateOrUpdate(null, registerReqVO.getUsername(), null, null, null, null);
+        // 1.4 公开注册只能获得当前租户的系统内置商城运营角色，禁止自助提权为租户管理员。
+        RoleDO role = roleService.getRoleByCode(RoleCodeEnum.MALL_OPERATOR.getCode());
+        if (role == null
+                || !RoleTypeEnum.SYSTEM.getType().equals(role.getType())
+                || !CommonStatusEnum.ENABLE.getStatus().equals(role.getStatus())) {
+            throw exception(USER_REGISTER_ROLE_NOT_CONFIGURED);
+        }
+
+        // 2. 在同一事务内创建账号并绑定唯一角色
+        AdminUserDO user = BeanUtils.toBean(registerReqVO, AdminUserDO.class);
+        user.setStatus(CommonStatusEnum.ENABLE.getStatus());
+        user.setPassword(encodePassword(registerReqVO.getPassword()));
+        userMapper.insert(user);
+        permissionService.assignUserRole(user.getId(), Collections.singleton(role.getId()));
+        return user.getId();
     }
 
     @Override

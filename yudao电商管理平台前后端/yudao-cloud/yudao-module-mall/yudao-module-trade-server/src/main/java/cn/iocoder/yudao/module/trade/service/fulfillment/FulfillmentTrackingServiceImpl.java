@@ -1,5 +1,6 @@
 package cn.iocoder.yudao.module.trade.service.fulfillment;
 
+import cn.iocoder.yudao.framework.tenant.core.util.TenantUtils;
 import cn.iocoder.yudao.module.trade.dal.dataobject.fulfillment.CarrierDO;
 import cn.iocoder.yudao.module.trade.dal.dataobject.fulfillment.FulfillmentIdempotencyDO;
 import cn.iocoder.yudao.module.trade.dal.dataobject.fulfillment.FulfillmentOutboxEventDO;
@@ -28,6 +29,7 @@ import cn.iocoder.yudao.module.trade.service.fulfillment.domain.OrderFulfillment
 import cn.iocoder.yudao.module.trade.service.fulfillment.domain.ShipmentStateMachine;
 import cn.iocoder.yudao.module.trade.service.fulfillment.support.FulfillmentHashing;
 import cn.iocoder.yudao.module.trade.service.fulfillment.support.TrackingEventCanonicalizer;
+import cn.iocoder.yudao.module.trade.service.fulfillment.support.FulfillmentPersistenceTextPolicy;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
@@ -45,6 +47,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 import static cn.iocoder.yudao.framework.common.exception.util.ServiceExceptionUtil.exception;
@@ -84,6 +87,13 @@ public class FulfillmentTrackingServiceImpl implements FulfillmentTrackingServic
     public TrackingApplyResult applyEvent(ApplyTrackingEventCommand command) {
         featureGuard.requireWriteEnabled();
         validateCommand(command);
+        validatePersistenceText(command.getProviderEvent());
+        AtomicReference<TrackingApplyResult> result = new AtomicReference<>();
+        TenantUtils.execute(command.getTenantId(), () -> result.set(applyEventInTenant(command)));
+        return result.get();
+    }
+
+    private TrackingApplyResult applyEventInTenant(ApplyTrackingEventCommand command) {
         for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
             try {
                 return inNewTransaction(() -> applyOnce(command));
@@ -284,7 +294,8 @@ public class FulfillmentTrackingServiceImpl implements FulfillmentTrackingServic
         String eventHash = externalEventId == null
                 ? TrackingEventCanonicalizer.stableHash(carrierAndTracking.carrierCode(),
                         carrierAndTracking.trackingNumber(), providerEvent.providerStatus(), occurredInstant,
-                        providerEvent.location(), providerEvent.description())
+                        FulfillmentPersistenceTextPolicy.location(providerEvent.location()),
+                        FulfillmentPersistenceTextPolicy.description(providerEvent.description()))
                 : null;
 
         TrackingEventDO preexisting = findExistingEvent(tenantId, provider.getId(), externalEventId, eventHash);
@@ -310,12 +321,12 @@ public class FulfillmentTrackingServiceImpl implements FulfillmentTrackingServic
                 .setMappingEffectiveAt(resolution.mappingEffectiveAt())
                 .setMappingKnown(resolution.known())
                 .setTransitionDecision(ShipmentStateMachine.TransitionDecision.TIMELINE_ONLY.name())
-                .setDescription(TrackingEventCanonicalizer.normalize(providerEvent.description()))
-                .setLocation(TrackingEventCanonicalizer.normalize(providerEvent.location()))
+                .setDescription(FulfillmentPersistenceTextPolicy.description(providerEvent.description()))
+                .setLocation(FulfillmentPersistenceTextPolicy.location(providerEvent.location()))
                 .setOccurredAt(occurredAt)
                 .setOccurredTimezone(TrackingEventCanonicalizer.normalize(providerEvent.occurredTimezone()))
                 .setReceivedAt(receivedAt)
-                .setRawPayloadRef(TrackingEventCanonicalizer.normalize(providerEvent.rawPayloadRef()))
+                .setRawPayloadRef(FulfillmentPersistenceTextPolicy.reference(providerEvent.rawPayloadRef()))
                 .setSource(command.getSource().name());
         eventMapper.insert(event);
 
@@ -697,6 +708,12 @@ public class FulfillmentTrackingServiceImpl implements FulfillmentTrackingServic
         Objects.requireNonNull(command.getProviderEvent().occurredAt(), "occurredAt");
         Objects.requireNonNull(command.getReceivedAt(), "receivedAt");
         Objects.requireNonNull(command.getSource(), "source");
+    }
+
+    private static void validatePersistenceText(ProviderTrackingEvent event) {
+        FulfillmentPersistenceTextPolicy.location(event.location());
+        FulfillmentPersistenceTextPolicy.description(event.description());
+        FulfillmentPersistenceTextPolicy.reference(event.rawPayloadRef());
     }
 
     private static ManualAudit validateManualCommand(String idempotencyKey,

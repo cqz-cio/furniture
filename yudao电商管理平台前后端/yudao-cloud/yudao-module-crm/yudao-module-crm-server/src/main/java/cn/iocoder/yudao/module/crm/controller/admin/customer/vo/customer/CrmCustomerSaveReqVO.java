@@ -2,7 +2,6 @@ package cn.iocoder.yudao.module.crm.controller.admin.customer.vo.customer;
 
 import cn.iocoder.yudao.framework.common.validation.InEnum;
 import cn.iocoder.yudao.framework.common.validation.Mobile;
-import cn.iocoder.yudao.framework.common.validation.Telephone;
 import cn.iocoder.yudao.framework.excel.core.annotations.DictFormat;
 import cn.iocoder.yudao.module.crm.enums.customer.CrmCustomerLevelEnum;
 import cn.iocoder.yudao.module.crm.framework.operatelog.core.CrmCustomerIndustryParseFunction;
@@ -51,7 +50,7 @@ public class CrmCustomerSaveReqVO {
 
     @Schema(description = "电话", example = "18000000000")
     @DiffLogField(name = "电话")
-    @Telephone
+    @Size(max = 64, message = "电话长度不能超过 64 个字符")
     private String telephone;
 
     @Schema(description = "QQ", example = "123456789")

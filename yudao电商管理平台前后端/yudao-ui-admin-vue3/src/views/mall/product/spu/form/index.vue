@@ -8,29 +8,70 @@
       type="error"
     />
     <template v-else-if="profileLoaded">
+      <el-alert
+        v-if="isDetail"
+        :closable="false"
+        class="mb-16px"
+        description="详情页用于核对数据，所有字段均为只读。如需调整商品信息，请返回列表并点击“修改”。"
+        show-icon
+        title="当前为商品详情模式"
+        type="warning"
+      />
+      <div v-if="isB2B" class="b2b-mode-panel">
+        <div>
+          <div class="mb-8px text-15px font-600">B2B 商品字段视图</div>
+          <div class="text-13px text-[var(--el-text-color-secondary)]">
+            默认只展示 B2B 网站字段和必要的 ERP 内部字段，B2C 专用字段不会参与 B2B
+            商品校验或网站展示。
+          </div>
+          <div class="mt-12px flex flex-wrap items-center gap-8px">
+            <span class="text-13px">字段标识：</span>
+            <el-tag effect="plain" size="small" type="success">网站公开</el-tag>
+            <el-tag effect="plain" size="small" type="info">ERP 内部</el-tag>
+            <el-tag effect="plain" size="small" type="warning">B2C 专用</el-tag>
+          </div>
+        </div>
+        <el-switch
+          v-model="showB2CFields"
+          active-text="显示 B2C 专用字段"
+          inactive-text="隐藏 B2C 专用字段"
+        />
+      </div>
       <el-tabs v-model="activeName">
         <el-tab-pane label="基础设置" name="info">
           <InfoForm
             ref="infoRef"
             v-model:activeName="activeName"
+            :business-mode="businessMode"
+            :field-states="productFieldStates"
             :is-detail="isDetail"
             :propFormData="formData"
           />
         </el-tab-pane>
-        <el-tab-pane :label="inventoryEnabled ? '价格库存' : '价格与规格'" name="sku">
+        <el-tab-pane
+          :label="isB2B ? '规格与 ERP 内部信息' : inventoryEnabled ? '价格库存' : '价格与规格'"
+          name="sku"
+        >
           <SkuForm
             ref="skuRef"
             v-model:activeName="activeName"
+            :business-mode="businessMode"
+            :field-states="productFieldStates"
             :is-detail="isDetail"
             :propFormData="formData"
+            :show-inactive-fields="showB2CFields"
             :show-stock="inventoryEnabled"
           />
         </el-tab-pane>
-        <el-tab-pane label="物流设置" name="delivery">
+        <el-tab-pane
+          v-if="!isB2B || showB2CFields"
+          :label="isB2B ? '物流设置（B2C 专用）' : '物流设置'"
+          name="delivery"
+        >
           <DeliveryForm
             ref="deliveryRef"
             v-model:activeName="activeName"
-            :is-detail="isDetail"
+            :is-detail="isDetail || isB2B"
             :propFormData="formData"
           />
         </el-tab-pane>
@@ -42,20 +83,24 @@
             :propFormData="formData"
           />
         </el-tab-pane>
-        <el-tab-pane label="家具详情配置" name="furnitureDetail">
+        <el-tab-pane :label="isB2B ? 'B2B 网站内容' : '家具详情配置'" name="furnitureDetail">
           <FurnitureDetailForm
             ref="furnitureDetailRef"
             v-model:activeName="activeName"
+            :business-mode="businessMode"
             :is-detail="isDetail"
             :propFormData="formData"
           />
         </el-tab-pane>
-        <el-tab-pane label="其它设置" name="other">
+        <el-tab-pane :label="isB2B ? '展示设置' : '其它设置'" name="other">
           <OtherForm
             ref="otherRef"
             v-model:activeName="activeName"
+            :business-mode="businessMode"
+            :field-states="productFieldStates"
             :is-detail="isDetail"
             :propFormData="formData"
+            :show-inactive-fields="showB2CFields"
           />
         </el-tab-pane>
       </el-tabs>
@@ -93,11 +138,20 @@ const { params, name } = useRoute() // 查询参数
 const { delView } = useTagsViewStore() // 视图操作
 
 const formLoading = ref(false) // 表单的加载中：1）修改时的数据加载；2）提交的按钮禁用
-const { profileLoading, profileLoaded, profileError, inventoryEnabled, loadTenantBusinessProfile } =
-  useTenantBusinessProfile()
+const {
+  profileLoading,
+  profileLoaded,
+  profileError,
+  businessMode,
+  isB2B,
+  inventoryEnabled,
+  productFieldStates,
+  loadTenantBusinessProfile
+} = useTenantBusinessProfile()
 const pageLoading = computed(() => formLoading.value || profileLoading.value)
 const activeName = ref('info') // Tag 激活的窗口
 const isDetail = ref(false) // 是否查看详情
+const showB2CFields = ref(false) // B2B 模式下仅用于查看历史 B2C 专用字段
 const infoRef = ref() // 商品信息 Ref
 const skuRef = ref() // 商品规格 Ref
 const deliveryRef = ref() // 物流设置 Ref
@@ -179,7 +233,9 @@ const submitForm = async () => {
     // 校验各表单
     await unref(infoRef)?.validate()
     await unref(skuRef)?.validate()
-    await unref(deliveryRef)?.validate()
+    if (!isB2B.value) {
+      await unref(deliveryRef)?.validate()
+    }
     await unref(descriptionRef)?.validate()
     await unref(furnitureDetailRef)?.validate()
     await unref(otherRef)?.validate()
@@ -238,4 +294,24 @@ onMounted(async () => {
   }
   await getDetail()
 })
+
+watch(showB2CFields, (visible) => {
+  if (!visible && isB2B.value && activeName.value === 'delivery') {
+    activeName.value = 'info'
+  }
+})
 </script>
+
+<style scoped>
+.b2b-mode-panel {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 16px;
+  margin-bottom: 16px;
+  background: var(--el-color-primary-light-9);
+  border: 1px solid var(--el-color-primary-light-7);
+  border-radius: var(--el-border-radius-base);
+}
+</style>

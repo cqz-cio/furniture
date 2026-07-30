@@ -8,7 +8,7 @@ _git-backups/
 !**/src/test/resources/sql/**/*.sql
 .pnpm-store/
 .worktrees/
-.runtime/
+/.runtime/
 .codex/
 demo-package/
 demo-package.zip

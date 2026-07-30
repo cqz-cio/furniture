@@ -19,11 +19,14 @@ export interface TenantVO {
   createTime: Date
 }
 
+export type ProductFieldState = 'WEBSITE' | 'INTERNAL' | 'NOT_APPLICABLE'
+
 export interface TenantBusinessProfile {
   tenantId: number
   businessMode: string
   inventoryEnabled: boolean
   websiteProductFields: string[]
+  productFieldStates: Record<string, ProductFieldState>
 }
 
 export interface TenantPageReqVO extends PageParam {

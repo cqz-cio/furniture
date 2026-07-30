@@ -10,6 +10,10 @@ import lombok.Data;
 @Data
 public class AppWebsiteInquirySubmitReqVO {
 
+    @Schema(description = "网页生成的询盘幂等编号", example = "2e82ae0d-5db2-4e94-bda0-0db994493885")
+    @Size(max = 64, message = "询盘编号不能超过 64 个字符")
+    private String externalInquiryId;
+
     @Schema(description = "联系人姓名", requiredMode = Schema.RequiredMode.REQUIRED, example = "Alex Morgan")
     @NotBlank(message = "联系人姓名不能为空")
     @Size(max = 60, message = "联系人姓名不能超过 60 个字符")
@@ -39,27 +43,27 @@ public class AppWebsiteInquirySubmitReqVO {
     private String subject;
 
     @Schema(description = "询盘内容")
-    @Size(max = 240, message = "询盘内容不能超过 240 个字符")
+    @Size(max = 4000, message = "询盘内容不能超过 4000 个字符")
     private String message;
 
     @Schema(description = "提交页面", example = "/products/dining-room?utm_source=google")
-    @Size(max = 120, message = "提交页面不能超过 120 个字符")
+    @Size(max = 255, message = "提交页面不能超过 255 个字符")
     private String sourcePage;
 
     @Schema(description = "浏览器语言", example = "en-US")
-    @Size(max = 16, message = "浏览器语言不能超过 16 个字符")
+    @Size(max = 32, message = "浏览器语言不能超过 32 个字符")
     private String locale;
 
     @Schema(description = "UTM 来源")
-    @Size(max = 80, message = "UTM 来源不能超过 80 个字符")
+    @Size(max = 100, message = "UTM 来源不能超过 100 个字符")
     private String utmSource;
 
     @Schema(description = "UTM 媒介")
-    @Size(max = 80, message = "UTM 媒介不能超过 80 个字符")
+    @Size(max = 100, message = "UTM 媒介不能超过 100 个字符")
     private String utmMedium;
 
     @Schema(description = "UTM 活动")
-    @Size(max = 80, message = "UTM 活动不能超过 80 个字符")
+    @Size(max = 100, message = "UTM 活动不能超过 100 个字符")
     private String utmCampaign;
 
 }

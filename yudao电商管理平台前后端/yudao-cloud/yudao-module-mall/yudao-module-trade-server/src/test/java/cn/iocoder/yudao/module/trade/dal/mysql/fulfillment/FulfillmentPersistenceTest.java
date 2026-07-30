@@ -181,6 +181,21 @@ class FulfillmentPersistenceTest extends BaseDbUnitTest {
     }
 
     @Test
+    void activeRecordUniquenessAllowsRepeatedSoftDeleteAndRecreate() {
+        CarrierDO first = createCarrier();
+        carrierMapper.insert(first);
+        assertEquals(1, carrierMapper.deleteById(first.getId()));
+
+        CarrierDO second = createCarrier();
+        carrierMapper.insert(second);
+        assertEquals(1, carrierMapper.deleteById(second.getId()));
+
+        CarrierDO third = createCarrier();
+        carrierMapper.insert(third);
+        assertThrows(DataIntegrityViolationException.class, () -> carrierMapper.insert(createCarrier()));
+    }
+
+    @Test
     void outboxJsonPayloadRoundTripsThroughJacksonTypeHandler() {
         FulfillmentOutboxEventDO outbox = createOutboxEvent();
         fulfillmentOutboxEventMapper.insert(outbox);

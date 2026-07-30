@@ -51,6 +51,8 @@ public interface ErrorCodeConstants {
     ErrorCode USER_ROLE_TENANT_MISMATCH = new ErrorCode(1_002_003_012, "用户和角色不属于同一租户");
     ErrorCode USER_SUPER_ADMIN_ROLE_FORBIDDEN = new ErrorCode(1_002_003_013, "超级管理员角色不允许变更或转授");
     ErrorCode USER_ROLE_REQUIRED = new ErrorCode(1_002_003_014, "一个账号必须且只能绑定一个角色");
+    ErrorCode USER_REGISTER_ROLE_NOT_CONFIGURED = new ErrorCode(1_002_003_015,
+            "当前租户未配置注册默认角色，请联系管理员");
 
     // ========== 部门模块 1-002-004-000 ==========
     ErrorCode DEPT_NAME_DUPLICATE = new ErrorCode(1_002_004_000, "已经存在该名字的部门");

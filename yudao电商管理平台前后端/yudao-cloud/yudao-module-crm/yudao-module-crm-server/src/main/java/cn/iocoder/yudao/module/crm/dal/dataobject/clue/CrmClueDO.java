@@ -1,6 +1,7 @@
 package cn.iocoder.yudao.module.crm.dal.dataobject.clue;
 
 import cn.iocoder.yudao.framework.mybatis.core.dataobject.BaseDO;
+import cn.iocoder.yudao.module.crm.dal.dataobject.contact.CrmContactDO;
 import cn.iocoder.yudao.module.crm.dal.dataobject.customer.CrmCustomerDO;
 import cn.iocoder.yudao.module.crm.enums.DictTypeConstants;
 import com.baomidou.mybatisplus.annotation.KeySequence;
@@ -71,6 +72,71 @@ public class CrmClueDO extends BaseDO {
      * 关联 {@link CrmCustomerDO#getId()}
      */
     private Long customerId;
+    /**
+     * 转换后的联系人编号
+     *
+     * 关联 {@link CrmContactDO#getId()}
+     */
+    private Long contactId;
+
+    /**
+     * 官网生成的询盘幂等编号
+     */
+    private String externalInquiryId;
+    /**
+     * 网页表单中的联系人姓名
+     */
+    private String contactName;
+    /**
+     * 网页表单中的公司名称
+     */
+    private String companyName;
+    /**
+     * 国家或地区电话区号
+     */
+    private String countryCode;
+    /**
+     * 询盘主题
+     */
+    private String inquirySubject;
+    /**
+     * 询盘原始内容
+     */
+    private String inquiryMessage;
+    /**
+     * 提交页面
+     */
+    private String sourcePage;
+    /**
+     * 浏览器语言
+     */
+    private String locale;
+    /**
+     * UTM 来源
+     */
+    private String utmSource;
+    /**
+     * UTM 媒介
+     */
+    private String utmMedium;
+    /**
+     * UTM 活动
+     */
+    private String utmCampaign;
+    /**
+     * 网页提交时间
+     */
+    private LocalDateTime submittedAt;
+    /**
+     * 询盘处理状态
+     *
+     * @see cn.iocoder.yudao.module.crm.enums.clue.CrmInquiryProcessStatusEnum
+     */
+    private Integer processStatus;
+    /**
+     * 处理完成或标记无效的时间
+     */
+    private LocalDateTime processedAt;
 
     /**
      * 手机号

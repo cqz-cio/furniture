@@ -71,17 +71,6 @@ describe("product detail model", () => {
     expect(model.relatedLinks.every((link) => link.href.startsWith("/"))).toBe(true);
   });
 
-  it("uses safe defaults while the backend product detail is still loading", () => {
-    const model = buildProductDetailModel(null);
-
-    expect(model).toMatchObject({
-      name: "Luxury Furniture",
-      productType: "furniture",
-      source: "demo",
-    });
-    expect(model.gallery).toHaveLength(5);
-  });
-
   it("keeps every unique ERP gallery image instead of truncating product photography", () => {
     const gallery = Array.from({ length: 16 }, (_, index) => `https://cdn.example/view-${index + 2}.jpg`);
     const model = buildProductDetailModel({
@@ -93,6 +82,17 @@ describe("product detail model", () => {
     expect(model.gallery).toHaveLength(17);
     expect(model.gallery[0]).toMatchObject({ src: "https://cdn.example/view-1.jpg", label: "Hero" });
     expect(model.gallery[16]).toMatchObject({ src: "https://cdn.example/view-17.jpg", label: "View 17" });
+  });
+
+  it("uses safe defaults while the backend product detail is still loading", () => {
+    const model = buildProductDetailModel(null);
+
+    expect(model).toMatchObject({
+      name: "Luxury Furniture",
+      productType: "furniture",
+      source: "demo",
+    });
+    expect(model.gallery).toHaveLength(5);
   });
 
   it("keeps exactly nine unique images from the matching Jabo product folder", () => {

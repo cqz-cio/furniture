@@ -34,7 +34,7 @@
         <el-input v-model="row.barCode" class="w-100%" />
       </template>
     </el-table-column>
-    <el-table-column align="center" label="销售价" min-width="168">
+    <el-table-column align="center" :label="priceColumnLabel" min-width="168">
       <template #default="{ row }">
         <el-input-number
           v-model="row.price"
@@ -46,10 +46,16 @@
         />
       </template>
     </el-table-column>
-    <el-table-column align="center" label="市场价" min-width="168">
+    <el-table-column
+      v-if="showMarketPrice"
+      align="center"
+      :label="marketPriceColumnLabel"
+      min-width="188"
+    >
       <template #default="{ row }">
         <el-input-number
           v-model="row.marketPrice"
+          :disabled="marketPriceNotApplicable"
           :min="0"
           :precision="2"
           :step="0.1"
@@ -58,7 +64,7 @@
         />
       </template>
     </el-table-column>
-    <el-table-column align="center" label="成本价" min-width="168">
+    <el-table-column align="center" :label="costPriceColumnLabel" min-width="168">
       <template #default="{ row }">
         <el-input-number
           v-model="row.costPrice"
@@ -99,11 +105,12 @@
         />
       </template>
     </el-table-column>
-    <template v-if="formData!.subCommissionType">
+    <template v-if="showBrokerageFields && formData!.subCommissionType">
       <el-table-column align="center" label="一级返佣(元)" min-width="168">
         <template #default="{ row }">
           <el-input-number
             v-model="row.firstBrokeragePrice"
+            :disabled="isB2B"
             :min="0"
             :precision="2"
             :step="0.1"
@@ -116,6 +123,7 @@
         <template #default="{ row }">
           <el-input-number
             v-model="row.secondBrokeragePrice"
+            :disabled="isB2B"
             :min="0"
             :precision="2"
             :step="0.1"
@@ -178,17 +186,22 @@
         {{ row.barCode }}
       </template>
     </el-table-column>
-    <el-table-column align="center" label="销售价(元)" min-width="80">
+    <el-table-column align="center" :label="`${priceColumnLabel}(元)`" min-width="100">
       <template #default="{ row }">
         {{ row.price }}
       </template>
     </el-table-column>
-    <el-table-column align="center" label="市场价(元)" min-width="80">
+    <el-table-column
+      v-if="showMarketPrice"
+      align="center"
+      :label="`${marketPriceColumnLabel}(元)`"
+      min-width="120"
+    >
       <template #default="{ row }">
         {{ row.marketPrice }}
       </template>
     </el-table-column>
-    <el-table-column align="center" label="成本价(元)" min-width="80">
+    <el-table-column align="center" :label="`${costPriceColumnLabel}(元)`" min-width="100">
       <template #default="{ row }">
         {{ row.costPrice }}
       </template>
@@ -208,7 +221,7 @@
         {{ row.volume }}
       </template>
     </el-table-column>
-    <template v-if="formData!.subCommissionType">
+    <template v-if="showBrokerageFields && formData!.subCommissionType">
       <el-table-column align="center" label="一级返佣(元)" min-width="80">
         <template #default="{ row }">
           {{ row.firstBrokeragePrice }}
@@ -293,6 +306,7 @@ import { RuleConfig } from '@/views/mall/product/spu/components/index'
 import { PropertyAndValues } from './index'
 import { ElTable } from 'element-plus'
 import { isEmpty } from '@/utils/is'
+import type { ProductFieldState } from '@/api/system/tenant'
 
 defineOptions({ name: 'SkuList' })
 const message = useMessage() // 消息弹窗
@@ -314,8 +328,33 @@ const props = defineProps({
   isDetail: propTypes.bool.def(false), // 是否作为 sku 详情组件
   isComponent: propTypes.bool.def(false), // 是否作为 sku 选择组件
   isActivityComponent: propTypes.bool.def(false), // 是否作为 sku 活动配置组件
-  showStock: propTypes.bool.def(true) // 是否展示库存；默认保持促销等既有调用方行为
+  showStock: propTypes.bool.def(true), // 是否展示库存；默认保持促销等既有调用方行为
+  businessMode: propTypes.string.def('B2C'),
+  fieldStates: {
+    type: Object as PropType<Record<string, ProductFieldState>>,
+    default: () => ({})
+  },
+  showInactiveFields: propTypes.bool.def(false)
 })
+const isB2B = computed(() => props.businessMode === 'B2B')
+const fieldState = (field: string): ProductFieldState => props.fieldStates[field] || 'INTERNAL'
+const marketPriceNotApplicable = computed(
+  () => isB2B.value && fieldState('marketPrice') === 'NOT_APPLICABLE'
+)
+const showMarketPrice = computed(() => !marketPriceNotApplicable.value || props.showInactiveFields)
+const showBrokerageFields = computed(
+  () => !isB2B.value || fieldState('brokerage') !== 'NOT_APPLICABLE' || props.showInactiveFields
+)
+const priceColumnLabel = computed(() => {
+  if (!isB2B.value) {
+    return '销售价'
+  }
+  return fieldState('price') === 'WEBSITE' ? '网站价格' : '内部参考价'
+})
+const marketPriceColumnLabel = computed(() =>
+  marketPriceNotApplicable.value ? '市场价（B2C 专用）' : '市场价'
+)
+const costPriceColumnLabel = computed(() => (isB2B.value ? '内部成本价' : '成本价'))
 const formData: Ref<Spu | undefined> = ref<Spu>() // 表单数据
 const skuList = ref<Sku[]>([
   {
@@ -347,6 +386,13 @@ const batchAdd = () => {
   const batchValues: Partial<Sku> = { ...skuList.value[0] }
   if (!props.showStock) {
     delete batchValues.stock
+  }
+  if (marketPriceNotApplicable.value) {
+    delete batchValues.marketPrice
+  }
+  if (isB2B.value && fieldState('brokerage') === 'NOT_APPLICABLE') {
+    delete batchValues.firstBrokeragePrice
+    delete batchValues.secondBrokeragePrice
   }
   formData.value!.skus!.forEach((item) => {
     copyValueToTarget(item, batchValues)

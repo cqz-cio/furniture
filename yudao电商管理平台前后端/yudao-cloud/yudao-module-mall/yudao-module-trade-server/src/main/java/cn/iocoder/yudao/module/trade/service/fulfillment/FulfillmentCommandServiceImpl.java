@@ -43,6 +43,7 @@ import cn.iocoder.yudao.module.trade.service.fulfillment.domain.ShipmentStateMac
 import cn.iocoder.yudao.module.trade.service.fulfillment.support.FulfillmentDispatchHashing;
 import cn.iocoder.yudao.module.trade.service.fulfillment.support.FulfillmentHashing;
 import cn.iocoder.yudao.module.trade.service.fulfillment.support.FulfillmentNoGenerator;
+import cn.iocoder.yudao.module.trade.service.fulfillment.support.FulfillmentPersistenceTextPolicy;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
@@ -262,8 +263,8 @@ public class FulfillmentCommandServiceImpl implements FulfillmentCommandService 
                 .setTrackingNumber(normalizeOptional(command.getTrackingNumber()))
                 .setProNumber(normalizeOptional(command.getProNumber()))
                 .setBolNumber(normalizeOptional(command.getBolNumber()))
-                .setOriginLocation(normalizeOptional(command.getOriginLocation()))
-                .setDestinationLocation(normalizeOptional(command.getDestinationLocation()))
+                .setOriginLocation(FulfillmentPersistenceTextPolicy.location(command.getOriginLocation()))
+                .setDestinationLocation(FulfillmentPersistenceTextPolicy.location(command.getDestinationLocation()))
                 .setStatus(ShipmentStatusEnum.DRAFT.name())
                 .setVersion(0);
         legMapper.insert(leg);
@@ -881,6 +882,8 @@ public class FulfillmentCommandServiceImpl implements FulfillmentCommandService 
             throw exception(FULFILLMENT_DISPATCH_INCOMPLETE);
         }
         normalizeRequiredVocabulary(command.getLegType(), LEG_TYPES);
+        FulfillmentPersistenceTextPolicy.location(command.getOriginLocation());
+        FulfillmentPersistenceTextPolicy.location(command.getDestinationLocation());
     }
 
     private static void validateMutationIdentity(Long tenantId, Long shipmentId, Integer expectedVersion) {

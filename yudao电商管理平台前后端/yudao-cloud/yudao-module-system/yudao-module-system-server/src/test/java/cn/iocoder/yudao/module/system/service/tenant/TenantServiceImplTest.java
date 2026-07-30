@@ -32,6 +32,7 @@ import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 import static cn.iocoder.yudao.framework.common.util.collection.SetUtils.asSet;
 import static cn.iocoder.yudao.framework.common.util.date.LocalDateTimeUtils.buildBetweenTime;
@@ -133,16 +134,28 @@ public class TenantServiceImplTest extends BaseDbUnitTest {
     @Test
     public void testCreateTenant() {
         // mock 套餐 100L
-        TenantPackageDO tenantPackage = randomPojo(TenantPackageDO.class, o -> o.setId(100L));
+        TenantPackageDO tenantPackage = randomPojo(TenantPackageDO.class, o -> {
+            o.setId(100L);
+            o.setMenuIds(asSet(10L, 11L, 12L));
+        });
         when(tenantPackageService.validTenantPackage(eq(100L))).thenReturn(tenantPackage);
-        // mock 角色 200L
-        when(roleService.createRole(argThat(role -> {
-            assertEquals(RoleCodeEnum.TENANT_ADMIN.getName(), role.getName());
-            assertEquals(RoleCodeEnum.TENANT_ADMIN.getCode(), role.getCode());
-            assertEquals(0, role.getSort());
-            assertEquals("系统自动生成", role.getRemark());
-            return true;
-        }), eq(RoleTypeEnum.SYSTEM.getType()))).thenReturn(200L);
+        // mock 租户管理员角色 200L、商城运营角色 201L
+        when(roleService.createRole(argThat(role -> role != null
+                        && RoleCodeEnum.TENANT_ADMIN.getCode().equals(role.getCode())),
+                eq(RoleTypeEnum.SYSTEM.getType()))).thenReturn(200L);
+        when(roleService.createRole(argThat(role -> role != null
+                        && RoleCodeEnum.MALL_OPERATOR.getCode().equals(role.getCode())),
+                eq(RoleTypeEnum.SYSTEM.getType()))).thenReturn(201L);
+        MenuDO rootMenu = new MenuDO().setId(10L).setParentId(MenuDO.ID_ROOT)
+                .setStatus(CommonStatusEnum.ENABLE.getStatus());
+        MenuDO productMenu = new MenuDO().setId(11L).setParentId(10L)
+                .setPermission("product:spu:query")
+                .setStatus(CommonStatusEnum.ENABLE.getStatus());
+        MenuDO systemMenu = new MenuDO().setId(12L).setParentId(MenuDO.ID_ROOT)
+                .setPermission("system:user:query")
+                .setStatus(CommonStatusEnum.ENABLE.getStatus());
+        when(menuService.getMenuList(tenantPackage.getMenuIds()))
+                .thenReturn(asList(rootMenu, productMenu, systemMenu));
         // mock 用户 300L
         when(userService.createUser(argThat(user -> {
             assertEquals("yunai", user.getUsername());
@@ -174,8 +187,18 @@ public class TenantServiceImplTest extends BaseDbUnitTest {
         TenantDO tenant = tenantMapper.selectById(tenantId);
         assertPojoEquals(reqVO, tenant, "id");
         assertEquals(300L, tenant.getContactUserId());
-        // verify 分配权限
+        // verify 创建两个系统角色并分配权限
+        verify(roleService).createRole(argThat(role ->
+                RoleCodeEnum.TENANT_ADMIN.getName().equals(role.getName())
+                        && RoleCodeEnum.TENANT_ADMIN.getCode().equals(role.getCode())
+                        && Objects.equals(0, role.getSort())
+                        && "系统自动生成".equals(role.getRemark())), eq(RoleTypeEnum.SYSTEM.getType()));
+        verify(roleService).createRole(argThat(role ->
+                RoleCodeEnum.MALL_OPERATOR.getName().equals(role.getName())
+                        && RoleCodeEnum.MALL_OPERATOR.getCode().equals(role.getCode())
+                        && Objects.equals(1, role.getSort())), eq(RoleTypeEnum.SYSTEM.getType()));
         verify(permissionService).assignRoleMenu(eq(200L), same(tenantPackage.getMenuIds()));
+        verify(permissionService).assignRoleMenu(eq(201L), eq(asSet(10L, 11L)));
     }
 
     @Test

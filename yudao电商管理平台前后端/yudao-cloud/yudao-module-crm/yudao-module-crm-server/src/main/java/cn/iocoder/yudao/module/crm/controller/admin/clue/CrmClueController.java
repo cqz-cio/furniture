@@ -13,6 +13,9 @@ import cn.iocoder.yudao.module.crm.controller.admin.clue.vo.CrmCluePageReqVO;
 import cn.iocoder.yudao.module.crm.controller.admin.clue.vo.CrmClueRespVO;
 import cn.iocoder.yudao.module.crm.controller.admin.clue.vo.CrmClueSaveReqVO;
 import cn.iocoder.yudao.module.crm.controller.admin.clue.vo.CrmClueTransferReqVO;
+import cn.iocoder.yudao.module.crm.controller.admin.clue.vo.CrmClueTransformRespVO;
+import cn.iocoder.yudao.module.crm.controller.admin.clue.vo.CrmInquiryProcessStatusUpdateReqVO;
+import cn.iocoder.yudao.module.crm.controller.admin.clue.vo.CrmInquirySummaryRespVO;
 import cn.iocoder.yudao.module.crm.dal.dataobject.clue.CrmClueDO;
 import cn.iocoder.yudao.module.crm.dal.dataobject.customer.CrmCustomerDO;
 import cn.iocoder.yudao.module.crm.service.clue.CrmClueService;
@@ -45,7 +48,7 @@ import static cn.iocoder.yudao.framework.common.util.collection.CollectionUtils.
 import static cn.iocoder.yudao.framework.security.core.util.SecurityFrameworkUtils.getLoginUserId;
 import static java.util.Collections.singletonList;
 
-@Tag(name = "管理后台 - 线索")
+@Tag(name = "管理后台 - 询盘汇总")
 @RestController
 @RequestMapping("/crm/clue")
 @Validated
@@ -117,7 +120,23 @@ public class CrmClueController {
         pageReqVO.setPageSize(PAGE_SIZE_NONE);
         List<CrmClueDO> list = clueService.getCluePage(pageReqVO, getLoginUserId()).getList();
         // 导出 Excel
-        ExcelUtils.write(response, "线索.xls", "数据", CrmClueRespVO.class, buildClueDetailList(list));
+        ExcelUtils.write(response, "询盘汇总.xls", "询盘", CrmClueRespVO.class, buildClueDetailList(list));
+    }
+
+    @GetMapping("/summary")
+    @Operation(summary = "获得询盘处理状态汇总")
+    @PreAuthorize("@ss.hasPermission('crm:clue:query')")
+    public CommonResult<CrmInquirySummaryRespVO> getInquirySummary() {
+        return success(clueService.getInquirySummary(getLoginUserId()));
+    }
+
+    @PutMapping("/process-status")
+    @Operation(summary = "更新询盘处理状态")
+    @PreAuthorize("@ss.hasPermission('crm:clue:update')")
+    public CommonResult<Boolean> updateInquiryProcessStatus(
+            @Valid @RequestBody CrmInquiryProcessStatusUpdateReqVO reqVO) {
+        clueService.updateInquiryProcessStatus(reqVO);
+        return success(true);
     }
 
     private List<CrmClueRespVO> buildClueDetailList(List<CrmClueDO> list) {
@@ -155,12 +174,11 @@ public class CrmClueController {
     }
 
     @PutMapping("/transform")
-    @Operation(summary = "线索转化为客户")
+    @Operation(summary = "询盘生成或关联客户档案与联系人")
     @Parameter(name = "id", description = "编号", required = true)
     @PreAuthorize("@ss.hasPermission('crm:clue:update')")
-    public CommonResult<Boolean> transformClue(@RequestParam("id") Long id) {
-        clueService.transformClue(id, getLoginUserId());
-        return success(Boolean.TRUE);
+    public CommonResult<CrmClueTransformRespVO> transformClue(@RequestParam("id") Long id) {
+        return success(clueService.transformClue(id, getLoginUserId()));
     }
 
     @GetMapping("/follow-count")

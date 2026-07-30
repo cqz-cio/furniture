@@ -105,8 +105,7 @@ for (const exportName of requiredFurnitureLiteExports) {
 const requiredFurnitureLiteConfigTokens = [
   'synchronizedMenuPaths',
   'allowedMenuPaths',
-  'deniedFixedRoutePrefixes',
-  '/crm'
+  'deniedFixedRoutePrefixes'
 ]
 
 for (const token of requiredFurnitureLiteConfigTokens) {
@@ -129,6 +128,9 @@ for (const route of [
   '/member/gift-registry',
   '/member/trade-application',
   '/system/role',
+  '/system/messages/mail/mail-account',
+  '/system/messages/mail/mail-template',
+  '/system/messages/mail/mail-log',
   '/infra/file/file-config'
 ]) {
   assert.ok(
@@ -152,7 +154,44 @@ assert.ok(
   'src/config/furnitureLite.ts must not deny /ai fixed routes in furniture-lite mode'
 )
 
-for (const route of ['/bpm', '/crm', '/iot', '/mes', '/diy', '/codegen', '/job']) {
+const requiredCrmRoutes = [
+  '/crm',
+  '/crm/clue',
+  '/crm/customer',
+  '/crm/contact'
+]
+
+for (const route of requiredCrmRoutes) {
+  assert.ok(
+    furnitureNavigationMenuPaths.includes(route),
+    `the backend furniture navigation catalog must allow CRM menu route ${route}`
+  )
+}
+
+for (const route of [
+  '/crm/backlog',
+  '/crm/customer/pool',
+  '/crm/business',
+  '/crm/contract',
+  '/crm/receivable',
+  '/crm/receivable-plan',
+  '/crm/product',
+  '/crm/statistics',
+  '/crm/config'
+]) {
+  assert.ok(
+    !furnitureNavigationMenuPaths.includes(route),
+    `the inquiry-center navigation catalog must hide unused CRM route ${route}`
+  )
+}
+
+assert.ok(
+  !deniedFixedRoutePrefixesBlock.includes("'/crm'") &&
+    !deniedFixedRoutePrefixesBlock.includes('"/crm"'),
+  'src/config/furnitureLite.ts must not deny /crm fixed routes'
+)
+
+for (const route of ['/bpm', '/iot', '/mes', '/diy', '/codegen', '/job']) {
   assert.ok(
     deniedFixedRoutePrefixesBlock.includes(`'${route}'`) ||
       deniedFixedRoutePrefixesBlock.includes(`"${route}"`),

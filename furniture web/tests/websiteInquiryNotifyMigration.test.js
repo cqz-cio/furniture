@@ -3,10 +3,10 @@ import { describe, expect, it } from "vitest";
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
 
-describe("V026 website inquiry notify migration", () => {
+describe("V029 website inquiry notify migration", () => {
   it("widens notify params and installs the VANZ inquiry template", () => {
     const migration = read(
-      "../../yudao电商管理平台前后端/yudao-cloud/sql/mysql/migrations/V026__website_inquiry_notify.sql",
+      "../../yudao电商管理平台前后端/yudao-cloud/sql/mysql/migrations/V029__website_inquiry_notify.sql",
     );
 
     expect(migration).toMatch(
@@ -19,14 +19,14 @@ describe("V026 website inquiry notify migration", () => {
     expect(migration).toMatch(/WHERE NOT EXISTS[\s\S]*`system_notify_template`/i);
   });
 
-  it("keeps the generated baseline section byte-equivalent to V026", () => {
+  it("keeps the generated baseline section byte-equivalent to V029", () => {
     const migration = read(
-      "../../yudao电商管理平台前后端/yudao-cloud/sql/mysql/migrations/V026__website_inquiry_notify.sql",
+      "../../yudao电商管理平台前后端/yudao-cloud/sql/mysql/migrations/V029__website_inquiry_notify.sql",
     ).replace(/\r\n/g, "\n").replace(/\s+$/, "") + "\n";
     const baseline = read(
       "../../yudao电商管理平台前后端/yudao-cloud/sql/mysql/oakved-baseline.sql",
     ).replace(/\r\n/g, "\n");
-    const marker = "-- BEGIN V026__website_inquiry_notify.sql\n";
+    const marker = "-- BEGIN V029__website_inquiry_notify.sql\n";
     const start = baseline.indexOf(marker);
     const sectionStart = start + marker.length;
     const nextMarkerOffset = baseline.slice(sectionStart).search(

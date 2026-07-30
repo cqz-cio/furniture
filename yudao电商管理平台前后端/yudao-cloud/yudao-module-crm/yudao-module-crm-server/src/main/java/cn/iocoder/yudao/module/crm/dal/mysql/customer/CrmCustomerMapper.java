@@ -61,6 +61,8 @@ public interface CrmCustomerMapper extends BaseMapperX<CrmCustomerDO> {
         query.selectAll(CrmCustomerDO.class)
                 .likeIfPresent(CrmCustomerDO::getName, pageReqVO.getName())
                 .eqIfPresent(CrmCustomerDO::getMobile, pageReqVO.getMobile())
+                .likeIfPresent(CrmCustomerDO::getTelephone, pageReqVO.getTelephone())
+                .likeIfPresent(CrmCustomerDO::getEmail, pageReqVO.getEmail())
                 .eqIfPresent(CrmCustomerDO::getIndustryId, pageReqVO.getIndustryId())
                 .eqIfPresent(CrmCustomerDO::getLevel, pageReqVO.getLevel())
                 .eqIfPresent(CrmCustomerDO::getSource, pageReqVO.getSource())

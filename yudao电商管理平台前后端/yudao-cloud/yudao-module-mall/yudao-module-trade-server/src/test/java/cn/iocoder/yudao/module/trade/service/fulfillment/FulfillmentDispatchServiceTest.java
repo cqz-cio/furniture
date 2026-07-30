@@ -1,5 +1,6 @@
 package cn.iocoder.yudao.module.trade.service.fulfillment;
 
+import cn.iocoder.yudao.framework.common.exception.ServiceException;
 import cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder;
 import cn.iocoder.yudao.framework.test.core.ut.BaseMockitoUnitTest;
 import cn.iocoder.yudao.module.trade.dal.dataobject.fulfillment.*;
@@ -226,24 +227,52 @@ class FulfillmentDispatchServiceTest extends BaseMockitoUnitTest {
                 ShipmentStatusEnum.DRAFT, 0));
         when(packageMapper.selectByIdAndTenantId(PACKAGE_ID, TENANT_ID)).thenReturn(packageRow(CARRIER_ID, null));
         AddShipmentLegCommand command = legCommand().setTrackingNumber(null).setProNumber("private-pro")
-                .setBolNumber(null).setOriginLocation("private-origin").setDestinationLocation("private-destination");
+                .setBolNumber(null).setOriginLocation("Toronto, ON").setDestinationLocation("Ottawa, ON");
 
         assertEquals(LEG_ID, service.addLeg(IDEMPOTENCY_KEY, command));
 
         ArgumentCaptor<ShipmentLegDO> captor = ArgumentCaptor.forClass(ShipmentLegDO.class);
         verify(legMapper).insert(captor.capture());
         assertEquals("private-pro", captor.getValue().getProNumber());
+        assertEquals("Toronto, ON", captor.getValue().getOriginLocation());
+        assertEquals("Ottawa, ON", captor.getValue().getDestinationLocation());
         assertFalse(captor.getValue().toString().contains("private-pro"));
-        assertFalse(captor.getValue().toString().contains("private-origin"));
+        assertFalse(captor.getValue().toString().contains("Toronto, ON"));
         assertFalse(command.toString().contains("private-pro"));
-        assertFalse(command.toString().contains("private-origin"));
-        assertFalse(command.toString().contains("private-destination"));
+        assertFalse(command.toString().contains("Toronto, ON"));
+        assertFalse(command.toString().contains("Ottawa, ON"));
         String requestHash = FulfillmentDispatchHashing.hash(command);
         assertFalse(requestHash.contains("private-pro"));
-        assertFalse(requestHash.contains("private-origin"));
+        assertFalse(requestHash.contains("Toronto, ON"));
         verify(idempotencyMapper).insert(argThat((FulfillmentIdempotencyDO row) -> "ADD_LEG".equals(row.getOperation())
                 && "LEG".equals(row.getResourceType())));
         verify(shipmentMapper).incrementVersionByIdAndVersion(TENANT_ID, SHIPMENT_ID, 0);
+    }
+
+    @Test
+    void rejectsSensitiveLegLocationsBeforeAnyMapperPersistence() {
+        List<String> forbidden = List.of(
+                "+1 (416) 555-0123",
+                "tel:4165550123",
+                "phone=4165550123",
+                "mobile=4165550123",
+                "phone 4165550123",
+                "dispatch@example.com",
+                "123 Main Street, Toronto, ON M5V 2T6",
+                "api_token=secret-value",
+                "api key: sk-proj-abcdefghijklmnopqrstuvwxyz",
+                "sk-abcdefghijklmnopqrstuvwxyz",
+                "https://operator:password@example.com/status");
+
+        for (int caseIndex = 0; caseIndex < forbidden.size(); caseIndex++) {
+            String value = forbidden.get(caseIndex);
+            ServiceException failure = assertThrows(ServiceException.class,
+                    () -> service.addLeg("sensitive-location-key", legCommand()
+                            .setOriginLocation(value).setDestinationLocation("Ottawa, ON")));
+            assertEquals(1_011_009_012, failure.getCode(), "sensitive location case " + caseIndex);
+            assertFalse(failure.getMessage().contains(value));
+        }
+        verifyNoInteractions(idempotencyMapper, legMapper);
     }
 
     @Test

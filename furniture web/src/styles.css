@@ -3185,12 +3185,17 @@ a.home-entry {
 
   .mobile-menu-drawer {
     width: min(300px, 77vw);
-    min-height: calc(100vh - 76px);
+    height: calc(100vh - 76px);
+    height: calc(100dvh - 76px);
+    max-height: calc(100dvh - 76px);
     display: flex;
     flex-direction: column;
+    overflow-y: auto;
+    overscroll-behavior: contain;
     background: #fbfaf8;
     pointer-events: auto;
     box-shadow: 3px 0 10px rgba(0, 0, 0, 0.1);
+    -webkit-overflow-scrolling: touch;
   }
 
   .mobile-menu-drawer > button {
@@ -7568,12 +7573,17 @@ a.home-entry {
 
   .mobile-menu-drawer {
     width: min(340px, 78vw);
-    min-height: calc(100vh - 82px);
+    height: calc(100vh - 82px);
+    height: calc(100dvh - 82px);
+    max-height: calc(100dvh - 82px);
     display: flex;
     flex-direction: column;
+    overflow-y: auto;
+    overscroll-behavior: contain;
     background: #fbfaf8;
     pointer-events: auto;
     box-shadow: 3px 0 10px rgba(0, 0, 0, 0.1);
+    -webkit-overflow-scrolling: touch;
   }
 
   .mobile-menu-drawer > button {

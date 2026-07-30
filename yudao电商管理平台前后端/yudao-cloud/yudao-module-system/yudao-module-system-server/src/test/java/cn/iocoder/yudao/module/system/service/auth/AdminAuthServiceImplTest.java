@@ -31,6 +31,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
+import java.util.Objects;
+
 import static cn.hutool.core.util.RandomUtil.randomEle;
 import static cn.iocoder.yudao.framework.common.pojo.CommonResult.success;
 import static cn.iocoder.yudao.framework.test.core.util.AssertUtils.assertPojoEquals;
@@ -185,6 +187,30 @@ public class AdminAuthServiceImplTest extends BaseDbUnitTest {
         verify(socialUserService).bindSocialUser(eq(new SocialUserBindReqDTO(
                 user.getId(), UserTypeEnum.ADMIN.getValue(),
                 reqVO.getSocialType(), reqVO.getSocialCode(), reqVO.getSocialState())));
+    }
+
+    @Test
+    public void testRegister_success() {
+        AuthRegisterReqVO reqVO = new AuthRegisterReqVO()
+                .setUsername("oakvedops")
+                .setNickname("Oakved 运营")
+                .setPassword("oakved123");
+        authService.setCaptchaEnable(false);
+        Long userId = 145L;
+        when(userService.registerUser(reqVO)).thenReturn(userId);
+        OAuth2AccessTokenDO accessTokenDO = randomPojo(OAuth2AccessTokenDO.class, o -> o
+                .setUserId(userId)
+                .setUserType(UserTypeEnum.ADMIN.getValue()));
+        when(oauth2TokenService.createAccessToken(eq(userId), eq(UserTypeEnum.ADMIN.getValue()),
+                eq("default"), isNull())).thenReturn(accessTokenDO);
+
+        AuthLoginRespVO result = authService.register(reqVO);
+
+        assertPojoEquals(accessTokenDO, result);
+        verify(permissionService).validateUserRoleForLogin(userId);
+        verify(loginLogService).createLoginLog(argThat(log -> Objects.equals(log.getUserId(), userId)
+                && Objects.equals(log.getUsername(), reqVO.getUsername())
+                && Objects.equals(log.getResult(), LoginResultEnum.SUCCESS.getResult())));
     }
 
     @Test

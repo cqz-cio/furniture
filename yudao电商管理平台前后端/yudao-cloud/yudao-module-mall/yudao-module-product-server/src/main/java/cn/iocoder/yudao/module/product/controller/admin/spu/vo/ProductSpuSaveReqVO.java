@@ -63,8 +63,7 @@ public class ProductSpuSaveReqVO {
 
     // ========== 物流相关字段 =========
 
-    @Schema(description = "配送方式数组", requiredMode = Schema.RequiredMode.REQUIRED, example = "1")
-    @NotEmpty(message = "配送方式不能为空")
+    @Schema(description = "配送方式数组；B2C 必填，B2B 不适用", example = "1")
     private List<Integer> deliveryTypes;
 
     @Schema(description = "物流配置模板编号", requiredMode = Schema.RequiredMode.REQUIRED, example = "111")

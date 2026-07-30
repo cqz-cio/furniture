@@ -1,0 +1,3 @@
+/database-snapshots/*.oakveddb binary
+/oakved-deploy-kit/** text eol=lf
+/oakved-cloud-migration-plan.md text eol=lf

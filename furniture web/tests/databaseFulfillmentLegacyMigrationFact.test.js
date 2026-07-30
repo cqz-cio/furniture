@@ -4,13 +4,13 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const root = join(import.meta.dirname, "../../yudao电商管理平台前后端/yudao-cloud/sql/mysql");
-const migrationName = "V020__trade_fulfillment_legacy_migration_fact.sql";
+const migrationName = "V023__trade_fulfillment_legacy_migration_fact.sql";
 const migrationPath = join(root, "migrations", migrationName);
 const tradeServerRoot = join(root, "../../yudao-module-mall/yudao-module-trade-server");
 
 const normalize = (value) => value.replace(/\r\n/g, "\n").replace(/\s+$/, "") + "\n";
 
-describe("V020 approved legacy fulfillment migration facts", () => {
+describe("V023 approved legacy fulfillment migration facts", () => {
   it("creates one absolute, non-sensitive approval row per tenant order", () => {
     const sql = readFileSync(migrationPath, "utf8");
 
@@ -35,13 +35,16 @@ describe("V020 approved legacy fulfillment migration facts", () => {
     expect(sql).not.toMatch(/credential|api[_-]?key|secret|tracking|phone|receiver|address/i);
   });
 
-  it("keeps V015 through V019 immutable and baseline V020 byte-equivalent", () => {
+  it("keeps V015 through V022 immutable and baseline V023 byte-equivalent", () => {
     const expectedHashes = new Map([
       ["V015__trade_fulfillment_core.sql", "683687685b5b4943949d965f3b3df86eaa2e4dfcdbf50641fb4fc05db8d80ec4"],
       ["V016__trade_tracking_status_mapping.sql", "21dbb820f0e1099b73154bcc2d6011cdc1ea98556f580aaa0e5ccdd7ed7951da"],
       ["V017__trade_tracking_event_watermarks.sql", "4bddf6d0d0833138a45a6c4b52a6634e67a2798d66b7bf43cee8908a02bed46b"],
-      ["V018__trade_manual_tracking_audit.sql", "002dad8815da46261f6a361ac9bf36850a345287844c0ea6e3295b53fdc8812d"],
-      ["V019__trade_fulfillment_admin_permissions.sql", "2b7094e055a3ab0fce335a96fcf0f539d4cb337a7190efa50fc7c7f538778e18"],
+      ["V018__trade_fulfillment_active_record_uniqueness.sql", "2bf0b39fbda389e3d14cbc8b99b60a29a09556f9a37870fd50f640d2cb008bfc"],
+      ["V019__seo_foundation.sql", "ac7f05177bdc01b98a05ee8efcaca34300c81ee18f3a3e92349069f93330082c"],
+      ["V020__seo_active_record_uniqueness.sql", "ab2330f8ae1b459f6be8979a201b192817274d2df662282aaf4a8b341b4d3a48"],
+      ["V021__trade_manual_tracking_audit.sql", "deb8ec6514082f92c885771056cb272e032f2170150c9905e6ae11e40425d2f6"],
+      ["V022__trade_fulfillment_admin_permissions.sql", "b7aafccd61873c87c219c575b1102a192c05030a1ec98a33b94271174cdf3b73"],
     ]);
     for (const [name, expected] of expectedHashes) {
       const digest = createHash("sha256")

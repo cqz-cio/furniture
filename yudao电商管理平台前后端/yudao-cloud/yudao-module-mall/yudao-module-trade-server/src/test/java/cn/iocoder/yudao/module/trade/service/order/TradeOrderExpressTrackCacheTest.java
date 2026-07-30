@@ -83,6 +83,7 @@ class TradeOrderExpressTrackCacheTest {
             ExpressClient client = context.getBean(ExpressClient.class);
             TenantContextHolder.setTenantId(121L);
             properties.setReadFromNewModel(true);
+            properties.setCustomerUiEnabled(true);
             properties.setIdempotencyHmacKey("test-only-fulfillment-cache-key-32-bytes");
             TradeOrderDO order = new TradeOrderDO().setId(501L).setUserId(601L).setLogisticsId(91L)
                     .setLogisticsNo("1Z-PRIVATE-123").setReceiverMobile("+1-416-555-0199");

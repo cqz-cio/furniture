@@ -1,0 +1,12 @@
+﻿{
+    "Format":  "OAKVEDDB1",
+    "Database":  "oakved_main_0d6e4079",
+    "Branch":  "main",
+    "RuntimeCommit":  "fbb8bca7ea520ecad3655662c6c9facf5f896f66",
+    "CatalogVersion":  "025",
+    "ExportedAtUtc":  "2026-07-22T00:57:20.6302289Z",
+    "RawBytes":  84013815,
+    "SnapshotBytes":  45040189,
+    "SqlSha256":  "7FD7A2EDAA70582EBF2148932846F45D10390CADD7762F5DDA874DCC07BB1B36",
+    "SnapshotSha256":  "253A4BBCE8DD9FC6A9E9832F19942393933CACC5E9F9E59D27ED985F6A97E109"
+}

@@ -3,6 +3,7 @@ package cn.iocoder.yudao.module.system.service.tenant;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.lang.Assert;
 import cn.hutool.core.util.ObjectUtil;
+import cn.hutool.core.util.StrUtil;
 import cn.iocoder.yudao.framework.common.enums.CommonStatusEnum;
 import cn.iocoder.yudao.framework.common.pojo.PageResult;
 import cn.iocoder.yudao.framework.common.util.collection.CollectionUtils;
@@ -31,6 +32,7 @@ import cn.iocoder.yudao.module.system.service.tenant.handler.TenantInfoHandler;
 import cn.iocoder.yudao.module.system.service.tenant.handler.TenantMenuHandler;
 import cn.iocoder.yudao.module.system.service.user.AdminUserService;
 import com.baomidou.dynamic.datasource.annotation.DSTransactional;
+import com.google.common.annotations.VisibleForTesting;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,9 +40,7 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 
 import static cn.iocoder.yudao.framework.common.exception.util.ServiceExceptionUtil.exception;
 import static cn.iocoder.yudao.module.system.enums.ErrorCodeConstants.*;
@@ -54,6 +54,43 @@ import static cn.iocoder.yudao.module.system.enums.ErrorCodeConstants.*;
 @Validated
 @Slf4j
 public class TenantServiceImpl implements TenantService {
+
+    private static final List<String> MALL_OPERATOR_PERMISSION_PREFIXES = List.of(
+            "product:",
+            "trade:order:",
+            "trade:after-sale:",
+            "trade:fulfillment:",
+            "trade:delivery:",
+            "member:user:",
+            "member:group:",
+            "member:tag:",
+            "member:level:",
+            "member:trade-application:",
+            "promotion:",
+            "seo:",
+            "statistics:member:",
+            "statistics:product:",
+            "statistics:trade:",
+            "crm:clue:",
+            "crm:customer:",
+            "crm:contact:",
+            "crm:business:",
+            "crm:product:",
+            "crm:product-category:",
+            "erp:product:",
+            "erp:product-category:",
+            "erp:product-unit:",
+            "erp:customer:",
+            "erp:sale-order:",
+            "erp:sale-out:",
+            "erp:sale-return:",
+            "erp:stock-record:"
+    );
+    private static final Set<String> MALL_OPERATOR_EXACT_PERMISSIONS = Set.of(
+            "statistics:dashboard:query",
+            "erp:stock:query",
+            "erp:stock:export"
+    );
 
     @SuppressWarnings("SpringJavaAutowiredFieldsWarningInspection")
     @Autowired(required = false) // 由于 yudao.tenant.enable 配置项，可以关闭多租户的功能，所以这里只能不强制注入
@@ -112,8 +149,9 @@ public class TenantServiceImpl implements TenantService {
         tenantMapper.insert(tenant);
         // 创建租户的管理员
         TenantUtils.execute(tenant.getId(), () -> {
-            // 创建角色
-            Long roleId = createRole(tenantPackage);
+            // 创建租户管理员及公开注册使用的最小权限运营角色
+            Long roleId = createTenantAdminRole(tenantPackage);
+            createMallOperatorRole(tenantPackage);
             // 创建用户，并分配角色
             Long userId = createUser(roleId, createReqVO);
             // 修改租户的管理员
@@ -128,7 +166,7 @@ public class TenantServiceImpl implements TenantService {
         return userService.createUser(userReqVO);
     }
 
-    private Long createRole(TenantPackageDO tenantPackage) {
+    private Long createTenantAdminRole(TenantPackageDO tenantPackage) {
         // 创建角色
         RoleSaveReqVO reqVO = new RoleSaveReqVO();
         reqVO.setName(RoleCodeEnum.TENANT_ADMIN.getName()).setCode(RoleCodeEnum.TENANT_ADMIN.getCode())
@@ -137,6 +175,48 @@ public class TenantServiceImpl implements TenantService {
         // 分配权限
         permissionService.assignRoleMenu(roleId, tenantPackage.getMenuIds());
         return roleId;
+    }
+
+    private void createMallOperatorRole(TenantPackageDO tenantPackage) {
+        RoleSaveReqVO reqVO = new RoleSaveReqVO();
+        reqVO.setName(RoleCodeEnum.MALL_OPERATOR.getName()).setCode(RoleCodeEnum.MALL_OPERATOR.getCode())
+                .setSort(1).setRemark("系统自动生成；用于租户公开注册账号");
+        Long roleId = roleService.createRole(reqVO, RoleTypeEnum.SYSTEM.getType());
+        permissionService.assignRoleMenu(roleId, getMallOperatorMenuIds(tenantPackage.getMenuIds()));
+    }
+
+    /**
+     * 从租户套餐中筛出商城日常运营权限，并补齐所有菜单祖先节点。
+     */
+    @VisibleForTesting
+    Set<Long> getMallOperatorMenuIds(Set<Long> tenantMenuIds) {
+        if (CollUtil.isEmpty(tenantMenuIds)) {
+            return Collections.emptySet();
+        }
+        List<MenuDO> menus = menuService.getMenuList(tenantMenuIds);
+        Map<Long, MenuDO> menuMap = CollectionUtils.convertMap(menus, MenuDO::getId);
+        Set<Long> operatorMenuIds = new HashSet<>();
+        for (MenuDO menu : menus) {
+            if (!CommonStatusEnum.ENABLE.getStatus().equals(menu.getStatus())
+                    || !isMallOperatorPermission(menu.getPermission())) {
+                continue;
+            }
+            MenuDO current = menu;
+            while (current != null && !Objects.equals(current.getId(), MenuDO.ID_ROOT)
+                    && CommonStatusEnum.ENABLE.getStatus().equals(current.getStatus())) {
+                operatorMenuIds.add(current.getId());
+                current = menuMap.get(current.getParentId());
+            }
+        }
+        return operatorMenuIds;
+    }
+
+    private boolean isMallOperatorPermission(String permission) {
+        if (StrUtil.isBlank(permission)) {
+            return false;
+        }
+        return MALL_OPERATOR_EXACT_PERMISSIONS.contains(permission)
+                || MALL_OPERATOR_PERMISSION_PREFIXES.stream().anyMatch(permission::startsWith);
     }
 
     @Override

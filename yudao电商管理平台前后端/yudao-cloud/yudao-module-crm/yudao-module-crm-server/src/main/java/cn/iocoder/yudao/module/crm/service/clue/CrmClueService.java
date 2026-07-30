@@ -1,9 +1,14 @@
 package cn.iocoder.yudao.module.crm.service.clue;
 
 import cn.iocoder.yudao.framework.common.pojo.PageResult;
+import cn.iocoder.yudao.module.crm.api.inquiry.dto.CrmWebsiteInquiryCreateReqDTO;
+import cn.iocoder.yudao.module.crm.api.inquiry.dto.CrmWebsiteInquiryCreateRespDTO;
 import cn.iocoder.yudao.module.crm.controller.admin.clue.vo.CrmCluePageReqVO;
 import cn.iocoder.yudao.module.crm.controller.admin.clue.vo.CrmClueSaveReqVO;
 import cn.iocoder.yudao.module.crm.controller.admin.clue.vo.CrmClueTransferReqVO;
+import cn.iocoder.yudao.module.crm.controller.admin.clue.vo.CrmClueTransformRespVO;
+import cn.iocoder.yudao.module.crm.controller.admin.clue.vo.CrmInquiryProcessStatusUpdateReqVO;
+import cn.iocoder.yudao.module.crm.controller.admin.clue.vo.CrmInquirySummaryRespVO;
 import cn.iocoder.yudao.module.crm.dal.dataobject.clue.CrmClueDO;
 import jakarta.validation.Valid;
 
@@ -25,6 +30,11 @@ public interface CrmClueService {
     Long createClue(@Valid CrmClueSaveReqVO createReqVO);
 
     /**
+     * 创建官网询盘，外部询盘编号重复时返回原记录。
+     */
+    CrmWebsiteInquiryCreateRespDTO createWebsiteInquiry(@Valid CrmWebsiteInquiryCreateReqDTO reqDTO);
+
+    /**
      * 更新线索
      *
      * @param updateReqVO 更新信息
@@ -39,6 +49,11 @@ public interface CrmClueService {
      * @param contactLastContent 最后联系内容
      */
     void updateClueFollowUp(Long id, LocalDateTime contactNextTime, String contactLastContent);
+
+    /**
+     * 更新询盘处理状态。
+     */
+    void updateInquiryProcessStatus(@Valid CrmInquiryProcessStatusUpdateReqVO reqVO);
 
     /**
      * 删除线索
@@ -78,7 +93,12 @@ public interface CrmClueService {
      * @param id  线索编号
      * @param userId 用户编号
      */
-    void transformClue(Long id, Long userId);
+    CrmClueTransformRespVO transformClue(Long id, Long userId);
+
+    /**
+     * 获得当前用户可见的询盘状态汇总。
+     */
+    CrmInquirySummaryRespVO getInquirySummary(Long userId);
 
     /**
      * 获得分配给我的、待跟进的线索数量

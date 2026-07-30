@@ -52,10 +52,13 @@ public class ProductSpuServiceImpl implements ProductSpuService {
     private ProductBrandService brandService;
     @Resource
     private ProductCategoryService categoryService;
+    @Resource
+    private ProductAdminFieldPolicyService productAdminFieldPolicyService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Long createSpu(ProductSpuSaveReqVO createReqVO) {
+        productAdminFieldPolicyService.prepareForSave(createReqVO);
         // 校验分类、品牌
         validateCategory(createReqVO.getCategoryId());
         brandService.validateProductBrand(createReqVO.getBrandId());
@@ -77,6 +80,7 @@ public class ProductSpuServiceImpl implements ProductSpuService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void updateSpu(ProductSpuSaveReqVO updateReqVO) {
+        productAdminFieldPolicyService.prepareForSave(updateReqVO);
         // 校验 SPU 是否存在
         ProductSpuDO spu = validateSpuExists(updateReqVO.getId());
         // 校验分类、品牌

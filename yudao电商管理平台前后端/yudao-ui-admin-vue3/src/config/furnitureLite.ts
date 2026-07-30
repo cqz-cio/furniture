@@ -3,9 +3,13 @@ export type FurnitureLiteRoute = {
   children?: FurnitureLiteRoute[]
 }
 
-const deniedFixedRoutePrefixes = ['/bpm', '/crm', '/iot', '/mes', '/diy', '/codegen', '/job']
+const deniedFixedRoutePrefixes = ['/bpm', '/iot', '/mes', '/diy', '/codegen', '/job']
 
 const menuTitleOverrides: Record<string, string> = {
+  '/crm': '询盘中心',
+  '/crm/clue': '询盘汇总',
+  '/crm/customer': '客户档案',
+  '/crm/contact': '联系人管理',
   '/member/trade-application': '交易申请',
   '/member/membership': '会员权益',
   '/member/gift-registry': '礼品登记'

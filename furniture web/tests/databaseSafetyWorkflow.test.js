@@ -22,13 +22,41 @@ describe("safe database deployment workflow", () => {
     );
     expect(existsSync(directory)).toBe(true);
     const files = readdirSync(directory).filter((name) => name.endsWith(".sql")).sort();
-    const expectedVersions = Array.from({ length: 27 }, (_, index) => index + 1);
+    const expectedVersions = Array.from({ length: 32 }, (_, index) => index + 1);
     expect(files).toHaveLength(expectedVersions.length);
     expect(files[0]).toMatch(/^V001__/);
-    expect(files.at(-1)).toBe("V027__align_furniture_navigation_permissions.sql");
+    expect(files.slice(-10)).toEqual([
+      "V023__trade_fulfillment_legacy_migration_fact.sql",
+      "V024__normalize_dashboard_route_path.sql",
+      "V025__expose_oakved_mail_management.sql",
+      "V026__seo_keyword_relevance_analysis.sql",
+      "V027__repair_seo_analysis_menu_registration.sql",
+      "V028__tenant_business_mode.sql",
+      "V029__website_inquiry_notify.sql",
+      "V030__align_furniture_navigation_permissions.sql",
+      "V031__enable_full_crm.sql",
+      "V032__crm_inquiry_center.sql",
+    ]);
+    expect(files.at(-1)).toBe("V032__crm_inquiry_center.sql");
     expect(files.map((name) => Number(name.slice(1, 4)))).toEqual(
       expectedVersions,
     );
+  });
+
+  it("isolates Oakved mail routes in a dedicated tenant package", () => {
+    const migration = read(
+      "../../yudao电商管理平台前后端/yudao-cloud/sql/mysql/migrations/V025__expose_oakved_mail_management.sql",
+    );
+
+    expect(migration).toContain("oakved:tenant-121:mail-management");
+    expect(migration).toContain("INSERT INTO `system_tenant_package`");
+    expect(migration).toContain("UPDATE `system_tenant`");
+    expect(migration).toContain("INSERT INTO `system_role_menu`");
+    expect(migration).toContain("system/mail/account/index");
+    expect(migration).toContain("system/mail/template/index");
+    expect(migration).toContain("system/mail/log/index");
+    expect(migration).toContain("JSON_ARRAY_APPEND");
+    expect(migration).toContain("JSON_TABLE");
   });
 
   it("generates one complete baseline with catalog and ERP demo data", () => {

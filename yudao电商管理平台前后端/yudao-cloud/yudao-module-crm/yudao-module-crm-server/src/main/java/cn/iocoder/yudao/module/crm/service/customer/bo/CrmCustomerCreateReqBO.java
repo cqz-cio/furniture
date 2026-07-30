@@ -1,7 +1,6 @@
 package cn.iocoder.yudao.module.crm.service.customer.bo;
 
 import cn.iocoder.yudao.framework.common.validation.Mobile;
-import cn.iocoder.yudao.framework.common.validation.Telephone;
 import cn.iocoder.yudao.module.crm.enums.DictTypeConstants;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotEmpty;
@@ -62,7 +61,7 @@ public class CrmCustomerCreateReqBO {
     /**
      * 电话
      */
-    @Telephone
+    @Size(max = 64, message = "电话长度不能超过 64 个字符")
     private String telephone;
     /**
      * QQ

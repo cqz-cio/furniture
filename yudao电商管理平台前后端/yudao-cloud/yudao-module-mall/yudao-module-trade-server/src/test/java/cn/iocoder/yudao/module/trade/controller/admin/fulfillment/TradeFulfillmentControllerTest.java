@@ -440,7 +440,7 @@ class TradeFulfillmentControllerTest {
                         .header("Idempotency-Key", "disabled-key")
                         .contentType(MediaType.APPLICATION_JSON).content(validCreateJson()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(1_011_009_012L))
+                .andExpect(jsonPath("$.code").value(1_011_009_013L))
                 .andReturn().getResponse().getContentAsString();
 
         assertTrue(response.contains("Fulfillment feature is disabled"));

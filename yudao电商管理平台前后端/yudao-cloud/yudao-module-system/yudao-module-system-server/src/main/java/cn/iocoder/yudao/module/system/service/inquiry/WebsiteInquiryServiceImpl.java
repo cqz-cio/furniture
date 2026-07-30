@@ -1,12 +1,16 @@
 package cn.iocoder.yudao.module.system.service.inquiry;
 
 import cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder;
+import cn.iocoder.yudao.module.crm.api.inquiry.CrmWebsiteInquiryApi;
+import cn.iocoder.yudao.module.crm.api.inquiry.dto.CrmWebsiteInquiryCreateReqDTO;
+import cn.iocoder.yudao.module.crm.api.inquiry.dto.CrmWebsiteInquiryCreateRespDTO;
 import cn.iocoder.yudao.module.system.controller.app.inquiry.vo.AppWebsiteInquirySubmitReqVO;
 import cn.iocoder.yudao.module.system.dal.dataobject.tenant.TenantDO;
 import cn.iocoder.yudao.module.system.framework.inquiry.config.WebsiteInquiryProperties;
 import cn.iocoder.yudao.module.system.service.notify.NotifySendService;
 import cn.iocoder.yudao.module.system.service.tenant.TenantService;
 import jakarta.annotation.Resource;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
@@ -17,6 +21,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 
 import static cn.iocoder.yudao.framework.common.exception.util.ServiceExceptionUtil.exception;
 import static cn.iocoder.yudao.module.system.enums.ErrorCodeConstants.WEBSITE_INQUIRY_CONFIGURATION_ERROR;
@@ -28,6 +33,7 @@ import static cn.iocoder.yudao.module.system.enums.ErrorCodeConstants.WEBSITE_IN
  */
 @Service
 @Validated
+@Slf4j
 public class WebsiteInquiryServiceImpl implements WebsiteInquiryService {
 
     private static final DateTimeFormatter SUBMITTED_AT_FORMATTER =
@@ -39,6 +45,8 @@ public class WebsiteInquiryServiceImpl implements WebsiteInquiryService {
     private TenantService tenantService;
     @Resource
     private NotifySendService notifySendService;
+    @Resource
+    private CrmWebsiteInquiryApi crmWebsiteInquiryApi;
 
     @Override
     public Long notifyInquiry(String sharedSecret, AppWebsiteInquirySubmitReqVO reqVO) {
@@ -55,17 +63,33 @@ public class WebsiteInquiryServiceImpl implements WebsiteInquiryService {
         }
 
         TenantDO tenant = tenantService.getTenant(tenantId);
-        if (tenant == null || tenant.getContactUserId() == null
-                || isBlank(properties.getTemplateCode())) {
+        if (tenant == null || tenant.getContactUserId() == null) {
             throw exception(WEBSITE_INQUIRY_CONFIGURATION_ERROR);
         }
 
-        Long messageId = notifySendService.sendSingleNotifyToAdmin(
-                tenant.getContactUserId(), properties.getTemplateCode(), buildTemplateParams(reqVO));
-        if (messageId == null) {
+        LocalDateTime submittedAt = LocalDateTime.now();
+        CrmWebsiteInquiryCreateRespDTO createResult = crmWebsiteInquiryApi.createWebsiteInquiry(
+                buildCrmCreateReqDTO(reqVO, tenant.getContactUserId(), submittedAt));
+        if (createResult == null || createResult.getInquiryId() == null) {
             throw exception(WEBSITE_INQUIRY_CONFIGURATION_ERROR);
         }
-        return messageId;
+
+        // 询盘入库是主链路；提醒失败不能让网页误以为提交失败并产生重复询盘。
+        if (Boolean.TRUE.equals(createResult.getCreated()) && !isBlank(properties.getTemplateCode())) {
+            try {
+                Long messageId = notifySendService.sendSingleNotifyToAdmin(
+                        tenant.getContactUserId(), properties.getTemplateCode(),
+                        buildTemplateParams(reqVO, submittedAt));
+                if (messageId == null) {
+                    log.warn("Website inquiry {} persisted, but the ERP notify service returned no message id",
+                            createResult.getInquiryId());
+                }
+            } catch (RuntimeException ex) {
+                log.warn("Website inquiry {} persisted, but the ERP notification failed",
+                        createResult.getInquiryId(), ex);
+            }
+        }
+        return createResult.getInquiryId();
     }
 
     private boolean isValidSecret(String providedSecret) {
@@ -78,7 +102,30 @@ public class WebsiteInquiryServiceImpl implements WebsiteInquiryService {
                 providedSecret.getBytes(StandardCharsets.UTF_8));
     }
 
-    private static Map<String, Object> buildTemplateParams(AppWebsiteInquirySubmitReqVO reqVO) {
+    private static CrmWebsiteInquiryCreateReqDTO buildCrmCreateReqDTO(
+            AppWebsiteInquirySubmitReqVO reqVO, Long ownerUserId, LocalDateTime submittedAt) {
+        CrmWebsiteInquiryCreateReqDTO reqDTO = new CrmWebsiteInquiryCreateReqDTO();
+        reqDTO.setExternalInquiryId(isBlank(reqVO.getExternalInquiryId())
+                ? UUID.randomUUID().toString() : normalize(reqVO.getExternalInquiryId()));
+        reqDTO.setOwnerUserId(ownerUserId);
+        reqDTO.setContactName(normalize(reqVO.getName()));
+        reqDTO.setEmail(normalize(reqVO.getEmail()));
+        reqDTO.setCountryCode(normalize(reqVO.getCountryCode()));
+        reqDTO.setPhone(normalize(reqVO.getPhone()));
+        reqDTO.setCompanyName(normalize(reqVO.getCompanyName()));
+        reqDTO.setSubject(normalize(reqVO.getSubject()));
+        reqDTO.setMessage(normalizeMultiline(reqVO.getMessage()));
+        reqDTO.setSourcePage(normalize(reqVO.getSourcePage()));
+        reqDTO.setLocale(normalize(reqVO.getLocale()));
+        reqDTO.setUtmSource(normalize(reqVO.getUtmSource()));
+        reqDTO.setUtmMedium(normalize(reqVO.getUtmMedium()));
+        reqDTO.setUtmCampaign(normalize(reqVO.getUtmCampaign()));
+        reqDTO.setSubmittedAt(submittedAt);
+        return reqDTO;
+    }
+
+    private static Map<String, Object> buildTemplateParams(
+            AppWebsiteInquirySubmitReqVO reqVO, LocalDateTime submittedAt) {
         Map<String, Object> params = new LinkedHashMap<>();
         params.put("name", display(reqVO.getName()));
         params.put("email", display(reqVO.getEmail()));
@@ -91,7 +138,7 @@ public class WebsiteInquiryServiceImpl implements WebsiteInquiryService {
         params.put("utmSource", display(reqVO.getUtmSource()));
         params.put("utmMedium", display(reqVO.getUtmMedium()));
         params.put("utmCampaign", display(reqVO.getUtmCampaign()));
-        params.put("submittedAt", LocalDateTime.now().format(SUBMITTED_AT_FORMATTER));
+        params.put("submittedAt", submittedAt.format(SUBMITTED_AT_FORMATTER));
         return params;
     }
 
@@ -116,6 +163,14 @@ public class WebsiteInquiryServiceImpl implements WebsiteInquiryService {
         return value == null ? "" : value
                 .replaceAll("[\\p{Cntrl}]+", " ")
                 .replaceAll("\\s+", " ")
+                .trim();
+    }
+
+    private static String normalizeMultiline(String value) {
+        return value == null ? "" : value
+                .replace("\r\n", "\n")
+                .replace('\r', '\n')
+                .replaceAll("[\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F\\u007F]+", " ")
                 .trim();
     }
 

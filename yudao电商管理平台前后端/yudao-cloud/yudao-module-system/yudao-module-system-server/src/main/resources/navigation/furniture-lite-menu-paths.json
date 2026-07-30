@@ -4,6 +4,10 @@
   "/seo",
   "/seo/metadata",
   "/seo/site-config",
+  "/crm",
+  "/crm/clue",
+  "/crm/customer",
+  "/crm/contact",
   "/mall/home",
   "/mall/product",
   "/mall/product/spu",
@@ -81,5 +85,8 @@
   "/system/role",
   "/system/menu",
   "/system/tenant",
-  "/system/tenant/list"
+  "/system/tenant/list",
+  "/system/messages/mail/mail-account",
+  "/system/messages/mail/mail-template",
+  "/system/messages/mail/mail-log"
 ]

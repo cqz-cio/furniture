@@ -78,4 +78,20 @@ public interface CrmContactMapper extends BaseMapperX<CrmContactDO> {
                 CrmContactDO::getOwnerUserId, ownerUserId);
     }
 
+    default CrmContactDO selectFirstByCustomerIdAndEmail(Long customerId, String email) {
+        return selectOne(new LambdaQueryWrapperX<CrmContactDO>()
+                .eq(CrmContactDO::getCustomerId, customerId)
+                .eq(CrmContactDO::getEmail, email)
+                .orderByAsc(CrmContactDO::getId)
+                .last("LIMIT 1"));
+    }
+
+    default CrmContactDO selectFirstByCustomerIdAndTelephone(Long customerId, String telephone) {
+        return selectOne(new LambdaQueryWrapperX<CrmContactDO>()
+                .eq(CrmContactDO::getCustomerId, customerId)
+                .eq(CrmContactDO::getTelephone, telephone)
+                .orderByAsc(CrmContactDO::getId)
+                .last("LIMIT 1"));
+    }
+
 }

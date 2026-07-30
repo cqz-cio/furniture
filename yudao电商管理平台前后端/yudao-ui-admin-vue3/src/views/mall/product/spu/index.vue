@@ -12,6 +12,16 @@
     />
   </ContentWrap>
   <template v-else-if="profileLoaded">
+    <ContentWrap v-if="isB2B">
+      <el-alert
+        :closable="false"
+        description="列表仅展示 B2B 询盘与网站运营需要的字段。未对 B2B 网站开放的价格保留在 ERP 内部，市场价、销量等 B2C 专用字段默认不显示。"
+        show-icon
+        title="当前为 B2B 商品视图"
+        type="info"
+      />
+    </ContentWrap>
+
     <!-- 搜索工作栏 -->
     <ContentWrap>
       <el-form
@@ -110,19 +120,33 @@
                       </el-form-item>
                     </el-col>
                     <el-col :span="8">
-                      <el-form-item label="市场价:">
+                      <el-form-item v-if="!isB2B" label="市场价:">
                         <span>{{ fenToYuan(row.marketPrice) }}</span>
+                      </el-form-item>
+                      <el-form-item v-else :label="b2bPriceIsWebsite ? '网站价格:' : '内部参考价:'">
+                        <span>¥ {{ fenToYuan(row.price) }}</span>
+                        <el-tag
+                          class="ml-8px"
+                          effect="plain"
+                          size="small"
+                          :type="b2bPriceIsWebsite ? 'success' : 'info'"
+                        >
+                          {{ b2bPriceIsWebsite ? '网站公开' : 'ERP 内部' }}
+                        </el-tag>
                       </el-form-item>
                     </el-col>
                     <el-col :span="8">
-                      <el-form-item label="成本价:">
+                      <el-form-item :label="isB2B ? '内部成本价:' : '成本价:'">
                         <span>{{ fenToYuan(row.costPrice) }}</span>
+                        <el-tag v-if="isB2B" class="ml-8px" effect="plain" size="small" type="info">
+                          ERP 内部
+                        </el-tag>
                       </el-form-item>
                     </el-col>
                   </el-row>
                 </el-col>
               </el-row>
-              <el-row>
+              <el-row v-if="!isB2B">
                 <el-col :span="24">
                   <el-row>
                     <el-col :span="8">
@@ -161,10 +185,25 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column align="center" label="价格" min-width="160" prop="price">
+        <el-table-column v-if="isB2B" align="center" label="商品分类" min-width="150">
+          <template #default="{ row }">{{ formatCategoryName(row.categoryId) }}</template>
+        </el-table-column>
+        <el-table-column
+          v-if="showPriceColumn"
+          align="center"
+          label="价格"
+          min-width="160"
+          prop="price"
+        >
           <template #default="{ row }"> ¥ {{ fenToYuan(row.price) }}</template>
         </el-table-column>
-        <el-table-column align="center" label="销量" min-width="90" prop="salesCount" />
+        <el-table-column
+          v-if="showSalesColumn"
+          align="center"
+          label="销量"
+          min-width="90"
+          prop="salesCount"
+        />
         <el-table-column
           v-if="inventoryEnabled"
           align="center"
@@ -172,7 +211,7 @@
           min-width="90"
           prop="stock"
         />
-        <el-table-column align="center" label="ERP 编码" min-width="150">
+        <el-table-column align="center" :label="isB2B ? '商品 SKU' : 'ERP 编码'" min-width="150">
           <template #default="{ row }">{{ erpBySpuId[row.id]?.erpProductCode || '-' }}</template>
         </el-table-column>
         <el-table-column align="center" label="ERP 状态" min-width="100">
@@ -296,8 +335,20 @@ const exportLoading = ref(false) // 导出的加载中
 const total = ref(0) // 列表的总页数
 const list = ref<ProductSpuApi.Spu[]>([]) // 列表的数据
 const erpBySpuId = ref<Record<number, ProductSpuApi.ErpIntegration>>({})
-const { profileLoading, profileLoaded, profileError, inventoryEnabled, loadTenantBusinessProfile } =
-  useTenantBusinessProfile()
+const {
+  profileLoading,
+  profileLoaded,
+  profileError,
+  isB2B,
+  inventoryEnabled,
+  productFieldState,
+  loadTenantBusinessProfile
+} = useTenantBusinessProfile()
+const b2bPriceIsWebsite = computed(() => isB2B.value && productFieldState('price') === 'WEBSITE')
+const showPriceColumn = computed(() => !isB2B.value || b2bPriceIsWebsite.value)
+const showSalesColumn = computed(
+  () => !isB2B.value || productFieldState('salesCount') === 'WEBSITE'
+)
 const tabCounts = ref([0, 0, 0, 0, 0])
 const visibleTabTypes = computed(() => (inventoryEnabled.value ? [0, 1, 2, 3, 4] : [0, 1, 4]))
 const tabsData = computed(() =>
@@ -492,7 +543,7 @@ const handleExport = async () => {
 /** 获取分类的节点的完整结构 */
 const categoryList = ref() // 分类树
 const formatCategoryName = (categoryId: number) => {
-  return treeToString(categoryList.value, categoryId)
+  return categoryList.value ? treeToString(categoryList.value, categoryId) : '-'
 }
 
 const pageInitialized = ref(false)

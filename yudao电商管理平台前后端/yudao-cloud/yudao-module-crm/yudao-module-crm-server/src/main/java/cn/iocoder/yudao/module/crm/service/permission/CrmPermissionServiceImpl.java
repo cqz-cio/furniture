@@ -151,15 +151,30 @@ public class CrmPermissionServiceImpl implements CrmPermissionService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Long createPermission(CrmPermissionCreateReqBO createReqBO) {
-        return createPermission0(createReqBO);
+        return createPermission0(createReqBO, null);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Long createPermission(CrmPermissionCreateReqBO createReqBO, Long operatorUserId) {
+        return createPermission0(createReqBO, operatorUserId);
     }
 
     private Long createPermission0(CrmPermissionCreateReqBO createReqBO) {
+        return createPermission0(createReqBO, null);
+    }
+
+    private Long createPermission0(CrmPermissionCreateReqBO createReqBO, Long operatorUserId) {
         validatePermissionNotExists(Collections.singletonList(createReqBO));
         // 1. 校验用户是否存在
         adminUserApi.validateUserList(Collections.singletonList(createReqBO.getUserId())).checkError();
         // 2. 插入权限
         CrmPermissionDO permission = BeanUtils.toBean(createReqBO, CrmPermissionDO.class);
+        if (operatorUserId != null) {
+            String auditUserId = operatorUserId.toString();
+            permission.setCreator(auditUserId);
+            permission.setUpdater(auditUserId);
+        }
         permissionMapper.insert(permission);
         return permission.getId();
     }

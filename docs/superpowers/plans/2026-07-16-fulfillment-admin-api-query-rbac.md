@@ -4,13 +4,13 @@
 
 **Goal:** 在 Task 7B 集成后交付北美履约管理端的九个最小 API、tenant-scoped 查询模型、物流标识符脱敏和可分配的五项 RBAC 按钮权限。
 
-**Architecture:** 写接口只负责校验 HTTP 契约、从服务端上下文注入 tenant/operator/trace/path shipment ID，并调用既有 command/tracking service；读接口通过独立只读 query service 和显式 tenant 条件的 mapper 组装专用响应 VO。权限通过追加 V019 migration 写入 `system_menu`，不创建页面、不绑定角色；所有 mutation 成功后由客户端重新 GET detail 获取真实聚合版本。
+**Architecture:** 写接口只负责校验 HTTP 契约、从服务端上下文注入 tenant/operator/trace/path shipment ID，并调用既有 command/tracking service；读接口通过独立只读 query service 和显式 tenant 条件的 mapper 组装专用响应 VO。权限通过追加 V022 migration 写入 `system_menu`，不创建页面、不绑定角色；所有 mutation 成功后由客户端重新 GET detail 获取真实聚合版本。
 
 **Tech Stack:** Java 17, Spring Boot 3.5, Spring MVC, Jakarta Validation, Spring Security method authorization, MyBatis-Plus 3.5, H2, JUnit 5, Mockito, Maven, MySQL 8, Node.js ESM, Vitest 4
 
 ## Global Constraints
 
-- 执行前确认 Task 6B、Task 7 和 Task 7B 已集成；`V018__trade_manual_tracking_audit.sql` 必须是当前最后一条 migration。
+- 执行前确认 Task 6B、Task 7 和 Task 7B 已集成；`V021__trade_manual_tracking_audit.sql` 必须是当前最后一条 migration。
 - 只实现本计划列出的九个管理端端点；不实现通用 shipment update、retry-tracking、exceptions、appointments、POD、用户端 API、provider 管理或 provider 网络调用。
 - Controller 类级路径固定为 `/trade/fulfillment/shipments`；框架统一增加 `/admin-api`，Controller 不得重复写该前缀。
 - 六个 POST/PUT 写端点全部要求原样 `Idempotency-Key`，最大 128；key 不 trim、不落日志、不回响应，直接传给领域 service。
@@ -23,8 +23,8 @@
 - tracking number、PRO、BOL 在 query service 映射阶段变成 `***` 加末尾至多四位；响应 VO 不声明 raw 属性。
 - 六个写方法都使用 `@ApiAccessLog(requestEnable = false)`；响应日志维持默认关闭。
 - request/command 的 tracking、PRO、BOL、location、manual reason 使用 `@ToString.Exclude`；异常、领域日志和 outbox 不复制这些值或 trace。
-- V019 只新增五个 type=3 按钮权限，父菜单为 `id=2076`；不写 `system_role_menu`，不自动给任何角色授权。
-- 不修改已发布的 V015-V018，不直接编辑生成文件 `oakved-baseline.sql`；只通过 `npm.cmd run build:db-baseline` 生成。
+- V022 只新增五个 type=3 按钮权限，父菜单为 `id=2076`；不写 `system_role_menu`，不自动给任何角色授权。
+- 不修改已发布的 V015-V020，不直接编辑生成文件 `oakved-baseline.sql`；只通过 `npm.cmd run build:db-baseline` 生成。
 - 单元和集成测试不得访问外部网络。
 
 ## Fixed HTTP and Permission Contract
@@ -47,7 +47,7 @@ Execute and review in this order:
 
 1. **8A Query + mask:** produces response/page VO types and `FulfillmentQueryService` consumed by 8B.
 2. **8B Controller + request VO + server context + access-log boundary:** consumes 8A and Task 7B's manual command/service contract.
-3. **8C V019 RBAC + baseline:** independent of Java compilation, but lands last so the final regression sees the complete catalog.
+3. **8C V022 RBAC + baseline:** independent of Java compilation, but lands last so the final regression sees the complete catalog.
 
 ### 8A files
 
@@ -77,7 +77,7 @@ Execute and review in this order:
 
 ### 8C files
 
-- Create: `yudao电商管理平台前后端/yudao-cloud/sql/mysql/migrations/V019__trade_fulfillment_admin_permissions.sql`
+- Create: `yudao电商管理平台前后端/yudao-cloud/sql/mysql/migrations/V022__trade_fulfillment_admin_permissions.sql`
 - Create: `furniture web/tests/databaseFulfillmentPermissionsMigration.test.js`
 - Modify: `furniture web/tests/databaseFulfillmentMigration.test.js`
 - Modify: `furniture web/tests/dbMigrations.test.js`
@@ -668,14 +668,14 @@ git commit -m "feat: expose guarded fulfillment admin APIs"
 
 ---
 
-### Task 8C: Append V019 RBAC seeds and regenerate the deterministic baseline
+### Task 8C: Append V022 RBAC seeds and regenerate the deterministic baseline
 
 **Interfaces:**
 
-- Consumes: immutable V001-V018 catalog, `system_menu` schema, existing parent order-list menu `id=2076`, baseline generator.
+- Consumes: immutable V001-V021 catalog, `system_menu` schema, existing parent order-list menu `id=2076`, baseline generator.
 - Produces: five assignable type=3 permissions without assigning any role.
 
-- [ ] **Step 1: Write the failing V019/RBAC migration test**
+- [ ] **Step 1: Write the failing V022/RBAC migration test**
 
 Create `databaseFulfillmentPermissionsMigration.test.js`:
 
@@ -685,7 +685,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const root = join(import.meta.dirname, "../../yudao电商管理平台前后端/yudao-cloud/sql/mysql");
-const migrationPath = join(root, "migrations/V019__trade_fulfillment_admin_permissions.sql");
+const migrationPath = join(root, "migrations/V022__trade_fulfillment_admin_permissions.sql");
 const baselinePath = join(root, "oakved-baseline.sql");
 const permissions = [
   "trade:fulfillment:shipment:query",
@@ -695,7 +695,7 @@ const permissions = [
   "trade:fulfillment:tracking:manual",
 ];
 
-describe("V019 fulfillment admin permission migration", () => {
+describe("V022 fulfillment admin permission migration", () => {
   it("adds five idempotent button permissions under the order list", () => {
     const sql = readFileSync(migrationPath, "utf8");
     for (const permission of permissions) {
@@ -708,10 +708,10 @@ describe("V019 fulfillment admin permission migration", () => {
     expect(sql).not.toMatch(/INSERT INTO `system_role_menu`|role_id|tenant_id|credential|secret|api[_-]?key/i);
   });
 
-  it("keeps the generated baseline V019 section byte-equivalent", () => {
+  it("keeps the generated baseline V022 section byte-equivalent", () => {
     const migration = readFileSync(migrationPath, "utf8").replace(/\r\n/g, "\n").replace(/\s+$/, "") + "\n";
     const baseline = readFileSync(baselinePath, "utf8").replace(/\r\n/g, "\n");
-    const marker = "-- BEGIN V019__trade_fulfillment_admin_permissions.sql\n";
+    const marker = "-- BEGIN V022__trade_fulfillment_admin_permissions.sql\n";
     const start = baseline.indexOf(marker) + marker.length;
     const end = baseline.indexOf("\n-- BEGIN Oakved demo catalog", start);
     expect(start).toBeGreaterThan(marker.length - 1);
@@ -721,7 +721,7 @@ describe("V019 fulfillment admin permission migration", () => {
 });
 ```
 
-Update the existing catalog tests from length 18 to 19 and last file V019. Update the V018 baseline section test so its end marker is `\n-- BEGIN V019__trade_fulfillment_admin_permissions.sql` instead of the demo catalog marker.
+Update the existing catalog tests from length 20 to 22 and require the exact V018-V022 suffix. Update the V021 baseline section test so its end marker is `\n-- BEGIN V022__trade_fulfillment_admin_permissions.sql` instead of the demo catalog marker.
 
 - [ ] **Step 2: Run Node tests and verify RED**
 
@@ -731,9 +731,9 @@ Run from `D:\code\furniture web`:
 npm.cmd test -- databaseFulfillmentPermissionsMigration.test.js databaseFulfillmentMigration.test.js databaseSafetyWorkflow.test.js dbMigrations.test.js
 ```
 
-Expected: FAIL because V019 does not exist and the catalog still ends at V018.
+Expected: FAIL because V021/V022 do not exist and the catalog suffix is not final.
 
-- [ ] **Step 3: Create V019 with five repeat-safe menu inserts**
+- [ ] **Step 3: Create V022 with fail-closed guards and five repeat-safe menu inserts**
 
 Use this column list for every row; omit `id` so MySQL auto increment assigns it:
 
@@ -786,16 +786,16 @@ npm.cmd run build:db-baseline
 Expected output ends with:
 
 ```text
-Generated D:\code\yudao电商管理平台前后端\yudao-cloud\sql\mysql\oakved-baseline.sql with 19 migrations.
+Generated D:\code\yudao电商管理平台前后端\yudao-cloud\sql\mysql\oakved-baseline.sql with 22 migrations.
 ```
 
 In both `dbMigrations.test.js` and `databaseSafetyWorkflow.test.js`, use:
 
 ```js
-const expectedVersions = Array.from({ length: 19 }, (_, index) => index + 1);
+const expectedVersions = Array.from({ length: 22 }, (_, index) => index + 1);
 ```
 
-In both `dbMigrations.test.js` and `databaseSafetyWorkflow.test.js`, assert the exact last filename `V019__trade_fulfillment_admin_permissions.sql`. Preserve the V015-V018 immutability checks.
+In both `dbMigrations.test.js` and `databaseSafetyWorkflow.test.js`, assert the exact last filename `V022__trade_fulfillment_admin_permissions.sql`. Preserve the V015-V020 immutability checks.
 
 - [ ] **Step 5: Run RBAC and database safety tests**
 
@@ -804,24 +804,24 @@ npm.cmd test -- databaseFulfillmentPermissionsMigration.test.js databaseFulfillm
 npm.cmd run verify:db-migrations
 ```
 
-Expected: all four Vitest files PASS and migration verification reports versions 1 through 19 with no baseline/checksum errors.
+Expected: all four Vitest files PASS and migration verification reports versions 1 through 22 with no baseline/checksum errors.
 
 - [ ] **Step 6: Review and commit 8C independently**
 
 ```powershell
 git diff --check
 git diff --name-only
-git add -- "furniture web/tests/databaseFulfillmentPermissionsMigration.test.js" "furniture web/tests/databaseFulfillmentMigration.test.js" "furniture web/tests/databaseSafetyWorkflow.test.js" "furniture web/tests/dbMigrations.test.js" "yudao电商管理平台前后端/yudao-cloud/sql/mysql/migrations/V019__trade_fulfillment_admin_permissions.sql" "yudao电商管理平台前后端/yudao-cloud/sql/mysql/oakved-baseline.sql"
+git add -- "furniture web/tests/databaseFulfillmentPermissionsMigration.test.js" "furniture web/tests/databaseFulfillmentMigration.test.js" "furniture web/tests/databaseSafetyWorkflow.test.js" "furniture web/tests/dbMigrations.test.js" "yudao电商管理平台前后端/yudao-cloud/sql/mysql/migrations/V022__trade_fulfillment_admin_permissions.sql" "yudao电商管理平台前后端/yudao-cloud/sql/mysql/oakved-baseline.sql"
 git commit -m "feat: seed fulfillment admin permissions"
 ```
 
 8C acceptance:
 
-- Catalog is contiguous V001-V019 and V015-V018 bytes are unchanged.
+- Catalog is contiguous V001-V022 and V015-V020 bytes are unchanged.
 - Five permissions appear exactly once as intended type=3 children of parent 2076.
 - Inserts are repeat-safe and conditional on an existing nondeleted parent.
 - No explicit new menu IDs, role grants, tenant IDs, accounts, credentials or secrets are present.
-- Baseline V018 ends at V019 marker; V019 ends at the demo catalog marker and is byte-equivalent to its migration.
+- Baseline V021 ends at V022 marker; V022 ends at the demo catalog marker and is byte-equivalent to its migration.
 
 ---
 
@@ -851,7 +851,7 @@ Task 7B manual service and transaction cases remain in `FulfillmentTrackingServi
 ```powershell
 rg -n "@(PostMapping|PutMapping)|@PreAuthorize|@ApiAccessLog" "yudao-module-mall/yudao-module-trade-server/src/main/java/cn/iocoder/yudao/module/trade/controller/admin/fulfillment/TradeFulfillmentController.java"
 rg -n "tenantId|shipmentId|operatorId|requestTraceId|rawPayloadRef|externalEventId|outboxStatus|credential" "yudao-module-mall/yudao-module-trade-server/src/main/java/cn/iocoder/yudao/module/trade/controller/admin/fulfillment/vo"
-rg -n "system_role_menu|role_id|tenant_id|credential|secret|api[_-]?key" "sql/mysql/migrations/V019__trade_fulfillment_admin_permissions.sql"
+rg -n "system_role_menu|role_id|tenant_id|credential|secret|api[_-]?key" "sql/mysql/migrations/V022__trade_fulfillment_admin_permissions.sql"
 git diff --check
 git status --short
 ```

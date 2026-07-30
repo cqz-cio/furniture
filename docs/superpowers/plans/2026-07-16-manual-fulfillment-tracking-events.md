@@ -4,9 +4,11 @@
 
 **Architecture:** Extend the fulfillment tracking service with a separate `applyManualEvent` command. It reuses Task 7's state machine, three-part watermarks, shipment/package/leg projection, summary calculation, and safe outbox rules, but bypasses provider-status mapping and records explicit operator audit fields. HTTP endpoints remain Task 8 scope.
 
-## Persistence: append-only V018
+## Persistence: append-only V021
 
-Create `V018__trade_manual_tracking_audit.sql`; do not modify V015-V017.
+V018 is allocated to the fulfillment active-record uniqueness correction, and SEO
+uses V019-V020. Create `V021__trade_manual_tracking_audit.sql`; do not modify
+V015-V020.
 
 Add nullable columns to `trade_tracking_event`:
 
@@ -39,10 +41,10 @@ Rules:
 
 ## TDD steps
 
-1. Add Node RED tests for V018 continuity, immutable V015-V017, baseline equivalence, exact audit columns, and no secret/credential fields.
+1. Add Node RED tests for V021 continuity, immutable V015-V020, baseline equivalence, exact audit columns, and no secret/credential fields.
 2. Add service RED tests for reason boundaries, missing operator/trace/leg/version, cross-tenant and parent mismatch, shipment-level versus bound-leg derivation, stale version, exact replay, conflicting reuse, state-machine rejection, terminal protection, same-time manual priority, and sensitive `toString()` output.
 3. Add real H2 RED tests proving success, event/audit/watermark/summary/outbox atomicity, stale-version no-op, and forced outbox rollback.
-4. Implement V018, DO fields, command, canonical hashing, service method, mapper support, and safe outbox audit event.
+4. Implement V021, DO fields, command, canonical hashing, service method, mapper support, and safe outbox audit event.
 5. Run manual-event tests plus Task 5/6/6B/7 regressions and Node migration tests.
 6. Run `git diff --check`, commit on an isolated branch, and submit to independent review.
 
@@ -53,4 +55,3 @@ Rules:
 - Stale writes and conflicting idempotency reuse fail closed.
 - Terminal or illegal transitions remain timeline-only and cannot corrupt shipment/summary state.
 - API access logging, permissions, request VOs, and controller validation are implemented in Task 8, not here.
-

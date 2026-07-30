@@ -10,6 +10,7 @@ import cn.iocoder.yudao.framework.common.util.collection.CollectionUtils;
 import cn.iocoder.yudao.framework.test.core.ut.BaseDbUnitTest;
 import cn.iocoder.yudao.module.infra.api.config.ConfigApi;
 import cn.iocoder.yudao.module.infra.api.file.FileApi;
+import cn.iocoder.yudao.module.system.controller.admin.auth.vo.AuthRegisterReqVO;
 import cn.iocoder.yudao.module.system.controller.admin.user.vo.profile.UserProfileUpdatePasswordReqVO;
 import cn.iocoder.yudao.module.system.controller.admin.user.vo.profile.UserProfileUpdateReqVO;
 import cn.iocoder.yudao.module.system.controller.admin.user.vo.user.UserImportExcelVO;
@@ -19,15 +20,19 @@ import cn.iocoder.yudao.module.system.controller.admin.user.vo.user.UserSaveReqV
 import cn.iocoder.yudao.module.system.dal.dataobject.dept.DeptDO;
 import cn.iocoder.yudao.module.system.dal.dataobject.dept.PostDO;
 import cn.iocoder.yudao.module.system.dal.dataobject.dept.UserPostDO;
+import cn.iocoder.yudao.module.system.dal.dataobject.permission.RoleDO;
 import cn.iocoder.yudao.module.system.dal.dataobject.tenant.TenantDO;
 import cn.iocoder.yudao.module.system.dal.dataobject.user.AdminUserDO;
 import cn.iocoder.yudao.module.system.dal.mysql.dept.UserPostMapper;
 import cn.iocoder.yudao.module.system.dal.mysql.user.AdminUserMapper;
 import cn.iocoder.yudao.module.system.enums.common.SexEnum;
+import cn.iocoder.yudao.module.system.enums.permission.RoleCodeEnum;
+import cn.iocoder.yudao.module.system.enums.permission.RoleTypeEnum;
 import cn.iocoder.yudao.module.system.service.dept.DeptService;
 import cn.iocoder.yudao.module.system.service.dept.PostService;
 import cn.iocoder.yudao.module.system.service.oauth2.OAuth2TokenService;
 import cn.iocoder.yudao.module.system.service.permission.PermissionService;
+import cn.iocoder.yudao.module.system.service.permission.RoleService;
 import cn.iocoder.yudao.module.system.service.tenant.TenantService;
 import jakarta.annotation.Resource;
 import org.junit.jupiter.api.BeforeEach;
@@ -53,6 +58,7 @@ import static cn.iocoder.yudao.framework.test.core.util.AssertUtils.assertServic
 import static cn.iocoder.yudao.framework.test.core.util.RandomUtils.*;
 import static cn.iocoder.yudao.module.system.enums.ErrorCodeConstants.*;
 import static cn.iocoder.yudao.module.system.service.user.AdminUserServiceImpl.USER_INIT_PASSWORD_KEY;
+import static cn.iocoder.yudao.module.system.service.user.AdminUserServiceImpl.USER_REGISTER_ENABLED_KEY;
 import static java.util.Collections.singleton;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.util.Lists.newArrayList;
@@ -77,6 +83,8 @@ public class AdminUserServiceImplTest extends BaseDbUnitTest {
     private PostService postService;
     @MockitoBean
     private PermissionService permissionService;
+    @MockitoBean
+    private RoleService roleService;
     @MockitoBean
     private PasswordEncoder passwordEncoder;
     @MockitoBean
@@ -151,6 +159,90 @@ public class AdminUserServiceImplTest extends BaseDbUnitTest {
 
         // 调用，并断言异常
         assertServiceException(() -> userService.createUser(reqVO), USER_COUNT_MAX, -1);
+    }
+
+    @Test
+    public void testRegisterUser_success() {
+        AuthRegisterReqVO reqVO = new AuthRegisterReqVO()
+                .setUsername("oakvedops")
+                .setNickname("Oakved 运营")
+                .setPassword("oakved123");
+        when(configApi.getConfigValueByKey(USER_REGISTER_ENABLED_KEY)).thenReturn(success("true"));
+        TenantDO tenant = randomPojo(TenantDO.class, o -> o.setAccountCount(10));
+        doNothing().when(tenantService).handleTenantInfo(argThat(handler -> {
+            handler.handle(tenant);
+            return true;
+        }));
+        RoleDO role = new RoleDO().setId(161L)
+                .setCode(RoleCodeEnum.MALL_OPERATOR.getCode())
+                .setType(RoleTypeEnum.SYSTEM.getType())
+                .setStatus(CommonStatusEnum.ENABLE.getStatus());
+        when(roleService.getRoleByCode(RoleCodeEnum.MALL_OPERATOR.getCode())).thenReturn(role);
+        when(passwordEncoder.encode(reqVO.getPassword())).thenReturn("encoded-password");
+
+        Long userId = userService.registerUser(reqVO);
+
+        AdminUserDO user = userMapper.selectById(userId);
+        assertEquals(reqVO.getUsername(), user.getUsername());
+        assertEquals(reqVO.getNickname(), user.getNickname());
+        assertEquals("encoded-password", user.getPassword());
+        assertEquals(CommonStatusEnum.ENABLE.getStatus(), user.getStatus());
+        verify(permissionService).assignUserRole(userId, singleton(role.getId()));
+    }
+
+    @Test
+    public void testRegisterUser_disabled() {
+        AuthRegisterReqVO reqVO = new AuthRegisterReqVO()
+                .setUsername("oakvedops")
+                .setNickname("Oakved 运营")
+                .setPassword("oakved123");
+        when(configApi.getConfigValueByKey(USER_REGISTER_ENABLED_KEY)).thenReturn(success("false"));
+
+        assertServiceException(() -> userService.registerUser(reqVO), USER_REGISTER_DISABLED);
+        verifyNoInteractions(roleService);
+    }
+
+    @Test
+    public void testRegisterUser_roleNotConfigured() {
+        AuthRegisterReqVO reqVO = new AuthRegisterReqVO()
+                .setUsername("oakvedops")
+                .setNickname("Oakved 运营")
+                .setPassword("oakved123");
+        when(configApi.getConfigValueByKey(USER_REGISTER_ENABLED_KEY)).thenReturn(success("true"));
+        TenantDO tenant = randomPojo(TenantDO.class, o -> o.setAccountCount(10));
+        doNothing().when(tenantService).handleTenantInfo(argThat(handler -> {
+            handler.handle(tenant);
+            return true;
+        }));
+
+        assertServiceException(() -> userService.registerUser(reqVO), USER_REGISTER_ROLE_NOT_CONFIGURED);
+        assertNull(userMapper.selectOne(AdminUserDO::getUsername, reqVO.getUsername()));
+    }
+
+    @Test
+    public void testRegisterUser_roleAssignmentFailure_rollsBack() {
+        AuthRegisterReqVO reqVO = new AuthRegisterReqVO()
+                .setUsername("oakvedops")
+                .setNickname("Oakved 运营")
+                .setPassword("oakved123");
+        when(configApi.getConfigValueByKey(USER_REGISTER_ENABLED_KEY)).thenReturn(success("true"));
+        TenantDO tenant = randomPojo(TenantDO.class, o -> o.setAccountCount(10));
+        doNothing().when(tenantService).handleTenantInfo(argThat(handler -> {
+            handler.handle(tenant);
+            return true;
+        }));
+        RoleDO role = new RoleDO().setId(161L)
+                .setCode(RoleCodeEnum.MALL_OPERATOR.getCode())
+                .setType(RoleTypeEnum.SYSTEM.getType())
+                .setStatus(CommonStatusEnum.ENABLE.getStatus());
+        when(roleService.getRoleByCode(RoleCodeEnum.MALL_OPERATOR.getCode())).thenReturn(role);
+        when(passwordEncoder.encode(reqVO.getPassword())).thenReturn("encoded-password");
+        doThrow(new IllegalStateException("role assignment failed"))
+                .when(permissionService).assignUserRole(anyLong(), eq(singleton(role.getId())));
+
+        assertThrows(IllegalStateException.class, () -> userService.registerUser(reqVO));
+
+        assertNull(userMapper.selectOne(AdminUserDO::getUsername, reqVO.getUsername()));
     }
 
     @Test

@@ -7274,7 +7274,7 @@ CREATE TABLE IF NOT EXISTS `product_statistics` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-SELECT GET_LOCK(CONCAT(DATABASE(), ':statistics-commerce-dashboard:v2'), 60) AS migration_lock;
+SELECT GET_LOCK(CONCAT('oakved:stats:', LEFT(SHA2(DATABASE(), 256), 40)), 60) AS migration_lock;
 SET time_zone = '+08:00';
 
 CREATE TABLE IF NOT EXISTS `statistics_dashboard_hmac_day` (
@@ -7453,7 +7453,7 @@ SELECT 7994,'利润导出','statistics:dashboard:profit-export',3,4,7990,'','','
 -- dashboardBehaviorCleanupJob | (empty)                | 0 30 3 * * ?
 -- The legacy productStatisticsJob must be stopped before any dashboard job is enabled.
 
-SELECT RELEASE_LOCK(CONCAT(DATABASE(), ':statistics-commerce-dashboard:v2')) AS released;
+SELECT RELEASE_LOCK(CONCAT('oakved:stats:', LEFT(SHA2(DATABASE(), 256), 40))) AS released;
 
 -- BEGIN V014__statistics_commerce_dashboard_backfill.sql
 -- Resumable, tenant-bounded historical cost snapshot backfill.
@@ -7776,119 +7776,67 @@ ALTER TABLE `trade_shipment_leg`
   ADD COLUMN `last_event_status_priority` int DEFAULT NULL AFTER `last_event_occurred_at`,
   ADD COLUMN `last_event_id` bigint DEFAULT NULL AFTER `last_event_status_priority`;
 
--- BEGIN V018__trade_manual_tracking_audit.sql
+-- BEGIN V018__trade_fulfillment_active_record_uniqueness.sql
+ALTER TABLE `trade_carrier`
+  ADD COLUMN `active_record` tinyint GENERATED ALWAYS AS (CASE WHEN `deleted` = b'0' THEN 1 ELSE NULL END) STORED,
+  DROP INDEX `uk_carrier_code`,
+  ADD UNIQUE KEY `uk_carrier_code` (`tenant_id`,`code`,`active_record`);
+
+ALTER TABLE `trade_logistics_provider`
+  ADD COLUMN `active_record` tinyint GENERATED ALWAYS AS (CASE WHEN `deleted` = b'0' THEN 1 ELSE NULL END) STORED,
+  DROP INDEX `uk_provider_code`,
+  ADD UNIQUE KEY `uk_provider_code` (`tenant_id`,`code`,`active_record`);
+
+ALTER TABLE `trade_shipment`
+  ADD COLUMN `active_record` tinyint GENERATED ALWAYS AS (CASE WHEN `deleted` = b'0' THEN 1 ELSE NULL END) STORED,
+  DROP INDEX `uk_shipment_no`,
+  ADD UNIQUE KEY `uk_shipment_no` (`tenant_id`,`shipment_no`,`active_record`);
+
+ALTER TABLE `trade_shipment_item`
+  ADD COLUMN `active_record` tinyint GENERATED ALWAYS AS (CASE WHEN `deleted` = b'0' THEN 1 ELSE NULL END) STORED,
+  DROP INDEX `uk_shipment_item`,
+  ADD UNIQUE KEY `uk_shipment_item` (`tenant_id`,`shipment_id`,`order_item_id`,`active_record`);
+
+ALTER TABLE `trade_shipment_package`
+  ADD COLUMN `active_record` tinyint GENERATED ALWAYS AS (CASE WHEN `deleted` = b'0' THEN 1 ELSE NULL END) STORED,
+  DROP INDEX `uk_shipment_package_no`,
+  DROP INDEX `uk_package_tracking`,
+  ADD UNIQUE KEY `uk_shipment_package_no` (`tenant_id`,`shipment_id`,`package_no`,`active_record`),
+  ADD UNIQUE KEY `uk_package_tracking` (`tenant_id`,`carrier_id`,`tracking_number`,`active_record`);
+
+ALTER TABLE `trade_shipment_leg`
+  ADD COLUMN `active_record` tinyint GENERATED ALWAYS AS (CASE WHEN `deleted` = b'0' THEN 1 ELSE NULL END) STORED,
+  DROP INDEX `uk_shipment_leg_sequence`,
+  ADD UNIQUE KEY `uk_shipment_leg_sequence` (`tenant_id`,`shipment_id`,`sequence_no`,`active_record`);
+
 ALTER TABLE `trade_tracking_event`
-  ADD COLUMN `manual_operator_id` bigint DEFAULT NULL AFTER `source`,
-  ADD COLUMN `manual_reason` varchar(500) DEFAULT NULL AFTER `manual_operator_id`,
-  ADD COLUMN `request_trace_id` varchar(64) DEFAULT NULL AFTER `manual_reason`;
+  ADD COLUMN `active_record` tinyint GENERATED ALWAYS AS (CASE WHEN `deleted` = b'0' THEN 1 ELSE NULL END) STORED,
+  DROP INDEX `uk_tracking_event_external`,
+  DROP INDEX `uk_tracking_event_hash`,
+  ADD UNIQUE KEY `uk_tracking_event_external` (`tenant_id`,`provider_id`,`external_event_id`,`active_record`),
+  ADD UNIQUE KEY `uk_tracking_event_hash` (`tenant_id`,`provider_id`,`event_hash`,`active_record`);
 
--- BEGIN V019__trade_fulfillment_admin_permissions.sql
-INSERT INTO `system_menu`
-(`name`, `permission`, `type`, `sort`, `parent_id`, `path`, `icon`,
- `component`, `component_name`, `status`, `visible`, `keep_alive`,
- `always_show`, `creator`, `create_time`, `updater`, `update_time`, `deleted`)
-SELECT '履约查询', 'trade:fulfillment:shipment:query', 3, 1, 2076,
-       '', '', '', NULL, 0, b'1', b'1', b'1',
-       'admin', CURRENT_TIMESTAMP, 'admin', CURRENT_TIMESTAMP, b'0'
-FROM DUAL
-WHERE EXISTS (
-    SELECT 1 FROM `system_menu` WHERE `id` = 2076 AND `deleted` = b'0'
-)
-AND NOT EXISTS (
-    SELECT 1 FROM `system_menu`
-    WHERE `permission` = 'trade:fulfillment:shipment:query' AND `deleted` = b'0'
-);
+ALTER TABLE `trade_order_fulfillment_summary`
+  ADD COLUMN `active_record` tinyint GENERATED ALWAYS AS (CASE WHEN `deleted` = b'0' THEN 1 ELSE NULL END) STORED,
+  DROP INDEX `uk_order_fulfillment_summary`,
+  ADD UNIQUE KEY `uk_order_fulfillment_summary` (`tenant_id`,`order_id`,`active_record`);
 
-INSERT INTO `system_menu`
-(`name`, `permission`, `type`, `sort`, `parent_id`, `path`, `icon`,
- `component`, `component_name`, `status`, `visible`, `keep_alive`,
- `always_show`, `creator`, `create_time`, `updater`, `update_time`, `deleted`)
-SELECT '履约创建', 'trade:fulfillment:shipment:create', 3, 2, 2076,
-       '', '', '', NULL, 0, b'1', b'1', b'1',
-       'admin', CURRENT_TIMESTAMP, 'admin', CURRENT_TIMESTAMP, b'0'
-FROM DUAL
-WHERE EXISTS (
-    SELECT 1 FROM `system_menu` WHERE `id` = 2076 AND `deleted` = b'0'
-)
-AND NOT EXISTS (
-    SELECT 1 FROM `system_menu`
-    WHERE `permission` = 'trade:fulfillment:shipment:create' AND `deleted` = b'0'
-);
+ALTER TABLE `trade_fulfillment_idempotency`
+  ADD COLUMN `active_record` tinyint GENERATED ALWAYS AS (CASE WHEN `deleted` = b'0' THEN 1 ELSE NULL END) STORED,
+  DROP INDEX `uk_fulfillment_idempotency`,
+  ADD UNIQUE KEY `uk_fulfillment_idempotency` (`tenant_id`,`operation`,`idempotency_key_hash`,`active_record`);
 
-INSERT INTO `system_menu`
-(`name`, `permission`, `type`, `sort`, `parent_id`, `path`, `icon`,
- `component`, `component_name`, `status`, `visible`, `keep_alive`,
- `always_show`, `creator`, `create_time`, `updater`, `update_time`, `deleted`)
-SELECT '履约修改', 'trade:fulfillment:shipment:update', 3, 3, 2076,
-       '', '', '', NULL, 0, b'1', b'1', b'1',
-       'admin', CURRENT_TIMESTAMP, 'admin', CURRENT_TIMESTAMP, b'0'
-FROM DUAL
-WHERE EXISTS (
-    SELECT 1 FROM `system_menu` WHERE `id` = 2076 AND `deleted` = b'0'
-)
-AND NOT EXISTS (
-    SELECT 1 FROM `system_menu`
-    WHERE `permission` = 'trade:fulfillment:shipment:update' AND `deleted` = b'0'
-);
+ALTER TABLE `trade_fulfillment_outbox_event`
+  ADD COLUMN `active_record` tinyint GENERATED ALWAYS AS (CASE WHEN `deleted` = b'0' THEN 1 ELSE NULL END) STORED,
+  DROP INDEX `uk_fulfillment_outbox_event_id`,
+  ADD UNIQUE KEY `uk_fulfillment_outbox_event_id` (`tenant_id`,`event_id`,`active_record`);
 
-INSERT INTO `system_menu`
-(`name`, `permission`, `type`, `sort`, `parent_id`, `path`, `icon`,
- `component`, `component_name`, `status`, `visible`, `keep_alive`,
- `always_show`, `creator`, `create_time`, `updater`, `update_time`, `deleted`)
-SELECT '履约交运', 'trade:fulfillment:shipment:dispatch', 3, 4, 2076,
-       '', '', '', NULL, 0, b'1', b'1', b'1',
-       'admin', CURRENT_TIMESTAMP, 'admin', CURRENT_TIMESTAMP, b'0'
-FROM DUAL
-WHERE EXISTS (
-    SELECT 1 FROM `system_menu` WHERE `id` = 2076 AND `deleted` = b'0'
-)
-AND NOT EXISTS (
-    SELECT 1 FROM `system_menu`
-    WHERE `permission` = 'trade:fulfillment:shipment:dispatch' AND `deleted` = b'0'
-);
+ALTER TABLE `trade_tracking_status_mapping`
+  ADD COLUMN `active_record` tinyint GENERATED ALWAYS AS (CASE WHEN `deleted` = b'0' THEN 1 ELSE NULL END) STORED,
+  DROP INDEX `uk_tracking_status_mapping`,
+  ADD UNIQUE KEY `uk_tracking_status_mapping` (`tenant_id`,`provider_code`,`carrier_code`,`provider_status_normalized`,`mapping_version`,`active_record`);
 
-INSERT INTO `system_menu`
-(`name`, `permission`, `type`, `sort`, `parent_id`, `path`, `icon`,
- `component`, `component_name`, `status`, `visible`, `keep_alive`,
- `always_show`, `creator`, `create_time`, `updater`, `update_time`, `deleted`)
-SELECT '人工轨迹', 'trade:fulfillment:tracking:manual', 3, 5, 2076,
-       '', '', '', NULL, 0, b'1', b'1', b'1',
-       'admin', CURRENT_TIMESTAMP, 'admin', CURRENT_TIMESTAMP, b'0'
-FROM DUAL
-WHERE EXISTS (
-    SELECT 1 FROM `system_menu` WHERE `id` = 2076 AND `deleted` = b'0'
-)
-AND NOT EXISTS (
-    SELECT 1 FROM `system_menu`
-    WHERE `permission` = 'trade:fulfillment:tracking:manual' AND `deleted` = b'0'
-);
-
--- BEGIN V020__trade_fulfillment_legacy_migration_fact.sql
-CREATE TABLE IF NOT EXISTS `trade_fulfillment_legacy_migration_fact` (
-  `id` bigint NOT NULL AUTO_INCREMENT,
-  `tenant_id` bigint NOT NULL,
-  `order_id` bigint NOT NULL,
-  `origin_country` char(2) NOT NULL,
-  `destination_country` char(2) NOT NULL,
-  `origin_timezone` varchar(64) NOT NULL,
-  `destination_timezone` varchar(64) NOT NULL,
-  `warehouse_id` bigint NOT NULL,
-  `migration_provider_id` bigint NOT NULL,
-  `approved_by` bigint NOT NULL,
-  `approved_at` datetime(6) NOT NULL,
-  `source_reference` varchar(255) NOT NULL,
-  `creator` varchar(64) NOT NULL DEFAULT '',
-  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updater` varchar(64) NOT NULL DEFAULT '',
-  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `deleted` bit(1) NOT NULL DEFAULT b'0',
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_legacy_migration_fact_order` (`tenant_id`,`order_id`),
-  KEY `idx_legacy_migration_fact_provider` (`tenant_id`,`migration_provider_id`),
-  KEY `idx_legacy_migration_fact_warehouse` (`tenant_id`,`warehouse_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- BEGIN V021__seo_foundation.sql
+-- BEGIN V019__seo_foundation.sql
 -- SEO foundation schema and navigation contracts (MySQL 8.x).
 
 CREATE TABLE IF NOT EXISTS `seo_site_config` (
@@ -8068,7 +8016,7 @@ UNION ALL SELECT 0 WHERE (SELECT COUNT(*) FROM `system_menu` WHERE `permission` 
 
 DROP TEMPORARY TABLE `seo_menu_id_guard`;
 
--- BEGIN V022__seo_active_record_uniqueness.sql
+-- BEGIN V020__seo_active_record_uniqueness.sql
 -- Allow soft-deleted SEO records to retain history while enforcing one active business key.
 
 ALTER TABLE `seo_site_config`
@@ -8081,7 +8029,174 @@ ALTER TABLE `seo_metadata`
   ADD COLUMN `active_record` tinyint GENERATED ALWAYS AS (CASE WHEN `deleted` = b'0' THEN 1 ELSE NULL END) STORED,
   ADD UNIQUE KEY `uk_entity_locale_active` (`tenant_id`, `site_id`, `entity_type`, `entity_id`, `locale`, `active_record`);
 
--- BEGIN V023__normalize_dashboard_route_path.sql
+-- BEGIN V021__trade_manual_tracking_audit.sql
+-- Append structured manual-event audit fields after the published V018-V020 catalog.
+ALTER TABLE `trade_tracking_event`
+  ADD COLUMN `manual_operator_id` bigint DEFAULT NULL AFTER `source`,
+  ADD COLUMN `manual_reason` varchar(500) DEFAULT NULL AFTER `manual_operator_id`,
+  ADD COLUMN `request_trace_id` varchar(64) DEFAULT NULL AFTER `manual_reason`;
+
+-- BEGIN V022__trade_fulfillment_admin_permissions.sql
+-- Fail closed unless the published order-list parent exists with its exact identity.
+DROP TEMPORARY TABLE IF EXISTS `trade_fulfillment_menu_guard`;
+CREATE TEMPORARY TABLE `trade_fulfillment_menu_guard` (
+  `valid` tinyint NOT NULL,
+  CONSTRAINT `chk_trade_fulfillment_menu_guard` CHECK (`valid` = 1)
+) ENGINE=InnoDB;
+
+INSERT INTO `trade_fulfillment_menu_guard` (`valid`)
+SELECT 0 WHERE (SELECT COUNT(*) FROM `system_menu`
+  WHERE `id` = 2076
+    AND `name` = '订单列表'
+    AND `type` = 2
+    AND `parent_id` = 2072
+    AND `path` = 'order'
+    AND `component` = 'mall/trade/order/index'
+    AND `component_name` = 'TradeOrder'
+    AND `status` = 0
+    AND `deleted` = b'0') <> 1;
+
+INSERT INTO `system_menu`
+(`name`, `permission`, `type`, `sort`, `parent_id`, `path`, `icon`,
+ `component`, `component_name`, `status`, `visible`, `keep_alive`,
+ `always_show`, `creator`, `create_time`, `updater`, `update_time`, `deleted`)
+SELECT '履约查询', 'trade:fulfillment:shipment:query', 3, 1, 2076,
+       '', '', '', NULL, 0, b'1', b'1', b'1',
+       'admin', CURRENT_TIMESTAMP, 'admin', CURRENT_TIMESTAMP, b'0'
+FROM DUAL
+WHERE EXISTS (
+    SELECT 1 FROM `system_menu` WHERE `id` = 2076 AND `deleted` = b'0'
+)
+AND NOT EXISTS (
+    SELECT 1 FROM `system_menu`
+    WHERE `permission` = 'trade:fulfillment:shipment:query' AND `deleted` = b'0'
+);
+
+INSERT INTO `system_menu`
+(`name`, `permission`, `type`, `sort`, `parent_id`, `path`, `icon`,
+ `component`, `component_name`, `status`, `visible`, `keep_alive`,
+ `always_show`, `creator`, `create_time`, `updater`, `update_time`, `deleted`)
+SELECT '履约创建', 'trade:fulfillment:shipment:create', 3, 2, 2076,
+       '', '', '', NULL, 0, b'1', b'1', b'1',
+       'admin', CURRENT_TIMESTAMP, 'admin', CURRENT_TIMESTAMP, b'0'
+FROM DUAL
+WHERE EXISTS (
+    SELECT 1 FROM `system_menu` WHERE `id` = 2076 AND `deleted` = b'0'
+)
+AND NOT EXISTS (
+    SELECT 1 FROM `system_menu`
+    WHERE `permission` = 'trade:fulfillment:shipment:create' AND `deleted` = b'0'
+);
+
+INSERT INTO `system_menu`
+(`name`, `permission`, `type`, `sort`, `parent_id`, `path`, `icon`,
+ `component`, `component_name`, `status`, `visible`, `keep_alive`,
+ `always_show`, `creator`, `create_time`, `updater`, `update_time`, `deleted`)
+SELECT '履约修改', 'trade:fulfillment:shipment:update', 3, 3, 2076,
+       '', '', '', NULL, 0, b'1', b'1', b'1',
+       'admin', CURRENT_TIMESTAMP, 'admin', CURRENT_TIMESTAMP, b'0'
+FROM DUAL
+WHERE EXISTS (
+    SELECT 1 FROM `system_menu` WHERE `id` = 2076 AND `deleted` = b'0'
+)
+AND NOT EXISTS (
+    SELECT 1 FROM `system_menu`
+    WHERE `permission` = 'trade:fulfillment:shipment:update' AND `deleted` = b'0'
+);
+
+INSERT INTO `system_menu`
+(`name`, `permission`, `type`, `sort`, `parent_id`, `path`, `icon`,
+ `component`, `component_name`, `status`, `visible`, `keep_alive`,
+ `always_show`, `creator`, `create_time`, `updater`, `update_time`, `deleted`)
+SELECT '履约交运', 'trade:fulfillment:shipment:dispatch', 3, 4, 2076,
+       '', '', '', NULL, 0, b'1', b'1', b'1',
+       'admin', CURRENT_TIMESTAMP, 'admin', CURRENT_TIMESTAMP, b'0'
+FROM DUAL
+WHERE EXISTS (
+    SELECT 1 FROM `system_menu` WHERE `id` = 2076 AND `deleted` = b'0'
+)
+AND NOT EXISTS (
+    SELECT 1 FROM `system_menu`
+    WHERE `permission` = 'trade:fulfillment:shipment:dispatch' AND `deleted` = b'0'
+);
+
+INSERT INTO `system_menu`
+(`name`, `permission`, `type`, `sort`, `parent_id`, `path`, `icon`,
+ `component`, `component_name`, `status`, `visible`, `keep_alive`,
+ `always_show`, `creator`, `create_time`, `updater`, `update_time`, `deleted`)
+SELECT '人工轨迹', 'trade:fulfillment:tracking:manual', 3, 5, 2076,
+       '', '', '', NULL, 0, b'1', b'1', b'1',
+       'admin', CURRENT_TIMESTAMP, 'admin', CURRENT_TIMESTAMP, b'0'
+FROM DUAL
+WHERE EXISTS (
+    SELECT 1 FROM `system_menu` WHERE `id` = 2076 AND `deleted` = b'0'
+)
+AND NOT EXISTS (
+    SELECT 1 FROM `system_menu`
+    WHERE `permission` = 'trade:fulfillment:tracking:manual' AND `deleted` = b'0'
+);
+
+-- Existing permissions must be unique type=3 children of the guarded parent.
+INSERT INTO `trade_fulfillment_menu_guard` (`valid`)
+SELECT 0 WHERE
+  (SELECT COUNT(*) FROM `system_menu`
+    WHERE `permission` = 'trade:fulfillment:shipment:query' AND `deleted` = b'0') <> 1
+  OR (SELECT COUNT(*) FROM `system_menu`
+    WHERE `permission` = 'trade:fulfillment:shipment:query'
+      AND `parent_id` = 2076 AND `type` = 3 AND `deleted` = b'0') <> 1
+UNION ALL SELECT 0 WHERE
+  (SELECT COUNT(*) FROM `system_menu`
+    WHERE `permission` = 'trade:fulfillment:shipment:create' AND `deleted` = b'0') <> 1
+  OR (SELECT COUNT(*) FROM `system_menu`
+    WHERE `permission` = 'trade:fulfillment:shipment:create'
+      AND `parent_id` = 2076 AND `type` = 3 AND `deleted` = b'0') <> 1
+UNION ALL SELECT 0 WHERE
+  (SELECT COUNT(*) FROM `system_menu`
+    WHERE `permission` = 'trade:fulfillment:shipment:update' AND `deleted` = b'0') <> 1
+  OR (SELECT COUNT(*) FROM `system_menu`
+    WHERE `permission` = 'trade:fulfillment:shipment:update'
+      AND `parent_id` = 2076 AND `type` = 3 AND `deleted` = b'0') <> 1
+UNION ALL SELECT 0 WHERE
+  (SELECT COUNT(*) FROM `system_menu`
+    WHERE `permission` = 'trade:fulfillment:shipment:dispatch' AND `deleted` = b'0') <> 1
+  OR (SELECT COUNT(*) FROM `system_menu`
+    WHERE `permission` = 'trade:fulfillment:shipment:dispatch'
+      AND `parent_id` = 2076 AND `type` = 3 AND `deleted` = b'0') <> 1
+UNION ALL SELECT 0 WHERE
+  (SELECT COUNT(*) FROM `system_menu`
+    WHERE `permission` = 'trade:fulfillment:tracking:manual' AND `deleted` = b'0') <> 1
+  OR (SELECT COUNT(*) FROM `system_menu`
+    WHERE `permission` = 'trade:fulfillment:tracking:manual'
+      AND `parent_id` = 2076 AND `type` = 3 AND `deleted` = b'0') <> 1;
+
+DROP TEMPORARY TABLE `trade_fulfillment_menu_guard`;
+
+-- BEGIN V023__trade_fulfillment_legacy_migration_fact.sql
+CREATE TABLE IF NOT EXISTS `trade_fulfillment_legacy_migration_fact` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `tenant_id` bigint NOT NULL,
+  `order_id` bigint NOT NULL,
+  `origin_country` char(2) NOT NULL,
+  `destination_country` char(2) NOT NULL,
+  `origin_timezone` varchar(64) NOT NULL,
+  `destination_timezone` varchar(64) NOT NULL,
+  `warehouse_id` bigint NOT NULL,
+  `migration_provider_id` bigint NOT NULL,
+  `approved_by` bigint NOT NULL,
+  `approved_at` datetime(6) NOT NULL,
+  `source_reference` varchar(255) NOT NULL,
+  `creator` varchar(64) NOT NULL DEFAULT '',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updater` varchar(64) NOT NULL DEFAULT '',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` bit(1) NOT NULL DEFAULT b'0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_legacy_migration_fact_order` (`tenant_id`,`order_id`),
+  KEY `idx_legacy_migration_fact_provider` (`tenant_id`,`migration_provider_id`),
+  KEY `idx_legacy_migration_fact_warehouse` (`tenant_id`,`warehouse_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- BEGIN V024__normalize_dashboard_route_path.sql
 -- Vue Router requires top-level route paths to start with a slash.
 -- V013 created the dashboard menu as "dashboard", which prevents the
 -- permission router from being mounted after a successful login.
@@ -8094,7 +8209,305 @@ WHERE `id` = 7990
   AND `path` = 'dashboard'
   AND `deleted` = b'0';
 
--- BEGIN V024__seo_keyword_relevance_analysis.sql
+-- BEGIN V025__expose_oakved_mail_management.sql
+-- Expose the built-in mail-management pages only to the Oakved storefront tenant.
+-- Tenant 121 currently shares its package with another tenant, so clone the
+-- package before adding mail permissions instead of widening the shared package.
+SET @oakved_mail_tenant_id = 121;
+SET @oakved_mail_package_marker =
+  _utf8mb4'oakved:tenant-121:mail-management' COLLATE utf8mb4_unicode_ci;
+
+DROP TEMPORARY TABLE IF EXISTS `oakved_mail_menu_scope`;
+CREATE TEMPORARY TABLE `oakved_mail_menu_scope` (
+  `menu_id` bigint NOT NULL,
+  PRIMARY KEY (`menu_id`)
+) ENGINE=InnoDB;
+
+INSERT INTO `oakved_mail_menu_scope` (`menu_id`) VALUES
+  (1), (2739),
+  (2130), (2131), (2132), (2133), (2134), (2135),
+  (2136), (2137), (2138), (2139), (2140),
+  (2141), (2142), (2143);
+
+-- Fail closed if the target tenant, role, or published mail routes drifted.
+DROP TEMPORARY TABLE IF EXISTS `oakved_mail_management_guard`;
+CREATE TEMPORARY TABLE `oakved_mail_management_guard` (
+  `valid` tinyint NOT NULL,
+  CONSTRAINT `chk_oakved_mail_management_guard` CHECK (`valid` = 1)
+) ENGINE=InnoDB;
+
+INSERT INTO `oakved_mail_management_guard` (`valid`)
+SELECT 0 WHERE (
+  SELECT COUNT(*)
+  FROM `system_tenant` AS tenant
+  INNER JOIN `system_tenant_package` AS package ON package.`id` = tenant.`package_id`
+  WHERE tenant.`id` = @oakved_mail_tenant_id
+    AND tenant.`status` = 0
+    AND tenant.`deleted` = b'0'
+    AND package.`status` = 0
+    AND package.`deleted` = b'0'
+) <> 1;
+
+INSERT INTO `oakved_mail_management_guard` (`valid`)
+SELECT 0 WHERE (
+  SELECT COUNT(*)
+  FROM `system_role`
+  WHERE `tenant_id` = @oakved_mail_tenant_id
+    AND `code` = 'tenant_admin'
+    AND `type` = 1
+    AND `status` = 0
+    AND `deleted` = b'0'
+) <> 1;
+
+INSERT INTO `oakved_mail_management_guard` (`valid`)
+SELECT 0 WHERE (
+  SELECT COUNT(*)
+  FROM `system_menu` AS menu
+  INNER JOIN `oakved_mail_menu_scope` AS scope ON scope.`menu_id` = menu.`id`
+  WHERE menu.`status` = 0
+    AND menu.`visible` = b'1'
+    AND menu.`deleted` = b'0'
+) <> 16;
+
+INSERT INTO `oakved_mail_management_guard` (`valid`)
+SELECT 0 WHERE
+  (SELECT COUNT(*) FROM `system_menu`
+    WHERE `id` = 2739 AND `parent_id` = 1 AND `type` = 1
+      AND `path` = 'messages' AND `deleted` = b'0') <> 1
+  OR (SELECT COUNT(*) FROM `system_menu`
+    WHERE `id` = 2130 AND `parent_id` = 2739 AND `type` = 2
+      AND `path` = 'mail' AND `deleted` = b'0') <> 1
+  OR (SELECT COUNT(*) FROM `system_menu`
+    WHERE `id` = 2131 AND `parent_id` = 2130 AND `type` = 2
+      AND `path` = 'mail-account' AND `component` = 'system/mail/account/index'
+      AND `deleted` = b'0') <> 1
+  OR (SELECT COUNT(*) FROM `system_menu`
+    WHERE `id` = 2136 AND `parent_id` = 2130 AND `type` = 2
+      AND `path` = 'mail-template' AND `component` = 'system/mail/template/index'
+      AND `deleted` = b'0') <> 1
+  OR (SELECT COUNT(*) FROM `system_menu`
+    WHERE `id` = 2141 AND `parent_id` = 2130 AND `type` = 2
+      AND `path` = 'mail-log' AND `component` = 'system/mail/log/index'
+      AND `deleted` = b'0') <> 1
+  OR (SELECT COUNT(*) FROM `system_menu`
+    WHERE `id` BETWEEN 2132 AND 2135 AND `parent_id` = 2131 AND `type` = 3
+      AND `deleted` = b'0') <> 4
+  OR (SELECT COUNT(*) FROM `system_menu`
+    WHERE (`id` BETWEEN 2137 AND 2140 OR `id` = 2143)
+      AND `parent_id` = 2136 AND `type` = 3 AND `deleted` = b'0') <> 5
+  OR (SELECT COUNT(*) FROM `system_menu`
+    WHERE `id` = 2142 AND `parent_id` = 2141 AND `type` = 3
+      AND `deleted` = b'0') <> 1;
+
+SET @oakved_mail_source_package_id = (
+  SELECT `package_id`
+  FROM `system_tenant`
+  WHERE `id` = @oakved_mail_tenant_id AND `deleted` = b'0'
+  LIMIT 1
+);
+
+INSERT INTO `system_tenant_package`
+(`name`, `status`, `remark`, `menu_ids`, `creator`, `create_time`,
+ `updater`, `update_time`, `deleted`)
+SELECT 'Oakved 邮箱管理', source.`status`, @oakved_mail_package_marker,
+       source.`menu_ids`, 'V025', CURRENT_TIMESTAMP,
+       'V025', CURRENT_TIMESTAMP, b'0'
+FROM `system_tenant_package` AS source
+WHERE source.`id` = @oakved_mail_source_package_id
+  AND source.`deleted` = b'0'
+  AND NOT EXISTS (
+    SELECT 1
+    FROM `system_tenant_package`
+    WHERE `remark` = @oakved_mail_package_marker AND `deleted` = b'0'
+  );
+
+SET @oakved_mail_package_id = (
+  SELECT `id`
+  FROM `system_tenant_package`
+  WHERE `remark` = @oakved_mail_package_marker AND `deleted` = b'0'
+  ORDER BY `id`
+  LIMIT 1
+);
+
+INSERT INTO `oakved_mail_management_guard` (`valid`)
+SELECT 0 WHERE (
+  SELECT COUNT(*)
+  FROM `system_tenant_package`
+  WHERE `remark` = @oakved_mail_package_marker AND `deleted` = b'0'
+) <> 1;
+
+INSERT INTO `oakved_mail_management_guard` (`valid`)
+SELECT 0 WHERE NOT EXISTS (
+  SELECT 1
+  FROM `system_tenant_package`
+  WHERE `id` = @oakved_mail_package_id
+    AND `status` = 0
+    AND JSON_VALID(`menu_ids`)
+    AND `deleted` = b'0'
+);
+
+INSERT INTO `oakved_mail_management_guard` (`valid`)
+SELECT 0 WHERE EXISTS (
+  SELECT 1
+  FROM `system_tenant`
+  WHERE `id` <> @oakved_mail_tenant_id
+    AND `package_id` = @oakved_mail_package_id
+    AND `deleted` = b'0'
+);
+
+UPDATE `system_tenant_package`
+SET `menu_ids` = JSON_ARRAY_APPEND(`menu_ids`, '$', 1),
+    `updater` = 'V025', `update_time` = CURRENT_TIMESTAMP
+WHERE `id` = @oakved_mail_package_id
+  AND JSON_CONTAINS(`menu_ids`, '1', '$') = 0;
+
+UPDATE `system_tenant_package`
+SET `menu_ids` = JSON_ARRAY_APPEND(`menu_ids`, '$', 2739),
+    `updater` = 'V025', `update_time` = CURRENT_TIMESTAMP
+WHERE `id` = @oakved_mail_package_id
+  AND JSON_CONTAINS(`menu_ids`, '2739', '$') = 0;
+
+UPDATE `system_tenant_package`
+SET `menu_ids` = JSON_ARRAY_APPEND(`menu_ids`, '$', 2130),
+    `updater` = 'V025', `update_time` = CURRENT_TIMESTAMP
+WHERE `id` = @oakved_mail_package_id
+  AND JSON_CONTAINS(`menu_ids`, '2130', '$') = 0;
+
+UPDATE `system_tenant_package`
+SET `menu_ids` = JSON_ARRAY_APPEND(`menu_ids`, '$', 2131),
+    `updater` = 'V025', `update_time` = CURRENT_TIMESTAMP
+WHERE `id` = @oakved_mail_package_id
+  AND JSON_CONTAINS(`menu_ids`, '2131', '$') = 0;
+
+UPDATE `system_tenant_package`
+SET `menu_ids` = JSON_ARRAY_APPEND(`menu_ids`, '$', 2132),
+    `updater` = 'V025', `update_time` = CURRENT_TIMESTAMP
+WHERE `id` = @oakved_mail_package_id
+  AND JSON_CONTAINS(`menu_ids`, '2132', '$') = 0;
+
+UPDATE `system_tenant_package`
+SET `menu_ids` = JSON_ARRAY_APPEND(`menu_ids`, '$', 2133),
+    `updater` = 'V025', `update_time` = CURRENT_TIMESTAMP
+WHERE `id` = @oakved_mail_package_id
+  AND JSON_CONTAINS(`menu_ids`, '2133', '$') = 0;
+
+UPDATE `system_tenant_package`
+SET `menu_ids` = JSON_ARRAY_APPEND(`menu_ids`, '$', 2134),
+    `updater` = 'V025', `update_time` = CURRENT_TIMESTAMP
+WHERE `id` = @oakved_mail_package_id
+  AND JSON_CONTAINS(`menu_ids`, '2134', '$') = 0;
+
+UPDATE `system_tenant_package`
+SET `menu_ids` = JSON_ARRAY_APPEND(`menu_ids`, '$', 2135),
+    `updater` = 'V025', `update_time` = CURRENT_TIMESTAMP
+WHERE `id` = @oakved_mail_package_id
+  AND JSON_CONTAINS(`menu_ids`, '2135', '$') = 0;
+
+UPDATE `system_tenant_package`
+SET `menu_ids` = JSON_ARRAY_APPEND(`menu_ids`, '$', 2136),
+    `updater` = 'V025', `update_time` = CURRENT_TIMESTAMP
+WHERE `id` = @oakved_mail_package_id
+  AND JSON_CONTAINS(`menu_ids`, '2136', '$') = 0;
+
+UPDATE `system_tenant_package`
+SET `menu_ids` = JSON_ARRAY_APPEND(`menu_ids`, '$', 2137),
+    `updater` = 'V025', `update_time` = CURRENT_TIMESTAMP
+WHERE `id` = @oakved_mail_package_id
+  AND JSON_CONTAINS(`menu_ids`, '2137', '$') = 0;
+
+UPDATE `system_tenant_package`
+SET `menu_ids` = JSON_ARRAY_APPEND(`menu_ids`, '$', 2138),
+    `updater` = 'V025', `update_time` = CURRENT_TIMESTAMP
+WHERE `id` = @oakved_mail_package_id
+  AND JSON_CONTAINS(`menu_ids`, '2138', '$') = 0;
+
+UPDATE `system_tenant_package`
+SET `menu_ids` = JSON_ARRAY_APPEND(`menu_ids`, '$', 2139),
+    `updater` = 'V025', `update_time` = CURRENT_TIMESTAMP
+WHERE `id` = @oakved_mail_package_id
+  AND JSON_CONTAINS(`menu_ids`, '2139', '$') = 0;
+
+UPDATE `system_tenant_package`
+SET `menu_ids` = JSON_ARRAY_APPEND(`menu_ids`, '$', 2140),
+    `updater` = 'V025', `update_time` = CURRENT_TIMESTAMP
+WHERE `id` = @oakved_mail_package_id
+  AND JSON_CONTAINS(`menu_ids`, '2140', '$') = 0;
+
+UPDATE `system_tenant_package`
+SET `menu_ids` = JSON_ARRAY_APPEND(`menu_ids`, '$', 2141),
+    `updater` = 'V025', `update_time` = CURRENT_TIMESTAMP
+WHERE `id` = @oakved_mail_package_id
+  AND JSON_CONTAINS(`menu_ids`, '2141', '$') = 0;
+
+UPDATE `system_tenant_package`
+SET `menu_ids` = JSON_ARRAY_APPEND(`menu_ids`, '$', 2142),
+    `updater` = 'V025', `update_time` = CURRENT_TIMESTAMP
+WHERE `id` = @oakved_mail_package_id
+  AND JSON_CONTAINS(`menu_ids`, '2142', '$') = 0;
+
+UPDATE `system_tenant_package`
+SET `menu_ids` = JSON_ARRAY_APPEND(`menu_ids`, '$', 2143),
+    `updater` = 'V025', `update_time` = CURRENT_TIMESTAMP
+WHERE `id` = @oakved_mail_package_id
+  AND JSON_CONTAINS(`menu_ids`, '2143', '$') = 0;
+
+INSERT INTO `oakved_mail_management_guard` (`valid`)
+SELECT 0 WHERE (
+  SELECT COUNT(DISTINCT scope.`menu_id`)
+  FROM `system_tenant_package` AS package
+  INNER JOIN JSON_TABLE(
+    package.`menu_ids`, '$[*]' COLUMNS (`menu_id` bigint PATH '$')
+  ) AS package_menu
+  INNER JOIN `oakved_mail_menu_scope` AS scope
+    ON scope.`menu_id` = package_menu.`menu_id`
+  WHERE package.`id` = @oakved_mail_package_id
+) <> 16;
+
+UPDATE `system_tenant`
+SET `package_id` = @oakved_mail_package_id,
+    `updater` = 'V025',
+    `update_time` = CURRENT_TIMESTAMP
+WHERE `id` = @oakved_mail_tenant_id
+  AND `deleted` = b'0';
+
+INSERT INTO `system_role_menu`
+(`role_id`, `menu_id`, `creator`, `create_time`, `updater`, `update_time`,
+ `deleted`, `tenant_id`)
+SELECT role.`id`, scope.`menu_id`, 'V025', CURRENT_TIMESTAMP,
+       'V025', CURRENT_TIMESTAMP, b'0', @oakved_mail_tenant_id
+FROM `system_role` AS role
+CROSS JOIN `oakved_mail_menu_scope` AS scope
+WHERE role.`tenant_id` = @oakved_mail_tenant_id
+  AND role.`code` = 'tenant_admin'
+  AND role.`type` = 1
+  AND role.`status` = 0
+  AND role.`deleted` = b'0'
+  AND NOT EXISTS (
+    SELECT 1
+    FROM `system_role_menu` AS role_menu
+    WHERE role_menu.`role_id` = role.`id`
+      AND role_menu.`menu_id` = scope.`menu_id`
+      AND role_menu.`tenant_id` = @oakved_mail_tenant_id
+      AND role_menu.`deleted` = b'0'
+  );
+
+INSERT INTO `oakved_mail_management_guard` (`valid`)
+SELECT 0 WHERE (
+  SELECT COUNT(DISTINCT role_menu.`menu_id`)
+  FROM `system_role_menu` AS role_menu
+  INNER JOIN `system_role` AS role ON role.`id` = role_menu.`role_id`
+  INNER JOIN `oakved_mail_menu_scope` AS scope ON scope.`menu_id` = role_menu.`menu_id`
+  WHERE role.`tenant_id` = @oakved_mail_tenant_id
+    AND role.`code` = 'tenant_admin'
+    AND role.`deleted` = b'0'
+    AND role_menu.`tenant_id` = @oakved_mail_tenant_id
+    AND role_menu.`deleted` = b'0'
+) <> 16;
+
+DROP TEMPORARY TABLE `oakved_mail_management_guard`;
+DROP TEMPORARY TABLE `oakved_mail_menu_scope`;
+
+-- BEGIN V026__seo_keyword_relevance_analysis.sql
 -- SEO keyword relevance analysis history, evidence, and permissions (MySQL 8.x).
 
 ALTER TABLE `seo_metadata`
@@ -8248,7 +8661,137 @@ SELECT '分析查询','seo:analysis:query',3,2,@seo_analysis_menu_id,'','','',''
 WHERE @seo_analysis_menu_id IS NOT NULL
   AND NOT EXISTS (SELECT 1 FROM `system_menu` WHERE `permission`='seo:analysis:query' AND `deleted`=b'0');
 
--- BEGIN V025__tenant_business_mode.sql
+-- BEGIN V027__repair_seo_analysis_menu_registration.sql
+-- Forward-only repair for the SEO analysis menu.
+-- V026 is already released and must remain byte-for-byte immutable.
+
+START TRANSACTION;
+
+SET @seo_root_menu_id = (
+  SELECT MIN(`id`)
+  FROM `system_menu`
+  WHERE `path` = '/seo' AND `type` = 1 AND `deleted` = b'0'
+);
+
+INSERT INTO `system_menu`
+  (`name`,`permission`,`type`,`sort`,`parent_id`,`path`,`icon`,`component`,`component_name`,
+   `status`,`visible`,`keep_alive`,`always_show`,`creator`,`create_time`,`updater`,`update_time`,`deleted`)
+SELECT
+  '关键词分析','',2,3,@seo_root_menu_id,'analysis','ep:data-analysis','seo/analysis/index','SeoAnalysis',
+  0,b'1',b'1',b'1','seo-migration',NOW(),'seo-migration',NOW(),b'0'
+WHERE @seo_root_menu_id IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1
+    FROM `system_menu`
+    WHERE `parent_id` = @seo_root_menu_id
+      AND `path` = 'analysis'
+      AND `deleted` = b'0'
+  );
+
+SET @seo_analysis_menu_id = (
+  SELECT MIN(`id`)
+  FROM `system_menu`
+  WHERE `parent_id` = @seo_root_menu_id
+    AND `path` = 'analysis'
+    AND `deleted` = b'0'
+);
+
+INSERT INTO `system_menu`
+  (`name`,`permission`,`type`,`sort`,`parent_id`,`path`,`icon`,`component`,`component_name`,
+   `status`,`visible`,`keep_alive`,`always_show`,`creator`,`create_time`,`updater`,`update_time`,`deleted`)
+SELECT
+  '运行分析','seo:analysis:run',3,1,@seo_analysis_menu_id,'','','','',
+  0,b'1',b'1',b'1','seo-migration',NOW(),'seo-migration',NOW(),b'0'
+WHERE @seo_analysis_menu_id IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1
+    FROM `system_menu`
+    WHERE `permission` = 'seo:analysis:run' AND `deleted` = b'0'
+  );
+
+INSERT INTO `system_menu`
+  (`name`,`permission`,`type`,`sort`,`parent_id`,`path`,`icon`,`component`,`component_name`,
+   `status`,`visible`,`keep_alive`,`always_show`,`creator`,`create_time`,`updater`,`update_time`,`deleted`)
+SELECT
+  '分析查询','seo:analysis:query',3,2,@seo_analysis_menu_id,'','','','',
+  0,b'1',b'1',b'1','seo-migration',NOW(),'seo-migration',NOW(),b'0'
+WHERE @seo_analysis_menu_id IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1
+    FROM `system_menu`
+    WHERE `permission` = 'seo:analysis:query' AND `deleted` = b'0'
+  );
+
+UPDATE `system_menu`
+SET `name` = '关键词分析',
+    `permission` = '',
+    `type` = 2,
+    `sort` = 3,
+    `icon` = 'ep:data-analysis',
+    `component` = 'seo/analysis/index',
+    `component_name` = 'SeoAnalysis',
+    `status` = 0,
+    `visible` = b'1',
+    `keep_alive` = b'1',
+    `always_show` = b'1',
+    `updater` = 'seo-migration',
+    `update_time` = NOW()
+WHERE `id` = @seo_analysis_menu_id;
+
+UPDATE `system_menu`
+SET `name` = '运行分析',
+    `type` = 3,
+    `sort` = 1,
+    `parent_id` = @seo_analysis_menu_id,
+    `updater` = 'seo-migration',
+    `update_time` = NOW()
+WHERE @seo_analysis_menu_id IS NOT NULL
+  AND `permission` = 'seo:analysis:run'
+  AND `deleted` = b'0';
+
+UPDATE `system_menu`
+SET `name` = '分析查询',
+    `type` = 3,
+    `sort` = 2,
+    `parent_id` = @seo_analysis_menu_id,
+    `updater` = 'seo-migration',
+    `update_time` = NOW()
+WHERE @seo_analysis_menu_id IS NOT NULL
+  AND `permission` = 'seo:analysis:query'
+  AND `deleted` = b'0';
+
+CREATE TEMPORARY TABLE `seo_analysis_menu_registration_guard` (
+  `valid` tinyint NOT NULL,
+  CONSTRAINT `chk_seo_analysis_menu_registration_guard` CHECK (`valid` = 1)
+);
+
+INSERT INTO `seo_analysis_menu_registration_guard` (`valid`)
+SELECT CASE
+  WHEN @seo_root_menu_id IS NOT NULL
+   AND (SELECT COUNT(*) FROM `system_menu`
+        WHERE `parent_id` = @seo_root_menu_id
+          AND `path` = 'analysis'
+          AND `type` = 2
+          AND `deleted` = b'0') = 1
+   AND (SELECT COUNT(*) FROM `system_menu`
+        WHERE `permission` = 'seo:analysis:run'
+          AND `parent_id` = @seo_analysis_menu_id
+          AND `type` = 3
+          AND `deleted` = b'0') = 1
+   AND (SELECT COUNT(*) FROM `system_menu`
+        WHERE `permission` = 'seo:analysis:query'
+          AND `parent_id` = @seo_analysis_menu_id
+          AND `type` = 3
+          AND `deleted` = b'0') = 1
+  THEN 1
+  ELSE 0
+END;
+
+DROP TEMPORARY TABLE `seo_analysis_menu_registration_guard`;
+
+COMMIT;
+
+-- BEGIN V028__tenant_business_mode.sql
 -- Tenant business mode controls whether inventory management is exposed in the ERP UI.
 
 ALTER TABLE `system_tenant`
@@ -8264,7 +8807,7 @@ UPDATE `system_tenant`
 SET `business_mode` = 'B2C'
 WHERE `id` = 121;
 
--- BEGIN V026__website_inquiry_notify.sql
+-- BEGIN V029__website_inquiry_notify.sql
 -- VANZ website inquiry -> ERP notify message integration.
 
 ALTER TABLE `system_notify_message`
@@ -8295,7 +8838,7 @@ WHERE NOT EXISTS (
     AND `deleted` = b'0'
 );
 
--- BEGIN V027__align_furniture_navigation_permissions.sql
+-- BEGIN V030__align_furniture_navigation_permissions.sql
 -- Align the Oakved furniture tenant packages with the custom navigation that is
 -- exposed by the furniture-lite admin. Role menu options are filtered by the
 -- current tenant package, so adding system_menu rows alone is not sufficient.
@@ -8595,9 +9138,9 @@ SELECT
   source.`status`,
   shared.`clone_remark`,
   source.`menu_ids`,
-  'V027',
+  'V030',
   CURRENT_TIMESTAMP,
-  'V027',
+  'V030',
   CURRENT_TIMESTAMP,
   b'0'
 FROM `oakved_navigation_shared_package` AS shared
@@ -8628,7 +9171,7 @@ INNER JOIN `system_tenant_package` AS clone
  AND clone.`status` = 0
  AND clone.`deleted` = b'0'
 SET tenant.`package_id` = clone.`id`,
-    tenant.`updater` = 'V027',
+    tenant.`updater` = 'V030',
     tenant.`update_time` = CURRENT_TIMESTAMP;
 
 UPDATE `oakved_navigation_target_tenant` AS target
@@ -8702,7 +9245,7 @@ UPDATE `system_tenant_package` AS package
 INNER JOIN `oakved_navigation_package_update` AS package_update
   ON package_update.`package_id` = package.`id`
 SET package.`menu_ids` = package_update.`menu_ids`,
-    package.`updater` = 'V027',
+    package.`updater` = 'V030',
     package.`update_time` = CURRENT_TIMESTAMP;
 
 DROP TEMPORARY TABLE IF EXISTS `oakved_navigation_existing_role_menu`;
@@ -8725,8 +9268,8 @@ INSERT INTO `system_role_menu`
   (`role_id`, `menu_id`, `creator`, `create_time`, `updater`, `update_time`,
    `deleted`, `tenant_id`)
 SELECT
-  role.`id`, scope.`menu_id`, 'V027', CURRENT_TIMESTAMP,
-  'V027', CURRENT_TIMESTAMP, b'0', tenant.`tenant_id`
+  role.`id`, scope.`menu_id`, 'V030', CURRENT_TIMESTAMP,
+  'V030', CURRENT_TIMESTAMP, b'0', tenant.`tenant_id`
 FROM `oakved_navigation_target_tenant` AS tenant
 INNER JOIN `system_role` AS role
   ON role.`tenant_id` = tenant.`tenant_id`
@@ -8796,7 +9339,911 @@ DROP TEMPORARY TABLE `oakved_navigation_menu_scope`;
 DROP TEMPORARY TABLE `oakved_navigation_route_scope`;
 DROP TEMPORARY TABLE `oakved_navigation_path_scope`;
 
--- BEGIN V028__tenant_sku_code.sql
+-- BEGIN V031__enable_full_crm.sql
+-- Enable the complete Yudao CRM module for the VANZ tenant.
+-- The public Yudao distribution contains the CRM Java/Vue sources and menu
+-- records, but does not ship the CRM business-table DDL. These tables mirror
+-- the data objects in yudao-module-crm and keep the standard audit/tenant
+-- columns used by the Oakved monolith.
+
+CREATE TABLE IF NOT EXISTS `crm_clue` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '线索编号',
+  `name` varchar(128) NOT NULL DEFAULT '' COMMENT '线索名称',
+  `follow_up_status` bit(1) NOT NULL DEFAULT b'0' COMMENT '是否已跟进',
+  `contact_last_time` datetime DEFAULT NULL COMMENT '最后跟进时间',
+  `contact_last_content` varchar(512) DEFAULT NULL COMMENT '最后跟进内容',
+  `contact_next_time` datetime DEFAULT NULL COMMENT '下次联系时间',
+  `owner_user_id` bigint NOT NULL COMMENT '负责人用户编号',
+  `transform_status` bit(1) NOT NULL DEFAULT b'0' COMMENT '是否已转为客户',
+  `customer_id` bigint DEFAULT NULL COMMENT '转换后的客户编号',
+  `mobile` varchar(32) NOT NULL DEFAULT '' COMMENT '手机号',
+  `telephone` varchar(32) NOT NULL DEFAULT '' COMMENT '电话',
+  `qq` varchar(64) NOT NULL DEFAULT '' COMMENT 'QQ',
+  `wechat` varchar(255) NOT NULL DEFAULT '' COMMENT '微信',
+  `email` varchar(255) NOT NULL DEFAULT '' COMMENT '邮箱',
+  `area_id` int DEFAULT NULL COMMENT '地区编号',
+  `detail_address` varchar(255) NOT NULL DEFAULT '' COMMENT '详细地址',
+  `industry_id` int DEFAULT NULL COMMENT '客户行业',
+  `level` int DEFAULT NULL COMMENT '客户级别',
+  `source` int DEFAULT NULL COMMENT '客户来源',
+  `remark` varchar(500) NOT NULL DEFAULT '' COMMENT '备注',
+  `creator` varchar(64) NOT NULL DEFAULT '',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updater` varchar(64) NOT NULL DEFAULT '',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` bit(1) NOT NULL DEFAULT b'0',
+  `tenant_id` bigint NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  KEY `idx_crm_clue_tenant_owner` (`tenant_id`, `owner_user_id`, `deleted`),
+  KEY `idx_crm_clue_tenant_customer` (`tenant_id`, `customer_id`, `deleted`),
+  KEY `idx_crm_clue_tenant_create_time` (`tenant_id`, `create_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='CRM 线索';
+
+CREATE TABLE IF NOT EXISTS `crm_customer` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '客户编号',
+  `name` varchar(128) NOT NULL DEFAULT '' COMMENT '客户名称',
+  `follow_up_status` bit(1) NOT NULL DEFAULT b'0' COMMENT '是否已跟进',
+  `contact_last_time` datetime DEFAULT NULL COMMENT '最后跟进时间',
+  `contact_last_content` varchar(512) DEFAULT NULL COMMENT '最后跟进内容',
+  `contact_next_time` datetime DEFAULT NULL COMMENT '下次联系时间',
+  `owner_user_id` bigint DEFAULT NULL COMMENT '负责人用户编号',
+  `owner_time` datetime DEFAULT NULL COMMENT '成为负责人的时间',
+  `lock_status` bit(1) NOT NULL DEFAULT b'0' COMMENT '是否锁定',
+  `deal_status` bit(1) NOT NULL DEFAULT b'0' COMMENT '是否成交',
+  `mobile` varchar(32) NOT NULL DEFAULT '' COMMENT '手机号',
+  `telephone` varchar(32) NOT NULL DEFAULT '' COMMENT '电话',
+  `qq` varchar(64) NOT NULL DEFAULT '' COMMENT 'QQ',
+  `wechat` varchar(255) NOT NULL DEFAULT '' COMMENT '微信',
+  `email` varchar(255) NOT NULL DEFAULT '' COMMENT '邮箱',
+  `area_id` int DEFAULT NULL COMMENT '地区编号',
+  `detail_address` varchar(255) NOT NULL DEFAULT '' COMMENT '详细地址',
+  `industry_id` int DEFAULT NULL COMMENT '客户行业',
+  `level` int DEFAULT NULL COMMENT '客户级别',
+  `source` int DEFAULT NULL COMMENT '客户来源',
+  `remark` varchar(500) NOT NULL DEFAULT '' COMMENT '备注',
+  `creator` varchar(64) NOT NULL DEFAULT '',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updater` varchar(64) NOT NULL DEFAULT '',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` bit(1) NOT NULL DEFAULT b'0',
+  `tenant_id` bigint NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  KEY `idx_crm_customer_tenant_owner` (`tenant_id`, `owner_user_id`, `deleted`),
+  KEY `idx_crm_customer_tenant_name` (`tenant_id`, `name`, `deleted`),
+  KEY `idx_crm_customer_pool` (`tenant_id`, `owner_user_id`, `lock_status`, `deal_status`, `deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='CRM 客户';
+
+CREATE TABLE IF NOT EXISTS `crm_contact` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '联系人编号',
+  `name` varchar(128) NOT NULL DEFAULT '' COMMENT '联系人姓名',
+  `customer_id` bigint NOT NULL COMMENT '客户编号',
+  `contact_last_time` datetime DEFAULT NULL COMMENT '最后跟进时间',
+  `contact_last_content` varchar(512) DEFAULT NULL COMMENT '最后跟进内容',
+  `contact_next_time` datetime DEFAULT NULL COMMENT '下次联系时间',
+  `owner_user_id` bigint DEFAULT NULL COMMENT '负责人用户编号',
+  `mobile` varchar(32) NOT NULL DEFAULT '' COMMENT '手机号',
+  `telephone` varchar(32) NOT NULL DEFAULT '' COMMENT '电话',
+  `email` varchar(255) NOT NULL DEFAULT '' COMMENT '邮箱',
+  `qq` bigint DEFAULT NULL COMMENT 'QQ',
+  `wechat` varchar(255) NOT NULL DEFAULT '' COMMENT '微信',
+  `area_id` int DEFAULT NULL COMMENT '地区编号',
+  `detail_address` varchar(255) NOT NULL DEFAULT '' COMMENT '详细地址',
+  `sex` int DEFAULT NULL COMMENT '性别',
+  `master` bit(1) NOT NULL DEFAULT b'0' COMMENT '是否为首要联系人',
+  `post` varchar(128) NOT NULL DEFAULT '' COMMENT '职务',
+  `parent_id` bigint DEFAULT NULL COMMENT '直属上级联系人编号',
+  `remark` varchar(500) NOT NULL DEFAULT '' COMMENT '备注',
+  `creator` varchar(64) NOT NULL DEFAULT '',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updater` varchar(64) NOT NULL DEFAULT '',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` bit(1) NOT NULL DEFAULT b'0',
+  `tenant_id` bigint NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  KEY `idx_crm_contact_tenant_customer` (`tenant_id`, `customer_id`, `deleted`),
+  KEY `idx_crm_contact_tenant_owner` (`tenant_id`, `owner_user_id`, `deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='CRM 联系人';
+
+CREATE TABLE IF NOT EXISTS `crm_business_status_type` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '商机状态组编号',
+  `name` varchar(128) NOT NULL DEFAULT '' COMMENT '状态组名称',
+  `dept_ids` varchar(2048) NOT NULL DEFAULT '' COMMENT '应用部门编号集合',
+  `creator` varchar(64) NOT NULL DEFAULT '',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updater` varchar(64) NOT NULL DEFAULT '',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` bit(1) NOT NULL DEFAULT b'0',
+  `tenant_id` bigint NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  KEY `idx_crm_business_status_type_tenant` (`tenant_id`, `deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='CRM 商机状态组';
+
+CREATE TABLE IF NOT EXISTS `crm_business_status` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '商机状态编号',
+  `type_id` bigint NOT NULL COMMENT '商机状态组编号',
+  `name` varchar(128) NOT NULL DEFAULT '' COMMENT '状态名称',
+  `percent` int NOT NULL DEFAULT 0 COMMENT '赢单概率百分比',
+  `sort` int NOT NULL DEFAULT 0 COMMENT '显示顺序',
+  `creator` varchar(64) NOT NULL DEFAULT '',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updater` varchar(64) NOT NULL DEFAULT '',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` bit(1) NOT NULL DEFAULT b'0',
+  `tenant_id` bigint NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  KEY `idx_crm_business_status_tenant_type` (`tenant_id`, `type_id`, `deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='CRM 商机状态';
+
+CREATE TABLE IF NOT EXISTS `crm_business` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '商机编号',
+  `name` varchar(128) NOT NULL DEFAULT '' COMMENT '商机名称',
+  `customer_id` bigint NOT NULL COMMENT '客户编号',
+  `follow_up_status` bit(1) NOT NULL DEFAULT b'0' COMMENT '是否已跟进',
+  `contact_last_time` datetime DEFAULT NULL COMMENT '最后跟进时间',
+  `contact_next_time` datetime DEFAULT NULL COMMENT '下次联系时间',
+  `owner_user_id` bigint NOT NULL COMMENT '负责人用户编号',
+  `status_type_id` bigint NOT NULL COMMENT '商机状态组编号',
+  `status_id` bigint NOT NULL COMMENT '商机状态编号',
+  `end_status` int DEFAULT NULL COMMENT '结束状态',
+  `end_remark` varchar(500) NOT NULL DEFAULT '' COMMENT '结束备注',
+  `deal_time` datetime DEFAULT NULL COMMENT '预计成交时间',
+  `total_product_price` decimal(24,2) NOT NULL DEFAULT 0 COMMENT '产品总金额',
+  `discount_percent` decimal(10,2) NOT NULL DEFAULT 100 COMMENT '整单折扣百分比',
+  `total_price` decimal(24,2) NOT NULL DEFAULT 0 COMMENT '商机总金额',
+  `remark` varchar(500) NOT NULL DEFAULT '' COMMENT '备注',
+  `creator` varchar(64) NOT NULL DEFAULT '',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updater` varchar(64) NOT NULL DEFAULT '',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` bit(1) NOT NULL DEFAULT b'0',
+  `tenant_id` bigint NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  KEY `idx_crm_business_tenant_customer` (`tenant_id`, `customer_id`, `deleted`),
+  KEY `idx_crm_business_tenant_owner` (`tenant_id`, `owner_user_id`, `deleted`),
+  KEY `idx_crm_business_tenant_status` (`tenant_id`, `status_type_id`, `status_id`, `deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='CRM 商机';
+
+CREATE TABLE IF NOT EXISTS `crm_business_product` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '商机产品编号',
+  `business_id` bigint NOT NULL COMMENT '商机编号',
+  `product_id` bigint NOT NULL COMMENT '产品编号',
+  `product_price` decimal(24,2) NOT NULL DEFAULT 0 COMMENT '产品标准单价',
+  `business_price` decimal(24,2) NOT NULL DEFAULT 0 COMMENT '商机销售单价',
+  `count` decimal(24,4) NOT NULL DEFAULT 0 COMMENT '数量',
+  `total_price` decimal(24,2) NOT NULL DEFAULT 0 COMMENT '合计金额',
+  `creator` varchar(64) NOT NULL DEFAULT '',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updater` varchar(64) NOT NULL DEFAULT '',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` bit(1) NOT NULL DEFAULT b'0',
+  `tenant_id` bigint NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  KEY `idx_crm_business_product_tenant_business` (`tenant_id`, `business_id`, `deleted`),
+  KEY `idx_crm_business_product_tenant_product` (`tenant_id`, `product_id`, `deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='CRM 商机产品';
+
+CREATE TABLE IF NOT EXISTS `crm_contact_business` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '联系人商机关联编号',
+  `contact_id` bigint NOT NULL COMMENT '联系人编号',
+  `business_id` bigint NOT NULL COMMENT '商机编号',
+  `creator` varchar(64) NOT NULL DEFAULT '',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updater` varchar(64) NOT NULL DEFAULT '',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` bit(1) NOT NULL DEFAULT b'0',
+  `tenant_id` bigint NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  KEY `idx_crm_contact_business_contact` (`tenant_id`, `contact_id`, `deleted`),
+  KEY `idx_crm_contact_business_business` (`tenant_id`, `business_id`, `deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='CRM 联系人与商机关联';
+
+CREATE TABLE IF NOT EXISTS `crm_product_category` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '产品分类编号',
+  `name` varchar(128) NOT NULL DEFAULT '' COMMENT '分类名称',
+  `parent_id` bigint NOT NULL DEFAULT 0 COMMENT '父分类编号',
+  `creator` varchar(64) NOT NULL DEFAULT '',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updater` varchar(64) NOT NULL DEFAULT '',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` bit(1) NOT NULL DEFAULT b'0',
+  `tenant_id` bigint NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  KEY `idx_crm_product_category_parent` (`tenant_id`, `parent_id`, `deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='CRM 产品分类';
+
+CREATE TABLE IF NOT EXISTS `crm_product` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT 'CRM 产品编号',
+  `name` varchar(128) NOT NULL DEFAULT '' COMMENT '产品名称',
+  `no` varchar(64) NOT NULL DEFAULT '' COMMENT '产品编码',
+  `unit` int DEFAULT NULL COMMENT '单位',
+  `price` decimal(24,2) NOT NULL DEFAULT 0 COMMENT '价格',
+  `status` int NOT NULL DEFAULT 0 COMMENT '状态',
+  `category_id` bigint DEFAULT NULL COMMENT '产品分类编号',
+  `description` text COMMENT '产品描述',
+  `owner_user_id` bigint NOT NULL COMMENT '负责人用户编号',
+  `creator` varchar(64) NOT NULL DEFAULT '',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updater` varchar(64) NOT NULL DEFAULT '',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` bit(1) NOT NULL DEFAULT b'0',
+  `tenant_id` bigint NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  KEY `idx_crm_product_tenant_no` (`tenant_id`, `no`, `deleted`),
+  KEY `idx_crm_product_tenant_category` (`tenant_id`, `category_id`, `deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='CRM 产品';
+
+CREATE TABLE IF NOT EXISTS `crm_contract_config` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '合同配置编号',
+  `notify_enabled` bit(1) DEFAULT NULL COMMENT '是否开启提前提醒',
+  `notify_days` int DEFAULT NULL COMMENT '提前提醒天数',
+  `creator` varchar(64) NOT NULL DEFAULT '',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updater` varchar(64) NOT NULL DEFAULT '',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` bit(1) NOT NULL DEFAULT b'0',
+  `tenant_id` bigint NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  KEY `idx_crm_contract_config_tenant` (`tenant_id`, `deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='CRM 合同配置';
+
+CREATE TABLE IF NOT EXISTS `crm_contract` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '合同编号',
+  `name` varchar(128) NOT NULL DEFAULT '' COMMENT '合同名称',
+  `no` varchar(64) NOT NULL DEFAULT '' COMMENT '合同编码',
+  `customer_id` bigint NOT NULL COMMENT '客户编号',
+  `business_id` bigint DEFAULT NULL COMMENT '商机编号',
+  `contact_last_time` datetime DEFAULT NULL COMMENT '最后跟进时间',
+  `owner_user_id` bigint NOT NULL COMMENT '负责人用户编号',
+  `process_instance_id` varchar(64) DEFAULT NULL COMMENT '流程实例编号',
+  `audit_status` int NOT NULL DEFAULT 10 COMMENT '审批状态',
+  `order_date` datetime NOT NULL COMMENT '下单日期',
+  `start_time` datetime NOT NULL COMMENT '合同开始时间',
+  `end_time` datetime NOT NULL COMMENT '合同结束时间',
+  `total_product_price` decimal(24,2) NOT NULL DEFAULT 0 COMMENT '产品总金额',
+  `discount_percent` decimal(10,2) NOT NULL DEFAULT 100 COMMENT '整单折扣百分比',
+  `total_price` decimal(24,2) NOT NULL DEFAULT 0 COMMENT '合同总金额',
+  `sign_contact_id` bigint NOT NULL COMMENT '签约联系人编号',
+  `sign_user_id` bigint NOT NULL COMMENT '公司签约人编号',
+  `remark` varchar(500) NOT NULL DEFAULT '' COMMENT '备注',
+  `creator` varchar(64) NOT NULL DEFAULT '',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updater` varchar(64) NOT NULL DEFAULT '',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` bit(1) NOT NULL DEFAULT b'0',
+  `tenant_id` bigint NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  KEY `idx_crm_contract_tenant_customer` (`tenant_id`, `customer_id`, `deleted`),
+  KEY `idx_crm_contract_tenant_owner` (`tenant_id`, `owner_user_id`, `deleted`),
+  KEY `idx_crm_contract_tenant_no` (`tenant_id`, `no`, `deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='CRM 合同';
+
+CREATE TABLE IF NOT EXISTS `crm_contract_product` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '合同产品编号',
+  `contract_id` bigint NOT NULL COMMENT '合同编号',
+  `product_id` bigint NOT NULL COMMENT '产品编号',
+  `product_price` decimal(24,2) NOT NULL DEFAULT 0 COMMENT '产品标准单价',
+  `contract_price` decimal(24,2) NOT NULL DEFAULT 0 COMMENT '合同销售单价',
+  `count` decimal(24,4) NOT NULL DEFAULT 0 COMMENT '数量',
+  `total_price` decimal(24,2) NOT NULL DEFAULT 0 COMMENT '合计金额',
+  `creator` varchar(64) NOT NULL DEFAULT '',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updater` varchar(64) NOT NULL DEFAULT '',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` bit(1) NOT NULL DEFAULT b'0',
+  `tenant_id` bigint NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  KEY `idx_crm_contract_product_contract` (`tenant_id`, `contract_id`, `deleted`),
+  KEY `idx_crm_contract_product_product` (`tenant_id`, `product_id`, `deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='CRM 合同产品';
+
+CREATE TABLE IF NOT EXISTS `crm_receivable` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '回款编号',
+  `no` varchar(64) NOT NULL DEFAULT '' COMMENT '回款编号编码',
+  `plan_id` bigint DEFAULT NULL COMMENT '回款计划编号',
+  `customer_id` bigint NOT NULL COMMENT '客户编号',
+  `contract_id` bigint NOT NULL COMMENT '合同编号',
+  `owner_user_id` bigint NOT NULL COMMENT '负责人用户编号',
+  `return_time` datetime NOT NULL COMMENT '回款日期',
+  `return_type` int DEFAULT NULL COMMENT '回款方式',
+  `price` decimal(24,2) NOT NULL DEFAULT 0 COMMENT '回款金额',
+  `remark` varchar(500) NOT NULL DEFAULT '' COMMENT '备注',
+  `process_instance_id` varchar(64) DEFAULT NULL COMMENT '流程实例编号',
+  `audit_status` int NOT NULL DEFAULT 10 COMMENT '审批状态',
+  `creator` varchar(64) NOT NULL DEFAULT '',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updater` varchar(64) NOT NULL DEFAULT '',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` bit(1) NOT NULL DEFAULT b'0',
+  `tenant_id` bigint NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  KEY `idx_crm_receivable_tenant_contract` (`tenant_id`, `contract_id`, `deleted`),
+  KEY `idx_crm_receivable_tenant_customer` (`tenant_id`, `customer_id`, `deleted`),
+  KEY `idx_crm_receivable_tenant_owner` (`tenant_id`, `owner_user_id`, `deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='CRM 回款';
+
+CREATE TABLE IF NOT EXISTS `crm_receivable_plan` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '回款计划编号',
+  `period` int NOT NULL COMMENT '期数',
+  `customer_id` bigint NOT NULL COMMENT '客户编号',
+  `contract_id` bigint NOT NULL COMMENT '合同编号',
+  `owner_user_id` bigint NOT NULL COMMENT '负责人用户编号',
+  `return_time` datetime NOT NULL COMMENT '计划回款日期',
+  `return_type` int DEFAULT NULL COMMENT '计划回款方式',
+  `price` decimal(24,2) NOT NULL DEFAULT 0 COMMENT '计划回款金额',
+  `receivable_id` bigint DEFAULT NULL COMMENT '实际回款编号',
+  `remind_days` int DEFAULT NULL COMMENT '提前提醒天数',
+  `remind_time` datetime DEFAULT NULL COMMENT '提醒时间',
+  `remark` varchar(500) NOT NULL DEFAULT '' COMMENT '备注',
+  `creator` varchar(64) NOT NULL DEFAULT '',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updater` varchar(64) NOT NULL DEFAULT '',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` bit(1) NOT NULL DEFAULT b'0',
+  `tenant_id` bigint NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  KEY `idx_crm_receivable_plan_contract` (`tenant_id`, `contract_id`, `deleted`),
+  KEY `idx_crm_receivable_plan_customer` (`tenant_id`, `customer_id`, `deleted`),
+  KEY `idx_crm_receivable_plan_return_time` (`tenant_id`, `return_time`, `deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='CRM 回款计划';
+
+CREATE TABLE IF NOT EXISTS `crm_customer_pool_config` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '客户公海配置编号',
+  `enabled` bit(1) NOT NULL DEFAULT b'0' COMMENT '是否启用客户公海',
+  `contact_expire_days` int DEFAULT NULL COMMENT '未跟进放入公海天数',
+  `deal_expire_days` int DEFAULT NULL COMMENT '未成交放入公海天数',
+  `notify_enabled` bit(1) DEFAULT NULL COMMENT '是否开启提前提醒',
+  `notify_days` int DEFAULT NULL COMMENT '提前提醒天数',
+  `creator` varchar(64) NOT NULL DEFAULT '',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updater` varchar(64) NOT NULL DEFAULT '',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` bit(1) NOT NULL DEFAULT b'0',
+  `tenant_id` bigint NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  KEY `idx_crm_customer_pool_config_tenant` (`tenant_id`, `deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='CRM 客户公海配置';
+
+CREATE TABLE IF NOT EXISTS `crm_customer_limit_config` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '客户限制配置编号',
+  `type` int NOT NULL COMMENT '规则类型',
+  `user_ids` varchar(2048) NOT NULL DEFAULT '' COMMENT '适用用户编号集合',
+  `dept_ids` varchar(2048) NOT NULL DEFAULT '' COMMENT '适用部门编号集合',
+  `max_count` int NOT NULL COMMENT '数量上限',
+  `deal_count_enabled` bit(1) DEFAULT NULL COMMENT '成交客户是否计入拥有数',
+  `creator` varchar(64) NOT NULL DEFAULT '',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updater` varchar(64) NOT NULL DEFAULT '',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` bit(1) NOT NULL DEFAULT b'0',
+  `tenant_id` bigint NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  KEY `idx_crm_customer_limit_config_tenant_type` (`tenant_id`, `type`, `deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='CRM 客户限制配置';
+
+CREATE TABLE IF NOT EXISTS `crm_follow_up_record` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '跟进记录编号',
+  `biz_type` int NOT NULL COMMENT '业务类型',
+  `biz_id` bigint NOT NULL COMMENT '业务编号',
+  `type` int NOT NULL COMMENT '跟进类型',
+  `content` text NOT NULL COMMENT '跟进内容',
+  `next_time` datetime DEFAULT NULL COMMENT '下次联系时间',
+  `pic_urls` varchar(4096) NOT NULL DEFAULT '' COMMENT '图片地址集合',
+  `file_urls` varchar(4096) NOT NULL DEFAULT '' COMMENT '附件地址集合',
+  `business_ids` varchar(2048) NOT NULL DEFAULT '' COMMENT '关联商机编号集合',
+  `contact_ids` varchar(2048) NOT NULL DEFAULT '' COMMENT '关联联系人编号集合',
+  `creator` varchar(64) NOT NULL DEFAULT '',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updater` varchar(64) NOT NULL DEFAULT '',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` bit(1) NOT NULL DEFAULT b'0',
+  `tenant_id` bigint NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  KEY `idx_crm_follow_up_record_biz` (`tenant_id`, `biz_type`, `biz_id`, `deleted`),
+  KEY `idx_crm_follow_up_record_create_time` (`tenant_id`, `create_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='CRM 跟进记录';
+
+CREATE TABLE IF NOT EXISTS `crm_permission` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '数据权限编号',
+  `biz_type` int NOT NULL COMMENT '业务类型',
+  `biz_id` bigint NOT NULL COMMENT '业务编号',
+  `user_id` bigint NOT NULL COMMENT '用户编号',
+  `level` int NOT NULL COMMENT '权限级别',
+  `creator` varchar(64) NOT NULL DEFAULT '',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updater` varchar(64) NOT NULL DEFAULT '',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` bit(1) NOT NULL DEFAULT b'0',
+  `tenant_id` bigint NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  KEY `idx_crm_permission_biz` (`tenant_id`, `biz_type`, `biz_id`, `deleted`),
+  KEY `idx_crm_permission_user` (`tenant_id`, `user_id`, `biz_type`, `deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='CRM 数据权限';
+
+-- Validate that every CRM table required by the current module is present.
+DROP TEMPORARY TABLE IF EXISTS `oakved_crm_enable_guard`;
+CREATE TEMPORARY TABLE `oakved_crm_enable_guard` (
+  `valid` tinyint NOT NULL,
+  CONSTRAINT `chk_oakved_crm_enable_guard` CHECK (`valid` = 1)
+) ENGINE=InnoDB;
+
+INSERT INTO `oakved_crm_enable_guard` (`valid`)
+SELECT 0
+WHERE (
+  SELECT COUNT(*)
+  FROM `information_schema`.`tables`
+  WHERE `table_schema` = DATABASE()
+    AND `table_name` IN (
+      'crm_business', 'crm_business_product', 'crm_business_status',
+      'crm_business_status_type', 'crm_clue', 'crm_contact',
+      'crm_contact_business', 'crm_contract', 'crm_contract_config',
+      'crm_contract_product', 'crm_customer', 'crm_customer_limit_config',
+      'crm_customer_pool_config', 'crm_follow_up_record', 'crm_permission',
+      'crm_product', 'crm_product_category', 'crm_receivable',
+      'crm_receivable_plan'
+    )
+) <> 19;
+
+-- Production uses tenant 162 for VANZ. A fresh local baseline does not seed
+-- tenant 162, so tenant 121 is the deterministic preview fallback.
+SET @oakved_crm_target_tenant_id = COALESCE(
+  (
+    SELECT `id`
+    FROM `system_tenant`
+    WHERE `id` = 162 AND `status` = 0 AND `deleted` = b'0'
+    LIMIT 1
+  ),
+  (
+    SELECT `id`
+    FROM `system_tenant`
+    WHERE `id` = 121 AND `status` = 0 AND `deleted` = b'0'
+    LIMIT 1
+  )
+);
+
+SET @oakved_crm_source_package_id = (
+  SELECT `package_id`
+  FROM `system_tenant`
+  WHERE `id` = @oakved_crm_target_tenant_id AND `deleted` = b'0'
+  LIMIT 1
+);
+
+SET @oakved_crm_package_marker = CONCAT(
+  'oakved-crm-full-v030:tenant-', COALESCE(@oakved_crm_target_tenant_id, 'missing')
+);
+
+INSERT INTO `oakved_crm_enable_guard` (`valid`)
+SELECT 0
+WHERE @oakved_crm_target_tenant_id IS NULL
+   OR @oakved_crm_source_package_id IS NULL
+   OR (
+     SELECT COUNT(*)
+     FROM `system_menu`
+     WHERE `id` = 2397
+       AND `parent_id` = 0
+       AND `path` = '/crm'
+       AND `type` = 1
+       AND `status` = 0
+       AND `deleted` = b'0'
+   ) <> 1;
+
+INSERT INTO `system_tenant_package`
+(`name`, `status`, `remark`, `menu_ids`, `creator`, `create_time`,
+ `updater`, `update_time`, `deleted`)
+SELECT 'Oakved CRM 全功能', source.`status`, @oakved_crm_package_marker,
+       source.`menu_ids`, 'V031', CURRENT_TIMESTAMP,
+       'V031', CURRENT_TIMESTAMP, b'0'
+FROM `system_tenant_package` AS source
+WHERE source.`id` = @oakved_crm_source_package_id
+  AND source.`deleted` = b'0'
+  AND NOT EXISTS (
+    SELECT 1
+    FROM `system_tenant_package`
+    WHERE BINARY `remark` = BINARY @oakved_crm_package_marker
+      AND `deleted` = b'0'
+  );
+
+SET @oakved_crm_package_id = (
+  SELECT `id`
+  FROM `system_tenant_package`
+  WHERE BINARY `remark` = BINARY @oakved_crm_package_marker
+    AND `deleted` = b'0'
+  ORDER BY `id`
+  LIMIT 1
+);
+
+INSERT INTO `oakved_crm_enable_guard` (`valid`)
+SELECT 0
+WHERE @oakved_crm_package_id IS NULL
+   OR (
+     SELECT COUNT(*)
+     FROM `system_tenant_package`
+     WHERE `id` = @oakved_crm_package_id
+       AND `status` = 0
+       AND JSON_VALID(`menu_ids`)
+       AND `deleted` = b'0'
+   ) <> 1;
+
+DROP TEMPORARY TABLE IF EXISTS `oakved_crm_menu_scope`;
+CREATE TEMPORARY TABLE `oakved_crm_menu_scope` (
+  `menu_id` bigint NOT NULL,
+  PRIMARY KEY (`menu_id`)
+) ENGINE=InnoDB;
+
+INSERT INTO `oakved_crm_menu_scope` (`menu_id`)
+WITH RECURSIVE `crm_menu_tree` AS (
+  SELECT `id`
+  FROM `system_menu`
+  WHERE `id` = 2397 AND `deleted` = b'0'
+  UNION ALL
+  SELECT child.`id`
+  FROM `system_menu` AS child
+  INNER JOIN `crm_menu_tree` AS parent ON child.`parent_id` = parent.`id`
+  WHERE child.`deleted` = b'0'
+)
+SELECT `id` FROM `crm_menu_tree`;
+
+INSERT INTO `oakved_crm_enable_guard` (`valid`)
+SELECT 0
+WHERE (SELECT COUNT(*) FROM `oakved_crm_menu_scope`) < 1;
+
+DROP TEMPORARY TABLE IF EXISTS `oakved_crm_package_menu`;
+CREATE TEMPORARY TABLE `oakved_crm_package_menu` (
+  `menu_id` bigint NOT NULL,
+  PRIMARY KEY (`menu_id`)
+) ENGINE=InnoDB;
+
+INSERT IGNORE INTO `oakved_crm_package_menu` (`menu_id`)
+SELECT package_menu.`menu_id`
+FROM `system_tenant_package` AS package
+INNER JOIN JSON_TABLE(
+  package.`menu_ids`, '$[*]' COLUMNS (`menu_id` bigint PATH '$')
+) AS package_menu
+WHERE package.`id` = @oakved_crm_package_id;
+
+INSERT IGNORE INTO `oakved_crm_package_menu` (`menu_id`)
+SELECT `menu_id` FROM `oakved_crm_menu_scope`;
+
+UPDATE `system_tenant_package`
+SET `menu_ids` = (
+      SELECT JSON_ARRAYAGG(ordered_menu.`menu_id`)
+      FROM (
+        SELECT `menu_id`
+        FROM `oakved_crm_package_menu`
+        ORDER BY `menu_id`
+      ) AS ordered_menu
+    ),
+    `updater` = 'V031',
+    `update_time` = CURRENT_TIMESTAMP
+WHERE `id` = @oakved_crm_package_id;
+
+UPDATE `system_tenant`
+SET `package_id` = @oakved_crm_package_id,
+    `updater` = 'V031',
+    `update_time` = CURRENT_TIMESTAMP
+WHERE `id` = @oakved_crm_target_tenant_id
+  AND `deleted` = b'0';
+
+INSERT INTO `system_role_menu`
+(`role_id`, `menu_id`, `creator`, `create_time`, `updater`, `update_time`,
+ `deleted`, `tenant_id`)
+SELECT role.`id`, scope.`menu_id`, 'V031', CURRENT_TIMESTAMP,
+       'V031', CURRENT_TIMESTAMP, b'0', @oakved_crm_target_tenant_id
+FROM `system_role` AS role
+CROSS JOIN `oakved_crm_menu_scope` AS scope
+WHERE role.`tenant_id` = @oakved_crm_target_tenant_id
+  AND role.`code` = 'tenant_admin'
+  AND role.`type` = 1
+  AND role.`status` = 0
+  AND role.`deleted` = b'0'
+  AND NOT EXISTS (
+    SELECT 1
+    FROM `system_role_menu` AS role_menu
+    WHERE role_menu.`role_id` = role.`id`
+      AND role_menu.`menu_id` = scope.`menu_id`
+      AND role_menu.`tenant_id` = @oakved_crm_target_tenant_id
+      AND role_menu.`deleted` = b'0'
+  );
+
+INSERT INTO `oakved_crm_enable_guard` (`valid`)
+SELECT 0
+WHERE EXISTS (
+  SELECT 1
+  FROM `oakved_crm_menu_scope` AS scope
+  WHERE NOT EXISTS (
+    SELECT 1
+    FROM `system_tenant_package` AS package
+    INNER JOIN JSON_TABLE(
+      package.`menu_ids`, '$[*]' COLUMNS (`menu_id` bigint PATH '$')
+    ) AS package_menu ON package_menu.`menu_id` = scope.`menu_id`
+    WHERE package.`id` = @oakved_crm_package_id
+  )
+);
+
+INSERT INTO `oakved_crm_enable_guard` (`valid`)
+SELECT 0
+WHERE EXISTS (
+  SELECT 1
+  FROM `system_role` AS role
+  CROSS JOIN `oakved_crm_menu_scope` AS scope
+  WHERE role.`tenant_id` = @oakved_crm_target_tenant_id
+    AND role.`code` = 'tenant_admin'
+    AND role.`type` = 1
+    AND role.`status` = 0
+    AND role.`deleted` = b'0'
+    AND NOT EXISTS (
+      SELECT 1
+      FROM `system_role_menu` AS role_menu
+      WHERE role_menu.`role_id` = role.`id`
+        AND role_menu.`menu_id` = scope.`menu_id`
+        AND role_menu.`tenant_id` = @oakved_crm_target_tenant_id
+        AND role_menu.`deleted` = b'0'
+    )
+);
+
+DROP TEMPORARY TABLE `oakved_crm_package_menu`;
+DROP TEMPORARY TABLE `oakved_crm_menu_scope`;
+DROP TEMPORARY TABLE `oakved_crm_enable_guard`;
+
+-- BEGIN V032__crm_inquiry_center.sql
+-- Turn the generic CRM clue area into the VANZ inquiry collection center.
+-- The original CRM tables remain available in code, while the tenant package
+-- exposes only inquiry aggregation, customer records, and contacts.
+
+ALTER TABLE `crm_clue`
+  ADD COLUMN `external_inquiry_id` varchar(64) DEFAULT NULL COMMENT '官网询盘幂等编号' AFTER `id`,
+  ADD COLUMN `contact_name` varchar(60) NOT NULL DEFAULT '' COMMENT '网页联系人姓名' AFTER `name`,
+  ADD COLUMN `company_name` varchar(80) NOT NULL DEFAULT '' COMMENT '网页公司名称' AFTER `contact_name`,
+  ADD COLUMN `country_code` varchar(8) NOT NULL DEFAULT '' COMMENT '国家或地区电话区号' AFTER `company_name`,
+  ADD COLUMN `inquiry_subject` varchar(100) NOT NULL DEFAULT '' COMMENT '询盘主题' AFTER `country_code`,
+  ADD COLUMN `inquiry_message` text DEFAULT NULL COMMENT '询盘原始内容' AFTER `inquiry_subject`,
+  ADD COLUMN `source_page` varchar(255) NOT NULL DEFAULT '' COMMENT '提交页面' AFTER `inquiry_message`,
+  ADD COLUMN `locale` varchar(32) NOT NULL DEFAULT '' COMMENT '浏览器语言' AFTER `source_page`,
+  ADD COLUMN `utm_source` varchar(100) NOT NULL DEFAULT '' COMMENT 'UTM 来源' AFTER `locale`,
+  ADD COLUMN `utm_medium` varchar(100) NOT NULL DEFAULT '' COMMENT 'UTM 媒介' AFTER `utm_source`,
+  ADD COLUMN `utm_campaign` varchar(100) NOT NULL DEFAULT '' COMMENT 'UTM 活动' AFTER `utm_medium`,
+  ADD COLUMN `submitted_at` datetime DEFAULT NULL COMMENT '网页提交时间' AFTER `utm_campaign`,
+  ADD COLUMN `process_status` int NOT NULL DEFAULT 0 COMMENT '处理状态：0 待处理，10 处理中，20 已处理，30 无效' AFTER `submitted_at`,
+  ADD COLUMN `processed_at` datetime DEFAULT NULL COMMENT '处理完成时间' AFTER `process_status`,
+  ADD COLUMN `contact_id` bigint DEFAULT NULL COMMENT '转换后的联系人编号' AFTER `customer_id`,
+  MODIFY COLUMN `telephone` varchar(64) NOT NULL DEFAULT '' COMMENT '电话或 WhatsApp',
+  ADD UNIQUE KEY `uk_crm_clue_tenant_external` (`tenant_id`, `external_inquiry_id`, `deleted`),
+  ADD KEY `idx_crm_clue_tenant_process` (`tenant_id`, `process_status`, `submitted_at`, `deleted`),
+  ADD KEY `idx_crm_clue_tenant_contact` (`tenant_id`, `contact_id`, `deleted`);
+
+ALTER TABLE `crm_customer`
+  MODIFY COLUMN `telephone` varchar(64) NOT NULL DEFAULT '' COMMENT '电话或 WhatsApp';
+
+ALTER TABLE `crm_contact`
+  MODIFY COLUMN `telephone` varchar(64) NOT NULL DEFAULT '' COMMENT '电话或 WhatsApp';
+
+UPDATE `system_menu`
+SET `name` = CASE `id`
+      WHEN 2397 THEN '询盘中心'
+      WHEN 2404 THEN '询盘汇总'
+      WHEN 2391 THEN '客户档案'
+      WHEN 2416 THEN '联系人管理'
+      ELSE `name`
+    END,
+    `updater` = 'V032',
+    `update_time` = CURRENT_TIMESTAMP
+WHERE `id` IN (2397, 2404, 2391, 2416)
+  AND `deleted` = b'0';
+
+SET @oakved_inquiry_target_tenant_id = COALESCE(
+  (
+    SELECT `id`
+    FROM `system_tenant`
+    WHERE `id` = 162 AND `status` = 0 AND `deleted` = b'0'
+    LIMIT 1
+  ),
+  (
+    SELECT `id`
+    FROM `system_tenant`
+    WHERE `id` = 121 AND `status` = 0 AND `deleted` = b'0'
+    LIMIT 1
+  )
+);
+
+SET @oakved_inquiry_package_id = (
+  SELECT `package_id`
+  FROM `system_tenant`
+  WHERE `id` = @oakved_inquiry_target_tenant_id
+    AND `deleted` = b'0'
+  LIMIT 1
+);
+
+DROP TEMPORARY TABLE IF EXISTS `oakved_inquiry_guard`;
+CREATE TEMPORARY TABLE `oakved_inquiry_guard` (
+  `valid` tinyint NOT NULL,
+  CONSTRAINT `chk_oakved_inquiry_guard` CHECK (`valid` = 1)
+) ENGINE=InnoDB;
+
+INSERT INTO `oakved_inquiry_guard` (`valid`)
+SELECT 0
+WHERE @oakved_inquiry_target_tenant_id IS NULL
+   OR @oakved_inquiry_package_id IS NULL
+   OR (
+     SELECT COUNT(*)
+     FROM `information_schema`.`columns`
+     WHERE `table_schema` = DATABASE()
+       AND `table_name` = 'crm_clue'
+       AND `column_name` IN (
+         'external_inquiry_id', 'contact_name', 'company_name', 'country_code',
+         'inquiry_subject', 'inquiry_message', 'source_page', 'locale',
+         'utm_source', 'utm_medium', 'utm_campaign', 'submitted_at',
+         'process_status', 'processed_at', 'contact_id'
+       )
+   ) <> 15;
+
+DROP TEMPORARY TABLE IF EXISTS `oakved_inquiry_full_crm_scope`;
+CREATE TEMPORARY TABLE `oakved_inquiry_full_crm_scope` (
+  `menu_id` bigint NOT NULL,
+  PRIMARY KEY (`menu_id`)
+) ENGINE=InnoDB;
+
+INSERT INTO `oakved_inquiry_full_crm_scope` (`menu_id`)
+WITH RECURSIVE `crm_menu_tree` AS (
+  SELECT `id`
+  FROM `system_menu`
+  WHERE `id` = 2397 AND `deleted` = b'0'
+  UNION ALL
+  SELECT child.`id`
+  FROM `system_menu` AS child
+  INNER JOIN `crm_menu_tree` AS parent ON child.`parent_id` = parent.`id`
+  WHERE child.`deleted` = b'0'
+)
+SELECT `id` FROM `crm_menu_tree`;
+
+DROP TEMPORARY TABLE IF EXISTS `oakved_inquiry_allowed_crm_scope`;
+CREATE TEMPORARY TABLE `oakved_inquiry_allowed_crm_scope` (
+  `menu_id` bigint NOT NULL,
+  PRIMARY KEY (`menu_id`)
+) ENGINE=InnoDB;
+
+INSERT INTO `oakved_inquiry_allowed_crm_scope` (`menu_id`)
+SELECT `id`
+FROM `system_menu`
+WHERE `id` = 2397 AND `deleted` = b'0';
+
+INSERT IGNORE INTO `oakved_inquiry_allowed_crm_scope` (`menu_id`)
+WITH RECURSIVE `inquiry_menu_tree` AS (
+  SELECT `id`
+  FROM `system_menu`
+  WHERE `id` IN (2391, 2404, 2416)
+    AND `deleted` = b'0'
+  UNION ALL
+  SELECT child.`id`
+  FROM `system_menu` AS child
+  INNER JOIN `inquiry_menu_tree` AS parent ON child.`parent_id` = parent.`id`
+  WHERE child.`deleted` = b'0'
+)
+SELECT `id` FROM `inquiry_menu_tree`;
+
+INSERT INTO `oakved_inquiry_guard` (`valid`)
+SELECT 0
+WHERE (SELECT COUNT(*) FROM `oakved_inquiry_allowed_crm_scope`) < 4;
+
+-- MySQL temporary tables cannot be reopened twice in one statement, so keep
+-- the cardinality and containment guards as separate statements.
+INSERT INTO `oakved_inquiry_guard` (`valid`)
+SELECT 0
+WHERE EXISTS (
+  SELECT 1
+  FROM `oakved_inquiry_allowed_crm_scope` AS allowed
+  LEFT JOIN `oakved_inquiry_full_crm_scope` AS full_scope
+    ON full_scope.`menu_id` = allowed.`menu_id`
+  WHERE full_scope.`menu_id` IS NULL
+);
+
+DROP TEMPORARY TABLE IF EXISTS `oakved_inquiry_package_menu`;
+CREATE TEMPORARY TABLE `oakved_inquiry_package_menu` (
+  `menu_id` bigint NOT NULL,
+  PRIMARY KEY (`menu_id`)
+) ENGINE=InnoDB;
+
+INSERT IGNORE INTO `oakved_inquiry_package_menu` (`menu_id`)
+SELECT package_menu.`menu_id`
+FROM `system_tenant_package` AS package
+INNER JOIN JSON_TABLE(
+  package.`menu_ids`, '$[*]' COLUMNS (`menu_id` bigint PATH '$')
+) AS package_menu
+LEFT JOIN `oakved_inquiry_full_crm_scope` AS crm_scope
+  ON crm_scope.`menu_id` = package_menu.`menu_id`
+WHERE package.`id` = @oakved_inquiry_package_id
+  AND crm_scope.`menu_id` IS NULL;
+
+INSERT IGNORE INTO `oakved_inquiry_package_menu` (`menu_id`)
+SELECT `menu_id` FROM `oakved_inquiry_allowed_crm_scope`;
+
+UPDATE `system_tenant_package`
+SET `name` = 'Oakved 询盘中心',
+    `remark` = CONCAT('oakved-inquiry-crm-v032:tenant-', @oakved_inquiry_target_tenant_id),
+    `menu_ids` = (
+      SELECT JSON_ARRAYAGG(ordered_menu.`menu_id`)
+      FROM (
+        SELECT `menu_id`
+        FROM `oakved_inquiry_package_menu`
+        ORDER BY `menu_id`
+      ) AS ordered_menu
+    ),
+    `updater` = 'V032',
+    `update_time` = CURRENT_TIMESTAMP
+WHERE `id` = @oakved_inquiry_package_id
+  AND `deleted` = b'0';
+
+DELETE role_menu
+FROM `system_role_menu` AS role_menu
+INNER JOIN `oakved_inquiry_full_crm_scope` AS crm_scope
+  ON crm_scope.`menu_id` = role_menu.`menu_id`
+LEFT JOIN `oakved_inquiry_allowed_crm_scope` AS allowed
+  ON allowed.`menu_id` = role_menu.`menu_id`
+WHERE role_menu.`tenant_id` = @oakved_inquiry_target_tenant_id
+  AND allowed.`menu_id` IS NULL;
+
+INSERT INTO `system_role_menu`
+(`role_id`, `menu_id`, `creator`, `create_time`, `updater`, `update_time`,
+ `deleted`, `tenant_id`)
+SELECT role.`id`, allowed.`menu_id`, 'V032', CURRENT_TIMESTAMP,
+       'V032', CURRENT_TIMESTAMP, b'0', @oakved_inquiry_target_tenant_id
+FROM `system_role` AS role
+CROSS JOIN `oakved_inquiry_allowed_crm_scope` AS allowed
+WHERE role.`tenant_id` = @oakved_inquiry_target_tenant_id
+  AND role.`code` = 'tenant_admin'
+  AND role.`type` = 1
+  AND role.`status` = 0
+  AND role.`deleted` = b'0'
+  AND NOT EXISTS (
+    SELECT 1
+    FROM `system_role_menu` AS role_menu
+    WHERE role_menu.`role_id` = role.`id`
+      AND role_menu.`menu_id` = allowed.`menu_id`
+      AND role_menu.`tenant_id` = @oakved_inquiry_target_tenant_id
+      AND role_menu.`deleted` = b'0'
+  );
+
+INSERT INTO `oakved_inquiry_guard` (`valid`)
+SELECT 0
+WHERE EXISTS (
+  SELECT 1
+  FROM `system_tenant_package` AS package
+  INNER JOIN JSON_TABLE(
+    package.`menu_ids`, '$[*]' COLUMNS (`menu_id` bigint PATH '$')
+  ) AS package_menu
+  INNER JOIN `oakved_inquiry_full_crm_scope` AS full_scope
+    ON full_scope.`menu_id` = package_menu.`menu_id`
+  LEFT JOIN `oakved_inquiry_allowed_crm_scope` AS allowed
+    ON allowed.`menu_id` = package_menu.`menu_id`
+  WHERE package.`id` = @oakved_inquiry_package_id
+    AND allowed.`menu_id` IS NULL
+);
+
+INSERT INTO `oakved_inquiry_guard` (`valid`)
+SELECT 0
+WHERE EXISTS (
+  SELECT 1
+  FROM `system_role` AS role
+  CROSS JOIN `oakved_inquiry_allowed_crm_scope` AS allowed
+  WHERE role.`tenant_id` = @oakved_inquiry_target_tenant_id
+    AND role.`code` = 'tenant_admin'
+    AND role.`type` = 1
+    AND role.`status` = 0
+    AND role.`deleted` = b'0'
+    AND NOT EXISTS (
+      SELECT 1
+      FROM `system_role_menu` AS role_menu
+      WHERE role_menu.`role_id` = role.`id`
+        AND role_menu.`menu_id` = allowed.`menu_id`
+        AND role_menu.`tenant_id` = @oakved_inquiry_target_tenant_id
+        AND role_menu.`deleted` = b'0'
+    )
+);
+
+DROP TEMPORARY TABLE `oakved_inquiry_package_menu`;
+DROP TEMPORARY TABLE `oakved_inquiry_allowed_crm_scope`;
+DROP TEMPORARY TABLE `oakved_inquiry_full_crm_scope`;
+DROP TEMPORARY TABLE `oakved_inquiry_guard`;
+
+-- BEGIN V033__tenant_sku_code.sql
 -- Give each tenant a stable code and use it as the ERP SKU prefix.
 
 ALTER TABLE `system_tenant`
@@ -8827,7 +10274,7 @@ INNER JOIN `system_tenant` AS tenant
   ON tenant.`id` = mapping.`tenant_id`
  AND tenant.`deleted` = b'0'
 SET product.`bar_code` = CONCAT(tenant.`code`, '-', mapping.`tenant_id`, '-', mapping.`mall_sku_id`),
-    product.`updater` = 'V028-tenant-sku-code',
+    product.`updater` = 'V033-tenant-sku-code',
     product.`update_time` = CURRENT_TIMESTAMP
 WHERE product.`deleted` = b'0';
 
@@ -8836,11 +10283,11 @@ INNER JOIN `system_tenant` AS tenant
   ON tenant.`id` = mapping.`tenant_id`
  AND tenant.`deleted` = b'0'
 SET mapping.`erp_product_code` = CONCAT(tenant.`code`, '-', mapping.`tenant_id`, '-', mapping.`mall_sku_id`),
-    mapping.`updater` = 'V028-tenant-sku-code',
+    mapping.`updater` = 'V033-tenant-sku-code',
     mapping.`update_time` = CURRENT_TIMESTAMP
 WHERE mapping.`deleted` = b'0';
 
--- BEGIN V029__tenant_b2b_product_fields.sql
+-- BEGIN V034__tenant_b2b_product_fields.sql
 -- Align the furniture B2B website product fields with an ERP-managed tenant policy.
 -- Product name, images and route IDs remain protocol fields; this list controls optional public content.
 
@@ -8852,6 +10299,7 @@ ALTER TABLE `system_tenant`
 
 -- BEGIN Oakved demo catalog
 -- Oakved demo catalog: tenant 121, 26 mall products, ERP products, stock and mappings.
+SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci;
 SET @tenant_id = 121;
 SET @seed_user = 'furniture-agent-seed';
 SET @default_image = 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=1200&q=80';
@@ -9045,16 +10493,21 @@ INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256)
 INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('015','trade fulfillment core','V015__trade_fulfillment_core.sql','683687685b5b4943949d965f3b3df86eaa2e4dfcdbf50641fb4fc05db8d80ec4') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
 INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('016','trade tracking status mapping','V016__trade_tracking_status_mapping.sql','21dbb820f0e1099b73154bcc2d6011cdc1ea98556f580aaa0e5ccdd7ed7951da') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
 INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('017','trade tracking event watermarks','V017__trade_tracking_event_watermarks.sql','4bddf6d0d0833138a45a6c4b52a6634e67a2798d66b7bf43cee8908a02bed46b') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
-INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('018','trade manual tracking audit','V018__trade_manual_tracking_audit.sql','002dad8815da46261f6a361ac9bf36850a345287844c0ea6e3295b53fdc8812d') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
-INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('019','trade fulfillment admin permissions','V019__trade_fulfillment_admin_permissions.sql','2b7094e055a3ab0fce335a96fcf0f539d4cb337a7190efa50fc7c7f538778e18') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
-INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('020','trade fulfillment legacy migration fact','V020__trade_fulfillment_legacy_migration_fact.sql','f7f89c40f7ac14eb1b4dce008fc41aa553810261e5185602a677701370c0d40e') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
-INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('021','seo foundation','V021__seo_foundation.sql','ac7f05177bdc01b98a05ee8efcaca34300c81ee18f3a3e92349069f93330082c') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
-INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('022','seo active record uniqueness','V022__seo_active_record_uniqueness.sql','ab2330f8ae1b459f6be8979a201b192817274d2df662282aaf4a8b341b4d3a48') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
-INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('023','normalize dashboard route path','V023__normalize_dashboard_route_path.sql','cf8d25341d561e72d4309a897d300225d70d4868801153823b94b06142a8f87b') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
-INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('024','seo keyword relevance analysis','V024__seo_keyword_relevance_analysis.sql','396b7b65a2f7f23145459c6decfd0332d5a4de684d08c9c82d5b03832fe28361') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
-INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('025','tenant business mode','V025__tenant_business_mode.sql','bfcf181ca6c10222e8f61adf1633fd78eef550b325d823f7cb0d5ffd8b8ceeef') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
-INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('026','website inquiry notify','V026__website_inquiry_notify.sql','618a9b14b493aeeff26fbd923ca21ca9bd94a0e39f8ded431cfb1331c847dac2') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
-INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('027','align furniture navigation permissions','V027__align_furniture_navigation_permissions.sql','356277b0a13704ffdfd3f837eb59fb6e4c02ef733000aaf00c66119a90ab7319') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
-INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('028','tenant sku code','V028__tenant_sku_code.sql','fc60d04a3a9a0e7f52a4bfce39381c7efe8caf251f64973f9ef2f434da4928d2') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
-INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('029','tenant b2b product fields','V029__tenant_b2b_product_fields.sql','b2e78498b70c05147d5c4164780408fca253262562720a7b5e93466a0c9bac53') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
+INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('018','trade fulfillment active record uniqueness','V018__trade_fulfillment_active_record_uniqueness.sql','2bf0b39fbda389e3d14cbc8b99b60a29a09556f9a37870fd50f640d2cb008bfc') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
+INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('019','seo foundation','V019__seo_foundation.sql','ac7f05177bdc01b98a05ee8efcaca34300c81ee18f3a3e92349069f93330082c') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
+INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('020','seo active record uniqueness','V020__seo_active_record_uniqueness.sql','ab2330f8ae1b459f6be8979a201b192817274d2df662282aaf4a8b341b4d3a48') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
+INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('021','trade manual tracking audit','V021__trade_manual_tracking_audit.sql','deb8ec6514082f92c885771056cb272e032f2170150c9905e6ae11e40425d2f6') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
+INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('022','trade fulfillment admin permissions','V022__trade_fulfillment_admin_permissions.sql','b7aafccd61873c87c219c575b1102a192c05030a1ec98a33b94271174cdf3b73') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
+INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('023','trade fulfillment legacy migration fact','V023__trade_fulfillment_legacy_migration_fact.sql','f7f89c40f7ac14eb1b4dce008fc41aa553810261e5185602a677701370c0d40e') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
+INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('024','normalize dashboard route path','V024__normalize_dashboard_route_path.sql','cf8d25341d561e72d4309a897d300225d70d4868801153823b94b06142a8f87b') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
+INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('025','expose oakved mail management','V025__expose_oakved_mail_management.sql','283e7f4086a822e92c906de5bd983ffa8252d4def37583c1d19b0ea9dd57369e') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
+INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('026','seo keyword relevance analysis','V026__seo_keyword_relevance_analysis.sql','91aeaf8bca0249c1692314c99ad5a9e7d7b380e257d003c26517c0e381114560') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
+INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('027','repair seo analysis menu registration','V027__repair_seo_analysis_menu_registration.sql','829aa48630fbf02d9bb53ba836134539cf99aac29264b16973bb2cf64332f498') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
+INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('028','tenant business mode','V028__tenant_business_mode.sql','bfcf181ca6c10222e8f61adf1633fd78eef550b325d823f7cb0d5ffd8b8ceeef') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
+INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('029','website inquiry notify','V029__website_inquiry_notify.sql','618a9b14b493aeeff26fbd923ca21ca9bd94a0e39f8ded431cfb1331c847dac2') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
+INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('030','align furniture navigation permissions','V030__align_furniture_navigation_permissions.sql','705ddce3e98b2dc93c2848727d9db36cf4e6e3ff3e6a5b4e7bf950b22ecd7adb') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
+INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('031','enable full crm','V031__enable_full_crm.sql','8db3c24395c642780cf0dbe743e05bc8806c512f5ad8997348f7c27aafaaf06f') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
+INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('032','crm inquiry center','V032__crm_inquiry_center.sql','71987e66e41027daca5a052c33610629462c2d85b670eb5b80dcacd5de3b5665') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
+INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('033','tenant sku code','V033__tenant_sku_code.sql','f2a36479fd43cf4a529455b6419172b03291f334df95a23f8742bc97f9b6c1df') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
+INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('034','tenant b2b product fields','V034__tenant_b2b_product_fields.sql','b2e78498b70c05147d5c4164780408fca253262562720a7b5e93466a0c9bac53') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
 SET FOREIGN_KEY_CHECKS = 1;

@@ -1,0 +1,23 @@
+CREATE TABLE IF NOT EXISTS `trade_fulfillment_legacy_migration_fact` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `tenant_id` bigint NOT NULL,
+  `order_id` bigint NOT NULL,
+  `origin_country` char(2) NOT NULL,
+  `destination_country` char(2) NOT NULL,
+  `origin_timezone` varchar(64) NOT NULL,
+  `destination_timezone` varchar(64) NOT NULL,
+  `warehouse_id` bigint NOT NULL,
+  `migration_provider_id` bigint NOT NULL,
+  `approved_by` bigint NOT NULL,
+  `approved_at` datetime(6) NOT NULL,
+  `source_reference` varchar(255) NOT NULL,
+  `creator` varchar(64) NOT NULL DEFAULT '',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updater` varchar(64) NOT NULL DEFAULT '',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` bit(1) NOT NULL DEFAULT b'0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_legacy_migration_fact_order` (`tenant_id`,`order_id`),
+  KEY `idx_legacy_migration_fact_provider` (`tenant_id`,`migration_provider_id`),
+  KEY `idx_legacy_migration_fact_warehouse` (`tenant_id`,`warehouse_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

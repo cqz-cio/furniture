@@ -22,7 +22,6 @@ import {
   saleCategories,
   saleCategoryLinkHref,
   saleQuickLinks,
-  saleMegaMenu,
   saleHeroSpecs,
   saleMembershipSpec,
   teenHeroSpecs,
@@ -246,14 +245,15 @@ describe("RH layout extraction data", () => {
     ]);
   });
 
-  it("defines the Sale hover dropdown from the focused storefront menu", () => {
-    expect(saleMegaMenu.map((item) => item.label)).toEqual([
-      "\u65b0\u54c1\u4e0a\u67b6",
-      "\u70ed\u9500\u5355\u54c1",
-      "\u73b0\u8d27\u5bb6\u5177",
-      "\u9650\u65f6\u7279\u60e0",
-      "\u67e5\u770b\u5168\u90e8\u7279\u60e0",
-    ]);
+  it("keeps storefront navigation on the shared model only", () => {
+    const source = readFileSync(new URL("../src/data/rhLayout.js", import.meta.url), "utf8");
+
+    expect(source).not.toContain("woodFurnitureMegaMenus");
+    expect(source).not.toContain("woodFurnitureDropdownLabels");
+    expect(source).not.toContain("livingMegaMenu");
+    expect(source).not.toContain("livingSeatingMegaMenu");
+    expect(source).not.toContain("livingMegaSubmenus");
+    expect(source).not.toContain("saleMegaMenu");
   });
 
   it("exposes measured placeholder specs for the Sale hero assets", () => {
