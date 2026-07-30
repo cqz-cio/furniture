@@ -36,6 +36,12 @@ import static cn.iocoder.yudao.module.system.enums.ErrorCodeConstants.WEBSITE_IN
 @Slf4j
 public class WebsiteInquiryServiceImpl implements WebsiteInquiryService {
 
+    /**
+     * 站内信表的正文上限是 1024 个字符。完整询盘已保存在 CRM，这里只保留足够识别询盘的需求摘要，
+     * 避免长产品清单导致站内信插入失败。
+     */
+    private static final int NOTIFICATION_MESSAGE_PREVIEW_CODE_POINTS = 400;
+
     private static final DateTimeFormatter SUBMITTED_AT_FORMATTER =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -132,7 +138,7 @@ public class WebsiteInquiryServiceImpl implements WebsiteInquiryService {
         params.put("companyName", display(reqVO.getCompanyName()));
         params.put("phone", buildPhone(reqVO.getCountryCode(), reqVO.getPhone()));
         params.put("subject", display(reqVO.getSubject()));
-        params.put("message", display(reqVO.getMessage()));
+        params.put("message", displayNotificationMessage(reqVO.getMessage()));
         params.put("sourcePage", display(reqVO.getSourcePage()));
         params.put("locale", display(reqVO.getLocale()));
         params.put("utmSource", display(reqVO.getUtmSource()));
@@ -157,6 +163,17 @@ public class WebsiteInquiryServiceImpl implements WebsiteInquiryService {
     private static String display(String value) {
         String normalized = normalize(value);
         return normalized.isEmpty() ? "-" : normalized;
+    }
+
+    private static String displayNotificationMessage(String value) {
+        String normalized = display(value);
+        int codePointCount = normalized.codePointCount(0, normalized.length());
+        if (codePointCount <= NOTIFICATION_MESSAGE_PREVIEW_CODE_POINTS) {
+            return normalized;
+        }
+        int endIndex = normalized.offsetByCodePoints(
+                0, NOTIFICATION_MESSAGE_PREVIEW_CODE_POINTS - 1);
+        return normalized.substring(0, endIndex) + "…";
     }
 
     private static String normalize(String value) {

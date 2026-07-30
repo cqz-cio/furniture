@@ -21,6 +21,7 @@ import java.util.Map;
 import static cn.iocoder.yudao.framework.test.core.util.AssertUtils.assertServiceException;
 import static cn.iocoder.yudao.module.system.enums.ErrorCodeConstants.WEBSITE_INQUIRY_UNAUTHORIZED;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -127,6 +128,42 @@ class WebsiteInquiryServiceImplTest extends BaseMockitoUnitTest {
                 "a-long-server-only-secret", createReqVO());
 
         assertEquals(7001L, inquiryId);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void testNotifyInquiry_longMessageUsesPreviewForNotificationAndPersistsFullContent() {
+        TenantContextHolder.setTenantId(TENANT_ID);
+        when(properties.isEnabled()).thenReturn(true);
+        when(properties.getSharedSecret()).thenReturn("a-long-server-only-secret");
+        when(properties.getTenantId()).thenReturn(TENANT_ID);
+        when(properties.getTemplateCode()).thenReturn("vanz_website_inquiry");
+        when(tenantService.getTenant(TENANT_ID)).thenReturn(
+                new TenantDO().setId(TENANT_ID).setContactUserId(CONTACT_USER_ID));
+        when(crmWebsiteInquiryApi.createWebsiteInquiry(any()))
+                .thenReturn(new CrmWebsiteInquiryCreateRespDTO(7001L, true));
+        when(notifySendService.sendSingleNotifyToAdmin(any(), any(), any())).thenReturn(9001L);
+
+        AppWebsiteInquirySubmitReqVO reqVO = createReqVO();
+        String fullMessage = "项目详情与产品规格".repeat(120);
+        reqVO.setMessage(fullMessage);
+        ArgumentCaptor<Map<String, Object>> paramsCaptor = ArgumentCaptor.forClass(Map.class);
+        ArgumentCaptor<CrmWebsiteInquiryCreateReqDTO> inquiryCaptor =
+                ArgumentCaptor.forClass(CrmWebsiteInquiryCreateReqDTO.class);
+
+        Long inquiryId = websiteInquiryService.notifyInquiry(
+                "a-long-server-only-secret", reqVO);
+
+        assertEquals(7001L, inquiryId);
+        verify(crmWebsiteInquiryApi).createWebsiteInquiry(inquiryCaptor.capture());
+        assertEquals(fullMessage, inquiryCaptor.getValue().getMessage());
+        verify(notifySendService).sendSingleNotifyToAdmin(
+                org.mockito.ArgumentMatchers.eq(CONTACT_USER_ID),
+                org.mockito.ArgumentMatchers.eq("vanz_website_inquiry"),
+                paramsCaptor.capture());
+        String messagePreview = (String) paramsCaptor.getValue().get("message");
+        assertEquals(400, messagePreview.codePointCount(0, messagePreview.length()));
+        assertTrue(messagePreview.endsWith("…"));
     }
 
     @Test

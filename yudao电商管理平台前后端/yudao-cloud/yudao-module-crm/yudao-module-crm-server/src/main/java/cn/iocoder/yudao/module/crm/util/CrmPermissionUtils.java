@@ -18,6 +18,7 @@ import java.util.List;
 
 import static cn.iocoder.yudao.framework.common.util.collection.CollectionUtils.convertSet;
 import static cn.iocoder.yudao.framework.security.core.util.SecurityFrameworkUtils.getLoginUserId;
+import static cn.iocoder.yudao.framework.security.core.util.SecurityFrameworkUtils.skipPermissionCheck;
 
 /**
  * 数据权限工具类
@@ -32,6 +33,10 @@ public class CrmPermissionUtils {
      * @return 是/否
      */
     public static boolean isCrmAdmin() {
+        // 平台超级管理员切换租户后，角色数据仍属于平台租户，不能在被访问租户中重复查询角色。
+        if (skipPermissionCheck()) {
+            return true;
+        }
         PermissionCommonApi permissionApi = SpringUtil.getBean(PermissionCommonApi.class);
         return permissionApi.hasAnyRoles(getLoginUserId(),
                 RoleCodeEnum.SUPER_ADMIN.getCode(),

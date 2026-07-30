@@ -20,6 +20,16 @@ import static org.mockito.Mockito.when;
 class CrmPermissionUtilsTest {
 
     @Test
+    void testIsCrmAdmin_crossTenantVisitSkipsTenantRoleLookup() {
+        try (MockedStatic<SecurityFrameworkUtils> securityFrameworkUtils =
+                     mockStatic(SecurityFrameworkUtils.class)) {
+            securityFrameworkUtils.when(SecurityFrameworkUtils::skipPermissionCheck).thenReturn(true);
+
+            assertTrue(CrmPermissionUtils.isCrmAdmin());
+        }
+    }
+
+    @Test
     void testIsCrmAdmin_supportsPlatformTenantAndCrmAdministrators() {
         Long userId = 1L;
         PermissionCommonApi permissionApi = mock(PermissionCommonApi.class);
