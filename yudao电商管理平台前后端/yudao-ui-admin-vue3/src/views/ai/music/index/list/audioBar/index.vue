@@ -3,12 +3,7 @@
     class="flex items-center justify-between px-2 h-72px bg-[var(--el-bg-color-overlay)] b-solid b-1 b-[var(--el-border-color)] b-l-none"
   >
     <div class="flex gap-[10px]">
-      <el-image
-        :src="coverUrl"
-        class="w-[45px] h-[45px]"
-        fit="cover"
-        @error="useFallbackCover"
-      />
+      <el-image :src="coverUrl" class="w-[45px] h-[45px]" fit="cover" @error="useFallbackCover" />
       <div>
         <div>{{ currentSong.title || currentSong.name || '示例音乐' }}</div>
         <div class="text-[12px] text-gray-400">{{ currentSong.singer || 'AI 音乐' }}</div>
@@ -47,7 +42,7 @@
         @play="isPaused = false"
         @pause="isPaused = true"
         @ended="handleEnded"
-      />
+      ></audio>
     </div>
 
     <div class="flex gap-[16px] items-center">
@@ -144,8 +139,6 @@ const formatAudioTime = (seconds: number) => {
   if (!Number.isFinite(seconds) || seconds < 0) return '00:00'
   const minutes = Math.floor(seconds / 60)
   const remainingSeconds = Math.floor(seconds % 60)
-  return `${minutes.toString().padStart(2, '0')}:${remainingSeconds
-    .toString()
-    .padStart(2, '0')}`
+  return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`
 }
 </script>

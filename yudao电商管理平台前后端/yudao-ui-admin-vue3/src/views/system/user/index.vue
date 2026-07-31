@@ -3,14 +3,14 @@
   <doc-alert title="三方登陆" url="https://doc.iocoder.cn/social-user/" />
   <doc-alert title="Excel 导入导出" url="https://doc.iocoder.cn/excel-import-and-export/" />
 
-  <el-row :gutter="20">
+  <el-row :gutter="14" class="erp-split-workspace">
     <!-- 左侧部门树 -->
-    <el-col :span="4" :xs="24">
-      <ContentWrap class="h-1/1">
+    <el-col :span="5" :xs="24" class="erp-split-workspace__aside">
+      <ContentWrap title="部门范围" surface="panel" :auto-title="false" class="h-1/1">
         <DeptTreeSelect @node-click="handleDeptNodeClick" />
       </ContentWrap>
     </el-col>
-    <el-col :span="20" :xs="24">
+    <el-col :span="19" :xs="24" class="erp-split-workspace__main">
       <!-- 搜索 -->
       <ContentWrap>
         <el-form

@@ -55,128 +55,140 @@
           value-format="YYYY-MM-DD HH:mm:ss"
         />
       </el-form-item>
-      <el-form-item label="订单来源" prop="terminal">
-        <el-select v-model="queryParams.terminal" class="!w-280px" clearable placeholder="全部">
-          <el-option
-            v-for="dict in getIntDictOptions(DICT_TYPE.TERMINAL)"
-            :key="dict.value"
-            :label="dict.label"
-            :value="dict.value"
-          />
-        </el-select>
-      </el-form-item>
-      <el-form-item label="订单类型" prop="type">
-        <el-select v-model="queryParams.type" class="!w-280px" clearable placeholder="全部">
-          <el-option
-            v-for="dict in getIntDictOptions(DICT_TYPE.TRADE_ORDER_TYPE)"
-            :key="dict.value"
-            :label="dict.label"
-            :value="dict.value"
-          />
-        </el-select>
-      </el-form-item>
-      <el-form-item label="配送方式" prop="deliveryType">
-        <el-select v-model="queryParams.deliveryType" class="!w-280px" clearable placeholder="全部">
-          <el-option
-            v-for="dict in getIntDictOptions(DICT_TYPE.TRADE_DELIVERY_TYPE)"
-            :key="dict.value"
-            :label="dict.label"
-            :value="dict.value"
-          />
-        </el-select>
-      </el-form-item>
-      <el-form-item label="地址核对" prop="addressVerificationStatus">
-        <el-select
-          v-model="queryParams.addressVerificationStatus"
-          class="!w-280px"
-          clearable
-          placeholder="全部"
+      <template v-if="showAdvancedFilters">
+        <el-form-item label="订单来源" prop="terminal">
+          <el-select v-model="queryParams.terminal" class="!w-280px" clearable placeholder="全部">
+            <el-option
+              v-for="dict in getIntDictOptions(DICT_TYPE.TERMINAL)"
+              :key="dict.value"
+              :label="dict.label"
+              :value="dict.value"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="订单类型" prop="type">
+          <el-select v-model="queryParams.type" class="!w-280px" clearable placeholder="全部">
+            <el-option
+              v-for="dict in getIntDictOptions(DICT_TYPE.TRADE_ORDER_TYPE)"
+              :key="dict.value"
+              :label="dict.label"
+              :value="dict.value"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="配送方式" prop="deliveryType">
+          <el-select
+            v-model="queryParams.deliveryType"
+            class="!w-280px"
+            clearable
+            placeholder="全部"
+          >
+            <el-option
+              v-for="dict in getIntDictOptions(DICT_TYPE.TRADE_DELIVERY_TYPE)"
+              :key="dict.value"
+              :label="dict.label"
+              :value="dict.value"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="地址核对" prop="addressVerificationStatus">
+          <el-select
+            v-model="queryParams.addressVerificationStatus"
+            class="!w-280px"
+            clearable
+            placeholder="全部"
+          >
+            <el-option
+              v-for="item in addressVerificationStatusOptions"
+              :key="item.value"
+              :label="item.label"
+              :value="item.value"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="核对来源" prop="addressVerificationSource">
+          <el-select
+            v-model="queryParams.addressVerificationSource"
+            class="!w-280px"
+            clearable
+            placeholder="全部"
+          >
+            <el-option
+              v-for="item in addressVerificationSourceOptions"
+              :key="item.value"
+              :label="item.label"
+              :value="item.value"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="核对服务" prop="addressVerificationProviderStatus">
+          <el-select
+            v-model="queryParams.addressVerificationProviderStatus"
+            class="!w-280px"
+            clearable
+            placeholder="全部"
+          >
+            <el-option
+              v-for="item in addressVerificationProviderStatusOptions"
+              :key="item.value"
+              :label="item.label"
+              :value="item.value"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item
+          v-if="queryParams.deliveryType === DeliveryTypeEnum.EXPRESS.type"
+          label="快递公司"
+          prop="logisticsId"
         >
-          <el-option
-            v-for="item in addressVerificationStatusOptions"
-            :key="item.value"
-            :label="item.label"
-            :value="item.value"
-          />
-        </el-select>
-      </el-form-item>
-      <el-form-item label="核对来源" prop="addressVerificationSource">
-        <el-select
-          v-model="queryParams.addressVerificationSource"
-          class="!w-280px"
-          clearable
-          placeholder="全部"
+          <el-select
+            v-model="queryParams.logisticsId"
+            class="!w-280px"
+            clearable
+            placeholder="全部"
+          >
+            <el-option
+              v-for="item in deliveryExpressList"
+              :key="item.id"
+              :label="item.name"
+              :value="item.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item
+          v-if="queryParams.deliveryType === DeliveryTypeEnum.PICK_UP.type"
+          label="自提门店"
+          prop="pickUpStoreId"
         >
-          <el-option
-            v-for="item in addressVerificationSourceOptions"
-            :key="item.value"
-            :label="item.label"
-            :value="item.value"
-          />
-        </el-select>
-      </el-form-item>
-      <el-form-item label="核对服务" prop="addressVerificationProviderStatus">
-        <el-select
-          v-model="queryParams.addressVerificationProviderStatus"
-          class="!w-280px"
-          clearable
-          placeholder="全部"
+          <el-select
+            v-model="queryParams.pickUpStoreId"
+            class="!w-280px"
+            clearable
+            multiple
+            placeholder="全部"
+          >
+            <el-option
+              v-for="item in pickUpStoreList"
+              :key="item.id"
+              :label="item.name"
+              :value="item.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item
+          v-if="queryParams.deliveryType === DeliveryTypeEnum.PICK_UP.type"
+          label="核销码"
+          prop="pickUpVerifyCode"
         >
-          <el-option
-            v-for="item in addressVerificationProviderStatusOptions"
-            :key="item.value"
-            :label="item.label"
-            :value="item.value"
+          <el-input
+            v-model="queryParams.pickUpVerifyCode"
+            class="!w-280px"
+            clearable
+            placeholder="请输入自提核销码"
+            @keyup.enter="handleQuery"
           />
-        </el-select>
-      </el-form-item>
-      <el-form-item
-        v-if="queryParams.deliveryType === DeliveryTypeEnum.EXPRESS.type"
-        label="快递公司"
-        prop="logisticsId"
-      >
-        <el-select v-model="queryParams.logisticsId" class="!w-280px" clearable placeholder="全部">
-          <el-option
-            v-for="item in deliveryExpressList"
-            :key="item.id"
-            :label="item.name"
-            :value="item.id"
-          />
-        </el-select>
-      </el-form-item>
-      <el-form-item
-        v-if="queryParams.deliveryType === DeliveryTypeEnum.PICK_UP.type"
-        label="自提门店"
-        prop="pickUpStoreId"
-      >
-        <el-select
-          v-model="queryParams.pickUpStoreId"
-          class="!w-280px"
-          clearable
-          multiple
-          placeholder="全部"
-        >
-          <el-option
-            v-for="item in pickUpStoreList"
-            :key="item.id"
-            :label="item.name"
-            :value="item.id"
-          />
-        </el-select>
-      </el-form-item>
-      <el-form-item
-        v-if="queryParams.deliveryType === DeliveryTypeEnum.PICK_UP.type"
-        label="核销码"
-        prop="pickUpVerifyCode"
-      >
-        <el-input
-          v-model="queryParams.pickUpVerifyCode"
-          class="!w-280px"
-          clearable
-          placeholder="请输入自提核销码"
-          @keyup.enter="handleQuery"
-        />
-      </el-form-item>
+        </el-form-item>
+      </template>
       <el-form-item label="聚合搜索">
         <el-input
           v-show="true"
@@ -213,6 +225,15 @@
           <Icon class="mr-5px" icon="ep:refresh" />
           重置
         </el-button>
+        <el-button
+          :type="showAdvancedFilters ? 'primary' : 'default'"
+          plain
+          @click="showAdvancedFilters = !showAdvancedFilters"
+        >
+          <Icon class="mr-5px" :icon="showAdvancedFilters ? 'ep:arrow-up' : 'ep:operation'" />
+          {{ showAdvancedFilters ? '收起条件' : '更多条件' }}
+          <span v-if="advancedFilterCount">（{{ advancedFilterCount }}）</span>
+        </el-button>
       </el-form-item>
     </el-form>
   </ContentWrap>
@@ -247,7 +268,7 @@
                   <el-dropdown-item
                     v-if="
                       row.deliveryType === DeliveryTypeEnum.EXPRESS.type &&
-                        row.status === TradeOrderStatusEnum.UNDELIVERED.status
+                      row.status === TradeOrderStatusEnum.UNDELIVERED.status
                     "
                     command="delivery"
                   >
@@ -315,6 +336,25 @@ const queryParams = ref({
   pickUpStoreId: undefined, // 自提门店
   pickUpVerifyCode: undefined // 自提核销码
 })
+const showAdvancedFilters = ref(false)
+const advancedFilterCount = computed(
+  () =>
+    [
+      queryParams.value.terminal,
+      queryParams.value.type,
+      queryParams.value.deliveryType,
+      queryParams.value.addressVerificationStatus,
+      queryParams.value.addressVerificationSource,
+      queryParams.value.addressVerificationProviderStatus,
+      queryParams.value.logisticsId,
+      queryParams.value.pickUpStoreId,
+      queryParams.value.pickUpVerifyCode
+    ].filter((value) =>
+      Array.isArray(value)
+        ? value.length > 0
+        : value !== undefined && value !== null && value !== ''
+    ).length
+)
 const queryType = reactive({ queryParam: '' }) // 订单搜索类型 queryParam
 
 // 订单聚合搜索 select 类型配置（动态搜索）
@@ -403,6 +443,7 @@ const resetQuery = () => {
     pickUpStoreId: undefined, // 自提门店
     pickUpVerifyCode: undefined // 自提核销码
   }
+  showAdvancedFilters.value = false
   handleQuery()
 }
 

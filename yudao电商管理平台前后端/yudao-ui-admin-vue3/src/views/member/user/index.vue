@@ -39,26 +39,28 @@
           value-format="YYYY-MM-DD HH:mm:ss"
         />
       </el-form-item>
-      <el-form-item label="登录时间" prop="loginDate">
-        <el-date-picker
-          v-model="queryParams.loginDate"
-          :default-time="[new Date('1 00:00:00'), new Date('1 23:59:59')]"
-          class="!w-240px"
-          end-placeholder="结束日期"
-          start-placeholder="开始日期"
-          type="daterange"
-          value-format="YYYY-MM-DD HH:mm:ss"
-        />
-      </el-form-item>
-      <el-form-item label="用户标签" prop="tagIds">
-        <MemberTagSelect v-model="queryParams.tagIds" />
-      </el-form-item>
-      <el-form-item label="用户等级" prop="levelId">
-        <MemberLevelSelect v-model="queryParams.levelId" />
-      </el-form-item>
-      <el-form-item label="用户分组" prop="groupId">
-        <MemberGroupSelect v-model="queryParams.groupId" />
-      </el-form-item>
+      <template v-if="showAdvancedFilters">
+        <el-form-item label="登录时间" prop="loginDate">
+          <el-date-picker
+            v-model="queryParams.loginDate"
+            :default-time="[new Date('1 00:00:00'), new Date('1 23:59:59')]"
+            class="!w-240px"
+            end-placeholder="结束日期"
+            start-placeholder="开始日期"
+            type="daterange"
+            value-format="YYYY-MM-DD HH:mm:ss"
+          />
+        </el-form-item>
+        <el-form-item label="用户标签" prop="tagIds">
+          <MemberTagSelect v-model="queryParams.tagIds" />
+        </el-form-item>
+        <el-form-item label="用户等级" prop="levelId">
+          <MemberLevelSelect v-model="queryParams.levelId" />
+        </el-form-item>
+        <el-form-item label="用户分组" prop="groupId">
+          <MemberGroupSelect v-model="queryParams.groupId" />
+        </el-form-item>
+      </template>
       <el-form-item>
         <el-button @click="handleQuery">
           <Icon class="mr-5px" icon="ep:search" />
@@ -67,6 +69,15 @@
         <el-button @click="resetQuery">
           <Icon class="mr-5px" icon="ep:refresh" />
           重置
+        </el-button>
+        <el-button
+          :type="showAdvancedFilters ? 'primary' : 'default'"
+          plain
+          @click="showAdvancedFilters = !showAdvancedFilters"
+        >
+          <Icon class="mr-5px" :icon="showAdvancedFilters ? 'ep:arrow-up' : 'ep:operation'" />
+          {{ showAdvancedFilters ? '收起条件' : '更多条件' }}
+          <span v-if="advancedFilterCount">（{{ advancedFilterCount }}）</span>
         </el-button>
         <el-button v-hasPermi="['promotion:coupon:send']" @click="openCoupon">发送优惠券</el-button>
       </el-form-item>
@@ -233,6 +244,16 @@ const queryParams = reactive({
   levelId: null,
   groupId: null
 })
+const showAdvancedFilters = ref(false)
+const advancedFilterCount = computed(
+  () =>
+    [queryParams.loginDate, queryParams.tagIds, queryParams.levelId, queryParams.groupId].filter(
+      (value) =>
+        Array.isArray(value)
+          ? value.length > 0
+          : value !== undefined && value !== null && value !== ''
+    ).length
+)
 const queryFormRef = ref() // 搜索的表单
 const updateLevelFormRef = ref() // 修改会员等级表单
 const updatePointFormRef = ref() // 修改会员积分表单
@@ -260,6 +281,11 @@ const handleQuery = () => {
 /** 重置按钮操作 */
 const resetQuery = () => {
   queryFormRef.value.resetFields()
+  queryParams.loginDate = []
+  queryParams.tagIds = []
+  queryParams.levelId = null
+  queryParams.groupId = null
+  showAdvancedFilters.value = false
   handleQuery()
 }
 

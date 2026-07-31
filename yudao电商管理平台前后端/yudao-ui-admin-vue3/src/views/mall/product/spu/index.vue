@@ -45,7 +45,7 @@
     </section>
 
     <!-- 搜索工作栏 -->
-    <ContentWrap class="product-filter-panel">
+    <ContentWrap class="product-filter-panel" :auto-title="false">
       <el-form
         ref="queryFormRef"
         :inline="true"
@@ -119,7 +119,7 @@
     </ContentWrap>
 
     <!-- 列表 -->
-    <ContentWrap class="product-table-panel">
+    <ContentWrap class="product-table-panel" :auto-title="false">
       <el-table v-loading="loading" :data="list" row-key="id" show-overflow-tooltip>
         <el-table-column type="expand">
           <template #default="{ row }">

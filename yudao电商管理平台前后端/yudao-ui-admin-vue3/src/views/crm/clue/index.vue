@@ -5,11 +5,16 @@
       :key="card.key"
       class="summary-card"
       :class="{ 'is-active': queryParams.processStatus === card.status }"
+      :aria-pressed="queryParams.processStatus === card.status"
       type="button"
       @click="filterByStatus(card.status)"
     >
+      <span class="summary-card__icon" aria-hidden="true">
+        <Icon :icon="card.icon" :size="17" />
+      </span>
       <span class="summary-card__label">{{ card.label }}</span>
       <strong>{{ card.value }}</strong>
+      <small>{{ card.hint }}</small>
     </button>
   </div>
 
@@ -238,30 +243,45 @@ const processStatusOptions = [
 ] as const
 
 const summaryCards = computed(() => [
-  { key: 'total', label: '全部询盘', value: summary.value.totalCount, status: undefined },
+  {
+    key: 'total',
+    label: '全部询盘',
+    value: summary.value.totalCount,
+    status: undefined,
+    icon: 'ep:files',
+    hint: '当前可见询盘'
+  },
   {
     key: 'pending',
     label: '待处理',
     value: summary.value.pendingCount,
-    status: InquiryProcessStatus.PENDING
+    status: InquiryProcessStatus.PENDING,
+    icon: 'ep:clock',
+    hint: '等待首次响应'
   },
   {
     key: 'processing',
     label: '处理中',
     value: summary.value.processingCount,
-    status: InquiryProcessStatus.PROCESSING
+    status: InquiryProcessStatus.PROCESSING,
+    icon: 'ep:connection',
+    hint: '正在持续跟进'
   },
   {
     key: 'processed',
     label: '已处理',
     value: summary.value.processedCount,
-    status: InquiryProcessStatus.PROCESSED
+    status: InquiryProcessStatus.PROCESSED,
+    icon: 'ep:circle-check',
+    hint: '已完成处理'
   },
   {
     key: 'invalid',
     label: '无效询盘',
     value: summary.value.invalidCount,
-    status: InquiryProcessStatus.INVALID
+    status: InquiryProcessStatus.INVALID,
+    icon: 'ep:remove',
+    hint: '已排除或关闭'
   }
 ])
 
@@ -354,42 +374,83 @@ onMounted(getList)
 }
 
 .summary-card {
-  display: flex;
-  min-height: 88px;
+  position: relative;
+  display: grid;
+  min-height: 112px;
+  padding: 16px 18px;
+  overflow: hidden;
+  color: var(--furniture-admin-ink);
+  text-align: left;
   cursor: pointer;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: center;
-  border: 1px solid var(--el-border-color-light);
+  background: #fff;
+  border: 1px solid var(--furniture-admin-border);
   border-radius: 8px;
-  background: var(--el-bg-color);
-  padding: 16px 20px;
-  color: var(--el-text-color-primary);
   transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease;
+    border-color 0.16s ease,
+    box-shadow 0.16s ease,
+    transform 0.16s ease;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 5px 12px;
 }
 
-.summary-card:hover,
+.summary-card:hover {
+  border-color: var(--furniture-admin-border-strong);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 22px rgb(15 36 58 / 7%);
+}
+
 .summary-card.is-active {
-  border-color: var(--el-color-primary);
-  box-shadow: 0 4px 16px rgb(0 0 0 / 6%);
+  background: #f5f9ff;
+  border-color: #9fc3f3;
+  box-shadow: 0 0 0 2px rgb(23 107 219 / 6%);
+}
+
+.summary-card__icon {
+  display: grid;
+  grid-row: 1;
+  grid-column: 2;
+  width: 32px;
+  height: 32px;
+  color: var(--furniture-admin-primary);
+  background: #edf5ff;
+  border-radius: 7px;
+  place-items: center;
 }
 
 .summary-card__label {
-  margin-bottom: 8px;
-  color: var(--el-text-color-secondary);
-  font-size: 14px;
+  font-size: 12px;
+  font-weight: 550;
+  color: var(--furniture-admin-body);
+  grid-row: 1;
+  grid-column: 1;
 }
 
 .summary-card strong {
-  font-size: 26px;
+  grid-row: 2;
+  grid-column: 1 / -1;
+  margin-top: 4px;
+  font-size: 27px;
+  font-weight: 650;
   line-height: 1;
 }
 
-@media (max-width: 1100px) {
+.summary-card small {
+  font-size: 11px;
+  color: var(--furniture-admin-muted);
+  grid-row: 3;
+  grid-column: 1 / -1;
+}
+
+@media (width <= 1100px) {
   .inquiry-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (width <= 640px) {
+  .inquiry-summary {
+    grid-template-columns: 1fr;
   }
 }
 </style>
