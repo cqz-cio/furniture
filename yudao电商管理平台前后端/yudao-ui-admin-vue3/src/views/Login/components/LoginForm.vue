@@ -17,13 +17,26 @@
       </el-col>
       <el-col :span="24" class="px-10px">
         <el-form-item v-if="loginData.tenantEnable === 'true'" prop="tenantName">
-          <el-input
+          <el-select
             v-model="loginData.loginForm.tenantName"
-            :placeholder="t('login.tenantNamePlaceholder')"
-            :prefix-icon="iconHouse"
-            link
-            type="primary"
-          />
+            class="w-full"
+            filterable
+            :loading="tenantLoading"
+            :loading-text="t('login.tenantListLoading')"
+            :no-data-text="
+              tenantLoadFailed ? t('login.tenantListLoadFailed') : t('login.tenantListEmpty')
+            "
+            :placeholder="t('login.tenantSelectPlaceholder')"
+            @change="handleTenantChange"
+            @visible-change="handleTenantDropdownVisible"
+          >
+            <el-option
+              v-for="tenant in tenantOptions"
+              :key="tenant.id"
+              :label="tenant.name"
+              :value="tenant.name"
+            />
+          </el-select>
         </el-form-item>
       </el-col>
       <el-col :span="24" class="px-10px">
@@ -166,7 +179,6 @@ defineOptions({ name: 'LoginForm' })
 
 const { t } = useI18n()
 const message = useMessage()
-const iconHouse = useIcon({ icon: 'ep:house' })
 const iconAvatar = useIcon({ icon: 'ep:avatar' })
 const iconLock = useIcon({ icon: 'ep:lock' })
 const formLogin = ref()
@@ -176,6 +188,9 @@ const { currentRoute, push } = useRouter()
 const permissionStore = usePermissionStore()
 const redirect = ref<string>('')
 const loginLoading = ref(false)
+const tenantLoading = ref(false)
+const tenantLoadFailed = ref(false)
+const tenantOptions = ref<LoginApi.TenantSimpleVO[]>([])
 const verify = ref()
 const captchaType = ref('blockPuzzle') // blockPuzzle 滑块 clickWord 点击文字 pictureWord 文字验证码
 
@@ -221,8 +236,52 @@ const getCode = async () => {
 // 获取租户 ID
 const getTenantId = async () => {
   if (loginData.tenantEnable === 'true') {
+    const selectedTenant = tenantOptions.value.find(
+      (tenant) => tenant.name === loginData.loginForm.tenantName
+    )
+    if (selectedTenant) {
+      authUtil.setTenantId(selectedTenant.id)
+      return
+    }
     const res = await LoginApi.getTenantIdByName(loginData.loginForm.tenantName)
     authUtil.setTenantId(res)
+  }
+}
+const handleTenantChange = (tenantName: string) => {
+  const selectedTenant = tenantOptions.value.find((tenant) => tenant.name === tenantName)
+  if (selectedTenant) {
+    authUtil.setTenantId(selectedTenant.id)
+  }
+}
+const loadTenantOptions = async () => {
+  if (loginData.tenantEnable !== 'true' || tenantLoading.value) {
+    return
+  }
+  tenantLoading.value = true
+  tenantLoadFailed.value = false
+  try {
+    const tenants = await LoginApi.getTenantSimpleList()
+    tenantOptions.value = (tenants || [])
+      .filter((tenant) => tenant?.id && tenant?.name)
+      .sort((left, right) => left.name.localeCompare(right.name, 'zh-CN'))
+
+    const currentTenant = tenantOptions.value.find(
+      (tenant) => tenant.name === loginData.loginForm.tenantName
+    )
+    const selectedTenant = currentTenant || tenantOptions.value[0]
+    loginData.loginForm.tenantName = selectedTenant?.name || ''
+    if (selectedTenant) {
+      authUtil.setTenantId(selectedTenant.id)
+    }
+  } catch {
+    tenantLoadFailed.value = true
+  } finally {
+    tenantLoading.value = false
+  }
+}
+const handleTenantDropdownVisible = (visible: boolean) => {
+  if (visible && tenantLoadFailed.value) {
+    loadTenantOptions()
   }
 }
 // 记住我
@@ -254,11 +313,11 @@ const loading = ref() // ElLoading.service 返回的实例
 const handleLogin = async (params: any) => {
   loginLoading.value = true
   try {
-    await getTenantId()
     const data = await validForm()
     if (!data) {
       return
     }
+    await getTenantId()
     const loginDataLoginForm = { ...loginData.loginForm }
     loginDataLoginForm.captchaVerification = params.captchaVerification
     const res = await LoginApi.login(loginDataLoginForm)
@@ -335,9 +394,10 @@ watch(
     immediate: true
   }
 )
-onMounted(() => {
+onMounted(async () => {
   getLoginFormCache()
-  getTenantByWebsite()
+  await loadTenantOptions()
+  await getTenantByWebsite()
 })
 </script>
 

@@ -11,6 +11,11 @@ export interface SmsLoginVO {
   code: string
 }
 
+export interface TenantSimpleVO {
+  id: number
+  name: string
+}
+
 // 登录
 export const login = (data: UserLoginVO) => {
   return request.post({
@@ -30,6 +35,11 @@ export const register = (data: RegisterVO) => {
 // 使用租户名，获得租户编号
 export const getTenantIdByName = (name: string) => {
   return request.get({ url: '/system/tenant/get-id-by-name?name=' + name })
+}
+
+// 获取登录页可选择的有效租户
+export const getTenantSimpleList = () => {
+  return request.get<TenantSimpleVO[]>({ url: '/system/tenant/simple-list' })
 }
 
 // 使用租户域名，获得租户信息
