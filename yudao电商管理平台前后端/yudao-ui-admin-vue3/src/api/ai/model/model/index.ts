@@ -23,12 +23,13 @@ export const ModelApi = {
   },
 
   // 获得模型列表
-  getModelSimpleList: async (type?: number) => {
+  getModelSimpleList: async (type?: number, options: { hideErrorMessage?: boolean } = {}) => {
     return await request.get({
       url: `/ai/model/simple-list`,
       params: {
         type
-      }
+      },
+      headers: options.hideErrorMessage ? { hideErrorMessage: true } : undefined
     })
   },
 

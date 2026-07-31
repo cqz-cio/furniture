@@ -34,6 +34,10 @@ let requestList: any[] = []
 let isRefreshToken = false
 // 请求白名单，无须 token 的接口
 const whiteList: string[] = ['/login', '/refresh-token']
+const isErrorMessageHidden = (headers: InternalAxiosRequestConfig['headers'] | undefined) => {
+  const value = headers?.hideErrorMessage
+  return value === true || value === 'true'
+}
 
 // 创建axios实例
 const service: AxiosInstance = axios.create({
@@ -146,7 +150,7 @@ service.interceptors.response.use(
     const code = data.code ?? result_code
     // 获取错误信息
     const msg = data.msg || errorCode[code] || errorCode['default']
-    const hideErrorMessage = (config!.headers || {}).hideErrorMessage === true
+    const hideErrorMessage = isErrorMessageHidden(config?.headers)
     if (ignoreMsgs.indexOf(msg) !== -1) {
       // 如果是忽略的错误码，直接返回 msg 异常
       return Promise.reject(msg)
@@ -168,8 +172,8 @@ service.interceptors.response.use(
             cb()
           })
           requestList = []
-          if ((config!.headers || {}).isEncrypt){
-            (config!.headers || {}).isEncrypted = true
+          if ((config!.headers || {}).isEncrypt) {
+            ;(config!.headers || {}).isEncrypted = true
           }
           return service(config)
         } catch (e) {
@@ -231,7 +235,7 @@ service.interceptors.response.use(
     console.log('err' + error) // for debug
     let { message } = error
     const { t } = useI18n()
-    const hideErrorMessage = (error.config?.headers || {}).hideErrorMessage === true
+    const hideErrorMessage = isErrorMessageHidden(error.config?.headers)
     if (message === 'Network Error') {
       message = t('sys.api.errorMessage')
     } else if (message.includes('timeout')) {

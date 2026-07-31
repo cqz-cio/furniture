@@ -28,8 +28,11 @@ export const getUserPage = async (params) => {
 }
 
 // 查询会员用户详情
-export const getUser = async (id: number) => {
-  return await request.get({ url: `/member/user/get?id=` + id })
+export const getUser = async (id: number, options: { hideErrorMessage?: boolean } = {}) => {
+  return await request.get({
+    url: `/member/user/get?id=` + id,
+    headers: options.hideErrorMessage ? { hideErrorMessage: true } : undefined
+  })
 }
 
 // 修改会员用户

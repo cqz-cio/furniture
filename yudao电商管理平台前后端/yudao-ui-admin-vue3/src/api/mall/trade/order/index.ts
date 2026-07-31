@@ -171,12 +171,17 @@ export const getOrderSummary = async (params: any) => {
 
 // 查询地址核对服务状态
 export const getAddressVerificationStatus = async () => {
-  return await request.get<AddressVerificationStatus>({ url: `/member/address/verification-status` })
+  return await request.get<AddressVerificationStatus>({
+    url: `/member/address/verification-status`
+  })
 }
 
 // 查询交易订单详情
-export const getOrder = async (id: number | null) => {
-  return await request.get({ url: `/trade/order/get-detail?id=` + id })
+export const getOrder = async (id: number | null, options: { hideErrorMessage?: boolean } = {}) => {
+  return await request.get({
+    url: `/trade/order/get-detail?id=` + id,
+    headers: options.hideErrorMessage ? { hideErrorMessage: true } : undefined
+  })
 }
 
 // 查询交易订单物流详情

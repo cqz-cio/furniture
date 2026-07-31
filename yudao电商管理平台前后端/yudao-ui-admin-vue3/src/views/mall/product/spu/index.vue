@@ -4,11 +4,14 @@
 
   <ContentWrap v-if="profileLoading" v-loading="true" class="min-h-200px" />
   <ContentWrap v-else-if="profileError">
-    <el-alert
-      :closable="false"
-      show-icon
-      title="当前租户业务配置加载失败，请刷新页面后重试"
+    <ErpPageState
+      compact
+      description="当前租户的业务模式和字段配置暂时无法读取。为避免展示错误字段，商品列表已停止加载。"
+      eyebrow="商品中心"
+      primary-text="重新加载"
+      title="业务配置加载失败"
       type="error"
+      @primary="initializePage"
     />
   </ContentWrap>
   <template v-else-if="profileLoaded">
@@ -120,7 +123,40 @@
 
     <!-- 列表 -->
     <ContentWrap class="product-table-panel" :auto-title="false">
-      <el-table v-loading="loading" :data="list" row-key="id" show-overflow-tooltip>
+      <el-alert
+        v-if="erpIntegrationError && listLoadState === 'ready' && list.length"
+        class="mb-12px"
+        :closable="false"
+        description="商品主体数据已正常加载；部分 ERP 编码或同步状态暂时无法读取，稍后刷新即可。"
+        show-icon
+        title="ERP 映射信息不完整"
+        type="warning"
+      />
+      <ErpPageState
+        v-if="listLoadState === 'error'"
+        compact
+        description="未能取得商品列表。当前结果不是“暂无数据”，请检查服务状态后重试。"
+        eyebrow="商品数据"
+        primary-text="重试"
+        title="商品列表加载失败"
+        type="error"
+        @primary="getList"
+      />
+      <ErpPageState
+        v-else-if="listLoadState === 'ready' && list.length === 0"
+        compact
+        :description="
+          hasActiveFilters
+            ? '没有商品符合当前筛选条件。可以清除筛选后查看全部商品。'
+            : '当前状态下还没有商品记录。新增商品后，数据会显示在这里。'
+        "
+        eyebrow="商品数据"
+        :primary-text="hasActiveFilters ? '清除筛选' : '刷新列表'"
+        title="暂无符合条件的商品"
+        type="empty"
+        @primary="handleEmptyAction"
+      />
+      <el-table v-else v-loading="loading" :data="list" row-key="id" show-overflow-tooltip>
         <el-table-column type="expand">
           <template #default="{ row }">
             <el-form class="spu-table-expand" label-position="left">
@@ -298,6 +334,7 @@
       </el-table>
       <!-- 分页 -->
       <Pagination
+        v-if="listLoadState === 'ready' && total > 0"
         v-model:limit="queryParams.pageSize"
         v-model:page="queryParams.pageNo"
         :total="total"
@@ -315,6 +352,7 @@ import download from '@/utils/download'
 import * as ProductSpuApi from '@/api/mall/product/spu'
 import * as ProductCategoryApi from '@/api/mall/product/category'
 import { useTenantBusinessProfile } from '@/hooks/web/useTenantBusinessProfile'
+import { ErpPageState } from '@/components/ErpPageState'
 
 defineOptions({ name: 'ProductSpu' })
 
@@ -324,6 +362,8 @@ const { t } = useI18n() // 国际化
 const { push } = useRouter() // 路由跳转
 
 const loading = ref(false) // 列表的加载中
+const listLoadState = ref<'idle' | 'loading' | 'ready' | 'error'>('idle')
+const erpIntegrationError = ref(false)
 const exportLoading = ref(false) // 导出的加载中
 const total = ref(0) // 列表的总页数
 const list = ref<ProductSpuApi.Spu[]>([]) // 列表的数据
@@ -370,6 +410,12 @@ const queryParams = ref({
   categoryId: undefined as any,
   createTime: undefined
 }) // 查询参数
+const hasActiveFilters = computed(
+  () =>
+    Boolean(queryParams.value.name) ||
+    Boolean(queryParams.value.categoryId) ||
+    Boolean(queryParams.value.createTime)
+)
 const queryFormRef = ref() // 搜索的表单Ref
 
 /** 查询列表 */
@@ -379,16 +425,30 @@ const getList = async () => {
     queryParams.value.tabType = 0
   }
   loading.value = true
+  listLoadState.value = 'loading'
+  erpIntegrationError.value = false
   try {
     const data = await ProductSpuApi.getSpuPage(queryParams.value)
-    list.value = data.list
-    total.value = data.total
-    const integrations = await Promise.all(
-      data.list.map(
+    list.value = data?.list || []
+    total.value = data?.total || 0
+    listLoadState.value = 'ready'
+    const integrations = await Promise.allSettled(
+      list.value.map(
         async (spu) => [spu.id, (await ProductSpuApi.getErpIntegration(spu.id!))[0]] as const
       )
     )
-    erpBySpuId.value = Object.fromEntries(integrations.filter(([, value]) => value))
+    erpIntegrationError.value = integrations.some((result) => result.status === 'rejected')
+    erpBySpuId.value = Object.fromEntries(
+      integrations
+        .filter((result) => result.status === 'fulfilled')
+        .map((result) => result.value)
+        .filter(([, value]) => value)
+    )
+  } catch {
+    list.value = []
+    total.value = 0
+    erpBySpuId.value = {}
+    listLoadState.value = 'error'
   } finally {
     loading.value = false
   }
@@ -432,9 +492,13 @@ const handleErpSyncAll = async () => {
 
 /** 获得每个 Tab 的数量 */
 const getTabsCount = async () => {
-  const res = await ProductSpuApi.getTabsCount()
-  for (let objName in res) {
-    tabCounts.value[Number(objName)] = res[objName]
+  try {
+    const res = await ProductSpuApi.getTabsCount()
+    for (let objName in res) {
+      tabCounts.value[Number(objName)] = res[objName]
+    }
+  } catch {
+    tabCounts.value = [0, 0, 0, 0, 0]
   }
 }
 
@@ -517,6 +581,14 @@ const resetQuery = () => {
   handleQuery()
 }
 
+const handleEmptyAction = () => {
+  if (hasActiveFilters.value) {
+    resetQuery()
+    return
+  }
+  getList()
+}
+
 /** 新增或修改 */
 const openForm = (id?: number) => {
   // 修改
@@ -564,6 +636,15 @@ const formatCategoryName = (categoryId: number) => {
 
 const pageInitialized = ref(false)
 
+const getCategoryList = async () => {
+  try {
+    const data = await ProductCategoryApi.getCategoryList({})
+    categoryList.value = handleTree(data, 'id', 'parentId')
+  } catch {
+    categoryList.value = []
+  }
+}
+
 /** 激活时 */
 onActivated(() => {
   if (pageInitialized.value && profileLoaded.value) {
@@ -571,8 +652,8 @@ onActivated(() => {
   }
 })
 
-/** 初始化 **/
-onMounted(async () => {
+const initializePage = async () => {
+  pageInitialized.value = false
   // 解析路由的 categoryId
   if (route.query.categoryId) {
     queryParams.value.categoryId = route.query.categoryId
@@ -585,14 +666,12 @@ onMounted(async () => {
   if (!inventoryEnabled.value && [2, 3].includes(Number(queryParams.value.tabType))) {
     queryParams.value.tabType = 0
   }
-  // 获得商品信息
-  await getTabsCount()
-  await getList()
-  // 获得分类树
-  const data = await ProductCategoryApi.getCategoryList({})
-  categoryList.value = handleTree(data, 'id', 'parentId')
+  await Promise.all([getTabsCount(), getList(), getCategoryList()])
   pageInitialized.value = true
-})
+}
+
+/** 初始化 **/
+onMounted(initializePage)
 </script>
 <style lang="scss" scoped>
 .product-status-bar {

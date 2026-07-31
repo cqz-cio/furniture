@@ -81,8 +81,11 @@ export const getCluePage = async (params: any) => {
 }
 
 // 查询线索详情
-export const getClue = async (id: number) => {
-  return await request.get({ url: `/crm/clue/get?id=` + id })
+export const getClue = async (id: number, options: { hideErrorMessage?: boolean } = {}) => {
+  return await request.get({
+    url: `/crm/clue/get?id=` + id,
+    headers: options.hideErrorMessage ? { hideErrorMessage: true } : undefined
+  })
 }
 
 // 新增线索

@@ -24,6 +24,8 @@ export default ({command, mode}: ConfigEnv): UserConfig => {
     return {
         base: env.VITE_BASE_PATH,
         root: root,
+        // Keep dependency caches isolated when multiple Git worktrees share node_modules.
+        cacheDir: pathResolve('.vite-cache'),
         // 服务端渲染
         server: {
             port: env.VITE_PORT, // 端口号

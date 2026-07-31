@@ -1,13 +1,27 @@
 <template>
   <ContentWrap v-loading="pageLoading">
-    <el-alert
+    <ErpPageState
       v-if="profileError"
-      :closable="false"
-      show-icon
-      title="当前租户业务配置加载失败，请刷新页面后重试"
+      description="当前租户的业务模式和字段配置暂时无法读取。为避免错误保存字段，页面已停止加载表单。"
+      primary-text="重新加载"
+      secondary-text="返回商品列表"
+      title="业务配置加载失败"
       type="error"
+      @primary="initializePage"
+      @secondary="close"
     />
-    <template v-else-if="profileLoaded">
+    <ErpPageState
+      v-else-if="profileLoaded && recordLoadState === 'error'"
+      :description="recordLoadDescription"
+      :title="isDetail ? '商品详情加载失败' : '商品信息加载失败'"
+      eyebrow="商品中心"
+      primary-text="重试"
+      secondary-text="返回商品列表"
+      type="error"
+      @primary="getDetail"
+      @secondary="close"
+    />
+    <template v-else-if="profileLoaded && recordLoadState === 'ready'">
       <el-alert
         v-if="isDetail"
         :closable="false"
@@ -106,7 +120,13 @@
       </el-tabs>
       <el-form>
         <el-form-item style="float: right">
-          <el-button v-if="!isDetail" :loading="formLoading" type="primary" @click="submitForm">
+          <el-button
+            v-if="!isDetail"
+            v-hasPermi="savePermissions"
+            :loading="formLoading"
+            type="primary"
+            @click="submitForm"
+          >
             保存
           </el-button>
           <el-button @click="close">返回</el-button>
@@ -128,6 +148,7 @@ import FurnitureDetailForm from './FurnitureDetailForm.vue'
 import { convertToInteger, floatToFixed2, formatToFraction } from '@/utils'
 import { isEmpty } from '@/utils/is'
 import { useTenantBusinessProfile } from '@/hooks/web/useTenantBusinessProfile'
+import { ErpPageState } from '@/components/ErpPageState'
 
 defineOptions({ name: 'ProductSpuAdd' })
 
@@ -151,6 +172,11 @@ const {
 const pageLoading = computed(() => formLoading.value || profileLoading.value)
 const activeName = ref('info') // Tag 激活的窗口
 const isDetail = ref(false) // 是否查看详情
+const savePermissions = computed(() =>
+  params.id ? ['product:spu:update'] : ['product:spu:create']
+)
+const recordLoadState = ref<'idle' | 'loading' | 'ready' | 'error'>('idle')
+const recordLoadDescription = ref('')
 const showB2CFields = ref(false) // B2B 模式下仅用于查看历史 B2C 专用字段
 const infoRef = ref() // 商品信息 Ref
 const skuRef = ref() // 商品规格 Ref
@@ -198,30 +224,45 @@ const getDetail = async () => {
     isDetail.value = true
   }
   const id = params.id as unknown as number
-  if (id) {
-    formLoading.value = true
-    try {
-      const res = (await ProductSpuApi.getSpu(id)) as ProductSpuApi.Spu
-      res.skus?.forEach((item) => {
-        if (isDetail.value) {
-          item.price = floatToFixed2(item.price)
-          item.marketPrice = floatToFixed2(item.marketPrice)
-          item.costPrice = floatToFixed2(item.costPrice)
-          item.firstBrokeragePrice = floatToFixed2(item.firstBrokeragePrice)
-          item.secondBrokeragePrice = floatToFixed2(item.secondBrokeragePrice)
-        } else {
-          // 回显价格分转元
-          item.price = formatToFraction(item.price)
-          item.marketPrice = formatToFraction(item.marketPrice)
-          item.costPrice = formatToFraction(item.costPrice)
-          item.firstBrokeragePrice = formatToFraction(item.firstBrokeragePrice)
-          item.secondBrokeragePrice = formatToFraction(item.secondBrokeragePrice)
-        }
-      })
-      formData.value = res
-    } finally {
-      formLoading.value = false
+  if (!id) {
+    recordLoadState.value = 'ready'
+    return
+  }
+  formLoading.value = true
+  recordLoadState.value = 'loading'
+  recordLoadDescription.value = ''
+  try {
+    const res = (await ProductSpuApi.getSpu(id, {
+      hideErrorMessage: true
+    })) as ProductSpuApi.Spu | null
+    if (!res?.id) {
+      throw new Error('商品记录不存在')
     }
+    res.skus = res.skus || []
+    res.skus.forEach((item) => {
+      if (isDetail.value) {
+        item.price = floatToFixed2(item.price)
+        item.marketPrice = floatToFixed2(item.marketPrice)
+        item.costPrice = floatToFixed2(item.costPrice)
+        item.firstBrokeragePrice = floatToFixed2(item.firstBrokeragePrice)
+        item.secondBrokeragePrice = floatToFixed2(item.secondBrokeragePrice)
+      } else {
+        // 回显价格分转元
+        item.price = formatToFraction(item.price)
+        item.marketPrice = formatToFraction(item.marketPrice)
+        item.costPrice = formatToFraction(item.costPrice)
+        item.firstBrokeragePrice = formatToFraction(item.firstBrokeragePrice)
+        item.secondBrokeragePrice = formatToFraction(item.secondBrokeragePrice)
+      }
+    })
+    formData.value = res
+    recordLoadState.value = 'ready'
+  } catch {
+    recordLoadDescription.value =
+      '未能读取这条商品记录。记录可能已删除、当前账号无查看权限，或商品服务暂时不可用。'
+    recordLoadState.value = 'error'
+  } finally {
+    formLoading.value = false
   }
 }
 
@@ -285,15 +326,17 @@ const close = () => {
   push({ name: 'ProductSpu' })
 }
 
-/** 初始化 */
-onMounted(async () => {
+const initializePage = async () => {
   try {
     await loadTenantBusinessProfile()
   } catch {
     return
   }
   await getDetail()
-})
+}
+
+/** 初始化 */
+onMounted(initializePage)
 
 watch(showB2CFields, (visible) => {
   if (!visible && isB2B.value && activeName.value === 'delivery') {

@@ -1,7 +1,6 @@
 import { resolve } from 'path'
 import Vue from '@vitejs/plugin-vue'
 import VueJsx from '@vitejs/plugin-vue-jsx'
-import progress from 'vite-plugin-progress'
 import EslintPlugin from 'vite-plugin-eslint2'
 import { ViteEjsPlugin } from 'vite-plugin-ejs'
 // @ts-ignore
@@ -27,7 +26,6 @@ export function createVitePlugins() {
     Vue(),
     VueJsx(),
     UnoCSS(),
-    progress(),
     ElementPlus({}),
     AutoImport({
       include: [

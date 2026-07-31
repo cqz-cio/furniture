@@ -2,6 +2,7 @@
   <el-container class="absolute flex-1 top-0 left-0 h-full w-full">
     <!-- 左侧：对话列表 -->
     <ConversationList
+      v-if="modelConfigured"
       :active-id="activeConversationId?.toString() || ''"
       ref="conversationListRef"
       @on-conversation-create="handleConversationCreateSuccess"
@@ -9,6 +10,17 @@
       @on-conversation-clear="handleConversationClear"
       @on-conversation-delete="handlerConversationDelete"
     />
+    <el-aside v-else class="ai-chat-sidebar-state" width="260px">
+      <div>
+        <strong>对话列表</strong>
+        <p>{{ aiCapabilityLoaded ? 'AI 服务恢复后可读取历史对话' : '正在检查 AI 服务' }}</p>
+      </div>
+      <Icon
+        :icon="aiCapabilityLoaded ? 'ep:connection' : 'ep:loading'"
+        :class="{ 'is-loading': !aiCapabilityLoaded }"
+        :size="22"
+      />
+    </el-aside>
     <!-- 右侧：对话详情 -->
     <el-container class="bg-[var(--el-bg-color)]">
       <el-header
@@ -46,7 +58,20 @@
 
       <!-- main：消息列表 -->
       <el-main class="m-0 p-0 relative h-full w-full">
-        <div>
+        <div v-if="!aiCapabilityLoaded" v-loading="true" class="ai-chat-capability-loading"></div>
+        <ErpPageState
+          v-else-if="!modelConfigured"
+          compact
+          :description="
+            aiUnavailable
+              ? '后台 AI 模块未启用或暂时不可达。页面已停止加载对话和消息，避免重复报错。'
+              : '当前租户还没有可用的聊天模型。完成模型与 API Key 配置后，即可开始对话。'
+          "
+          eyebrow="AI 工作台"
+          :title="aiUnavailable ? 'AI 服务暂不可用' : '等待配置聊天模型'"
+          type="unavailable"
+        />
+        <div v-else>
           <div class="absolute top-0 bottom-0 left-0 right-0 overflow-y-hidden p-0 m-0">
             <!-- 情况一：消息加载中 -->
             <MessageLoading v-if="activeMessageListLoading" />
@@ -75,7 +100,7 @@
       </el-main>
 
       <!-- 底部 -->
-      <el-footer class="flex flex-col !h-auto !p-0">
+      <el-footer v-if="modelConfigured" class="flex flex-col !h-auto !p-0">
         <!-- TODO @芋艿：这块要想办法迁移下！ -->
         <form
           class="mt-10px mx-20px mb-20px py-9px px-10px flex flex-col h-auto rounded-10px"
@@ -141,6 +166,7 @@ import MessageNewConversation from './components/message/MessageNewConversation.
 import MessageFileUpload from './components/message/MessageFileUpload.vue'
 import AiModelConfigurationAlert from '@/views/ai/components/AiModelConfigurationAlert.vue'
 import { AiModelTypeEnum } from '@/views/ai/utils/constants'
+import { ErpPageState } from '@/components/ErpPageState'
 
 /** AI 聊天对话 列表 */
 defineOptions({ name: 'AiChat' })
@@ -172,8 +198,21 @@ const enableContext = ref<boolean>(true) // 是否开启上下文
 const enableWebSearch = ref<boolean>(false) // 是否开启联网搜索
 const uploadFiles = ref<string[]>([]) // 上传的文件 URL 列表
 const modelConfigured = ref(false)
-const handleModelConfigurationLoaded = (configured: boolean) => {
+const aiCapabilityLoaded = ref(false)
+const aiUnavailable = ref(false)
+const chatInitialized = ref(false)
+const handleModelConfigurationLoaded = async (
+  configured: boolean,
+  _models: unknown[],
+  unavailable: boolean
+) => {
   modelConfigured.value = configured
+  aiCapabilityLoaded.value = true
+  aiUnavailable.value = unavailable
+  if (configured && !chatInitialized.value) {
+    chatInitialized.value = true
+    await initializeChat()
+  }
 }
 // 接收 Stream 消息
 const receiveMessageFullText = ref('')
@@ -631,7 +670,7 @@ const textRoll = async () => {
 }
 
 /** 初始化 **/
-onMounted(async () => {
+const initializeChat = async () => {
   // 如果有 conversationId 参数，则默认选中
   if (route.query.conversationId) {
     const id = route.query.conversationId as unknown as number
@@ -642,5 +681,43 @@ onMounted(async () => {
   // 获取列表数据
   activeMessageListLoading.value = true
   await getMessageList()
-})
+}
 </script>
+
+<style scoped>
+.ai-chat-sidebar-state {
+  display: flex;
+  padding: 18px;
+  color: var(--el-text-color-secondary);
+  background: var(--el-fill-color-extra-light);
+  border-right: 1px solid var(--el-border-color-light);
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.ai-chat-sidebar-state strong {
+  font-size: 14px;
+  color: var(--el-text-color-primary);
+}
+
+.ai-chat-sidebar-state p {
+  max-width: 180px;
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.ai-chat-capability-loading {
+  min-height: 240px;
+}
+
+.is-loading {
+  animation: ai-capability-spin 1s linear infinite;
+}
+
+@keyframes ai-capability-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+</style>

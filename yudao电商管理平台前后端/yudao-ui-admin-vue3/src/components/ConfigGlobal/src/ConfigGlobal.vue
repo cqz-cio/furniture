@@ -2,6 +2,7 @@
 import { provide, computed, watch, onMounted } from 'vue'
 import { propTypes } from '@/utils/propTypes'
 import { ComponentSize, ElConfigProvider } from 'element-plus'
+import type { Language } from 'element-plus/es/locale'
 import { useLocaleStore } from '@/store/modules/locale'
 import { useWindowSize } from '@vueuse/core'
 import { useAppStore } from '@/store/modules/app'
@@ -48,12 +49,30 @@ watch(
 const localeStore = useLocaleStore()
 
 const currentLocale = computed(() => localeStore.currentLocale)
+const erpLocale = computed<Language | undefined>(() => {
+  const locale = currentLocale.value.elLocale
+  if (!locale) {
+    return undefined
+  }
+  const tableLocale =
+    typeof locale.el.table === 'object' && !Array.isArray(locale.el.table) ? locale.el.table : {}
+  return {
+    ...locale,
+    el: {
+      ...locale.el,
+      table: {
+        ...tableLocale,
+        emptyText: '暂无符合当前条件的数据'
+      }
+    }
+  }
+})
 </script>
 
 <template>
   <ElConfigProvider
     :namespace="variables.elNamespace"
-    :locale="currentLocale.elLocale"
+    :locale="erpLocale"
     :message="{ max: 5 }"
     :size="size"
   >

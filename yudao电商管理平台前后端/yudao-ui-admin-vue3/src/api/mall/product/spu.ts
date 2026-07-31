@@ -104,8 +104,11 @@ export const updateStatus = (data: { id: number; status: number }) => {
 }
 
 // 获得商品 Spu
-export const getSpu = (id: number) => {
-  return request.get({ url: `/product/spu/get-detail?id=${id}` })
+export const getSpu = (id: number, options: { hideErrorMessage?: boolean } = {}) => {
+  return request.get({
+    url: `/product/spu/get-detail?id=${id}`,
+    headers: options.hideErrorMessage ? { hideErrorMessage: true } : undefined
+  })
 }
 
 // 获得商品 Spu 详情列表
