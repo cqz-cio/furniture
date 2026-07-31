@@ -58,7 +58,7 @@ public class WebsiteInquiryMailServiceImpl implements WebsiteInquiryMailService 
             Duration.ofHours(2), Duration.ofHours(6));
 
     @Resource
-    private WebsiteInquiryMailConfigMapper configMapper;
+    private WebsiteInquiryMailConfigMapper websiteInquiryMailConfigMapper;
     @Resource
     private WebsiteInquiryMailDeliveryMapper deliveryMapper;
     @Resource
@@ -76,7 +76,7 @@ public class WebsiteInquiryMailServiceImpl implements WebsiteInquiryMailService 
 
     @Override
     public WebsiteInquiryMailConfigRespVO getConfig() {
-        WebsiteInquiryMailConfigDO config = configMapper.selectCurrentTenantConfig();
+        WebsiteInquiryMailConfigDO config = websiteInquiryMailConfigMapper.selectCurrentTenantConfig();
         WebsiteInquiryMailConfigRespVO respVO = new WebsiteInquiryMailConfigRespVO();
         respVO.setAvailableVariables(templateRenderer.getAvailableVariables());
         if (config == null) {
@@ -124,7 +124,7 @@ public class WebsiteInquiryMailServiceImpl implements WebsiteInquiryMailService 
             validateEnabledConfiguration(reqVO, account);
         }
 
-        WebsiteInquiryMailConfigDO config = configMapper.selectCurrentTenantConfig();
+        WebsiteInquiryMailConfigDO config = websiteInquiryMailConfigMapper.selectCurrentTenantConfig();
         boolean create = config == null;
         if (create) {
             config = new WebsiteInquiryMailConfigDO();
@@ -143,9 +143,9 @@ public class WebsiteInquiryMailServiceImpl implements WebsiteInquiryMailService 
             disableSystemMailTemplate(config);
         }
         if (create) {
-            configMapper.insert(config);
+            websiteInquiryMailConfigMapper.insert(config);
         } else {
-            configMapper.updateById(config);
+            websiteInquiryMailConfigMapper.updateById(config);
         }
     }
 
@@ -255,7 +255,7 @@ public class WebsiteInquiryMailServiceImpl implements WebsiteInquiryMailService 
 
     private void sendDelivery(WebsiteInquiryMailDeliveryDO delivery,
                               CrmWebsiteInquiryRespDTO inquiry) {
-        WebsiteInquiryMailConfigDO config = configMapper.selectCurrentTenantConfig();
+        WebsiteInquiryMailConfigDO config = websiteInquiryMailConfigMapper.selectCurrentTenantConfig();
         if (!isEnabledAndComplete(config)) {
             deliveryMapper.markResult(delivery.getId(), delivery.getMailLogId(),
                     WebsiteInquiryMailDeliveryStatusEnum.CONFIG_REQUIRED.getStatus(),
@@ -298,7 +298,7 @@ public class WebsiteInquiryMailServiceImpl implements WebsiteInquiryMailService 
     }
 
     private WebsiteInquiryMailConfigDO requireEnabledConfiguration() {
-        WebsiteInquiryMailConfigDO config = configMapper.selectCurrentTenantConfig();
+        WebsiteInquiryMailConfigDO config = websiteInquiryMailConfigMapper.selectCurrentTenantConfig();
         if (!isEnabledAndComplete(config)) {
             throw exception(WEBSITE_INQUIRY_MAIL_CONFIGURATION_ERROR,
                     configRequiredReason(config));

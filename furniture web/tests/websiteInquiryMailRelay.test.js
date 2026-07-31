@@ -36,6 +36,17 @@ describe("website inquiry ERP mail relay", () => {
     expect(inquiryService).toContain("ensureDeliveryAndSend");
   });
 
+  it("uses an unambiguous mapper resource name so the full application context can start", () => {
+    const relayService = read(
+      "../../yudao电商管理平台前后端/yudao-cloud/yudao-module-system/yudao-module-system-server/src/main/java/cn/iocoder/yudao/module/system/service/inquiry/mail/WebsiteInquiryMailServiceImpl.java",
+    );
+
+    expect(relayService).toContain(
+      "private WebsiteInquiryMailConfigMapper websiteInquiryMailConfigMapper;",
+    );
+    expect(relayService).not.toContain("private WebsiteInquiryMailConfigMapper configMapper;");
+  });
+
   it("exposes editable ERP settings and delivery status in the inquiry center", () => {
     const settings = read(
       "../../yudao电商管理平台前后端/yudao-ui-admin-vue3/src/views/crm/clue/WebsiteInquiryMailSettings.vue",
