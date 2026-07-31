@@ -5,6 +5,7 @@ import { Backtop } from '@/components/Backtop'
 import { Setting } from '@/layout/components/Setting'
 import { useRenderLayout } from './components/useRenderLayout'
 import { useDesign } from '@/hooks/web/useDesign'
+import { isDevLinksVisible } from '@/config/furnitureLite'
 
 const { getPrefixCls } = useDesign()
 
@@ -19,6 +20,7 @@ const mobile = computed(() => appStore.getMobile)
 const collapse = computed(() => appStore.getCollapse)
 
 const layout = computed(() => appStore.getLayout)
+const showLayoutSetting = computed(() => isDevLinksVisible())
 
 const handleClickOutside = () => {
   appStore.setCollapse(true)
@@ -47,7 +49,9 @@ export default defineComponent({
   name: 'Layout',
   setup() {
     return () => (
-      <section class={[prefixCls, `${prefixCls}__${layout.value}`, 'w-[100%] h-[100%] relative']}>
+      <section
+        class={[prefixCls, `${prefixCls}__${layout.value}`, 'erp-shell w-[100%] h-[100%] relative']}
+      >
         {mobile.value && !collapse.value ? (
           <div
             class="absolute left-0 top-0 z-99 h-full w-full bg-[var(--el-color-black)] opacity-30"
@@ -59,7 +63,7 @@ export default defineComponent({
 
         <Backtop></Backtop>
 
-        <Setting></Setting>
+        {showLayoutSetting.value ? <Setting></Setting> : undefined}
       </section>
     )
   }

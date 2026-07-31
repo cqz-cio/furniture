@@ -1,7 +1,19 @@
 <template>
-  <div class="user-info-head" @click="open()">
+  <div
+    class="user-info-head"
+    role="button"
+    tabindex="0"
+    aria-label="编辑头像"
+    @click="open()"
+    @keydown.enter.prevent="open()"
+    @keydown.space.prevent="open()"
+  >
     <el-avatar v-if="sourceValue" :src="sourceValue" alt="avatar" class="img-circle img-lg" />
     <el-avatar v-if="!sourceValue" :src="avatar" alt="avatar" class="img-circle img-lg" />
+    <span class="avatar-edit-mask" aria-hidden="true">
+      <Icon icon="ep:edit-pen" :size="22" />
+      <small>编辑头像</small>
+    </span>
     <el-button v-if="showBtn" :class="`${prefixCls}-upload-btn`" @click="open()">
       {{ btnText ? btnText : t('cropper.selectImage') }}
     </el-button>
@@ -114,6 +126,13 @@ $prefix-cls: #{$namespace}--cropper-avatar;
 .user-info-head {
   position: relative;
   display: inline-block;
+  border-radius: 50%;
+  cursor: pointer;
+  outline: none;
+}
+
+.user-info-head:focus-visible {
+  box-shadow: 0 0 0 4px rgb(23 107 219 / 18%);
 }
 
 .img-circle {
@@ -123,20 +142,34 @@ $prefix-cls: #{$namespace}--cropper-avatar;
 .img-lg {
   width: 120px;
   height: 120px;
+  border: 4px solid #fff;
+  box-shadow:
+    0 0 0 1px var(--furniture-admin-border, #dfe4ea),
+    0 10px 24px rgb(15 36 58 / 12%);
 }
 
-.user-info-head:hover::after {
+.avatar-edit-mask {
   position: absolute;
+  display: flex;
+  flex-direction: column;
   inset: 0;
-  font-size: 24px;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  font-style: normal;
-  line-height: 110px;
-  color: #eee;
-  cursor: pointer;
-  background: rgb(0 0 0 / 50%);
+  color: #fff;
+  background: rgb(6 28 48 / 68%);
   border-radius: 50%;
-  content: '+';
+  opacity: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: opacity 0.16s ease;
+}
+
+.avatar-edit-mask small {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.user-info-head:hover .avatar-edit-mask,
+.user-info-head:focus-visible .avatar-edit-mask {
+  opacity: 1;
 }
 </style>

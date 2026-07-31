@@ -2,6 +2,10 @@
   <div>
     <div class="text-center">
       <UserAvatar :img="userInfo?.avatar" />
+      <p class="avatar-edit-hint">
+        <Icon icon="ep:edit-pen" :size="13" />
+        点击头像即可编辑
+      </p>
     </div>
     <ul class="list-group list-group-striped">
       <li class="list-group-item">
@@ -65,8 +69,19 @@ onMounted(async () => {
 <style scoped>
 .text-center {
   position: relative;
-  height: 120px;
+  min-height: 164px;
+  padding: 8px 0 18px;
   text-align: center;
+}
+
+.avatar-edit-hint {
+  display: flex;
+  margin: 12px 0 0;
+  color: var(--furniture-admin-muted);
+  font-size: 12px;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
 }
 
 .list-group-striped > .list-group-item {
@@ -83,14 +98,23 @@ onMounted(async () => {
 }
 
 .list-group-item {
-  padding: 11px 0;
-  margin-bottom: -1px;
+  display: flex;
+  min-height: 48px;
+  padding: 12px 0;
   font-size: 13px;
-  border-top: 1px solid #e7eaec;
-  border-bottom: 1px solid #e7eaec;
+  color: var(--furniture-admin-body);
+  border-bottom: 1px solid var(--furniture-admin-border);
+  align-items: center;
 }
 
 .pull-right {
-  float: right !important;
+  min-width: 0;
+  margin-left: auto;
+  overflow: hidden;
+  color: var(--furniture-admin-ink);
+  font-weight: 500;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>

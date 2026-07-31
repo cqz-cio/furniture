@@ -22,69 +22,90 @@
       />
     </ContentWrap>
 
+    <section class="product-status-bar" aria-label="商品状态筛选">
+      <div class="product-status-tabs">
+        <button
+          v-for="item in tabsData"
+          :key="item.type"
+          :class="[
+            'product-status-tab',
+            {
+              'is-active': Number(queryParams.tabType) === item.type,
+              'is-warning': item.type === 3
+            }
+          ]"
+          type="button"
+          @click="handleTabSelect(item.type)"
+        >
+          <span>{{ item.name }}</span>
+          <strong>{{ item.count }}</strong>
+        </button>
+      </div>
+      <p>共 {{ total }} 个商品</p>
+    </section>
+
     <!-- 搜索工作栏 -->
-    <ContentWrap>
+    <ContentWrap class="product-filter-panel">
       <el-form
         ref="queryFormRef"
         :inline="true"
         :model="queryParams"
-        class="-mb-15px"
+        class="product-filter-form"
         label-width="68px"
       >
-        <el-form-item label="商品名称" prop="name">
-          <el-input
-            v-model="queryParams.name"
-            class="!w-240px"
-            clearable
-            placeholder="请输入商品名称"
-            @keyup.enter="handleQuery"
-          />
-        </el-form-item>
-        <el-form-item label="商品分类" prop="categoryId">
-          <el-cascader
-            v-model="queryParams.categoryId"
-            :options="categoryList"
-            :props="defaultProps"
-            class="w-1/1"
-            clearable
-            filterable
-            placeholder="请选择商品分类"
-          />
-        </el-form-item>
-        <el-form-item label="创建时间" prop="createTime">
-          <el-date-picker
-            v-model="queryParams.createTime"
-            :default-time="[new Date('1 00:00:00'), new Date('1 23:59:59')]"
-            class="!w-240px"
-            end-placeholder="结束日期"
-            start-placeholder="开始日期"
-            type="daterange"
-            value-format="YYYY-MM-DD HH:mm:ss"
-          />
-        </el-form-item>
-        <el-form-item>
-          <el-button @click="handleQuery">
-            <Icon class="mr-5px" icon="ep:search" />
-            搜索
-          </el-button>
-          <el-button @click="resetQuery">
-            <Icon class="mr-5px" icon="ep:refresh" />
-            重置
-          </el-button>
+        <div class="product-filter-fields">
+          <el-form-item label="商品名称" prop="name">
+            <el-input
+              v-model="queryParams.name"
+              clearable
+              placeholder="请输入商品名称"
+              @keyup.enter="handleQuery"
+            />
+          </el-form-item>
+          <el-form-item label="商品分类" prop="categoryId">
+            <el-cascader
+              v-model="queryParams.categoryId"
+              :options="categoryList"
+              :props="defaultProps"
+              clearable
+              filterable
+              placeholder="请选择商品分类"
+            />
+          </el-form-item>
+          <el-form-item label="创建时间" prop="createTime">
+            <el-date-picker
+              v-model="queryParams.createTime"
+              :default-time="[new Date('1 00:00:00'), new Date('1 23:59:59')]"
+              end-placeholder="结束日期"
+              start-placeholder="开始日期"
+              type="daterange"
+              value-format="YYYY-MM-DD HH:mm:ss"
+            />
+          </el-form-item>
+          <el-form-item class="product-filter-submit">
+            <el-button type="primary" @click="handleQuery">
+              <Icon class="mr-5px" icon="ep:search" />
+              搜索
+            </el-button>
+            <el-button @click="resetQuery">
+              <Icon class="mr-5px" icon="ep:refresh" />
+              重置
+            </el-button>
+          </el-form-item>
+        </div>
+        <div class="product-filter-actions">
           <el-button
             v-hasPermi="['product:spu:create']"
-            plain
             type="primary"
             @click="openForm(undefined)"
           >
             <Icon class="mr-5px" icon="ep:plus" />
-            新增
+            新增商品
           </el-button>
           <el-button
             v-hasPermi="['product:spu:export']"
             :loading="exportLoading"
             plain
-            type="success"
             @click="handleExport"
           >
             <Icon class="mr-5px" icon="ep:download" />
@@ -93,21 +114,13 @@
           <el-button v-hasPermi="['product:spu:update']" plain @click="handleErpSyncAll">
             ERP 全量同步
           </el-button>
-        </el-form-item>
+        </div>
       </el-form>
     </ContentWrap>
 
     <!-- 列表 -->
-    <ContentWrap>
-      <el-tabs v-model="queryParams.tabType" @tab-click="handleTabClick">
-        <el-tab-pane
-          v-for="item in tabsData"
-          :key="item.type"
-          :label="item.name + '(' + item.count + ')'"
-          :name="item.type"
-        />
-      </el-tabs>
-      <el-table v-loading="loading" :data="list">
+    <ContentWrap class="product-table-panel">
+      <el-table v-loading="loading" :data="list" row-key="id" show-overflow-tooltip>
         <el-table-column type="expand">
           <template #default="{ row }">
             <el-form class="spu-table-expand" label-position="left">
@@ -165,45 +178,36 @@
             </el-form>
           </template>
         </el-table-column>
-        <el-table-column label="商品编号" min-width="140" prop="id" />
-        <el-table-column label="商品信息" min-width="300">
+        <el-table-column label="商品信息" min-width="280">
           <template #default="{ row }">
-            <div class="flex">
+            <div class="product-info-cell">
               <el-image
                 fit="cover"
                 :src="row.picUrl"
-                class="flex-none w-50px h-50px"
+                class="product-info-cell__image"
                 @click="imagePreview(row.picUrl)"
               />
-              <div class="ml-4 overflow-hidden">
+              <div class="product-info-cell__copy">
                 <el-tooltip effect="dark" :content="row.name" placement="top">
-                  <div>
-                    {{ row.name }}
-                  </div>
+                  <strong>{{ row.name }}</strong>
                 </el-tooltip>
+                <small>
+                  SPU #{{ row.id }} ·
+                  {{ row.status < 0 ? '回收站' : row.status ? '已上架' : '已下架' }}
+                </small>
               </div>
             </div>
           </template>
-        </el-table-column>
-        <el-table-column v-if="isB2B" align="center" label="商品分类" min-width="150">
-          <template #default="{ row }">{{ formatCategoryName(row.categoryId) }}</template>
         </el-table-column>
         <el-table-column
           v-if="showPriceColumn"
           align="center"
           label="价格"
-          min-width="160"
+          min-width="130"
           prop="price"
         >
           <template #default="{ row }"> ¥ {{ fenToYuan(row.price) }}</template>
         </el-table-column>
-        <el-table-column
-          v-if="showSalesColumn"
-          align="center"
-          label="销量"
-          min-width="90"
-          prop="salesCount"
-        />
         <el-table-column
           v-if="inventoryEnabled"
           align="center"
@@ -211,93 +215,84 @@
           min-width="90"
           prop="stock"
         />
-        <el-table-column align="center" :label="isB2B ? '商品 SKU' : 'ERP 编码'" min-width="150">
+        <el-table-column align="center" :label="isB2B ? '商品 SKU' : 'ERP 编码'" min-width="145">
           <template #default="{ row }">{{ erpBySpuId[row.id]?.erpProductCode || '-' }}</template>
         </el-table-column>
-        <el-table-column align="center" label="ERP 状态" min-width="100">
-          <template #default="{ row }">{{ erpBySpuId[row.id]?.syncStatus || '未映射' }}</template>
+        <el-table-column align="center" label="ERP 状态" min-width="135">
+          <template #default="{ row }">
+            <el-tag :type="erpStatusType(erpBySpuId[row.id]?.syncStatus)" effect="light">
+              <span class="erp-status-label">
+                <i aria-hidden="true"></i>
+                {{ erpStatusLabel(erpBySpuId[row.id]?.syncStatus) }}
+              </span>
+            </el-tag>
+          </template>
         </el-table-column>
-        <el-table-column v-if="inventoryEnabled" align="center" label="ERP 库存" min-width="90">
-          <template #default="{ row }">{{ erpBySpuId[row.id]?.sellableStock ?? '-' }}</template>
-        </el-table-column>
-        <el-table-column align="center" label="最后同步" min-width="180">
+        <el-table-column align="center" label="最后同步" min-width="160">
           <template #default="{ row }">{{ erpBySpuId[row.id]?.lastSyncedAt || '-' }}</template>
         </el-table-column>
         <el-table-column align="center" label="排序" min-width="70" prop="sort" />
-        <el-table-column
-          align="center"
-          :label="inventoryEnabled ? '销售状态' : '展示状态'"
-          min-width="80"
-        >
-          <template #default="{ row }">
-            <template v-if="row.status >= 0">
-              <el-switch
-                v-model="row.status"
-                :active-value="1"
-                :inactive-value="0"
-                active-text="上架"
-                inactive-text="下架"
-                inline-prompt
-                @change="handleStatusChange(row)"
-              />
-            </template>
-            <template v-else>
-              <el-tag type="info">回收站</el-tag>
-            </template>
-          </template>
-        </el-table-column>
-        <el-table-column
-          :formatter="dateFormatter"
-          align="center"
-          label="创建时间"
-          prop="createTime"
-          width="180"
-        />
-        <el-table-column align="center" fixed="right" label="操作" min-width="260">
+        <el-table-column align="center" fixed="right" label="操作" width="116">
           <template #default="{ row }">
             <el-button link type="primary" @click="openDetail(row.id)"> 详情 </el-button>
-            <el-button link type="primary" @click="openFrontendPreview(row.id)">
-              前台预览
-            </el-button>
-            <el-button v-hasPermi="['product:spu:update']" link @click="handleErpSync(row.id)">
-              同步 ERP
-            </el-button>
-            <el-button
-              v-hasPermi="['product:spu:update']"
-              link
-              type="primary"
-              @click="openForm(row.id)"
-            >
-              修改
-            </el-button>
-            <template v-if="queryParams.tabType === 4">
-              <el-button
-                v-hasPermi="['product:spu:delete']"
-                link
-                type="danger"
-                @click="handleDelete(row.id)"
-              >
-                删除
+            <el-dropdown trigger="click">
+              <el-button aria-label="更多商品操作" class="product-more-button" text>
+                <Icon icon="ep:more-filled" :size="17" />
               </el-button>
-              <el-button
-                v-hasPermi="['product:spu:update']"
-                link
-                type="primary"
-                @click="handleStatus02Change(row, ProductSpuStatusEnum.DISABLE.status)"
-              >
-                恢复
-              </el-button>
-            </template>
-            <template v-else>
-              <el-button
-                v-hasPermi="['product:spu:update']"
-                link
-                type="danger"
-                @click="handleStatus02Change(row, ProductSpuStatusEnum.RECYCLE.status)"
-              >
-                回收
-              </el-button>
-            </template>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item @click="openFrontendPreview(row.id)">
+                    <Icon icon="ep:view" />
+                    前台预览
+                  </el-dropdown-item>
+                  <el-dropdown-item
+                    v-hasPermi="['product:spu:update']"
+                    @click="handleErpSync(row.id)"
+                  >
+                    <Icon icon="ep:refresh" />
+                    同步 ERP
+                  </el-dropdown-item>
+                  <el-dropdown-item v-hasPermi="['product:spu:update']" @click="openForm(row.id)">
+                    <Icon icon="ep:edit-pen" />
+                    修改商品
+                  </el-dropdown-item>
+                  <el-dropdown-item
+                    v-if="row.status >= 0"
+                    v-hasPermi="['product:spu:update']"
+                    @click="toggleSaleStatus(row)"
+                  >
+                    <Icon :icon="row.status ? 'ep:video-pause' : 'ep:video-play'" />
+                    {{ row.status ? '下架商品' : '上架商品' }}
+                  </el-dropdown-item>
+                  <template v-if="queryParams.tabType === 4">
+                    <el-dropdown-item
+                      v-hasPermi="['product:spu:update']"
+                      @click="handleStatus02Change(row, ProductSpuStatusEnum.DISABLE.status)"
+                    >
+                      <Icon icon="ep:refresh-left" />
+                      恢复商品
+                    </el-dropdown-item>
+                    <el-dropdown-item
+                      v-hasPermi="['product:spu:delete']"
+                      divided
+                      @click="handleDelete(row.id)"
+                    >
+                      <Icon icon="ep:delete" />
+                      删除商品
+                    </el-dropdown-item>
+                  </template>
+                  <el-dropdown-item
+                    v-else
+                    v-hasPermi="['product:spu:update']"
+                    divided
+                    @click="handleStatus02Change(row, ProductSpuStatusEnum.RECYCLE.status)"
+                  >
+                    <Icon icon="ep:delete" />
+                    移至回收站
+                  </el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
           </template>
         </el-table-column>
       </el-table>
@@ -312,9 +307,7 @@
   </template>
 </template>
 <script lang="ts" setup>
-import { TabsPaneContext } from 'element-plus'
 import { createImageViewer } from '@/components/ImageViewer'
-import { dateFormatter } from '@/utils/formatTime'
 import { defaultProps, handleTree, treeToString } from '@/utils/tree'
 import { ProductSpuStatusEnum } from '@/utils/constants'
 import { fenToYuan } from '@/utils'
@@ -346,9 +339,6 @@ const {
 } = useTenantBusinessProfile()
 const b2bPriceIsWebsite = computed(() => isB2B.value && productFieldState('price') === 'WEBSITE')
 const showPriceColumn = computed(() => !isB2B.value || b2bPriceIsWebsite.value)
-const showSalesColumn = computed(
-  () => !isB2B.value || productFieldState('salesCount') === 'WEBSITE'
-)
 const tabCounts = ref([0, 0, 0, 0, 0])
 const visibleTabTypes = computed(() => (inventoryEnabled.value ? [0, 1, 2, 3, 4] : [0, 1, 4]))
 const tabsData = computed(() =>
@@ -404,10 +394,28 @@ const getList = async () => {
   }
 }
 
-/** 切换 Tab */
-const handleTabClick = (tab: TabsPaneContext) => {
-  queryParams.value.tabType = Number(tab.paneName)
+/** 切换商品状态 */
+const handleTabSelect = (tabType: number) => {
+  queryParams.value.tabType = tabType
+  queryParams.value.pageNo = 1
   getList()
+}
+
+const erpStatusLabel = (status?: string) => {
+  const labels: Record<string, string> = {
+    SUCCESS: 'ERP 同步成功',
+    PENDING: '等待同步',
+    PROCESSING: '同步中',
+    FAILED: '同步失败'
+  }
+  return status ? labels[status] || status : '未映射'
+}
+
+const erpStatusType = (status?: string): 'success' | 'warning' | 'danger' | 'info' => {
+  if (status === 'SUCCESS') return 'success'
+  if (status === 'FAILED') return 'danger'
+  if (status === 'PENDING' || status === 'PROCESSING') return 'warning'
+  return 'info'
 }
 
 const handleErpSync = async (spuId: number) => {
@@ -466,6 +474,14 @@ const handleStatusChange = async (row: any) => {
         ? ProductSpuStatusEnum.ENABLE.status
         : ProductSpuStatusEnum.DISABLE.status
   }
+}
+
+const toggleSaleStatus = async (row: any) => {
+  row.status =
+    row.status === ProductSpuStatusEnum.ENABLE.status
+      ? ProductSpuStatusEnum.DISABLE.status
+      : ProductSpuStatusEnum.ENABLE.status
+  await handleStatusChange(row)
 }
 
 /** 删除按钮操作 */
@@ -579,6 +595,198 @@ onMounted(async () => {
 })
 </script>
 <style lang="scss" scoped>
+.product-status-bar {
+  display: flex;
+  min-height: 42px;
+  margin: -2px 0 14px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.product-status-tabs {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.product-status-tab {
+  display: inline-flex;
+  min-height: 36px;
+  padding: 7px 14px;
+  color: var(--furniture-admin-body);
+  background: #fff;
+  border: 1px solid var(--furniture-admin-border);
+  border-radius: 8px;
+  cursor: pointer;
+  align-items: center;
+  gap: 9px;
+  transition:
+    color 0.16s ease,
+    border-color 0.16s ease,
+    background-color 0.16s ease;
+}
+
+.product-status-tab span {
+  font-size: 13px;
+  font-weight: 550;
+}
+
+.product-status-tab strong {
+  min-width: 18px;
+  color: var(--furniture-admin-ink);
+  font-size: 13px;
+  font-weight: 680;
+  text-align: center;
+}
+
+.product-status-tab:hover {
+  border-color: #b9d4f7;
+}
+
+.product-status-tab.is-active {
+  color: var(--furniture-admin-primary);
+  background: #f0f6ff;
+  border-color: #b9d4f7;
+  box-shadow: 0 2px 7px rgb(23 107 219 / 8%);
+}
+
+.product-status-tab.is-active strong {
+  color: var(--furniture-admin-primary);
+}
+
+.product-status-tab.is-warning strong {
+  color: #d66c00;
+}
+
+.product-status-bar > p {
+  flex: 0 0 auto;
+  margin: 0;
+  color: var(--furniture-admin-muted);
+  font-size: 12px;
+}
+
+.product-filter-form {
+  display: block !important;
+}
+
+.product-filter-fields {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(220px, 1fr) minmax(320px, 1.4fr) auto;
+  gap: 14px 18px;
+  align-items: end;
+}
+
+.product-filter-fields :deep(.el-form-item) {
+  display: grid;
+  margin-bottom: 0;
+}
+
+.product-filter-fields :deep(.el-form-item__label) {
+  width: auto !important;
+  height: 24px;
+  padding: 0;
+  line-height: 20px;
+  justify-content: flex-start;
+}
+
+.product-filter-fields :deep(.el-form-item__content) {
+  width: 100%;
+  margin-left: 0 !important;
+}
+
+.product-filter-fields :deep(.el-input),
+.product-filter-fields :deep(.el-cascader),
+.product-filter-fields :deep(.el-date-editor) {
+  width: 100% !important;
+}
+
+.product-filter-submit {
+  display: flex !important;
+}
+
+.product-filter-submit :deep(.el-form-item__content) {
+  flex-wrap: nowrap;
+}
+
+.product-filter-actions {
+  display: flex;
+  margin: 16px -17px -5px;
+  padding: 13px 17px;
+  border-top: 1px solid var(--furniture-admin-border);
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.product-filter-actions :deep(.el-button) {
+  margin-left: 0;
+}
+
+.product-info-cell {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 12px;
+}
+
+.product-info-cell__image {
+  width: 58px;
+  height: 42px;
+  flex: 0 0 auto;
+  cursor: zoom-in;
+  object-fit: cover;
+}
+
+.product-info-cell__copy {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.product-info-cell__copy strong {
+  overflow: hidden;
+  color: var(--furniture-admin-ink);
+  font-size: 13px;
+  font-weight: 560;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.product-info-cell__copy small {
+  color: var(--furniture-admin-muted);
+  font-size: 11px;
+}
+
+.erp-status-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.erp-status-label i {
+  width: 6px;
+  height: 6px;
+  background: currentcolor;
+  border-radius: 50%;
+}
+
+.product-more-button {
+  width: 30px;
+  min-height: 30px !important;
+  margin-left: 5px !important;
+  padding: 0 !important;
+  color: var(--furniture-admin-body) !important;
+  border: 1px solid var(--furniture-admin-border) !important;
+  border-radius: 6px !important;
+}
+
+.product-more-button:hover {
+  color: var(--furniture-admin-primary) !important;
+  background: #f4f8fe !important;
+  border-color: #b9d4f7 !important;
+}
+
 .spu-table-expand {
   padding-left: 42px;
 
@@ -586,6 +794,40 @@ onMounted(async () => {
     width: 82px;
     font-weight: bold;
     color: #99a9bf;
+  }
+}
+
+@media (width <= 1360px) {
+  .product-filter-fields {
+    grid-template-columns: repeat(2, minmax(240px, 1fr));
+  }
+
+  .product-filter-submit {
+    align-self: end;
+  }
+}
+
+@media (width <= 760px) {
+  .product-status-bar {
+    display: grid;
+  }
+
+  .product-status-tabs {
+    flex-wrap: nowrap;
+    padding-bottom: 4px;
+    overflow-x: auto;
+  }
+
+  .product-status-tab {
+    flex: 0 0 auto;
+  }
+
+  .product-filter-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .product-filter-submit :deep(.el-form-item__content) {
+    justify-content: flex-start;
   }
 }
 </style>

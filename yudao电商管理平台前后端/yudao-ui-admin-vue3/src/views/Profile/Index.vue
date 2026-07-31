@@ -1,28 +1,26 @@
 <template>
-  <!-- TODO @芋艿：可优化，对标 vben 版本 -->
-  <div class="flex">
-    <el-card class="user w-1/3" shadow="hover">
+  <div class="profile-page">
+    <el-card class="profile-card profile-card--summary" shadow="never">
       <template #header>
         <div class="card-header">
           <span>{{ t('profile.user.title') }}</span>
+          <small>账号与身份信息</small>
         </div>
       </template>
       <ProfileUser ref="profileUserRef" />
     </el-card>
-    <el-card class="user ml-3 w-2/3" shadow="hover">
-      <div>
-        <el-tabs v-model="activeName" class="profile-tabs" style="height: 400px" tab-position="top">
-          <el-tab-pane :label="t('profile.info.basicInfo')" name="basicInfo">
-            <BasicInfo @success="handleBasicInfoSuccess" />
-          </el-tab-pane>
-          <el-tab-pane :label="t('profile.info.resetPwd')" name="resetPwd">
-            <ResetPwd />
-          </el-tab-pane>
-          <el-tab-pane :label="t('profile.info.userSocial')" name="userSocial">
-            <UserSocial v-model:activeName="activeName" />
-          </el-tab-pane>
-        </el-tabs>
-      </div>
+    <el-card class="profile-card profile-card--settings" shadow="never">
+      <el-tabs v-model="activeName" class="profile-tabs" tab-position="top">
+        <el-tab-pane :label="t('profile.info.basicInfo')" name="basicInfo">
+          <BasicInfo @success="handleBasicInfoSuccess" />
+        </el-tab-pane>
+        <el-tab-pane :label="t('profile.info.resetPwd')" name="resetPwd">
+          <ResetPwd />
+        </el-tab-pane>
+        <el-tab-pane :label="t('profile.info.userSocial')" name="userSocial">
+          <UserSocial v-model:activeName="activeName" />
+        </el-tab-pane>
+      </el-tabs>
     </el-card>
   </div>
 </template>
@@ -40,28 +38,51 @@ const handleBasicInfoSuccess = async () => {
 }
 </script>
 <style scoped>
-.user {
-  max-height: 960px;
-  padding: 15px 20px 20px;
+.profile-page {
+  display: grid;
+  grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.profile-card {
+  min-width: 0;
+}
+
+.profile-card--settings {
+  min-height: 520px;
 }
 
 .card-header {
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
   align-items: center;
+  gap: 12px;
 }
 
-:deep(.el-card .el-card__header, .el-card .el-card__body) {
-  padding: 15px !important;
+.card-header span {
+  color: var(--furniture-admin-ink);
+  font-size: 15px;
+  font-weight: 650;
 }
 
-.profile-tabs > .el-tabs__content {
-  padding: 32px;
-  font-weight: 600;
-  color: #6b778c;
+.card-header small {
+  color: var(--furniture-admin-muted);
+  font-size: 12px;
+  font-weight: 400;
 }
 
-.el-tabs--left .el-tabs__content {
-  height: 100%;
+.profile-tabs {
+  min-height: 460px;
+}
+
+:deep(.profile-tabs > .el-tabs__content) {
+  padding: 20px 4px 4px;
+}
+
+@media (width <= 960px) {
+  .profile-page {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

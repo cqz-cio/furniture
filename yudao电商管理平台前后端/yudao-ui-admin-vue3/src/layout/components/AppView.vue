@@ -2,15 +2,13 @@
 import { useTagsViewStore } from '@/store/modules/tagsView'
 import { useAppStore } from '@/store/modules/app'
 import { Footer } from '@/layout/components/Footer'
-import DashboardPageLoading from '@/layout/components/DashboardPageLoading.vue'
+import ErpPageLoading from '@/layout/components/ErpPageLoading.vue'
 
 defineOptions({ name: 'AppView' })
 
 const appStore = useAppStore()
-
-const layout = computed(() => appStore.getLayout)
-
-const fixedHeader = computed(() => appStore.getFixedHeader)
+const route = useRoute()
+const { t } = useI18n()
 
 const footer = computed(() => appStore.getFooter)
 
@@ -20,11 +18,26 @@ const getCaches = computed((): string[] => {
   return tagsViewStore.getCachedViews
 })
 
-const tagsView = computed(() => appStore.getTagsView)
+const pageTitle = computed(() => {
+  const rawTitle = String(route.meta?.title || '业务页面')
+  return rawTitle ? t(rawTitle) : '业务页面'
+})
 
-const showDashboardLoading = computed(
-  () => appStore.getPageLoading && appStore.getPageLoadingRoute === '/dashboard'
+const parentTitle = computed(() => {
+  const parent = route.matched
+    .slice(0, -1)
+    .reverse()
+    .find((item) => item.meta?.title)
+  if (!parent?.meta?.title) return ''
+  const title = t(String(parent.meta.title))
+  return title === pageTitle.value ? '' : title
+})
+
+const showPageHeading = computed(
+  () => !['/dashboard', '/index'].includes(route.path) && route.meta?.hidePageHeading !== true
 )
+
+const showPageLoading = computed(() => appStore.getPageLoading)
 
 //region 无感刷新
 const routerAlive = ref(true)
@@ -47,15 +60,22 @@ provide('reload', reload)
           footer
       }
     ]"
-    :aria-busy="showDashboardLoading"
+    class="erp-app-view"
+    :aria-busy="showPageLoading"
   >
-    <Transition name="dashboard-loading-fade">
-      <DashboardPageLoading v-if="showDashboardLoading" overlay />
+    <Transition name="erp-loading-fade">
+      <ErpPageLoading v-if="showPageLoading" :title="pageTitle" overlay />
     </Transition>
+    <header v-if="showPageHeading" class="erp-page-heading">
+      <div>
+        <p v-if="parentTitle">{{ parentTitle }}</p>
+        <h1>{{ pageTitle }}</h1>
+      </div>
+    </header>
     <router-view v-if="routerAlive">
-      <template #default="{ Component, route }">
+      <template #default="{ Component, route: viewRoute }">
         <keep-alive :include="getCaches">
-          <component :is="Component" :key="route.fullPath" />
+          <component :is="Component" :key="viewRoute.fullPath" />
         </keep-alive>
       </template>
     </router-view>
@@ -64,13 +84,13 @@ provide('reload', reload)
 </template>
 
 <style scoped>
-.dashboard-loading-fade-enter-active,
-.dashboard-loading-fade-leave-active {
+.erp-loading-fade-enter-active,
+.erp-loading-fade-leave-active {
   transition: opacity 0.16s ease;
 }
 
-.dashboard-loading-fade-enter-from,
-.dashboard-loading-fade-leave-to {
+.erp-loading-fade-enter-from,
+.erp-loading-fade-leave-to {
   opacity: 0;
 }
 </style>

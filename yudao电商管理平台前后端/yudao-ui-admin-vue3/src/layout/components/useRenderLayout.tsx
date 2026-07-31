@@ -15,8 +15,6 @@ const prefixCls = getPrefixCls('layout')
 
 const appStore = useAppStore()
 
-const pageLoading = computed(() => appStore.getPageLoading)
-
 // 标签页
 const tagsView = computed(() => appStore.getTagsView)
 
@@ -75,12 +73,13 @@ export const useRenderLayout = () => {
           style="transition: all var(--transition-time-02);"
         >
           <ElScrollbar
-            v-loading={pageLoading.value}
             class={[
               `${prefixCls}-content-scrollbar`,
               {
                 '!h-[calc(100%-var(--top-tool-height)-var(--tags-view-height))] mt-[calc(var(--top-tool-height)+var(--tags-view-height))]':
-                  fixedHeader.value
+                  fixedHeader.value && tagsView.value,
+                '!h-[calc(100%-var(--top-tool-height))] mt-[var(--top-tool-height)]':
+                  fixedHeader.value && !tagsView.value
               }
             ]}
           >
@@ -142,7 +141,6 @@ export const useRenderLayout = () => {
             style="transition: all var(--transition-time-02);"
           >
             <ElScrollbar
-              v-loading={pageLoading.value}
               class={[
                 `${prefixCls}-content-scrollbar`,
                 {
@@ -192,7 +190,6 @@ export const useRenderLayout = () => {
         </div>
         <div class={[`${prefixCls}-content`, 'w-full h-[calc(100%-var(--top-tool-height))]']}>
           <ElScrollbar
-            v-loading={pageLoading.value}
             class={[
               `${prefixCls}-content-scrollbar`,
               {
@@ -248,7 +245,6 @@ export const useRenderLayout = () => {
             style="transition: all var(--transition-time-02);"
           >
             <ElScrollbar
-              v-loading={pageLoading.value}
               class={[
                 `${prefixCls}-content-scrollbar`,
                 {

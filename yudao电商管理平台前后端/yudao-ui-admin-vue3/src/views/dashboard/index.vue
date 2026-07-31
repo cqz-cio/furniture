@@ -6,7 +6,7 @@ import { ElMessage } from 'element-plus'
 import type { BarSeriesOption, EChartsOption, LineSeriesOption } from 'echarts'
 import download from '@/utils/download'
 import { checkPermi } from '@/utils/permission'
-import DashboardPageLoading from '@/layout/components/DashboardPageLoading.vue'
+import ErpPageLoading from '@/layout/components/ErpPageLoading.vue'
 import {
   DashboardApi,
   type DashboardAttention,
@@ -406,7 +406,7 @@ onMounted(loadDashboard)
 
 <template>
   <div class="furniture-dashboard" v-loading="loading && !initialLoading" aria-live="polite">
-    <DashboardPageLoading v-if="initialLoading" />
+    <ErpPageLoading v-if="initialLoading" title="数据看板" />
     <el-result v-else-if="!canQuery" icon="warning" title="暂无数据看板查询权限" sub-title="请联系管理员授予 statistics:dashboard:query" />
     <template v-else>
       <header class="dashboard-header">
