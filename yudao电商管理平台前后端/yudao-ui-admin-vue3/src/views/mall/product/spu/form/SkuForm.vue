@@ -169,9 +169,6 @@ const ruleConfig = computed<RuleConfig[]>(() => {
   }
   return props.showStock ? allRuleConfig : allRuleConfig.filter((rule) => rule.name !== 'stock')
 })
-const ruleConfig = computed<RuleConfig[]>(() =>
-  props.showStock ? allRuleConfig : allRuleConfig.filter((rule) => rule.name !== 'stock')
-)
 const attributesAddFormRef = ref() // 添加商品属性表单
 const formRef = ref() // 表单 Ref
 const propertyList = ref<PropertyAndValues[]>([]) // 商品属性列表
