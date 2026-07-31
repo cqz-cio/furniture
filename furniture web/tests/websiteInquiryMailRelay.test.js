@@ -61,6 +61,7 @@ describe("website inquiry ERP mail relay", () => {
     expect(settings).toContain("绑定接收邮箱");
     expect(settings).toContain("邮件正文格式");
     expect(settings).toContain("sendWebsiteInquiryTestMail");
+    expect(settings).toContain('top="0"');
     expect(detail).toContain("ERP 绑定邮箱");
     expect(detail).toContain("客户回复邮箱");
     expect(inquiryList).toContain("邮件通知设置");

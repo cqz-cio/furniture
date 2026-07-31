@@ -1,5 +1,5 @@
 <template>
-  <Dialog v-model="dialogVisible" title="询盘邮件通知设置" :width="920">
+  <Dialog v-model="dialogVisible" title="询盘邮件通知设置" :width="920" top="0">
     <el-alert
       class="mb-18px"
       type="info"
