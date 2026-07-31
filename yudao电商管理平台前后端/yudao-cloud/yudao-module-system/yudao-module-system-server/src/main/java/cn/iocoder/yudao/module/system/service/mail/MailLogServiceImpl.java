@@ -45,6 +45,26 @@ public class MailLogServiceImpl implements MailLogService {
                               Collection<String> toMails, Collection<String> ccMails, Collection<String> bccMails,
                               MailAccountDO account, MailTemplateDO template,
                               String templateContent, Map<String, Object> templateParams, Boolean isSend) {
+        return createMailLog(userId, userType, toMails, ccMails, bccMails, account, template,
+                template.getTitle(), templateContent, templateParams, isSend);
+    }
+
+    @Override
+    public Long createPreparedMailLog(Long userId, Integer userType,
+                                      Collection<String> toMails, Collection<String> ccMails,
+                                      Collection<String> bccMails, MailAccountDO account,
+                                      MailTemplateDO template, String renderedTitle,
+                                      String renderedContent, Map<String, Object> logParams,
+                                      Boolean isSend) {
+        return createMailLog(userId, userType, toMails, ccMails, bccMails, account, template,
+                renderedTitle, renderedContent, logParams, isSend);
+    }
+
+    private Long createMailLog(Long userId, Integer userType,
+                               Collection<String> toMails, Collection<String> ccMails,
+                               Collection<String> bccMails, MailAccountDO account,
+                               MailTemplateDO template, String title, String content,
+                               Map<String, Object> templateParams, Boolean isSend) {
         MailLogDO.MailLogDOBuilder logDOBuilder = MailLogDO.builder();
         // 根据是否要发送，设置状态
         logDOBuilder.sendStatus(Objects.equals(isSend, true) ? MailSendStatusEnum.INIT.getStatus()
@@ -55,7 +75,7 @@ public class MailLogServiceImpl implements MailLogService {
                 .accountId(account.getId()).fromMail(account.getMail())
                 // 模板相关字段
                 .templateId(template.getId()).templateCode(template.getCode()).templateNickname(template.getNickname())
-                .templateTitle(template.getTitle()).templateContent(templateContent).templateParams(templateParams);
+                .templateTitle(title).templateContent(content).templateParams(templateParams);
 
         // 插入数据库
         MailLogDO logDO = logDOBuilder.build();

@@ -181,5 +181,11 @@ public interface ErrorCodeConstants {
     ErrorCode WEBSITE_INQUIRY_DISABLED = new ErrorCode(1_002_029_000, "官网询盘通知未启用");
     ErrorCode WEBSITE_INQUIRY_UNAUTHORIZED = new ErrorCode(1_002_029_001, "官网询盘通知鉴权失败");
     ErrorCode WEBSITE_INQUIRY_CONFIGURATION_ERROR = new ErrorCode(1_002_029_002, "官网询盘通知配置不完整");
+    ErrorCode WEBSITE_INQUIRY_MAIL_CONFIGURATION_ERROR =
+            new ErrorCode(1_002_029_003, "询盘邮件配置不完整：{}");
+    ErrorCode WEBSITE_INQUIRY_MAIL_TEMPLATE_INVALID =
+            new ErrorCode(1_002_029_004, "询盘邮件模板不安全或包含未知变量：{}");
+    ErrorCode WEBSITE_INQUIRY_MAIL_DELIVERY_NOT_EXISTS =
+            new ErrorCode(1_002_029_005, "询盘邮件投递记录不存在");
 
 }

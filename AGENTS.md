@@ -12,9 +12,9 @@ These rules apply to every task and conversation in this repository:
 - Do not create a pull request unless the user explicitly requests one.
 - Preserve unrelated user changes and untracked files.
 
-# Local Backend Lifecycle Commands
+# Branch-Aware Local Runtime
 
-These rules apply regardless of the currently checked-out branch:
+These rules apply regardless of the current terminal directory or checked-out branch:
 
 - Use `D:\code\.runtime\bin\oakved.ps1` as the normal full-stack lifecycle entry point. It is installed from the tracked source in `scripts/runtime`.
 - For stable branch-based operation, use `powershell.exe -NoProfile -ExecutionPolicy Bypass -File "D:\code\.runtime\bin\oakved.ps1" start -Branch <branch>`. Branch mode runs the branch's committed HEAD in a managed detached snapshot under `D:\code\.runtime\worktrees`; it does not require that branch to be checked out and does not occupy the branch.

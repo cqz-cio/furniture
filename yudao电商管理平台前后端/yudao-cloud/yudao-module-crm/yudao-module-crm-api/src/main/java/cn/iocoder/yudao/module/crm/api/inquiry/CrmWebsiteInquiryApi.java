@@ -2,6 +2,7 @@ package cn.iocoder.yudao.module.crm.api.inquiry;
 
 import cn.iocoder.yudao.module.crm.api.inquiry.dto.CrmWebsiteInquiryCreateReqDTO;
 import cn.iocoder.yudao.module.crm.api.inquiry.dto.CrmWebsiteInquiryCreateRespDTO;
+import cn.iocoder.yudao.module.crm.api.inquiry.dto.CrmWebsiteInquiryRespDTO;
 import jakarta.validation.Valid;
 
 /**
@@ -16,5 +17,10 @@ public interface CrmWebsiteInquiryApi {
      * 创建官网询盘。同一租户、同一外部询盘编号重复提交时返回原记录。
      */
     CrmWebsiteInquiryCreateRespDTO createWebsiteInquiry(@Valid CrmWebsiteInquiryCreateReqDTO reqDTO);
+
+    /**
+     * 按编号读取已经写入 CRM 的官网询盘。
+     */
+    CrmWebsiteInquiryRespDTO getWebsiteInquiry(Long inquiryId);
 
 }

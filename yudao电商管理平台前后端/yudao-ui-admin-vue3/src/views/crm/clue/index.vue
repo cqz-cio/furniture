@@ -84,12 +84,8 @@
         />
       </el-form-item>
       <el-form-item>
-        <el-button @click="handleQuery">
-          <Icon icon="ep:search" class="mr-5px" />搜索
-        </el-button>
-        <el-button @click="resetQuery">
-          <Icon icon="ep:refresh" class="mr-5px" />重置
-        </el-button>
+        <el-button @click="handleQuery"> <Icon icon="ep:search" class="mr-5px" />搜索 </el-button>
+        <el-button @click="resetQuery"> <Icon icon="ep:refresh" class="mr-5px" />重置 </el-button>
         <el-button
           v-hasPermi="['crm:clue:export']"
           :loading="exportLoading"
@@ -98,6 +94,9 @@
           @click="handleExport"
         >
           <Icon icon="ep:download" class="mr-5px" />导出
+        </el-button>
+        <el-button v-hasPermi="['crm:clue:update']" plain type="primary" @click="openMailSettings">
+          <Icon icon="ep:message" class="mr-5px" />邮件通知设置
         </el-button>
       </el-form-item>
     </el-form>
@@ -126,14 +125,16 @@
       <el-table-column label="电话 / WhatsApp" min-width="165">
         <template #default="{ row }">{{ displayPhone(row) }}</template>
       </el-table-column>
-      <el-table-column label="邮箱" prop="email" min-width="200" />
+      <el-table-column label="邮箱" prop="email" min-width="200">
+        <template #default="{ row }">
+          <el-link v-if="row.email" :href="`mailto:${row.email}`" type="primary">
+            {{ row.email }}
+          </el-link>
+          <span v-else>-</span>
+        </template>
+      </el-table-column>
       <el-table-column label="提交页面" prop="sourcePage" min-width="190" />
-      <el-table-column
-        label="提交时间"
-        prop="submittedAt"
-        :formatter="dateFormatter"
-        width="180"
-      />
+      <el-table-column label="提交时间" prop="submittedAt" :formatter="dateFormatter" width="180" />
       <el-table-column label="处理人" prop="ownerUserName" width="110" />
       <el-table-column label="客户档案" prop="customerName" min-width="150">
         <template #default="{ row }">{{ row.customerName || '-' }}</template>
@@ -191,6 +192,8 @@
       @pagination="getList"
     />
   </ContentWrap>
+
+  <WebsiteInquiryMailSettings ref="mailSettingsRef" />
 </template>
 
 <script setup lang="ts">
@@ -198,6 +201,7 @@ import { dateFormatter } from '@/utils/formatTime'
 import download from '@/utils/download'
 import * as ClueApi from '@/api/crm/clue'
 import { InquiryProcessStatus } from '@/api/crm/clue'
+import WebsiteInquiryMailSettings from './WebsiteInquiryMailSettings.vue'
 
 defineOptions({ name: 'CrmClue' })
 
@@ -224,6 +228,7 @@ const queryParams = reactive({
   submittedAt: undefined as string[] | undefined
 })
 const queryFormRef = ref()
+const mailSettingsRef = ref<InstanceType<typeof WebsiteInquiryMailSettings>>()
 
 const processStatusOptions = [
   { value: InquiryProcessStatus.PENDING, label: '待处理', type: 'warning' },
@@ -331,6 +336,10 @@ const handleExport = async () => {
   } finally {
     exportLoading.value = false
   }
+}
+
+const openMailSettings = () => {
+  mailSettingsRef.value?.open()
 }
 
 onMounted(getList)

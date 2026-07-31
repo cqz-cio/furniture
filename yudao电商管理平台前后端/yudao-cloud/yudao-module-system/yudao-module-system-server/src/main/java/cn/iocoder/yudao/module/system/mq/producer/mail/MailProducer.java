@@ -1,5 +1,6 @@
 package cn.iocoder.yudao.module.system.mq.producer.mail;
 
+import cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder;
 import cn.iocoder.yudao.module.system.mq.message.mail.MailSendMessage;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -39,11 +40,27 @@ public class MailProducer {
                                     Collection<String> toMails, Collection<String> ccMails, Collection<String> bccMails,
                                     Long accountId, String nickname, String title, String content,
                                     File[] attachments) {
+        sendMailSendMessage(sendLogId, toMails, ccMails, bccMails, null,
+                accountId, nickname, title, content, attachments, null);
+    }
+
+    /**
+     * 发送支持 Reply-To 和业务投递关联的邮件消息。
+     */
+    public void sendMailSendMessage(Long sendLogId,
+                                    Collection<String> toMails, Collection<String> ccMails,
+                                    Collection<String> bccMails, Collection<String> replyToMails,
+                                    Long accountId, String nickname, String title, String content,
+                                    File[] attachments, Long websiteInquiryDeliveryId) {
         MailSendMessage message = new MailSendMessage()
                 .setLogId(sendLogId)
                 .setToMails(toMails).setCcMails(ccMails).setBccMails(bccMails)
+                .setReplyToMails(replyToMails)
                 .setAccountId(accountId).setNickname(nickname)
-                .setTitle(title).setContent(content).setAttachments(attachments);
+                .setTitle(title).setContent(content).setAttachments(attachments)
+                .setWebsiteInquiryDeliveryId(websiteInquiryDeliveryId)
+                .setWebsiteInquiryTenantId(websiteInquiryDeliveryId == null
+                        ? null : TenantContextHolder.getRequiredTenantId());
         applicationContext.publishEvent(message);
     }
 

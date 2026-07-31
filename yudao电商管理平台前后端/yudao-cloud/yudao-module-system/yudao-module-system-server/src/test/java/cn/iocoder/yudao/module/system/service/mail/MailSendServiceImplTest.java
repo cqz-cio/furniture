@@ -14,6 +14,7 @@ import cn.iocoder.yudao.module.system.service.member.MemberService;
 import cn.iocoder.yudao.module.system.service.user.AdminUserService;
 import org.assertj.core.util.Lists;
 import org.dromara.hutool.extra.mail.MailAccount;
+import org.dromara.hutool.extra.mail.Mail;
 import org.dromara.hutool.extra.mail.MailUtil;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -24,6 +25,7 @@ import org.mockito.MockedStatic;
 import java.io.File;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static cn.hutool.core.util.RandomUtil.randomEle;
@@ -217,6 +219,45 @@ public class MailSendServiceImplTest extends BaseMockitoUnitTest {
     }
 
     @Test
+    public void testSendPreparedMail_withReplyToAndDelivery() {
+        String templateCode = randomString();
+        MailTemplateDO template = randomPojo(MailTemplateDO.class,
+                o -> o.setStatus(CommonStatusEnum.ENABLE.getStatus()));
+        when(mailTemplateService.getMailTemplateByCodeFromCache(templateCode))
+                .thenReturn(template);
+        MailAccountDO account = randomPojo(MailAccountDO.class);
+        when(mailAccountService.getMailAccountFromCache(template.getAccountId()))
+                .thenReturn(account);
+        Long logId = randomLongId();
+        Long deliveryId = randomLongId();
+        Map<String, Object> logParams = Map.of("inquiryId", 7001L);
+        when(mailLogService.createPreparedMailLog(
+                isNull(), isNull(),
+                argThat(mails -> mails.size() == 1 && mails.contains("sales@example.com")),
+                argThat(Collection::isEmpty), argThat(Collection::isEmpty),
+                eq(account), eq(template), eq("Rendered title"),
+                eq("<p>Rendered body</p>"), eq(logParams), eq(true)))
+                .thenReturn(logId);
+
+        Long result = mailSendService.sendPreparedMail(
+                List.of("sales@example.com"), null, null,
+                List.of("customer@example.com"), null, null,
+                templateCode, logParams, "Rendered title",
+                "<p>Rendered body</p>", deliveryId);
+
+        assertEquals(logId, result);
+        verify(mailProducer).sendMailSendMessage(
+                eq(logId),
+                argThat(mails -> mails.size() == 1 && mails.contains("sales@example.com")),
+                argThat(Collection::isEmpty), argThat(Collection::isEmpty),
+                argThat(mails -> mails.size() == 1 && mails.contains("customer@example.com")),
+                eq(account.getId()),
+                eq(template.getNickname()), eq("Rendered title"),
+                eq("<p>Rendered body</p>"),
+                argThat(files -> files != null && files.length == 0), eq(deliveryId));
+    }
+
+    @Test
     public void testValidateMailTemplateValid_notExists() {
         // 准备参数
         String templateCode = RandomUtils.randomString();
@@ -269,9 +310,13 @@ public class MailSendServiceImplTest extends BaseMockitoUnitTest {
 
     @Test
     public void testDoSendMail_success() {
-        try (final MockedStatic<MailUtil> mailUtilMock = mockStatic(MailUtil.class)) {
+        try (final MockedStatic<Mail> mailMock = mockStatic(Mail.class)) {
             // 准备参数
-            MailSendMessage message = randomPojo(MailSendMessage.class, o -> o.setNickname("芋艿"));
+            MailSendMessage message = randomPojo(MailSendMessage.class, o -> {
+                o.setNickname("芋艿");
+                o.setReplyToMails(List.of("customer@example.com"));
+                o.setAttachments(null);
+            });
             // mock 方法（获得邮箱账号）
             MailAccountDO account = randomPojo(MailAccountDO.class, o -> {
                 o.setMail("7685@qq.com");
@@ -283,8 +328,8 @@ public class MailSendServiceImplTest extends BaseMockitoUnitTest {
 
             // mock 方法（发送邮件）
             String messageId = randomString();
-            mailUtilMock.when(() -> MailUtil.send(
-                    argThat(mailAccount -> {
+            Mail mail = mock(Mail.class, RETURNS_SELF);
+            mailMock.when(() -> Mail.of(argThat(mailAccount -> {
                         assertEquals("芋艿 <7685@qq.com>", mailAccount.getFrom());
                         assertTrue(mailAccount.isAuth());
                         assertEquals(account.getUsername(), mailAccount.getUser());
@@ -294,22 +339,25 @@ public class MailSendServiceImplTest extends BaseMockitoUnitTest {
                         assertEquals(account.getSslEnable(), mailAccount.isSslEnable());
                         assertEquals(account.getHost(), mailAccount.getCustomProperty().get("mail.smtp.ssl.trust"));
                         return true;
-                    }), eq(message.getToMails()), eq(message.getCcMails()), eq(message.getBccMails()),
-                    eq(message.getTitle()), eq(message.getContent()), eq(true), eq(message.getAttachments())))
-                    .thenReturn(messageId);
+                    }))).thenReturn(mail);
+            when(mail.send()).thenReturn(messageId);
 
             // 调用
             mailSendService.doSendMail(message);
             // 断言
+            verify(mail).setReply("customer@example.com");
             verify(mailLogService).updateMailSendResult(eq(message.getLogId()), eq(messageId), isNull());
         }
     }
 
     @Test
     public void testDoSendMail_exception() {
-        try (MockedStatic<MailUtil> mailUtilMock = mockStatic(MailUtil.class)) {
+        try (MockedStatic<Mail> mailMock = mockStatic(Mail.class)) {
             // 准备参数
-            MailSendMessage message = randomPojo(MailSendMessage.class, o -> o.setNickname("芋艿"));
+            MailSendMessage message = randomPojo(MailSendMessage.class, o -> {
+                o.setNickname("芋艿");
+                o.setAttachments(null);
+            });
             // mock 方法（获得邮箱账号）
             MailAccountDO account = randomPojo(MailAccountDO.class, o -> o.setMail("7685@qq.com"));
             when(mailAccountService.getMailAccountFromCache(eq(message.getAccountId())))
@@ -317,7 +365,8 @@ public class MailSendServiceImplTest extends BaseMockitoUnitTest {
 
             // mock 方法（发送邮件）
             Exception e = new NullPointerException("啦啦啦");
-            mailUtilMock.when(() -> MailUtil.send(argThat(mailAccount -> {
+            Mail mail = mock(Mail.class, RETURNS_SELF);
+            mailMock.when(() -> Mail.of(argThat(mailAccount -> {
                         assertEquals("芋艿 <7685@qq.com>", mailAccount.getFrom());
                         assertTrue(mailAccount.isAuth());
                         assertEquals(account.getUsername(), mailAccount.getUser());
@@ -326,8 +375,8 @@ public class MailSendServiceImplTest extends BaseMockitoUnitTest {
                         assertEquals(account.getPort(), mailAccount.getPort());
                         assertEquals(account.getSslEnable(), mailAccount.isSslEnable());
                         return true;
-                    }), eq(message.getToMails()), eq(message.getCcMails()), eq(message.getBccMails()),
-                    eq(message.getTitle()), eq(message.getContent()), eq(true), same(message.getAttachments()))).thenThrow(e);
+                    }))).thenReturn(mail);
+            when(mail.send()).thenThrow(e);
 
             // 调用
             mailSendService.doSendMail(message);

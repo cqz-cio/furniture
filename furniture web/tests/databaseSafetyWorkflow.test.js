@@ -22,22 +22,22 @@ describe("safe database deployment workflow", () => {
     );
     expect(existsSync(directory)).toBe(true);
     const files = readdirSync(directory).filter((name) => name.endsWith(".sql")).sort();
-    const expectedVersions = Array.from({ length: 32 }, (_, index) => index + 1);
+    const expectedVersions = Array.from({ length: 37 }, (_, index) => index + 1);
     expect(files).toHaveLength(expectedVersions.length);
     expect(files[0]).toMatch(/^V001__/);
     expect(files.slice(-10)).toEqual([
-      "V023__trade_fulfillment_legacy_migration_fact.sql",
-      "V024__normalize_dashboard_route_path.sql",
-      "V025__expose_oakved_mail_management.sql",
-      "V026__seo_keyword_relevance_analysis.sql",
-      "V027__repair_seo_analysis_menu_registration.sql",
       "V028__tenant_business_mode.sql",
       "V029__website_inquiry_notify.sql",
       "V030__align_furniture_navigation_permissions.sql",
       "V031__enable_full_crm.sql",
       "V032__crm_inquiry_center.sql",
+      "V033__tenant_sku_code.sql",
+      "V034__tenant_b2b_product_fields.sql",
+      "V035__single_tenant_single_role_accounts.sql",
+      "V036__enable_role_aware_registration.sql",
+      "V037__website_inquiry_mail_relay.sql",
     ]);
-    expect(files.at(-1)).toBe("V032__crm_inquiry_center.sql");
+    expect(files.at(-1)).toBe("V037__website_inquiry_mail_relay.sql");
     expect(files.map((name) => Number(name.slice(1, 4)))).toEqual(
       expectedVersions,
     );

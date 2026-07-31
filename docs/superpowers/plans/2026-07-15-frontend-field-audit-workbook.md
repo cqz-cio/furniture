@@ -104,11 +104,17 @@ export function validateDataset(dataset, expectedSurface) {
     const required = [
       "id", "surface", "module", "entryPath", "pageName", "pageRoute", "pageArea",
       "elementType", "currentUi", "classification", "issue", "mismatchReason",
-      "recommendation", "checkoutImpact", "stage", "decision", "status",
+      "recommendation", "checkoutImpact", "stage", "decision", "status", "decisionNotes",
       "sourceKind", "component", "sourceFile", "line", "dependency",
+      "i18nKey", "technicalField",
       "flowOrder", "pageOrder", "itemOrder"
     ];
-    for (const key of required) if (row[key] === "" || row[key] == null) errors.push(`${at}.${key} is required`);
+    const allowEmpty = new Set(["decisionNotes", "i18nKey", "technicalField"]);
+    for (const key of required) {
+      if (!Object.prototype.hasOwnProperty.call(row, key) || row[key] == null || (row[key] === "" && !allowEmpty.has(key))) {
+        errors.push(`${at}.${key} is required`);
+      }
+    }
     if (row.surface !== expectedSurface) errors.push(`${at}.surface must be ${expectedSurface}`);
     if (ids.has(row.id)) errors.push(`${at}.id is duplicated`); else ids.add(row.id);
     if (forbiddenSource.test(String(row.sourceFile))) errors.push(`${at}.sourceFile is not a frontend source`);
@@ -246,7 +252,7 @@ Resolve worksheet cells through their `cellXfs` styles and reject any effective 
 
 - [ ] **Step 2: Run the OOXML verifier**
 
-Run: `powershell.exe -NoProfile -ExecutionPolicy Bypass -File D:/code/.codex-temp/oakved-frontend-field-audit/verify-frontend-audit-ooxml.ps1`
+Run: `powershell.exe -NoProfile -ExecutionPolicy Bypass -File D:/code/.codex-temp/oakved-frontend-field-audit/verify-frontend-audit-ooxml.ps1 -XlsxPath 'D:/code/outputs/019f6463-c2d7-7e73-baef-3bcc9a7b21d2/Oakved_前端页面字段适配审计清单_2026-07-15.xlsx'`
 
 Expected: exit code `0`, `nonWhiteCellFills=0`, `nonBlackFonts=0`, `coloredConditionalFormats=0`, `unexpectedMedia=0`.
 

@@ -44,6 +44,7 @@
   <el-tabs>
     <el-tab-pane label="询盘信息">
       <ClueDetailsInfo :clue="clue" />
+      <InquiryMailDeliveryPanel v-if="clueId && clue.externalInquiryId" :inquiry-id="clueId" />
     </el-tab-pane>
     <el-tab-pane label="操作日志">
       <OperateLogV2 :log-list="logList" />
@@ -60,6 +61,7 @@ import { InquiryProcessStatus } from '@/api/crm/clue'
 import ClueForm from '@/views/crm/clue/ClueForm.vue'
 import ClueDetailsHeader from './ClueDetailsHeader.vue'
 import ClueDetailsInfo from './ClueDetailsInfo.vue'
+import InquiryMailDeliveryPanel from './InquiryMailDeliveryPanel.vue'
 import type { OperateLogVO } from '@/api/system/operatelog'
 import { getOperateLogPage } from '@/api/crm/operateLog'
 import { BizTypeEnum } from '@/api/crm/permission'
