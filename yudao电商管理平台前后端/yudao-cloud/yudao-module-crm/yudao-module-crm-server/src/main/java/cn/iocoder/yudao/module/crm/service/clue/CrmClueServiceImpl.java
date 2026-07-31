@@ -221,14 +221,23 @@ public class CrmClueServiceImpl implements CrmClueService {
     }
 
     @Override
+    @LogRecord(type = CRM_CLUE_TYPE, subType = CRM_CLUE_PROCESS_STATUS_UPDATE_SUB_TYPE,
+            bizNo = "{{#reqVO.id}}", success = CRM_CLUE_PROCESS_STATUS_UPDATE_SUCCESS)
     @CrmPermission(bizType = CrmBizTypeEnum.CRM_CLUE, bizId = "#reqVO.id",
             level = CrmPermissionLevelEnum.WRITE)
     public void updateInquiryProcessStatus(CrmInquiryProcessStatusUpdateReqVO reqVO) {
-        validateClueExists(reqVO.getId());
+        CrmClueDO clue = validateClueExists(reqVO.getId());
         LocalDateTime processedAt = CrmInquiryProcessStatusEnum.isFinished(reqVO.getProcessStatus())
                 ? LocalDateTime.now() : null;
         clueMapper.updateProcessStatus(reqVO.getId(), reqVO.getProcessStatus(),
                 processedAt, reqVO.getRemark() == null ? null : normalizeMultiline(reqVO.getRemark()));
+
+        LogRecordContext.putVariable("clueName",
+                defaultIfBlank(clue.getInquirySubject(), clue.getName()));
+        LogRecordContext.putVariable("oldProcessStatusName",
+                CrmInquiryProcessStatusEnum.getNameByStatus(clue.getProcessStatus()));
+        LogRecordContext.putVariable("newProcessStatusName",
+                CrmInquiryProcessStatusEnum.getNameByStatus(reqVO.getProcessStatus()));
     }
 
     @Override

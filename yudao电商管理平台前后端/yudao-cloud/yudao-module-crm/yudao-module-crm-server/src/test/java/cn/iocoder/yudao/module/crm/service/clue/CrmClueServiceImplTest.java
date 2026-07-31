@@ -5,6 +5,7 @@ import cn.iocoder.yudao.framework.security.core.util.SecurityFrameworkUtils;
 import cn.iocoder.yudao.module.crm.api.inquiry.dto.CrmWebsiteInquiryCreateReqDTO;
 import cn.iocoder.yudao.module.crm.api.inquiry.dto.CrmWebsiteInquiryCreateRespDTO;
 import cn.iocoder.yudao.module.crm.controller.admin.clue.vo.CrmClueTransformRespVO;
+import cn.iocoder.yudao.module.crm.controller.admin.clue.vo.CrmInquiryProcessStatusUpdateReqVO;
 import cn.iocoder.yudao.module.crm.dal.dataobject.clue.CrmClueDO;
 import cn.iocoder.yudao.module.crm.dal.dataobject.contact.CrmContactDO;
 import cn.iocoder.yudao.module.crm.dal.dataobject.customer.CrmCustomerDO;
@@ -18,6 +19,8 @@ import cn.iocoder.yudao.module.crm.service.followup.CrmFollowUpRecordService;
 import cn.iocoder.yudao.module.crm.service.permission.CrmPermissionService;
 import cn.iocoder.yudao.module.crm.service.permission.bo.CrmPermissionCreateReqBO;
 import cn.iocoder.yudao.module.system.api.user.AdminUserApi;
+import com.mzt.logapi.context.LogRecordContext;
+import com.mzt.logapi.starter.annotation.LogRecord;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -29,13 +32,17 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.LocalDateTime;
 import java.util.Collections;
 
+import static cn.iocoder.yudao.module.crm.enums.LogRecordConstants.CRM_CLUE_PROCESS_STATUS_UPDATE_SUB_TYPE;
+import static cn.iocoder.yudao.module.crm.enums.LogRecordConstants.CRM_CLUE_PROCESS_STATUS_UPDATE_SUCCESS;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -107,6 +114,40 @@ class CrmClueServiceImplTest {
         assertFalse(result.getCreated());
         verify(clueMapper, never()).insert(any(CrmClueDO.class));
         verify(crmPermissionService, never()).createPermission(any(CrmPermissionCreateReqBO.class));
+    }
+
+    @Test
+    void updateInquiryProcessStatus_recordsAuditContext() throws NoSuchMethodException {
+        CrmClueDO inquiry = createInquiry()
+                .setProcessStatus(CrmInquiryProcessStatusEnum.PENDING.getStatus());
+        when(clueMapper.selectById(INQUIRY_ID)).thenReturn(inquiry);
+        CrmInquiryProcessStatusUpdateReqVO reqVO = new CrmInquiryProcessStatusUpdateReqVO();
+        reqVO.setId(INQUIRY_ID);
+        reqVO.setProcessStatus(CrmInquiryProcessStatusEnum.PROCESSING.getStatus());
+        reqVO.setRemark("  Qualified lead  ");
+
+        LogRecordContext.putEmptySpan();
+        try {
+            clueService.updateInquiryProcessStatus(reqVO);
+
+            verify(clueMapper).updateProcessStatus(
+                    eq(INQUIRY_ID),
+                    eq(CrmInquiryProcessStatusEnum.PROCESSING.getStatus()),
+                    isNull(),
+                    eq("Qualified lead"));
+            assertEquals("Hotel dining chair project", LogRecordContext.getVariable("clueName"));
+            assertEquals("待处理", LogRecordContext.getVariable("oldProcessStatusName"));
+            assertEquals("处理中", LogRecordContext.getVariable("newProcessStatusName"));
+
+            LogRecord logRecord = CrmClueServiceImpl.class
+                    .getMethod("updateInquiryProcessStatus", CrmInquiryProcessStatusUpdateReqVO.class)
+                    .getAnnotation(LogRecord.class);
+            assertNotNull(logRecord);
+            assertEquals(CRM_CLUE_PROCESS_STATUS_UPDATE_SUB_TYPE, logRecord.subType());
+            assertEquals(CRM_CLUE_PROCESS_STATUS_UPDATE_SUCCESS, logRecord.success());
+        } finally {
+            LogRecordContext.clear();
+        }
     }
 
     @Test

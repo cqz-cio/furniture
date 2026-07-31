@@ -23,6 +23,9 @@ public interface LogRecordConstants {
     String CRM_CLUE_TRANSLATE_SUCCESS = "将线索【{{#clueName}}】转化为客户";
     String CRM_CLUE_FOLLOW_UP_SUB_TYPE = "线索跟进";
     String CRM_CLUE_FOLLOW_UP_SUCCESS = "线索跟进【{{#clueName}}】";
+    String CRM_CLUE_PROCESS_STATUS_UPDATE_SUB_TYPE = "更新询盘处理状态";
+    String CRM_CLUE_PROCESS_STATUS_UPDATE_SUCCESS =
+            "将询盘【{{#clueName}}】的处理状态从【{{#oldProcessStatusName}}】变更为【{{#newProcessStatusName}}】";
 
     // ======================= CRM_CUSTOMER 客户 =======================
 

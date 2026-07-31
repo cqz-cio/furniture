@@ -34,4 +34,12 @@ public enum CrmInquiryProcessStatusEnum implements ArrayValuable<Integer> {
         return PROCESSED.status.equals(status) || INVALID.status.equals(status);
     }
 
+    public static String getNameByStatus(Integer status) {
+        return Arrays.stream(values())
+                .filter(item -> item.status.equals(status))
+                .map(CrmInquiryProcessStatusEnum::getName)
+                .findFirst()
+                .orElse(null);
+    }
+
 }
