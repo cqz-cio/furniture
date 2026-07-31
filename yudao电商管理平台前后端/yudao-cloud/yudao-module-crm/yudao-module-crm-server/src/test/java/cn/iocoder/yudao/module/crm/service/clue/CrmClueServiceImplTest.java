@@ -4,6 +4,7 @@ import cn.iocoder.yudao.framework.common.exception.ServiceException;
 import cn.iocoder.yudao.framework.security.core.util.SecurityFrameworkUtils;
 import cn.iocoder.yudao.module.crm.api.inquiry.dto.CrmWebsiteInquiryCreateReqDTO;
 import cn.iocoder.yudao.module.crm.api.inquiry.dto.CrmWebsiteInquiryCreateRespDTO;
+import cn.iocoder.yudao.module.crm.framework.permission.core.annotations.CrmPermission;
 import cn.iocoder.yudao.module.crm.controller.admin.clue.vo.CrmClueTransformRespVO;
 import cn.iocoder.yudao.module.crm.controller.admin.clue.vo.CrmInquiryProcessStatusUpdateReqVO;
 import cn.iocoder.yudao.module.crm.dal.dataobject.clue.CrmClueDO;
@@ -37,6 +38,7 @@ import static cn.iocoder.yudao.module.crm.enums.LogRecordConstants.CRM_CLUE_PROC
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -114,6 +116,16 @@ class CrmClueServiceImplTest {
         assertFalse(result.getCreated());
         verify(clueMapper, never()).insert(any(CrmClueDO.class));
         verify(crmPermissionService, never()).createPermission(any(CrmPermissionCreateReqBO.class));
+    }
+
+    @Test
+    void getWebsiteInquiry_readsWithoutOperatorPermission() throws NoSuchMethodException {
+        CrmClueDO inquiry = createInquiry();
+        when(clueMapper.selectById(INQUIRY_ID)).thenReturn(inquiry);
+
+        assertEquals(inquiry, clueService.getWebsiteInquiry(INQUIRY_ID));
+        assertNull(CrmClueServiceImpl.class.getMethod("getWebsiteInquiry", Long.class)
+                .getAnnotation(CrmPermission.class));
     }
 
     @Test

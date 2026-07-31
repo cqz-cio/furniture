@@ -26,8 +26,8 @@ public class CrmWebsiteInquiryApiImpl implements CrmWebsiteInquiryApi {
 
     @Override
     public CrmWebsiteInquiryRespDTO getWebsiteInquiry(Long inquiryId) {
-        CrmClueDO inquiry = clueService.getClue(inquiryId);
-        if (inquiry == null || inquiry.getExternalInquiryId() == null) {
+        CrmClueDO inquiry = clueService.getWebsiteInquiry(inquiryId);
+        if (inquiry == null) {
             return null;
         }
         CrmWebsiteInquiryRespDTO result = new CrmWebsiteInquiryRespDTO();

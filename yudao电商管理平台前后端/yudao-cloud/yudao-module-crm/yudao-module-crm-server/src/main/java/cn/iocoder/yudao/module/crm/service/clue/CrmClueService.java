@@ -71,6 +71,17 @@ public interface CrmClueService {
     CrmClueDO getClue(Long id);
 
     /**
+     * 获得官网询盘，供租户范围内的模块间调用。
+     *
+     * <p>公开官网入口没有登录用户，因此该读取不执行面向后台操作员的 CRM 数据权限校验；
+     * 租户隔离仍由数据层统一处理。</p>
+     *
+     * @param id 询盘编号
+     * @return 官网询盘
+     */
+    CrmClueDO getWebsiteInquiry(Long id);
+
+    /**
      * 获得线索分页
      *
      * @param pageReqVO 分页查询

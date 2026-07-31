@@ -399,6 +399,12 @@ public class CrmClueServiceImpl implements CrmClueService {
     }
 
     @Override
+    public CrmClueDO getWebsiteInquiry(Long id) {
+        CrmClueDO inquiry = clueMapper.selectById(id);
+        return inquiry != null && inquiry.getExternalInquiryId() != null ? inquiry : null;
+    }
+
+    @Override
     public PageResult<CrmClueDO> getCluePage(CrmCluePageReqVO pageReqVO, Long userId) {
         return clueMapper.selectPage(pageReqVO, userId);
     }
