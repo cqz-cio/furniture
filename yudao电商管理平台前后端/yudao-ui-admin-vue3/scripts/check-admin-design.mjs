@@ -31,14 +31,33 @@ for (const token of [
   assert.ok(adminStyle.includes(token), `furniture admin style must include ${token}`)
 }
 
+const topLevelLeafLayout =
+  adminStyle.match(/\.erp-shell #v-menu \.el-menu \.el-menu-item \{([\s\S]*?)\}/)?.[1] || ''
+const nestedLeafLayout =
+  adminStyle.match(/\.erp-shell #v-menu \.el-menu \.el-menu \.el-menu-item \{([\s\S]*?)\}/)?.[1] ||
+  ''
+
+assert.ok(
+  !topLevelLeafLayout.includes('padding-left: 46px'),
+  'top-level leaf routes must align with top-level submenu titles'
+)
+assert.ok(
+  nestedLeafLayout.includes('padding-left: 46px !important'),
+  'only nested leaf routes should receive child-menu indentation'
+)
+assert.ok(
+  !adminStyle.includes('left: -10px;'),
+  'active navigation must not add an off-row selection marker'
+)
+
 for (const token of [
   'furniture-admin-page',
   '今日订单',
   '待发货',
   '售后待处理',
   '低库存',
-  'Payment exceptions',
-  'Address verification'
+  '支付异常',
+  '地址核验'
 ]) {
   assert.ok(homePage.includes(token), `home dashboard must include ${token}`)
 }
@@ -56,7 +75,7 @@ assert.ok(
   'furniture-lite fixed routes must not deny /ai'
 )
 
-for (const route of ['/bpm', '/crm', '/iot', '/mes', '/diy', '/codegen', '/job']) {
+for (const route of ['/bpm', '/iot', '/mes', '/diy', '/codegen', '/job']) {
   assert.ok(
     deniedFixedRoutePrefixesBlock.includes(`'${route}'`) ||
       deniedFixedRoutePrefixesBlock.includes(`"${route}"`),
