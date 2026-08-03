@@ -102,7 +102,6 @@ export default {
     copySuccess: 'Copy success',
     copyFailed: 'Copy failed',
     footer: 'Footer',
-    uniqueOpened: 'Unique opened',
     tagsViewIcon: 'Tags view icon',
     reExperienced: 'Please exit the login experience again',
     fixedMenu: 'Fixed menu'
