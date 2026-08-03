@@ -5,12 +5,13 @@ const config = readFileSync(new URL('../src/config/furnitureLite.ts', import.met
 const api = readFileSync(new URL('../src/api/mall/statistics/dashboard.ts', import.meta.url), 'utf8')
 const page = readFileSync(new URL('../src/views/dashboard/index.vue', import.meta.url), 'utf8')
 const appView = readFileSync(new URL('../src/layout/components/AppView.vue', import.meta.url), 'utf8')
-const loader = readFileSync(new URL('../src/layout/components/DashboardPageLoading.vue', import.meta.url), 'utf8')
+const loader = readFileSync(new URL('../src/layout/components/ErpPageLoading.vue', import.meta.url), 'utf8')
 const pageLoading = readFileSync(new URL('../src/hooks/web/usePageLoading.ts', import.meta.url), 'utf8')
 const permission = readFileSync(new URL('../src/permission.ts', import.meta.url), 'utf8')
 const optimize = readFileSync(new URL('../build/vite/optimize.ts', import.meta.url), 'utf8')
 
-assert.match(config, /['"]\/dashboard['"]/, 'furniture-lite must allow the dashboard root')
+assert.match(config, /allowedMenuPaths\.has\(fullPath\)/,
+  'furniture-lite must retain synchronized business-menu roots such as the dashboard')
 for (const token of [
   'DashboardScope', 'scope', 'startDate', 'endDate', 'getSummary', 'getTrend',
   'getStageOverview', 'getAttention', 'getProductPage', 'trafficDataStatus',
@@ -53,14 +54,20 @@ assert.ok(!page.includes('<el-empty v-if="!products.length"'),
   'product table must not render a second empty state below the table')
 assert.match(page, /canProfitExport\s*=\s*computed\(\(\)\s*=>\s*canProfit\.value\s*&&\s*checkPermi\(\['statistics:dashboard:profit-export'\]\)\)/, 'profit export UI must also require profit query permission')
 assert.ok(!/from\s+['"](?:react|@radix|shadcn\/)/i.test(page), 'dashboard must use the existing Vue stack')
-assert.ok(page.includes('initialLoading') && page.includes('<DashboardPageLoading v-if="initialLoading"'),
+assert.ok(page.includes('initialLoading') && page.includes('<ErpPageLoading v-if="initialLoading"'),
   'dashboard must keep its themed loader visible through the initial data request')
-assert.ok(appView.includes("appStore.getPageLoadingRoute === '/dashboard'") && appView.includes('overlay'),
-  'dashboard route loading must stay inside the application content area')
-assert.ok(loader.includes('数据看板加载中') && loader.includes('prefers-reduced-motion'),
+assert.ok(appView.includes('showPageLoading') && appView.includes('<ErpPageLoading') && appView.includes('overlay'),
+  'route loading must stay inside the application content area')
+assert.ok(loader.includes('{{ title }}正在加载') && loader.includes('prefers-reduced-motion'),
   'dashboard loader must be themed and respect reduced-motion preferences')
 assert.ok(pageLoading.includes('setPageLoading(true, routePath)') && permission.includes('loadStart(to.path)'),
   'route loading must retain the pending destination path')
 assert.ok(optimize.includes("'element-plus/es/components/result/style/css'"),
   'ElResult styles must be pre-bundled to prevent a first-visit full-page reload')
+assert.match(page, /const\s+syncUrl\s*=\s*async[\s\S]*?targetFullPath\s*===\s*route\.fullPath[\s\S]*?await\s+router\.replace/,
+  'dashboard URL normalization must be awaited and skipped when the URL is already canonical')
+assert.match(page, /if\s*\(await\s+syncUrl\(\)\)\s+return/,
+  'the pre-normalization component instance must not issue a duplicate dashboard request batch')
+assert.ok(!page.includes('void router.replace({ query: urlQuery })'),
+  'dashboard URL synchronization must not race its initial API request batch')
 console.log('dashboard contract: OK')

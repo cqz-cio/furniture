@@ -1959,8 +1959,55 @@ function Write-OakvedManifest {
     }
 }
 
+function Archive-OakvedLogFiles {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][string[]]$Paths,
+        [Parameter(Mandatory = $true)][string]$LogRoot,
+        [scriptblock]$UtcNowProvider
+    )
+
+    $existing = @($Paths | Select-Object -Unique | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf })
+    if ($existing.Count -eq 0) { return $null }
+    if ($null -eq $UtcNowProvider) { $UtcNowProvider = { [datetime]::UtcNow } }
+
+    $archiveParent = Join-Path $LogRoot 'archive'
+    $stamp = ([datetime](& $UtcNowProvider)).ToUniversalTime().ToString('yyyyMMddTHHmmssfffZ')
+    $archiveRoot = Join-Path $archiveParent $stamp
+    $suffix = 0
+    while (Test-Path -LiteralPath $archiveRoot) {
+        $suffix++
+        $archiveRoot = Join-Path $archiveParent "$stamp-$suffix"
+    }
+    New-Item -ItemType Directory -Path $archiveRoot -Force | Out-Null
+
+    foreach ($path in $existing) {
+        $destination = Join-Path $archiveRoot (Split-Path -Leaf $path)
+        $moved = $false
+        for ($attempt = 1; $attempt -le 20; $attempt++) {
+            try {
+                Move-Item -LiteralPath $path -Destination $destination -Force -ErrorAction Stop
+                $moved = $true
+                break
+            }
+            catch [System.IO.IOException] {
+                if ($attempt -eq 20) { throw }
+                Start-Sleep -Milliseconds 100
+            }
+            catch [System.UnauthorizedAccessException] {
+                if ($attempt -eq 20) { throw }
+                Start-Sleep -Milliseconds 100
+            }
+        }
+        if (-not $moved) { throw "Unable to archive runtime log: $path" }
+    }
+    return $archiveRoot
+}
+
 function Start-OakvedManagedProcess {
     param([object]$Spec)
+    $logRoot = Split-Path -Parent ([string]$Spec.StdOutLog)
+    $null = Archive-OakvedLogFiles -Paths @([string]$Spec.StdOutLog, [string]$Spec.StdErrLog) -LogRoot $logRoot
     $isVisible = $null -ne $Spec.PSObject.Properties['Visible'] -and [bool]$Spec.Visible
     $toLiteral = {
         param([AllowEmptyString()][string]$Value)
@@ -2150,8 +2197,10 @@ function Start-OakvedRuntime {
     $fixedPorts = @(80, 5173, 48080)
     $runtimeRootPath = ConvertTo-OakvedNormalizedPath -Path $RuntimeRoot
     $manifestPath = Join-Path $runtimeRootPath 'runtime.json'
+    $activeManifest = $null
     if (Test-Path -LiteralPath $manifestPath -PathType Leaf) {
-        throw "A runtime manifest already exists at $manifestPath. Stop or investigate it first."
+        try { $activeManifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json }
+        catch { throw "Runtime manifest is corrupt: $manifestPath" }
     }
     if (-not [string]::Equals((ConvertTo-OakvedNormalizedPath -Path ([string]$Target.Worktree)), (ConvertTo-OakvedNormalizedPath -Path ([string]$Layout.Worktree)), [StringComparison]::OrdinalIgnoreCase)) {
         throw 'Target and layout worktrees do not match.'
@@ -2165,7 +2214,14 @@ function Start-OakvedRuntime {
     $logRoot = Join-Path $runtimeRootPath 'logs'
     $cacheRoot = Join-Path $runtimeRootPath "cache\$($Target.RuntimeId)"
     New-Item -ItemType Directory -Path $logRoot, $cacheRoot -Force | Out-Null
-    Assert-OakvedPortsAvailable -Ports $fixedPorts -ListenerProvider $ListenerProvider -ManagedPids @() -ProcessTreeProvider $ProcessTreeProvider
+    if ($null -eq $ProcessProvider) { $ProcessProvider = { param($id) Get-Process -Id $id -ErrorAction SilentlyContinue } }
+    if ($null -eq $ProcessTreeProvider) { $ProcessTreeProvider = { param($id) Get-OakvedDefaultProcessTree -RootPid $id } }
+    if ($null -eq $ListenerProvider) { $ListenerProvider = { Get-OakvedDefaultListeners } }
+    if ($null -eq $HttpProvider) { $HttpProvider = { param($url) Invoke-OakvedHealthRequest -Url $url } }
+    if ($null -eq $SleepProvider) { $SleepProvider = { param($milliseconds) Start-Sleep -Milliseconds $milliseconds } }
+    if ($null -eq $UtcNowProvider) { $UtcNowProvider = { [datetime]::UtcNow } }
+    $activeManagedPids = if ($null -eq $activeManifest) { @() } else { @($activeManifest.Processes | ForEach-Object { [int]$_.Pid }) }
+    Assert-OakvedPortsAvailable -Ports $fixedPorts -ListenerProvider $ListenerProvider -ManagedPids $activeManagedPids -ProcessTreeProvider $ProcessTreeProvider
 
     if ($VisibleProcesses) { Write-Host '[1/5] Checking database and migrations...' -ForegroundColor Cyan }
     if ($null -ne $DatabaseGateProvider) {
@@ -2205,6 +2261,7 @@ function Start-OakvedRuntime {
             StdOutLog = Join-Path $logRoot 'backend-build.stdout.log'; StdErrLog = Join-Path $logRoot 'backend-build.stderr.log'
             Environment = @{}
         }
+        $null = Archive-OakvedLogFiles -Paths @($buildSpec.StdOutLog, $buildSpec.StdErrLog) -LogRoot $logRoot -UtcNowProvider $UtcNowProvider
         if ($null -ne $BuildProvider) { & $BuildProvider $buildSpec }
         else {
             $result = Invoke-OakvedNativeProcess -Spec ([pscustomobject]@{ FileName = $buildSpec.FilePath; Arguments = $buildSpec.Arguments; WorkingDirectory = $buildSpec.WorkingDirectory; Environment = @{} }) -TimeoutMilliseconds 1200000
@@ -2253,6 +2310,7 @@ function Start-OakvedRuntime {
             $dependencySpec | Add-Member -NotePropertyName StdOutLog -NotePropertyValue (Join-Path $logRoot "$($dependencySpec.Role).stdout.log")
             $dependencySpec | Add-Member -NotePropertyName StdErrLog -NotePropertyValue (Join-Path $logRoot "$($dependencySpec.Role).stderr.log")
             $dependencySpec | Add-Member -NotePropertyName Environment -NotePropertyValue @{}
+            $null = Archive-OakvedLogFiles -Paths @($dependencySpec.StdOutLog, $dependencySpec.StdErrLog) -LogRoot $logRoot -UtcNowProvider $UtcNowProvider
             if ($null -ne $BuildProvider) { & $BuildProvider $dependencySpec }
             else {
                 $result = Invoke-OakvedNativeProcess -Spec ([pscustomobject]@{
@@ -2270,12 +2328,6 @@ function Start-OakvedRuntime {
     }
     if ($VisibleProcesses) { Write-Host '[3/5] Frontend dependencies ready.' -ForegroundColor Green }
     if ($null -eq $ProcessStarter) { $ProcessStarter = { param($spec) Start-OakvedManagedProcess -Spec $spec } }
-    if ($null -eq $ProcessProvider) { $ProcessProvider = { param($id) Get-Process -Id $id -ErrorAction SilentlyContinue } }
-    if ($null -eq $ProcessTreeProvider) { $ProcessTreeProvider = { param($id) Get-OakvedDefaultProcessTree -RootPid $id } }
-    if ($null -eq $ListenerProvider) { $ListenerProvider = { Get-OakvedDefaultListeners } }
-    if ($null -eq $HttpProvider) { $HttpProvider = { param($url) Invoke-OakvedHealthRequest -Url $url } }
-    if ($null -eq $SleepProvider) { $SleepProvider = { param($milliseconds) Start-Sleep -Milliseconds $milliseconds } }
-    if ($null -eq $UtcNowProvider) { $UtcNowProvider = { [datetime]::UtcNow } }
 
     $jdbc = "jdbc:mysql://127.0.0.1:3306/$($database.Name)?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&nullCatalogMeansCurrent=true&rewriteBatchedStatements=true"
     $specs = @(
@@ -2287,6 +2339,22 @@ function Start-OakvedRuntime {
         $spec | Add-Member -NotePropertyName StdOutLog -NotePropertyValue (Join-Path $logRoot "$($spec.Role).stdout.log")
         $spec | Add-Member -NotePropertyName StdErrLog -NotePropertyValue (Join-Path $logRoot "$($spec.Role).stderr.log")
     }
+
+    # Keep the currently healthy runtime serving while database checks, builds, and
+    # dependency preparation run. The fixed-port cutover starts only after every
+    # preparation step above has succeeded.
+    if ($null -ne $activeManifest) {
+        if ($VisibleProcesses) { Write-Host '[4/5] Preparation complete; switching runtime processes...' -ForegroundColor Cyan }
+        $stopResult = Stop-OakvedRuntime -ManifestPath $manifestPath -ProcessProvider $ProcessProvider -Stopper $Stopper
+        if (@($stopResult.Skipped).Count -gt 0 -or -not $stopResult.RemovedManifest) {
+            throw 'Active runtime could not be stopped safely; its manifest was retained.'
+        }
+        $activeManifest = $null
+    }
+    Assert-OakvedPortsAvailable -Ports $fixedPorts -ListenerProvider $ListenerProvider -ManagedPids @() -ProcessTreeProvider $ProcessTreeProvider
+    $serviceLogPaths = @($specs | ForEach-Object { @($_.StdOutLog, $_.StdErrLog) })
+    $null = Archive-OakvedLogFiles -Paths $serviceLogPaths -LogRoot $logRoot -UtcNowProvider $UtcNowProvider
+
     $started = New-Object 'System.Collections.Generic.List[object]'
     try {
         $startSpec = {

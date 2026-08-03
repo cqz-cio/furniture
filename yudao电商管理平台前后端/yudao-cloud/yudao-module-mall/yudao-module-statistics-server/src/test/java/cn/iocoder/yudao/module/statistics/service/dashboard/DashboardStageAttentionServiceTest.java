@@ -7,6 +7,9 @@ import cn.iocoder.yudao.module.statistics.dal.dataobject.dashboard.TrafficDailyD
 import cn.iocoder.yudao.module.statistics.dal.dataobject.product.ProductStatisticsDO;
 import cn.iocoder.yudao.module.statistics.dal.mysql.dashboard.TrafficDailyMapper;
 import cn.iocoder.yudao.module.statistics.dal.mysql.product.ProductStatisticsMapper;
+import cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -14,10 +17,20 @@ import java.util.Arrays;
 import java.util.Collections;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 class DashboardStageAttentionServiceTest {
+
+    @BeforeEach
+    void setTenant() {
+        TenantContextHolder.setTenantId(121L);
+    }
+
+    @AfterEach
+    void clearTenant() {
+        TenantContextHolder.clear();
+    }
 
     @Test
     void stageOverview_exposesScopeSpecificStagesWithoutInventingConversions() {
@@ -32,8 +45,8 @@ class DashboardStageAttentionServiceTest {
         assertEquals(Long.valueOf(80), site.getItems().get(0).getValue());
 
         ProductStatisticsMapper products = mock(ProductStatisticsMapper.class);
-        when(products.selectBetween(any(), any())).thenReturn(Collections.singletonList(new ProductStatisticsDO()
-                .setBrowseUserCount(30L).setCartCount(9L).setOrderCount(4L)));
+        when(products.selectDashboardSummary(eq(121L), any(), any(), isNull(), isNull())).thenReturn(new ProductStatisticsDO()
+                .setBrowseUserCount(30L).setCartCount(9L).setOrderCount(4L));
         DashboardStageOverviewRespVO product = service(mock(TrafficDailyMapper.class), products)
                 .stageOverview(new DashboardQueryReqVO().setScope("PRODUCT"));
         assertEquals("NOT_APPLICABLE", product.getItems().get(0).getApplicability());
@@ -44,7 +57,7 @@ class DashboardStageAttentionServiceTest {
     @Test
     void attention_matchesAllRulesAndReportsSkippedRules() {
         ProductStatisticsMapper products = mock(ProductStatisticsMapper.class);
-        when(products.selectBetween(any(), any())).thenReturn(Arrays.asList(
+        when(products.selectDashboardProductAggregates(eq(121L), any(), any(), isNull(), isNull())).thenReturn(Arrays.asList(
                 product(1L, 200, 1, 20, 200000, 30000, -1L, 0L, 1, 1),
                 product(2L, 200, 20, 4, 50000, 0, null, 2L, 1, 4),
                 product(3L, 200, 20, 4, 50000, 0, 10000L, 0L, 2, 1)));
@@ -62,7 +75,7 @@ class DashboardStageAttentionServiceTest {
     @Test
     void attention_withoutProfitPermissionSuppressesCostAndMarginRules() {
         ProductStatisticsMapper products = mock(ProductStatisticsMapper.class);
-        when(products.selectBetween(any(), any())).thenReturn(Collections.singletonList(
+        when(products.selectDashboardProductAggregates(eq(121L), any(), any(), isNull(), isNull())).thenReturn(Collections.singletonList(
                 product(1L, 200, 1, 20, 200000, 30000, -1L, 2L, 1, 4)));
         DashboardAttentionRespVO result = service(mock(TrafficDailyMapper.class), products)
                 .attention(new DashboardQueryReqVO().setScope("SITE"), false);
@@ -73,9 +86,8 @@ class DashboardStageAttentionServiceTest {
     @Test
     void attention_aggregatesEachSpuAcrossTheRequestedDateRangeBeforeEvaluatingRules() {
         ProductStatisticsMapper products = mock(ProductStatisticsMapper.class);
-        when(products.selectBetween(any(), any())).thenReturn(Arrays.asList(
-                product(7L, 60, 0, 5, 60000, 4000, 12000L, 0L, 1, 1),
-                product(7L, 60, 0, 5, 60000, 9000, 10000L, 0L, 1, 1)));
+        when(products.selectDashboardProductAggregates(eq(121L), any(), any(), isNull(), isNull())).thenReturn(Collections.singletonList(
+                product(7L, 120, 0, 10, 120000, 13000, 22000L, 0L, 1, 1)));
 
         DashboardAttentionRespVO result = service(mock(TrafficDailyMapper.class), products)
                 .attention(new DashboardQueryReqVO().setScope("PRODUCT"), true);
@@ -86,6 +98,7 @@ class DashboardStageAttentionServiceTest {
                 .filter(i -> "HIGH_REFUND".equals(i.getRiskType())).count());
         assertEquals(1L, result.getItems().stream()
                 .filter(i -> Long.valueOf(7L).equals(i.getSpuId())).map(i -> i.getSpuId()).distinct().count());
+        verify(products, never()).selectBetween(any(), any());
     }
 
     private ProductStatisticsDO product(Long spuId, int pv, int orders, int paidOrders, int revenue,

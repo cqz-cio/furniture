@@ -84,7 +84,7 @@ const productTotal = ref(0)
 const productPanel = ref<HTMLElement | null>(null)
 let loadSequence = 0
 
-const syncUrl = () => {
+const syncUrl = async () => {
   const urlQuery: Record<string, string> = {
     scope: query.scope,
     startDate: query.startDate,
@@ -100,7 +100,10 @@ const syncUrl = () => {
     if (query.spuId) urlQuery.spuId = String(query.spuId)
     if (query.riskType) urlQuery.riskType = query.riskType
   }
-  void router.replace({ query: urlQuery })
+  const targetFullPath = router.resolve({ path: route.path, query: urlQuery, hash: route.hash }).fullPath
+  if (targetFullPath === route.fullPath) return false
+  await router.replace({ path: route.path, query: urlQuery, hash: route.hash })
+  return route.fullPath === targetFullPath
 }
 
 const quickRanges = [
@@ -132,7 +135,9 @@ const loadDashboard = async () => {
     initialLoading.value = false
     return
   }
-  syncUrl()
+  // AppView keys routed components by fullPath. A query normalization therefore remounts this
+  // page; only the normalized instance may issue the dashboard request batch.
+  if (await syncUrl()) return
   const sequence = ++loadSequence
   loading.value = true
   error.value = ''

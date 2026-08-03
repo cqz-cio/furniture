@@ -61,4 +61,193 @@
         ORDER BY spu.id
     </select>
 
+    <!-- Dashboard reads are deliberately aggregated in SQL. The previous implementation selected
+         every daily product row into the JVM for each dashboard card, then grouped and paged it in
+         memory. Explicit tenant predicates let these complex queries bypass tenant SQL rewriting
+         without weakening the tenant boundary. -->
+    <sql id="dashboardProductSource">
+        FROM product_statistics ps
+        <if test="categoryId != null">
+            INNER JOIN product_spu spu
+                ON spu.id = ps.spu_id
+               AND spu.tenant_id = ps.tenant_id
+               AND spu.deleted = FALSE
+        </if>
+        WHERE ps.tenant_id = #{tenantId}
+          AND ps.deleted = FALSE
+          AND ps.time BETWEEN #{startDate} AND #{endDate}
+        <if test="categoryId != null">
+          AND spu.category_id = #{categoryId}
+        </if>
+        <if test="spuId != null">
+          AND ps.spu_id = #{spuId}
+        </if>
+    </sql>
+
+    <sql id="dashboardAggregateColumns">
+        SUM(ps.browse_count) AS browse_count,
+        SUM(ps.browse_user_count) AS browse_user_count,
+        SUM(ps.favorite_count) AS favorite_count,
+        SUM(ps.cart_count) AS cart_count,
+        SUM(ps.order_count) AS order_count,
+        SUM(ps.order_pay_count) AS order_pay_count,
+        SUM(ps.order_pay_price) AS order_pay_price,
+        SUM(ps.after_sale_count) AS after_sale_count,
+        SUM(ps.after_sale_refund_price) AS after_sale_refund_price,
+        SUM(ps.known_cost_amount) AS known_cost_amount,
+        SUM(ps.exact_cost_item_count) AS exact_cost_item_count,
+        SUM(ps.estimated_cost_item_count) AS estimated_cost_item_count,
+        SUM(ps.missing_cost_item_count) AS missing_cost_item_count,
+        MAX(ps.profit_data_quality) AS profit_data_quality,
+        MAX(ps.traffic_data_status) AS traffic_data_status,
+        MIN(ps.traffic_watermark) AS traffic_watermark,
+        MIN(ps.trade_watermark) AS trade_watermark,
+        MIN(ps.refund_watermark) AS refund_watermark
+    </sql>
+
+    <sql id="dashboardAggregatedProducts">
+        SELECT ps.spu_id AS spu_id,
+               <include refid="dashboardAggregateColumns"/>
+        <include refid="dashboardProductSource"/>
+        GROUP BY ps.spu_id
+    </sql>
+
+    <sql id="dashboardRiskFilter">
+        <if test="riskType != null and riskType != ''">
+            <choose>
+                <when test="riskType == 'HIGH_TRAFFIC_LOW_CONVERSION'">
+                    AND aggregated.traffic_data_status = 1
+                    AND aggregated.browse_count &gt;= 100
+                    AND (aggregated.order_count * 100.0 / NULLIF(aggregated.browse_count, 0)) &lt; 1.0
+                </when>
+                <when test="riskType == 'HIGH_REFUND'">
+                    AND aggregated.order_pay_count &gt;= 10
+                    AND aggregated.order_pay_price &gt;= 100000
+                    AND (aggregated.after_sale_refund_price * 100.0 / NULLIF(aggregated.order_pay_price, 0)) &gt; 10.0
+                </when>
+                <when test="riskType == 'LOW_OR_NEGATIVE_MARGIN'">
+                    AND #{includeProfit} = TRUE
+                    AND aggregated.profit_data_quality != 4
+                    AND aggregated.missing_cost_item_count = 0
+                    AND (
+                        (aggregated.order_pay_price - aggregated.after_sale_refund_price - aggregated.known_cost_amount) &lt; 0
+                        OR (
+                            aggregated.order_pay_count &gt;= 5
+                            AND (aggregated.order_pay_price - aggregated.after_sale_refund_price) &gt; 0
+                            AND ((aggregated.order_pay_price - aggregated.after_sale_refund_price - aggregated.known_cost_amount) * 100.0
+                                / NULLIF(aggregated.order_pay_price - aggregated.after_sale_refund_price, 0)) &lt; 10.0
+                        )
+                    )
+                </when>
+                <when test="riskType == 'MISSING_COST'">
+                    AND #{includeProfit} = TRUE
+                    AND aggregated.missing_cost_item_count &gt; 0
+                </when>
+                <otherwise>
+                    AND 1 = 0
+                </otherwise>
+            </choose>
+        </if>
+    </sql>
+
+    <sql id="dashboardProductOrder">
+        ORDER BY
+        <choose>
+            <when test="sortField == 'spuId'">
+                aggregated.spu_id
+            </when>
+            <when test="sortField == 'browseCount'">
+                (CASE WHEN aggregated.traffic_data_status = 1 THEN aggregated.browse_count END) IS NULL,
+                (CASE WHEN aggregated.traffic_data_status = 1 THEN aggregated.browse_count END)
+            </when>
+            <when test="sortField == 'orderCount'">
+                aggregated.order_count
+            </when>
+            <when test="sortField == 'refundAmount'">
+                aggregated.after_sale_refund_price
+            </when>
+            <when test="sortField == 'conversion'">
+                (CASE WHEN aggregated.traffic_data_status = 1
+                      THEN aggregated.order_count * 100.0 / NULLIF(aggregated.browse_count, 0) END) IS NULL,
+                (CASE WHEN aggregated.traffic_data_status = 1
+                      THEN aggregated.order_count * 100.0 / NULLIF(aggregated.browse_count, 0) END)
+            </when>
+            <when test="sortField == 'grossProfit'">
+                (CASE WHEN #{includeProfit} != TRUE OR aggregated.missing_cost_item_count &gt; 0 THEN NULL
+                      ELSE aggregated.order_pay_price - aggregated.after_sale_refund_price - aggregated.known_cost_amount END) IS NULL,
+                (CASE WHEN #{includeProfit} != TRUE OR aggregated.missing_cost_item_count &gt; 0 THEN NULL
+                      ELSE aggregated.order_pay_price - aggregated.after_sale_refund_price - aggregated.known_cost_amount END)
+            </when>
+            <when test="sortField == 'grossMargin'">
+                (CASE WHEN #{includeProfit} != TRUE OR aggregated.missing_cost_item_count &gt; 0
+                           OR aggregated.order_pay_price - aggregated.after_sale_refund_price &lt;= 0 THEN NULL
+                      ELSE (aggregated.order_pay_price - aggregated.after_sale_refund_price - aggregated.known_cost_amount) * 100.0
+                           / NULLIF(aggregated.order_pay_price - aggregated.after_sale_refund_price, 0) END) IS NULL,
+                (CASE WHEN #{includeProfit} != TRUE OR aggregated.missing_cost_item_count &gt; 0
+                           OR aggregated.order_pay_price - aggregated.after_sale_refund_price &lt;= 0 THEN NULL
+                      ELSE (aggregated.order_pay_price - aggregated.after_sale_refund_price - aggregated.known_cost_amount) * 100.0
+                           / NULLIF(aggregated.order_pay_price - aggregated.after_sale_refund_price, 0) END)
+            </when>
+            <otherwise>
+                aggregated.order_pay_price
+            </otherwise>
+        </choose>
+        <choose>
+            <when test="sortOrder == 'asc'">ASC</when>
+            <otherwise>DESC</otherwise>
+        </choose>,
+        aggregated.spu_id ASC
+    </sql>
+
+    <select id="selectDashboardSummary"
+            resultType="cn.iocoder.yudao.module.statistics.dal.dataobject.product.ProductStatisticsDO">
+        SELECT MIN(CASE WHEN ps.traffic_data_status != 3 THEN ps.time END) AS time,
+               <include refid="dashboardAggregateColumns"/>
+        <include refid="dashboardProductSource"/>
+    </select>
+
+    <select id="selectDashboardTrend"
+            resultType="cn.iocoder.yudao.module.statistics.dal.dataobject.product.ProductStatisticsDO">
+        SELECT ps.time AS time,
+               <include refid="dashboardAggregateColumns"/>
+        <include refid="dashboardProductSource"/>
+        GROUP BY ps.time
+        ORDER BY ps.time ASC
+    </select>
+
+    <select id="selectDashboardProductAggregates"
+            resultType="cn.iocoder.yudao.module.statistics.dal.dataobject.product.ProductStatisticsDO">
+        <include refid="dashboardAggregatedProducts"/>
+        ORDER BY ps.spu_id ASC
+    </select>
+
+    <select id="countDashboardProducts" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM (<include refid="dashboardAggregatedProducts"/>) aggregated
+        <where>
+            <include refid="dashboardRiskFilter"/>
+        </where>
+    </select>
+
+    <select id="selectDashboardProductPage"
+            resultType="cn.iocoder.yudao.module.statistics.dal.dataobject.product.ProductStatisticsDO">
+        SELECT aggregated.*
+        FROM (<include refid="dashboardAggregatedProducts"/>) aggregated
+        <where>
+            <include refid="dashboardRiskFilter"/>
+        </where>
+        <include refid="dashboardProductOrder"/>
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="selectDashboardProducts"
+            resultType="cn.iocoder.yudao.module.statistics.dal.dataobject.product.ProductStatisticsDO">
+        SELECT aggregated.*
+        FROM (<include refid="dashboardAggregatedProducts"/>) aggregated
+        <where>
+            <include refid="dashboardRiskFilter"/>
+        </where>
+        <include refid="dashboardProductOrder"/>
+    </select>
+
 </mapper>
