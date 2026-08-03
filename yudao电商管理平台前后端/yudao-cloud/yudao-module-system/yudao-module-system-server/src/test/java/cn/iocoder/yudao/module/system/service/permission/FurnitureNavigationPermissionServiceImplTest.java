@@ -9,6 +9,7 @@ import cn.iocoder.yudao.module.system.dal.mysql.permission.MenuMapper;
 import cn.iocoder.yudao.module.system.dal.mysql.tenant.TenantMapper;
 import cn.iocoder.yudao.module.system.dal.mysql.tenant.TenantPackageMapper;
 import cn.iocoder.yudao.module.system.enums.permission.MenuTypeEnum;
+import cn.iocoder.yudao.module.system.enums.tenant.TenantBusinessModeEnum;
 import cn.iocoder.yudao.module.system.framework.navigation.config.FurnitureNavigationCatalog;
 import cn.iocoder.yudao.module.system.framework.navigation.config.FurnitureNavigationProperties;
 import cn.iocoder.yudao.module.system.service.tenant.TenantService;
@@ -25,6 +26,7 @@ import static cn.iocoder.yudao.framework.test.core.util.RandomUtils.randomPojo;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -55,6 +57,7 @@ class FurnitureNavigationPermissionServiceImplTest extends BaseDbUnitTest {
         when(properties.isEnabled()).thenReturn(true);
         when(properties.getTenantIds()).thenReturn(Set.of(TARGET_TENANT_ID));
         when(catalog.getMenuPaths()).thenReturn(Set.of("/system/role"));
+        when(catalog.getMenuPaths(any())).thenReturn(Set.of("/system/role"));
     }
 
     @Test
@@ -107,7 +110,49 @@ class FurnitureNavigationPermissionServiceImplTest extends BaseDbUnitTest {
         assertEquals(Set.of(999L), tenantPackageMapper.selectById(TARGET_PACKAGE_ID).getMenuIds());
     }
 
+    @Test
+    void syncMenuPermissions_b2bRemovesTransactionModulesAndKeepsProductCenter() {
+        when(catalog.getMenuPaths()).thenReturn(Set.of("/mall/product/spu", "/mall/trade/order"));
+        when(catalog.getMenuPaths(TenantBusinessModeEnum.B2B.getCode()))
+                .thenReturn(Set.of("/mall/product/spu"));
+        insertTargetPackageAndTenant(TenantBusinessModeEnum.B2B.getCode());
+        tenantPackageMapper.updateById(new TenantPackageDO()
+                .setId(TARGET_PACKAGE_ID)
+                .setMenuIds(Set.of(1L, 2L, 3L, 4L, 5L, 6L, 999L)));
+        menuMapper.insert(buildMenu(1L, 0L, "/mall", MenuTypeEnum.DIR));
+        menuMapper.insert(buildMenu(2L, 1L, "product", MenuTypeEnum.DIR));
+        menuMapper.insert(buildMenu(3L, 2L, "spu", MenuTypeEnum.MENU));
+        menuMapper.insert(buildMenu(4L, 3L, "", MenuTypeEnum.BUTTON));
+        menuMapper.insert(buildMenu(5L, 1L, "trade", MenuTypeEnum.DIR));
+        menuMapper.insert(buildMenu(6L, 5L, "order", MenuTypeEnum.MENU));
+
+        navigationPermissionService.syncMenuPermissions();
+
+        Set<Long> expected = new LinkedHashSet<>(Set.of(1L, 2L, 3L, 4L, 999L));
+        assertEquals(expected, tenantPackageMapper.selectById(TARGET_PACKAGE_ID).getMenuIds());
+        verify(tenantService).updateTenantRoleMenu(TARGET_TENANT_ID, expected);
+    }
+
+    @Test
+    void syncMenuPermissions_b2bRejectsEmptyMatchedCatalogBeforePruning() {
+        when(catalog.getMenuPaths(TenantBusinessModeEnum.B2B.getCode())).thenReturn(Set.of());
+        insertTargetPackageAndTenant(TenantBusinessModeEnum.B2B.getCode());
+        menuMapper.insert(buildMenu(1L, 0L, "/system", MenuTypeEnum.DIR));
+        menuMapper.insert(buildMenu(2L, 1L, "role", MenuTypeEnum.MENU));
+
+        IllegalStateException exception = assertThrows(
+                IllegalStateException.class,
+                () -> navigationPermissionService.syncMenuPermissions());
+
+        assertTrue(exception.getMessage().contains("拒绝修改套餐权限"));
+        assertEquals(Set.of(999L), tenantPackageMapper.selectById(TARGET_PACKAGE_ID).getMenuIds());
+    }
+
     private void insertTargetPackageAndTenant() {
+        insertTargetPackageAndTenant(TenantBusinessModeEnum.B2C.getCode());
+    }
+
+    private void insertTargetPackageAndTenant(String businessMode) {
         tenantPackageMapper.insert(randomPojo(TenantPackageDO.class, tenantPackage -> tenantPackage
                 .setId(TARGET_PACKAGE_ID)
                 .setName("家具导航套餐")
@@ -117,6 +162,7 @@ class FurnitureNavigationPermissionServiceImplTest extends BaseDbUnitTest {
                 .setId(TARGET_TENANT_ID)
                 .setName("Vanz家具")
                 .setPackageId(TARGET_PACKAGE_ID)
+                .setBusinessMode(businessMode)
                 .setStatus(CommonStatusEnum.ENABLE.getStatus())));
     }
 

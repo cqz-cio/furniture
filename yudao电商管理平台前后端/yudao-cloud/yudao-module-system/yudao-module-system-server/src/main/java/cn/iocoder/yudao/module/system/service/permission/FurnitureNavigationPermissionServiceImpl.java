@@ -10,6 +10,7 @@ import cn.iocoder.yudao.module.system.dal.mysql.permission.MenuMapper;
 import cn.iocoder.yudao.module.system.dal.mysql.tenant.TenantMapper;
 import cn.iocoder.yudao.module.system.dal.mysql.tenant.TenantPackageMapper;
 import cn.iocoder.yudao.module.system.enums.permission.MenuTypeEnum;
+import cn.iocoder.yudao.module.system.enums.tenant.TenantBusinessModeEnum;
 import cn.iocoder.yudao.module.system.framework.navigation.config.FurnitureNavigationCatalog;
 import cn.iocoder.yudao.module.system.framework.navigation.config.FurnitureNavigationProperties;
 import cn.iocoder.yudao.module.system.service.tenant.TenantService;
@@ -38,6 +39,9 @@ import static cn.iocoder.yudao.module.system.dal.dataobject.permission.MenuDO.ID
 @Slf4j
 public class FurnitureNavigationPermissionServiceImpl implements FurnitureNavigationPermissionService {
 
+    private static final List<String> BUSINESS_NAVIGATION_ROOTS = List.of(
+            "/mall", "/member", "/pay", "/crm", "/seo", "/dashboard", "/ai");
+
     @Resource
     private FurnitureNavigationProperties properties;
     @Resource
@@ -64,10 +68,12 @@ public class FurnitureNavigationPermissionServiceImpl implements FurnitureNaviga
             return;
         }
 
-        Set<Long> desiredMenuIds = resolveDesiredMenuIds(menuMapper.selectList());
-        if (desiredMenuIds.isEmpty()) {
+        List<MenuDO> menus = menuMapper.selectList();
+        Set<Long> defaultDesiredMenuIds = resolveDesiredMenuIds(menus, catalog.getMenuPaths());
+        if (defaultDesiredMenuIds.isEmpty()) {
             throw new IllegalStateException("家具导航目录没有匹配到任何可用系统菜单，拒绝清空租户套餐权限");
         }
+        Set<Long> managedBusinessMenuIds = resolveManagedBusinessMenuIds(menus);
 
         Map<Long, List<TenantDO>> tenantsByPackageId = new HashMap<>();
         for (TenantDO tenant : targetTenants) {
@@ -80,12 +86,30 @@ public class FurnitureNavigationPermissionServiceImpl implements FurnitureNaviga
         for (Map.Entry<Long, List<TenantDO>> entry : tenantsByPackageId.entrySet()) {
             Long packageId = entry.getKey();
             validatePackageOwnership(packageId);
+            Set<String> businessModes = entry.getValue().stream()
+                    .map(TenantDO::getBusinessMode)
+                    .map(mode -> StrUtil.blankToDefault(mode, TenantBusinessModeEnum.B2C.getCode()))
+                    .collect(java.util.stream.Collectors.toSet());
+            if (businessModes.size() != 1) {
+                throw new IllegalStateException(
+                        "家具导航目标套餐 " + packageId + " 被不同业务模式租户共用，请先拆分套餐");
+            }
+            String businessMode = businessModes.iterator().next();
+            Set<Long> desiredMenuIds = resolveDesiredMenuIds(menus, catalog.getMenuPaths(businessMode));
+            if (desiredMenuIds.isEmpty()) {
+                throw new IllegalStateException(
+                        "家具导航目标套餐 " + packageId + " 的业务模式 " + businessMode
+                                + " 没有匹配到任何可用菜单，拒绝修改套餐权限");
+            }
             TenantPackageDO tenantPackage = tenantPackageMapper.selectById(packageId);
             if (tenantPackage == null) {
                 throw new IllegalStateException("家具导航目标套餐不存在: " + packageId);
             }
 
             Set<Long> synchronizedMenuIds = new HashSet<>(CollUtil.emptyIfNull(tenantPackage.getMenuIds()));
+            if (TenantBusinessModeEnum.B2B.getCode().equals(businessMode)) {
+                synchronizedMenuIds.removeAll(managedBusinessMenuIds);
+            }
             synchronizedMenuIds.addAll(desiredMenuIds);
             synchronizedMenuIds = sortedSet(synchronizedMenuIds);
             if (!Objects.equals(tenantPackage.getMenuIds(), synchronizedMenuIds)) {
@@ -126,6 +150,10 @@ public class FurnitureNavigationPermissionServiceImpl implements FurnitureNaviga
     }
 
     Set<Long> resolveDesiredMenuIds(List<MenuDO> menus) {
+        return resolveDesiredMenuIds(menus, catalog.getMenuPaths());
+    }
+
+    Set<Long> resolveDesiredMenuIds(List<MenuDO> menus, Set<String> allowedMenuPaths) {
         Map<Long, MenuDO> menuMap = new HashMap<>();
         for (MenuDO menu : menus) {
             menuMap.put(menu.getId(), menu);
@@ -141,7 +169,7 @@ public class FurnitureNavigationPermissionServiceImpl implements FurnitureNaviga
                 continue;
             }
             String fullPath = resolveFullPath(menu, menuMap, pathCache, new HashSet<>());
-            if (fullPath != null && catalog.getMenuPaths().contains(fullPath)) {
+            if (fullPath != null && allowedMenuPaths.contains(fullPath)) {
                 matchedRouteIds.add(menu.getId());
                 addMenuAndAncestors(menu, menuMap, desiredRouteIds);
             }
@@ -158,6 +186,56 @@ public class FurnitureNavigationPermissionServiceImpl implements FurnitureNaviga
             }
         }
         return desiredMenuIds;
+    }
+
+    private Set<Long> resolveManagedBusinessMenuIds(List<MenuDO> menus) {
+        Map<Long, MenuDO> menuMap = new HashMap<>();
+        for (MenuDO menu : menus) {
+            menuMap.put(menu.getId(), menu);
+        }
+        Map<Long, String> pathCache = new HashMap<>();
+        Map<Long, Boolean> enabledCache = new HashMap<>();
+        Set<Long> managedRouteIds = new HashSet<>();
+        for (MenuDO menu : menus) {
+            if (MenuTypeEnum.BUTTON.getType().equals(menu.getType())
+                    || !isMenuEnabled(menu, menuMap, enabledCache, new HashSet<>())) {
+                continue;
+            }
+            String fullPath = resolveFullPath(menu, menuMap, pathCache, new HashSet<>());
+            if (fullPath != null && isBusinessNavigationPath(fullPath)) {
+                managedRouteIds.add(menu.getId());
+            }
+        }
+        Set<Long> managedMenuIds = new HashSet<>(managedRouteIds);
+        for (MenuDO menu : menus) {
+            if (MenuTypeEnum.BUTTON.getType().equals(menu.getType())
+                    && belongsToManagedRoute(menu, menuMap, managedRouteIds)) {
+                managedMenuIds.add(menu.getId());
+            }
+        }
+        return managedMenuIds;
+    }
+
+    private static boolean isBusinessNavigationPath(String path) {
+        return BUSINESS_NAVIGATION_ROOTS.stream()
+                .anyMatch(root -> path.equals(root) || path.startsWith(root + "/"));
+    }
+
+    private static boolean belongsToManagedRoute(MenuDO menu, Map<Long, MenuDO> menuMap,
+                                                  Set<Long> managedRouteIds) {
+        Long parentId = menu.getParentId();
+        Set<Long> visited = new HashSet<>();
+        while (parentId != null && !Objects.equals(parentId, ID_ROOT) && visited.add(parentId)) {
+            if (managedRouteIds.contains(parentId)) {
+                return true;
+            }
+            MenuDO parent = menuMap.get(parentId);
+            if (parent == null) {
+                return false;
+            }
+            parentId = parent.getParentId();
+        }
+        return false;
     }
 
     private boolean isMenuEnabled(MenuDO menu, Map<Long, MenuDO> menuMap,

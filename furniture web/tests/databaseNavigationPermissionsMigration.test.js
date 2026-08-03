@@ -12,6 +12,10 @@ const furnitureNavigationCatalogPath = join(
   root,
   "yudao-cloud/yudao-module-system/yudao-module-system-server/src/main/resources/navigation/furniture-lite-menu-paths.json",
 );
+const furnitureB2BNavigationCatalogPath = join(
+  root,
+  "yudao-cloud/yudao-module-system/yudao-module-system-server/src/main/resources/navigation/furniture-b2b-menu-paths.json",
+);
 const systemServerJavaPath = join(
   root,
   "yudao-cloud/yudao-module-system/yudao-module-system-server/src/main/java/cn/iocoder/yudao/module/system",
@@ -100,6 +104,7 @@ describe("V030 furniture navigation permission alignment", () => {
 describe("furniture navigation permission auto-sync", () => {
   it("uses one backend-owned navigation catalog for both the sidebar and package sync", () => {
     const catalog = JSON.parse(readFileSync(furnitureNavigationCatalogPath, "utf8"));
+    const b2bCatalog = JSON.parse(readFileSync(furnitureB2BNavigationCatalogPath, "utf8"));
     const furnitureLiteConfig = readFileSync(furnitureLiteConfigPath, "utf8");
     const permissionStore = readFileSync(permissionStorePath, "utf8");
     const authController = readFileSync(
@@ -124,15 +129,24 @@ describe("furniture navigation permission auto-sync", () => {
     expect(catalog).toContain("/system/messages/mail/mail-account");
     expect(catalog).toContain("/system/messages/mail/mail-template");
     expect(catalog).toContain("/system/messages/mail/mail-log");
+    expect(b2bCatalog.every((path) => catalog.includes(path))).toBe(true);
+    expect(b2bCatalog).toContain("/dashboard");
+    expect(b2bCatalog).toContain("/mall/product/spu");
+    expect(b2bCatalog).not.toContain("/member");
+    expect(b2bCatalog).not.toContain("/mall/trade/order");
     expect(furnitureLiteConfig).not.toMatch(
       /const allowedMenuPaths = new Set\(\[[\s\S]*?\]\)/,
     );
     expect(furnitureLiteConfig).toContain("synchronizedMenuPaths");
     expect(permissionStore).toContain("userInfo?.furnitureNavigationMenuPaths");
     expect(authController).toContain(
-      "setFurnitureNavigationMenuPaths(furnitureNavigationCatalog.getMenuPaths())",
+      "setFurnitureNavigationMenuPaths(getCurrentFurnitureNavigationMenuPaths())",
     );
-    expect(syncService).toContain("catalog.getMenuPaths().contains(fullPath)");
+    expect(authController).toContain(
+      "furnitureNavigationCatalog.getMenuPaths(tenant != null ? tenant.getBusinessMode() : null)",
+    );
+    expect(syncService).toContain("resolveDesiredMenuIds(menus, catalog.getMenuPaths())");
+    expect(syncService).toContain("allowedMenuPaths.contains(fullPath)");
   });
 
   it("syncs on startup and every menu lifecycle change without dropping existing package menus", () => {
