@@ -22,11 +22,10 @@ describe("safe database deployment workflow", () => {
     );
     expect(existsSync(directory)).toBe(true);
     const files = readdirSync(directory).filter((name) => name.endsWith(".sql")).sort();
-    const expectedVersions = Array.from({ length: 37 }, (_, index) => index + 1);
+    const expectedVersions = Array.from({ length: 38 }, (_, index) => index + 1);
     expect(files).toHaveLength(expectedVersions.length);
     expect(files[0]).toMatch(/^V001__/);
     expect(files.slice(-10)).toEqual([
-      "V028__tenant_business_mode.sql",
       "V029__website_inquiry_notify.sql",
       "V030__align_furniture_navigation_permissions.sql",
       "V031__enable_full_crm.sql",
@@ -36,8 +35,9 @@ describe("safe database deployment workflow", () => {
       "V035__single_tenant_single_role_accounts.sql",
       "V036__enable_role_aware_registration.sql",
       "V037__website_inquiry_mail_relay.sql",
+      "V038__vanz_b2b_navigation_permissions.sql",
     ]);
-    expect(files.at(-1)).toBe("V037__website_inquiry_mail_relay.sql");
+    expect(files.at(-1)).toBe("V038__vanz_b2b_navigation_permissions.sql");
     expect(files.map((name) => Number(name.slice(1, 4)))).toEqual(
       expectedVersions,
     );

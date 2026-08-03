@@ -1,5 +1,13 @@
 <template>
-  <section class="furniture-admin-page">
+  <ErpPageLoading v-if="profileLoading" title="首页" />
+  <el-result
+    v-else-if="profileError"
+    icon="error"
+    title="租户业务配置加载失败"
+    sub-title="请刷新页面后重试"
+  />
+  <B2BHome v-else-if="isB2B" />
+  <section v-else class="furniture-admin-page">
     <div class="furniture-admin-page-head">
       <div>
         <p class="furniture-admin-kicker">Oakved Console</p>
@@ -109,6 +117,9 @@
 
 <script lang="ts" setup>
 import { useRouter } from 'vue-router'
+import ErpPageLoading from '@/layout/components/ErpPageLoading.vue'
+import { useTenantBusinessProfile } from '@/hooks/web/useTenantBusinessProfile'
+import B2BHome from './B2BHome.vue'
 
 defineOptions({ name: 'Index' })
 
@@ -116,6 +127,12 @@ type TagType = 'success' | 'warning' | 'danger' | 'info' | 'primary'
 
 const router = useRouter()
 const go = (path: string) => router.push(path)
+const { isB2B, profileLoading, profileError, loadTenantBusinessProfile } =
+  useTenantBusinessProfile()
+
+onMounted(() => {
+  void loadTenantBusinessProfile().catch(() => undefined)
+})
 
 const metrics = [
   { label: '今日订单', value: '128', hint: '较昨日 +12%', path: '/mall/trade/order' },
