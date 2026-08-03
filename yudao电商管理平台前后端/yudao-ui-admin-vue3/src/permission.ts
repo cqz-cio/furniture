@@ -62,7 +62,8 @@ router.beforeEach(async (to, from, next) => {
   loadStart(to.path)
   if (getAccessToken()) {
     if (to.path === '/login') {
-      next({ path: '/' })
+      // 根地址固定展示登录入口，即使浏览器仍保留上一次的访问令牌。
+      next()
     } else {
       const dictStore = useDictStoreWithOut()
       const userStore = useUserStoreWithOut()

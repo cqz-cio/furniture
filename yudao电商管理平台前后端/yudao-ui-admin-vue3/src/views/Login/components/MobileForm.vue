@@ -198,7 +198,7 @@ const signIn = async () => {
     .then(async (res) => {
       setToken(res)
       if (!redirect.value) {
-        redirect.value = '/'
+        redirect.value = '/index'
       }
       push({ path: redirect.value || permissionStore.addRouters[0].path })
     })

@@ -204,7 +204,7 @@ const handleRegister = async (params: any) => {
 
     authUtil.setToken(res)
     if (!redirect.value) {
-      redirect.value = '/'
+      redirect.value = '/index'
     }
     // 判断是否为SSO登录
     if (redirect.value.indexOf('sso') !== -1) {

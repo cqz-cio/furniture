@@ -336,7 +336,7 @@ const handleLogin = async (params: any) => {
     }
     authUtil.setToken(res)
     if (!redirect.value) {
-      redirect.value = '/'
+      redirect.value = '/index'
     }
     // 判断是否为SSO登录
     if (redirect.value.indexOf('sso') !== -1) {
@@ -379,7 +379,7 @@ const doSocialLogin = async (type: number) => {
     const redirectUri =
       location.origin +
       '/social-login?' +
-      encodeURIComponent(`type=${type}&redirect=${redirect.value || '/'}`)
+      encodeURIComponent(`type=${type}&redirect=${redirect.value || '/index'}`)
 
     // 进行跳转
     window.location.href = await LoginApi.socialAuthRedirect(type, encodeURIComponent(redirectUri))

@@ -1,5 +1,4 @@
 import { Layout } from '@/utils/routerHelper'
-import { getAccessToken } from '@/utils/auth'
 
 const { t } = useI18n()
 /**
@@ -54,8 +53,8 @@ const remainingRouter: AppRouteRecordRaw[] = [
   {
     path: '/',
     component: Layout,
-    // 未登录首次访问根地址时，固定以登录页作为系统入口。
-    redirect: () => (getAccessToken() ? '/index' : '/login'),
+    // 根地址始终作为登录入口；登录成功后显式进入 /index。
+    redirect: '/login',
     name: 'Home',
     meta: {},
     children: [
