@@ -23,13 +23,13 @@ const interfaceDisplay = readFileSync(
   "utf8",
 );
 
-describe("ERP sidebar accordion navigation", () => {
-  it("always allows only one submenu to remain expanded", () => {
-    expect(menu).toContain("uniqueOpened={true}");
+describe("ERP sidebar expansion behavior", () => {
+  it("keeps previously opened submenus expanded", () => {
+    expect(menu).toContain("uniqueOpened={false}");
     expect(menu).not.toContain("getUniqueOpened");
   });
 
-  it("does not expose a switch that can disable the accordion rule", () => {
+  it("does not expose a switch that can re-enable automatic closing", () => {
     expect(appStore).not.toContain("uniqueOpened");
     expect(interfaceDisplay).not.toContain("setting.uniqueOpened");
   });

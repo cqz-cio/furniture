@@ -83,7 +83,7 @@ export default defineComponent({
           collapse={
             unref(layout) === 'top' || unref(layout) === 'cutMenu' ? false : unref(collapse)
           }
-          uniqueOpened={true}
+          uniqueOpened={false}
           backgroundColor="var(--left-menu-bg-color)"
           textColor="var(--left-menu-text-color)"
           activeTextColor="var(--left-menu-text-active-color)"
