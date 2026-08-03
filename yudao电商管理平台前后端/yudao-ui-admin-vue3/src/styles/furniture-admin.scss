@@ -592,6 +592,11 @@ p.furniture-admin-kicker {
   min-width: 0;
   margin-right: 10px;
   margin-left: 10px;
+}
+
+/* Only real child entries are indented. Top-level leaf routes such as Home and
+ * Dashboard share the same icon/text anchor as top-level submenu titles. */
+.erp-shell #v-menu .el-menu .el-menu .el-menu-item {
   padding-left: 46px !important;
 }
 
@@ -603,19 +608,8 @@ p.furniture-admin-kicker {
 
 .erp-shell #v-menu .el-menu-item.is-active {
   color: #fff !important;
-  background: linear-gradient(90deg, #176bdb 0%, #2478e5 100%) !important;
-  box-shadow: 0 7px 18px rgb(8 85 183 / 24%);
-}
-
-.erp-shell #v-menu .el-menu-item.is-active::before {
-  position: absolute;
-  top: 11px;
-  bottom: 11px;
-  left: -10px;
-  width: 3px;
-  background: #7eb2ff;
-  border-radius: 0 4px 4px 0;
-  content: '';
+  background: var(--furniture-admin-primary) !important;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 10%);
 }
 
 .erp-shell #v-menu .el-menu-item .el-icon,
