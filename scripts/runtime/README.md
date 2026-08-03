@@ -45,6 +45,8 @@ D:\code\.runtime\worktrees\main_0d6e4079-<12位commit>
 
 如果运行期间 `main` 又产生新提交，`status` 会返回 `UpdateAvailable: true`。这只表示可以重启升级，当前固定版本仍可保持健康。
 
+对正在运行的环境再次执行 `start` 时，启动器会先完成目标快照的数据库检查、后端构建和前端依赖准备。只有这些步骤全部成功后，才停止旧进程并切换固定端口；准备失败时，现有后台和 `runtime.json` 保持不动。
+
 ### 实时开发模式
 
 需要让运行服务直接读取某个开发 worktree 时，显式执行：
@@ -60,5 +62,6 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File "D:\code\.runtime\bin\oa
 - `D:\code\.runtime\runtime.json` 记录实际运行的模式、commit、快照路径、数据库和进程 PID；`status` 与 `stop` 以它为准，不猜测当前 checkout。
 - 数据库名称仍按逻辑分支生成。例如 `main` 始终使用 `oakved_main_0d6e4079`，更换 commit 快照不会新建或丢失商品数据。
 - 快照只隔离代码和构建产物；MySQL 数据、日志、缓存和启动器都保存在 `D:\code\.runtime` 的受管目录中。
+- 每次切换前，已有的 stdout/stderr 会归档到 `D:\code\.runtime\logs\archive\<UTC 时间戳>`，新进程使用新的当前日志文件，不再覆盖上一次故障现场。
 - 启动器读取已登记工作树时，只对当前 Git 命令信任该工作树路径，不会写入全局 `safe.directory` 配置；因此管理员终端与 Codex 沙箱可以共用运行快照。
-- `start -Branch` 只接受本地分支已经提交的内容。需要运行最新改动时，先提交，再停止并重新启动相应分支。
+- `start -Branch` 只接受本地分支已经提交的内容。需要运行最新改动时，先提交，再次执行同一条 `start` 命令即可安全切换。

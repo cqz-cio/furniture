@@ -8,10 +8,12 @@ import cn.iocoder.yudao.framework.mybatis.core.query.MPJLambdaWrapperX;
 import cn.iocoder.yudao.module.statistics.controller.admin.product.vo.ProductStatisticsReqVO;
 import cn.iocoder.yudao.module.statistics.controller.admin.product.vo.ProductStatisticsRespVO;
 import cn.iocoder.yudao.module.statistics.dal.dataobject.product.ProductStatisticsDO;
+import com.baomidou.mybatisplus.annotation.InterceptorIgnore;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -30,6 +32,60 @@ public interface ProductStatisticsMapper extends BaseMapperX<ProductStatisticsDO
                                      @org.apache.ibatis.annotations.Param("day") java.time.LocalDate day);
 
     default java.util.List<ProductStatisticsDO> selectBetween(java.time.LocalDate start,java.time.LocalDate end){return selectList(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<ProductStatisticsDO>().between(ProductStatisticsDO::getTime,start,end).orderByDesc(ProductStatisticsDO::getOrderPayPrice));}
+
+    @InterceptorIgnore(tenantLine = "true")
+    ProductStatisticsDO selectDashboardSummary(@Param("tenantId") Long tenantId,
+                                                @Param("startDate") LocalDate startDate,
+                                                @Param("endDate") LocalDate endDate,
+                                                @Param("categoryId") Long categoryId,
+                                                @Param("spuId") Long spuId);
+
+    @InterceptorIgnore(tenantLine = "true")
+    List<ProductStatisticsDO> selectDashboardTrend(@Param("tenantId") Long tenantId,
+                                                    @Param("startDate") LocalDate startDate,
+                                                    @Param("endDate") LocalDate endDate,
+                                                    @Param("categoryId") Long categoryId,
+                                                    @Param("spuId") Long spuId);
+
+    @InterceptorIgnore(tenantLine = "true")
+    List<ProductStatisticsDO> selectDashboardProductAggregates(@Param("tenantId") Long tenantId,
+                                                                @Param("startDate") LocalDate startDate,
+                                                                @Param("endDate") LocalDate endDate,
+                                                                @Param("categoryId") Long categoryId,
+                                                                @Param("spuId") Long spuId);
+
+    @InterceptorIgnore(tenantLine = "true")
+    Long countDashboardProducts(@Param("tenantId") Long tenantId,
+                                @Param("startDate") LocalDate startDate,
+                                @Param("endDate") LocalDate endDate,
+                                @Param("categoryId") Long categoryId,
+                                @Param("spuId") Long spuId,
+                                @Param("riskType") String riskType,
+                                @Param("includeProfit") boolean includeProfit);
+
+    @InterceptorIgnore(tenantLine = "true")
+    List<ProductStatisticsDO> selectDashboardProductPage(@Param("tenantId") Long tenantId,
+                                                         @Param("startDate") LocalDate startDate,
+                                                         @Param("endDate") LocalDate endDate,
+                                                         @Param("categoryId") Long categoryId,
+                                                         @Param("spuId") Long spuId,
+                                                         @Param("riskType") String riskType,
+                                                         @Param("includeProfit") boolean includeProfit,
+                                                         @Param("sortField") String sortField,
+                                                         @Param("sortOrder") String sortOrder,
+                                                         @Param("offset") long offset,
+                                                         @Param("limit") int limit);
+
+    @InterceptorIgnore(tenantLine = "true")
+    List<ProductStatisticsDO> selectDashboardProducts(@Param("tenantId") Long tenantId,
+                                                       @Param("startDate") LocalDate startDate,
+                                                       @Param("endDate") LocalDate endDate,
+                                                       @Param("categoryId") Long categoryId,
+                                                       @Param("spuId") Long spuId,
+                                                       @Param("riskType") String riskType,
+                                                       @Param("includeProfit") boolean includeProfit,
+                                                       @Param("sortField") String sortField,
+                                                       @Param("sortOrder") String sortOrder);
 
     default PageResult<ProductStatisticsDO> selectPageGroupBySpuId(ProductStatisticsReqVO reqVO, SortablePageParam pageParam) {
         return selectPage(pageParam, buildWrapper(reqVO)

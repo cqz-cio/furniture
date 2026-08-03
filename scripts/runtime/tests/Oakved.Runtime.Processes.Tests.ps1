@@ -88,6 +88,8 @@ Describe 'Oakved managed lifecycle primitives' {
     It 'runs a managed command with shell metacharacters safely preserved and captures its logs' {
         $stdout = Join-Path $TestDrive 'managed.stdout.log'
         $stderr = Join-Path $TestDrive 'managed.stderr.log'
+        Set-Content -LiteralPath $stdout -Value 'previous stdout evidence' -Encoding UTF8
+        Set-Content -LiteralPath $stderr -Value 'previous stderr evidence' -Encoding UTF8
         $spec = [pscustomobject]@{
             Role = 'probe'; FilePath = 'powershell.exe'; Arguments = @('-NoProfile', '-Command', "[Console]::WriteLine('managed&process ok')")
             WorkingDirectory = $TestDrive; Environment = @{}; StdOutLog = $stdout; StdErrLog = $stderr
@@ -100,6 +102,12 @@ Describe 'Oakved managed lifecycle primitives' {
             Start-Sleep -Milliseconds 50
         }
         (Get-Content -LiteralPath $stdout -Raw) | Should Match 'managed&process ok'
+        $archivedStdout = @(Get-ChildItem -LiteralPath (Join-Path $TestDrive 'archive') -Filter 'managed.stdout.log' -Recurse)
+        $archivedStderr = @(Get-ChildItem -LiteralPath (Join-Path $TestDrive 'archive') -Filter 'managed.stderr.log' -Recurse)
+        $archivedStdout.Count | Should Be 1
+        $archivedStderr.Count | Should Be 1
+        (Get-Content -LiteralPath $archivedStdout[0].FullName -Raw) | Should Match 'previous stdout evidence'
+        (Get-Content -LiteralPath $archivedStderr[0].FullName -Raw) | Should Match 'previous stderr evidence'
     }
 
     It 'treats an already exited managed PID as stopped' {
@@ -216,6 +224,60 @@ Describe 'Start-OakvedRuntime orchestration' {
         $adminStartIndex = [array]::IndexOf($capture.Events, 'start:admin')
         $backendHealthIndex | Should BeGreaterThan -1
         $adminStartIndex | Should BeGreaterThan $backendHealthIndex
+    }
+
+    It 'prepares a replacement completely before stopping the active runtime' {
+        $fixture = New-RuntimeFixture -Root (Join-Path $TestDrive 'prepared-cutover')
+        $runtimeRoot = Join-Path $TestDrive 'prepared-cutover-state'
+        $manifestPath = Join-Path $runtimeRoot 'runtime.json'
+        Write-OakvedManifest -Path $manifestPath -Manifest ([pscustomobject]@{
+                Processes = @([pscustomobject]@{
+                        Pid = 42; StartTime = '2026-07-17T01:00:00.0000000Z'; Role = 'backend'
+                    })
+            })
+        $capture = [pscustomobject]@{ Specs = @(); NextPid = 100; Events = @(); OldStopped = $false }
+        $providers = New-HealthyRuntimeProviders -Capture $capture
+        $processProvider = {
+            param($id)
+            [pscustomobject]@{ Id = $id; StartTime = [datetime]'2026-07-17T01:00:00Z' }
+        }
+
+        Start-OakvedRuntime -Target $fixture.Target -Layout $fixture.Layout -RuntimeRoot $runtimeRoot -MySqlRootPassword 'secret' `
+            -DatabaseGateProvider ({ $capture.Events += 'database'; $fixture.Database }.GetNewClosure()) `
+            -BuildProvider ({ param($spec) if ($capture.OldStopped) { throw 'build ran after stop' }; $capture.Events += "build:$($spec.Role)" }.GetNewClosure()) `
+            -ProcessStarter ({ param($spec) if (-not $capture.OldStopped) { throw 'start ran before stop' }; $capture.Events += "start:$($spec.Role)"; & $providers.ProcessStarter $spec }.GetNewClosure()) `
+            -ProcessProvider $processProvider -ProcessTreeProvider { param($id) @($id) } -ListenerProvider { @() } `
+            -HttpProvider $providers.HttpProvider `
+            -Stopper ({ param($id) $capture.Events += "stop:$id"; $capture.OldStopped = $true }.GetNewClosure()) | Out-Null
+
+        $events = $capture.Events -join ','
+        $events | Should Match '^database,build:backend-build,stop:42,start:backend'
+        $capture.OldStopped | Should Be $true
+        Test-Path -LiteralPath $manifestPath | Should Be $true
+    }
+
+    It 'keeps the active runtime and manifest when replacement preparation fails' {
+        $fixture = New-RuntimeFixture -Root (Join-Path $TestDrive 'failed-preparation')
+        $runtimeRoot = Join-Path $TestDrive 'failed-preparation-state'
+        $manifestPath = Join-Path $runtimeRoot 'runtime.json'
+        Write-OakvedManifest -Path $manifestPath -Manifest ([pscustomobject]@{
+                Processes = @([pscustomobject]@{
+                        Pid = 42; StartTime = '2026-07-17T01:00:00.0000000Z'; Role = 'backend'
+                    })
+            })
+        $script:preparationStops = @()
+        $failedPreparationDatabase = $fixture.Database
+        $failedPreparationGate = { $failedPreparationDatabase }.GetNewClosure()
+        $failedPreparationBuild = { param($spec) throw 'replacement build failed' }
+
+        { Start-OakvedRuntime -Target $fixture.Target -Layout $fixture.Layout -RuntimeRoot $runtimeRoot -MySqlRootPassword 'secret' `
+                -DatabaseGateProvider $failedPreparationGate -BuildProvider $failedPreparationBuild `
+                -ProcessProvider { param($id) [pscustomobject]@{ Id = $id; StartTime = [datetime]'2026-07-17T01:00:00Z' } } `
+                -ProcessTreeProvider { param($id) @($id) } -ListenerProvider { @() } `
+                -Stopper { param($id) $script:preparationStops += $id } } | Should Throw 'replacement build failed'
+
+        $script:preparationStops.Count | Should Be 0
+        Test-Path -LiteralPath $manifestPath | Should Be $true
     }
 
     It 'builds the backend only when its fingerprint changes using the selected JDK 17 Maven wrapper' {
