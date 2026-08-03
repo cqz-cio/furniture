@@ -22,10 +22,22 @@ import java.util.Set;
 public class FurnitureNavigationConfiguration {
 
     private static final String CATALOG_RESOURCE = "navigation/furniture-lite-menu-paths.json";
+    private static final String B2B_CATALOG_RESOURCE = "navigation/furniture-b2b-menu-paths.json";
 
     @Bean
     public FurnitureNavigationCatalog furnitureNavigationCatalog(ObjectMapper objectMapper) throws IOException {
-        ClassPathResource resource = new ClassPathResource(CATALOG_RESOURCE);
+        Set<String> menuPaths = loadCatalog(objectMapper, CATALOG_RESOURCE);
+        Set<String> b2bMenuPaths = loadCatalog(objectMapper, B2B_CATALOG_RESOURCE);
+        if (!menuPaths.containsAll(b2bMenuPaths)) {
+            Set<String> unknownPaths = new LinkedHashSet<>(b2bMenuPaths);
+            unknownPaths.removeAll(menuPaths);
+            throw new IllegalStateException("B2B 导航目录包含未登记路径: " + unknownPaths);
+        }
+        return new FurnitureNavigationCatalog(menuPaths, b2bMenuPaths);
+    }
+
+    private static Set<String> loadCatalog(ObjectMapper objectMapper, String resourcePath) throws IOException {
+        ClassPathResource resource = new ClassPathResource(resourcePath);
         List<String> configuredPaths;
         try (InputStream inputStream = resource.getInputStream()) {
             configuredPaths = objectMapper.readValue(inputStream, new TypeReference<>() {});
@@ -35,9 +47,9 @@ public class FurnitureNavigationConfiguration {
                 .map(FurnitureNavigationConfiguration::normalizePath)
                 .forEach(normalizedPaths::add);
         if (normalizedPaths.isEmpty()) {
-            throw new IllegalStateException("家具导航目录不能为空: " + CATALOG_RESOURCE);
+            throw new IllegalStateException("家具导航目录不能为空: " + resourcePath);
         }
-        return new FurnitureNavigationCatalog(normalizedPaths);
+        return normalizedPaths;
     }
 
     static String normalizePath(String path) {

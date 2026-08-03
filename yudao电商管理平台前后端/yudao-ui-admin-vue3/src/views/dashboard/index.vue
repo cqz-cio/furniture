@@ -7,6 +7,8 @@ import type { BarSeriesOption, EChartsOption, LineSeriesOption } from 'echarts'
 import download from '@/utils/download'
 import { checkPermi } from '@/utils/permission'
 import ErpPageLoading from '@/layout/components/ErpPageLoading.vue'
+import { useTenantBusinessProfile } from '@/hooks/web/useTenantBusinessProfile'
+import InquiryDashboard from './InquiryDashboard.vue'
 import {
   DashboardApi,
   type DashboardAttention,
@@ -28,6 +30,8 @@ const canQuery = computed(() => checkPermi(['statistics:dashboard:query']))
 const canProfit = computed(() => checkPermi(['statistics:dashboard:profit-query']))
 const canExport = computed(() => checkPermi(['statistics:dashboard:export']))
 const canProfitExport = computed(() => canProfit.value && checkPermi(['statistics:dashboard:profit-export']))
+const { isB2B, profileLoading, profileError, loadTenantBusinessProfile } =
+  useTenantBusinessProfile()
 
 const yesterday = dayjs().subtract(1, 'day')
 const routeValue = (key: string) => {
@@ -401,11 +405,31 @@ const exportRows = async (profitExport: boolean) => {
   }
 }
 
-onMounted(loadDashboard)
+onMounted(async () => {
+  try {
+    await loadTenantBusinessProfile()
+  } catch {
+    return
+  }
+  if (!isB2B.value) await loadDashboard()
+})
 </script>
 
 <template>
-  <div class="furniture-dashboard" v-loading="loading && !initialLoading" aria-live="polite">
+  <ErpPageLoading v-if="profileLoading" title="数据看板" />
+  <el-result
+    v-else-if="profileError"
+    icon="error"
+    title="租户业务配置加载失败"
+    sub-title="请刷新页面后重试"
+  />
+  <InquiryDashboard v-else-if="isB2B" />
+  <div
+    v-else
+    class="furniture-dashboard"
+    v-loading="loading && !initialLoading"
+    aria-live="polite"
+  >
     <ErpPageLoading v-if="initialLoading" title="数据看板" />
     <el-result v-else-if="!canQuery" icon="warning" title="暂无数据看板查询权限" sub-title="请联系管理员授予 statistics:dashboard:query" />
     <template v-else>
@@ -548,11 +572,14 @@ onMounted(loadDashboard)
       <section v-if="query.scope === 'PRODUCT'" ref="productPanel" class="panel product-panel" tabindex="-1">
         <div class="panel-heading table-heading">
           <div><span class="section-kicker">商品经营明细</span><h2>按商品定位流量、销售和利润问题</h2><p>默认只显示运营判断最常用的九列，可切换查看其他指标。</p></div>
-          <el-segmented v-model="tablePreset" :options="[
-            { label: '销售视图', value: salesPreset },
-            { label: '流量视图', value: trafficPreset },
-            ...(canProfit ? [{ label: '利润视图', value: profitPreset }] : [])
-          ]" />
+          <el-segmented
+            v-model="tablePreset"
+            :options="[
+              { label: '销售视图', value: salesPreset },
+              { label: '流量视图', value: trafficPreset },
+              ...(canProfit ? [{ label: '利润视图', value: profitPreset }] : [])
+            ]"
+          />
         </div>
         <el-table :data="products" row-key="spuId" empty-text="当前筛选范围暂无商品经营数据" @sort-change="changeProductSort">
           <el-table-column type="index" label="排名" width="66" fixed="left" :index="productRank" />

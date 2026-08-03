@@ -8,10 +8,12 @@ import cn.iocoder.yudao.framework.common.pojo.CommonResult;
 import cn.iocoder.yudao.framework.datapermission.core.annotation.DataPermission;
 import cn.iocoder.yudao.framework.security.config.SecurityProperties;
 import cn.iocoder.yudao.framework.security.core.util.SecurityFrameworkUtils;
+import cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder;
 import cn.iocoder.yudao.module.system.controller.admin.auth.vo.*;
 import cn.iocoder.yudao.module.system.convert.auth.AuthConvert;
 import cn.iocoder.yudao.module.system.dal.dataobject.permission.MenuDO;
 import cn.iocoder.yudao.module.system.dal.dataobject.permission.RoleDO;
+import cn.iocoder.yudao.module.system.dal.dataobject.tenant.TenantDO;
 import cn.iocoder.yudao.module.system.dal.dataobject.user.AdminUserDO;
 import cn.iocoder.yudao.module.system.enums.logger.LoginLogTypeEnum;
 import cn.iocoder.yudao.module.system.framework.navigation.config.FurnitureNavigationCatalog;
@@ -20,6 +22,7 @@ import cn.iocoder.yudao.module.system.service.permission.MenuService;
 import cn.iocoder.yudao.module.system.service.permission.PermissionService;
 import cn.iocoder.yudao.module.system.service.permission.RoleService;
 import cn.iocoder.yudao.module.system.service.social.SocialClientService;
+import cn.iocoder.yudao.module.system.service.tenant.TenantService;
 import cn.iocoder.yudao.module.system.service.user.AdminUserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -60,6 +63,8 @@ public class AuthController {
     private PermissionService permissionService;
     @Resource
     private SocialClientService socialClientService;
+    @Resource
+    private TenantService tenantService;
     @Resource
     private FurnitureNavigationCatalog furnitureNavigationCatalog;
 
@@ -108,7 +113,7 @@ public class AuthController {
         if (CollUtil.isEmpty(roleIds)) {
             AuthPermissionInfoRespVO permissionInfo = AuthConvert.INSTANCE.convert(
                     user, Collections.emptyList(), Collections.emptyList());
-            permissionInfo.setFurnitureNavigationMenuPaths(furnitureNavigationCatalog.getMenuPaths());
+            permissionInfo.setFurnitureNavigationMenuPaths(getCurrentFurnitureNavigationMenuPaths());
             return success(permissionInfo);
         }
         List<RoleDO> roles = roleService.getRoleList(roleIds);
@@ -121,8 +126,17 @@ public class AuthController {
 
         // 2. 拼接结果返回
         AuthPermissionInfoRespVO permissionInfo = AuthConvert.INSTANCE.convert(user, roles, menuList);
-        permissionInfo.setFurnitureNavigationMenuPaths(furnitureNavigationCatalog.getMenuPaths());
+        permissionInfo.setFurnitureNavigationMenuPaths(getCurrentFurnitureNavigationMenuPaths());
         return success(permissionInfo);
+    }
+
+    private Set<String> getCurrentFurnitureNavigationMenuPaths() {
+        Long tenantId = TenantContextHolder.getTenantId();
+        if (tenantId == null) {
+            return furnitureNavigationCatalog.getMenuPaths();
+        }
+        TenantDO tenant = tenantService.getTenant(tenantId);
+        return furnitureNavigationCatalog.getMenuPaths(tenant != null ? tenant.getBusinessMode() : null);
     }
 
     @PostMapping("/register")
