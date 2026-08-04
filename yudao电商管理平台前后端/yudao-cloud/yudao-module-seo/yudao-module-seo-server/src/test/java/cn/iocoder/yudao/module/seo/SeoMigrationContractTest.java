@@ -26,6 +26,8 @@ class SeoMigrationContractTest {
             Path.of("sql", "mysql", "migrations", "V027__repair_seo_analysis_menu_registration.sql");
     private static final Path WEBSITE_NAVIGATION_MIGRATION_RELATIVE_PATH =
             Path.of("sql", "mysql", "migrations", "V039__website_navigation_preview.sql");
+    private static final Path WEBSITE_NAVIGATION_OPERATOR_PERMISSION_MIGRATION_RELATIVE_PATH =
+            Path.of("sql", "mysql", "migrations", "V040__grant_navigation_to_vanz_operator.sql");
     private static final Path MYSQL_BASELINE_RELATIVE_PATH =
             Path.of("sql", "mysql", "oakved-baseline.sql");
     private static final String RELEASED_KEYWORD_ANALYSIS_MIGRATION_SHA256 =
@@ -100,14 +102,34 @@ class SeoMigrationContractTest {
     }
 
     @Test
-    void shouldIncludeWebsiteNavigationMigrationInInstallBaseline() throws IOException {
+    void shouldIncludeWebsiteNavigationMigrationsInInstallBaseline() throws IOException {
         String baseline = migrationSql(MYSQL_BASELINE_RELATIVE_PATH);
 
         assertThat(baseline).contains(
                 "-- BEGIN V039__website_navigation_preview.sql",
                 "CREATE TABLE IF NOT EXISTS `website_navigation_revision`",
                 "VALUES('039','website navigation preview','V039__website_navigation_preview.sql',"
-                        + "'33e5898a22e2fa9d8b50d7b7d08f7ec49aa4a89d034c53b04bdf1bee764f6030')");
+                        + "'33e5898a22e2fa9d8b50d7b7d08f7ec49aa4a89d034c53b04bdf1bee764f6030')",
+                "-- BEGIN V040__grant_navigation_to_vanz_operator.sql",
+                "VALUES('040','grant navigation to vanz operator','V040__grant_navigation_to_vanz_operator.sql',"
+                        + "'c8dfc30734258cd2cd1cca1c9370461ee892f4b98f0b482f5943dfd36d7840d9')");
+    }
+
+    @Test
+    void shouldGrantWebsiteNavigationToVanzOperatorRole() throws IOException {
+        String sql = migrationSql(WEBSITE_NAVIGATION_OPERATOR_PERMISSION_MIGRATION_RELATIVE_PATH);
+
+        assertThat(sql).contains(
+                "@website_navigation_operator_tenant_id = 162",
+                "`code` = 'mall_operator'",
+                "'seo:navigation:query'",
+                "'seo:navigation:update'",
+                "'seo:navigation:preview'",
+                "'seo:navigation:publish'",
+                "INSERT INTO `system_role_menu`",
+                "CREATE TEMPORARY TABLE `website_navigation_operator_guard`",
+                "CHECK (`valid` = 1)");
+        assertThat(sql).doesNotContain("`code` = 'tenant_admin'");
     }
 
     @Test
