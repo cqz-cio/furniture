@@ -10,6 +10,10 @@ const menuTitleOverrides: Record<string, string> = {
   '/crm/clue': '询盘汇总',
   '/crm/customer': '客户档案',
   '/crm/contact': '联系人管理',
+  '/seo': '官网运营',
+  '/seo/metadata': 'SEO 待办',
+  '/seo/site-config': '站点设置',
+  '/seo/navigation': '导航管理',
   '/member/trade-application': '交易申请',
   '/member/membership': '会员权益',
   '/member/gift-registry': '礼品登记'
@@ -40,9 +44,7 @@ const isProductOnlyMallScope = (allowedMenuPaths: Set<string>): boolean => {
 
   return (
     mallMenuPaths.length > 0 &&
-    mallMenuPaths.every(
-      (path) => path === '/mall/product' || path.startsWith('/mall/product/')
-    )
+    mallMenuPaths.every((path) => path === '/mall/product' || path.startsWith('/mall/product/'))
   )
 }
 

@@ -12,6 +12,7 @@ import cn.iocoder.yudao.module.crm.controller.admin.clue.vo.CrmClueTransferReqVO
 import cn.iocoder.yudao.module.crm.controller.admin.clue.vo.CrmClueTransformRespVO;
 import cn.iocoder.yudao.module.crm.controller.admin.clue.vo.CrmInquiryProcessStatusUpdateReqVO;
 import cn.iocoder.yudao.module.crm.controller.admin.clue.vo.CrmInquirySummaryRespVO;
+import cn.iocoder.yudao.module.crm.controller.admin.clue.vo.CrmInquiryTestDataUpdateReqVO;
 import cn.iocoder.yudao.module.crm.dal.dataobject.clue.CrmClueDO;
 import cn.iocoder.yudao.module.crm.dal.dataobject.contact.CrmContactDO;
 import cn.iocoder.yudao.module.crm.dal.dataobject.customer.CrmCustomerDO;
@@ -20,6 +21,8 @@ import cn.iocoder.yudao.module.crm.dal.mysql.clue.CrmClueMapper;
 import cn.iocoder.yudao.module.crm.dal.mysql.contact.CrmContactMapper;
 import cn.iocoder.yudao.module.crm.dal.mysql.customer.CrmCustomerMapper;
 import cn.iocoder.yudao.module.crm.enums.clue.CrmInquiryProcessStatusEnum;
+import cn.iocoder.yudao.module.crm.enums.clue.CrmInquiryPriorityEnum;
+import cn.iocoder.yudao.module.crm.enums.clue.CrmInquirySalesStageEnum;
 import cn.iocoder.yudao.module.crm.enums.common.CrmBizTypeEnum;
 import cn.iocoder.yudao.module.crm.enums.permission.CrmPermissionLevelEnum;
 import cn.iocoder.yudao.module.crm.framework.permission.core.annotations.CrmPermission;
@@ -44,6 +47,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.regex.Pattern;
 
 import static cn.iocoder.yudao.framework.common.exception.util.ServiceExceptionUtil.exception;
 import static cn.iocoder.yudao.framework.common.util.collection.CollectionUtils.convertList;
@@ -63,6 +67,9 @@ import static cn.iocoder.yudao.module.system.enums.ErrorCodeConstants.USER_NOT_E
 @Service
 @Validated
 public class CrmClueServiceImpl implements CrmClueService {
+
+    private static final Pattern TEST_INQUIRY_PREFIX = Pattern.compile(
+            "^(?:\\[?TEST\\]?|QA|E2E)(?:[\\s_:\\-]|$)", Pattern.CASE_INSENSITIVE);
 
     @Resource
     private CrmClueMapper clueMapper;
@@ -133,6 +140,9 @@ public class CrmClueServiceImpl implements CrmClueService {
                 .setUtmCampaign(normalize(reqDTO.getUtmCampaign()))
                 .setSubmittedAt(reqDTO.getSubmittedAt())
                 .setProcessStatus(CrmInquiryProcessStatusEnum.PENDING.getStatus())
+                .setTestData(looksLikeTestInquiry(companyName, subject, reqDTO.getEmail()))
+                .setPriority(CrmInquiryPriorityEnum.NORMAL.getPriority())
+                .setSalesStage(CrmInquirySalesStageEnum.NEW.getStage())
                 .setOwnerUserId(reqDTO.getOwnerUserId())
                 .setFollowUpStatus(false)
                 .setTransformStatus(false)
@@ -231,6 +241,11 @@ public class CrmClueServiceImpl implements CrmClueService {
                 ? LocalDateTime.now() : null;
         clueMapper.updateProcessStatus(reqVO.getId(), reqVO.getProcessStatus(),
                 processedAt, reqVO.getRemark() == null ? null : normalizeMultiline(reqVO.getRemark()));
+        if (CrmInquiryProcessStatusEnum.PROCESSING.getStatus().equals(reqVO.getProcessStatus())) {
+            clueMapper.markFirstResponse(reqVO.getId(), CrmInquirySalesStageEnum.QUALIFYING.getStage());
+        } else if (CrmInquiryProcessStatusEnum.INVALID.getStatus().equals(reqVO.getProcessStatus())) {
+            clueMapper.updateSalesStage(reqVO.getId(), CrmInquirySalesStageEnum.LOST.getStage());
+        }
 
         LogRecordContext.putVariable("clueName",
                 defaultIfBlank(clue.getInquirySubject(), clue.getName()));
@@ -238,6 +253,16 @@ public class CrmClueServiceImpl implements CrmClueService {
                 CrmInquiryProcessStatusEnum.getNameByStatus(clue.getProcessStatus()));
         LogRecordContext.putVariable("newProcessStatusName",
                 CrmInquiryProcessStatusEnum.getNameByStatus(reqVO.getProcessStatus()));
+    }
+
+    @Override
+    @CrmPermission(bizType = CrmBizTypeEnum.CRM_CLUE, bizId = "#reqVO.id",
+            level = CrmPermissionLevelEnum.WRITE)
+    public void updateInquiryTestData(CrmInquiryTestDataUpdateReqVO reqVO) {
+        CrmClueDO clue = validateClueExists(reqVO.getId());
+        clueMapper.updateById(new CrmClueDO().setId(reqVO.getId())
+                .setTestData(Boolean.TRUE.equals(reqVO.getTestData())));
+        LogRecordContext.putVariable("clueName", clue.getName());
     }
 
     @Override
@@ -368,7 +393,10 @@ public class CrmClueServiceImpl implements CrmClueService {
                 .setCustomerId(customerId)
                 .setContactId(contactId)
                 .setProcessStatus(CrmInquiryProcessStatusEnum.PROCESSED.getStatus())
-                .setProcessedAt(LocalDateTime.now()));
+                .setProcessedAt(LocalDateTime.now())
+                .setFirstResponseAt(clue.getFirstResponseAt() == null
+                        ? LocalDateTime.now() : clue.getFirstResponseAt())
+                .setSalesStage(CrmInquirySalesStageEnum.WON.getStage()));
 
         // 2.4 兼容已有手工跟进记录，复制到客户档案。
         List<CrmFollowUpRecordDO> followUpRecords = followUpRecordService.getFollowUpRecordByBiz(
@@ -410,17 +438,20 @@ public class CrmClueServiceImpl implements CrmClueService {
     }
 
     @Override
-    public CrmInquirySummaryRespVO getInquirySummary(Long userId) {
+    public CrmInquirySummaryRespVO getInquirySummary(Long userId, Boolean testData) {
         CrmInquirySummaryRespVO summary = new CrmInquirySummaryRespVO();
-        summary.setTotalCount(clueMapper.selectInquiryCount(userId, null));
+        summary.setTotalCount(clueMapper.selectInquiryCount(userId, null, testData));
         summary.setPendingCount(clueMapper.selectInquiryCount(
-                userId, CrmInquiryProcessStatusEnum.PENDING.getStatus()));
+                userId, CrmInquiryProcessStatusEnum.PENDING.getStatus(), testData));
         summary.setProcessingCount(clueMapper.selectInquiryCount(
-                userId, CrmInquiryProcessStatusEnum.PROCESSING.getStatus()));
+                userId, CrmInquiryProcessStatusEnum.PROCESSING.getStatus(), testData));
         summary.setProcessedCount(clueMapper.selectInquiryCount(
-                userId, CrmInquiryProcessStatusEnum.PROCESSED.getStatus()));
+                userId, CrmInquiryProcessStatusEnum.PROCESSED.getStatus(), testData));
         summary.setInvalidCount(clueMapper.selectInquiryCount(
-                userId, CrmInquiryProcessStatusEnum.INVALID.getStatus()));
+                userId, CrmInquiryProcessStatusEnum.INVALID.getStatus(), testData));
+        summary.setOverdueCount(clueMapper.selectOverdueInquiryCount(
+                userId, testData, LocalDateTime.now().minusHours(24)));
+        summary.setTestDataCount(clueMapper.selectInquiryCount(userId, null, true));
         return summary;
     }
 
@@ -432,6 +463,16 @@ public class CrmClueServiceImpl implements CrmClueService {
     private static String buildInquiryDisplayName(String companyName, String contactName, String subject) {
         String prefix = companyName.isEmpty() ? contactName : companyName;
         return limit(prefix + " · " + subject, 128);
+    }
+
+    private static boolean looksLikeTestInquiry(String companyName, String subject, String email) {
+        String normalizedEmail = normalize(email).toLowerCase(Locale.ROOT);
+        return TEST_INQUIRY_PREFIX.matcher(normalize(companyName)).find()
+                || TEST_INQUIRY_PREFIX.matcher(normalize(subject)).find()
+                || normalizedEmail.endsWith("@example.com")
+                || normalizedEmail.endsWith("@example.net")
+                || normalizedEmail.endsWith("@example.org")
+                || normalizedEmail.endsWith(".test");
     }
 
     private static String buildConversionRemark(CrmClueDO clue) {

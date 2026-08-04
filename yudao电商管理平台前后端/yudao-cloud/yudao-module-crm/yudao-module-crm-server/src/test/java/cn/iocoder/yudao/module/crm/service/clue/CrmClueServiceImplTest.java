@@ -7,6 +7,7 @@ import cn.iocoder.yudao.module.crm.api.inquiry.dto.CrmWebsiteInquiryCreateRespDT
 import cn.iocoder.yudao.module.crm.framework.permission.core.annotations.CrmPermission;
 import cn.iocoder.yudao.module.crm.controller.admin.clue.vo.CrmClueTransformRespVO;
 import cn.iocoder.yudao.module.crm.controller.admin.clue.vo.CrmInquiryProcessStatusUpdateReqVO;
+import cn.iocoder.yudao.module.crm.controller.admin.clue.vo.CrmInquirySummaryRespVO;
 import cn.iocoder.yudao.module.crm.dal.dataobject.clue.CrmClueDO;
 import cn.iocoder.yudao.module.crm.dal.dataobject.contact.CrmContactDO;
 import cn.iocoder.yudao.module.crm.dal.dataobject.customer.CrmCustomerDO;
@@ -14,6 +15,8 @@ import cn.iocoder.yudao.module.crm.dal.mysql.clue.CrmClueMapper;
 import cn.iocoder.yudao.module.crm.dal.mysql.contact.CrmContactMapper;
 import cn.iocoder.yudao.module.crm.dal.mysql.customer.CrmCustomerMapper;
 import cn.iocoder.yudao.module.crm.enums.clue.CrmInquiryProcessStatusEnum;
+import cn.iocoder.yudao.module.crm.enums.clue.CrmInquiryPriorityEnum;
+import cn.iocoder.yudao.module.crm.enums.clue.CrmInquirySalesStageEnum;
 import cn.iocoder.yudao.module.crm.service.customer.CrmCustomerService;
 import cn.iocoder.yudao.module.crm.service.customer.bo.CrmCustomerCreateReqBO;
 import cn.iocoder.yudao.module.crm.service.followup.CrmFollowUpRecordService;
@@ -99,6 +102,9 @@ class CrmClueServiceImplTest {
         assertEquals("7700 900123", inquiry.getTelephone());
         assertEquals("Hotel dining chair project", inquiry.getInquirySubject());
         assertEquals(CrmInquiryProcessStatusEnum.PENDING.getStatus(), inquiry.getProcessStatus());
+        assertTrue(inquiry.getTestData());
+        assertEquals(CrmInquiryPriorityEnum.NORMAL.getPriority(), inquiry.getPriority());
+        assertEquals(CrmInquirySalesStageEnum.NEW.getStage(), inquiry.getSalesStage());
         assertEquals(USER_ID.toString(), inquiry.getCreator());
         assertEquals(USER_ID.toString(), inquiry.getUpdater());
         verify(crmPermissionService).createPermission(any(CrmPermissionCreateReqBO.class), eq(USER_ID));
@@ -147,6 +153,8 @@ class CrmClueServiceImplTest {
                     eq(CrmInquiryProcessStatusEnum.PROCESSING.getStatus()),
                     isNull(),
                     eq("Qualified lead"));
+            verify(clueMapper).markFirstResponse(
+                    INQUIRY_ID, CrmInquirySalesStageEnum.QUALIFYING.getStage());
             assertEquals("Hotel dining chair project", LogRecordContext.getVariable("clueName"));
             assertEquals("待处理", LogRecordContext.getVariable("oldProcessStatusName"));
             assertEquals("处理中", LogRecordContext.getVariable("newProcessStatusName"));
@@ -218,6 +226,8 @@ class CrmClueServiceImplTest {
         assertTrue(inquiryUpdate.getTransformStatus());
         assertEquals(CrmInquiryProcessStatusEnum.PROCESSED.getStatus(),
                 inquiryUpdate.getProcessStatus());
+        assertEquals(CrmInquirySalesStageEnum.WON.getStage(), inquiryUpdate.getSalesStage());
+        assertNotNull(inquiryUpdate.getFirstResponseAt());
         verify(clueMapper, never()).deleteById(INQUIRY_ID);
     }
 
@@ -284,6 +294,32 @@ class CrmClueServiceImplTest {
         verify(customerService, never()).createCustomer(
                 any(CrmCustomerCreateReqBO.class), anyLong());
         verify(contactMapper, never()).insert(any(CrmContactDO.class));
+    }
+
+    @Test
+    void getInquirySummary_scopesBusinessMetricsAndReportsTestDataSeparately() {
+        when(clueMapper.selectInquiryCount(USER_ID, null, false)).thenReturn(6L);
+        when(clueMapper.selectInquiryCount(
+                USER_ID, CrmInquiryProcessStatusEnum.PENDING.getStatus(), false)).thenReturn(2L);
+        when(clueMapper.selectInquiryCount(
+                USER_ID, CrmInquiryProcessStatusEnum.PROCESSING.getStatus(), false)).thenReturn(1L);
+        when(clueMapper.selectInquiryCount(
+                USER_ID, CrmInquiryProcessStatusEnum.PROCESSED.getStatus(), false)).thenReturn(2L);
+        when(clueMapper.selectInquiryCount(
+                USER_ID, CrmInquiryProcessStatusEnum.INVALID.getStatus(), false)).thenReturn(1L);
+        when(clueMapper.selectOverdueInquiryCount(eq(USER_ID), eq(false), any(LocalDateTime.class)))
+                .thenReturn(1L);
+        when(clueMapper.selectInquiryCount(USER_ID, null, true)).thenReturn(3L);
+
+        CrmInquirySummaryRespVO result = clueService.getInquirySummary(USER_ID, false);
+
+        assertEquals(6L, result.getTotalCount());
+        assertEquals(2L, result.getPendingCount());
+        assertEquals(1L, result.getProcessingCount());
+        assertEquals(2L, result.getProcessedCount());
+        assertEquals(1L, result.getInvalidCount());
+        assertEquals(1L, result.getOverdueCount());
+        assertEquals(3L, result.getTestDataCount());
     }
 
     private static CrmWebsiteInquiryCreateReqDTO createWebsiteInquiryReqDTO() {

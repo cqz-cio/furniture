@@ -17,8 +17,11 @@ public class WebsiteNavigationDraftRespVO {
     private Integer version;
     private String status;
     private Integer publishedVersion;
+    private Integer publishedRevisionNo;
     private LocalDateTime lastPublishedTime;
+    private String lastPublishedBy;
     private List<WebsiteNavigationItemRespVO> items;
+    private List<WebsiteNavigationItemRespVO> publishedItems;
     private List<WebsiteNavigationCategoryOptionRespVO> categoryOptions;
 
 }

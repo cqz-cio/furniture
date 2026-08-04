@@ -7,6 +7,7 @@ import cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder;
 import cn.iocoder.yudao.module.product.api.category.ProductCategoryApi;
 import cn.iocoder.yudao.module.product.api.category.dto.ProductCategoryNavigationRespDTO;
 import cn.iocoder.yudao.module.seo.controller.admin.navigation.vo.WebsiteNavigationPreviewTicketReqVO;
+import cn.iocoder.yudao.module.seo.controller.admin.navigation.vo.WebsiteNavigationRestoreReqVO;
 import cn.iocoder.yudao.module.seo.controller.app.navigation.vo.AppWebsiteNavigationRespVO;
 import cn.iocoder.yudao.module.seo.dal.dataobject.config.SeoSiteConfigDO;
 import cn.iocoder.yudao.module.seo.dal.dataobject.navigation.WebsiteNavigationItemDO;
@@ -15,7 +16,9 @@ import cn.iocoder.yudao.module.seo.dal.mysql.navigation.WebsiteNavigationItemMap
 import cn.iocoder.yudao.module.seo.dal.mysql.navigation.WebsiteNavigationRevisionMapper;
 import cn.iocoder.yudao.module.seo.dal.redis.navigation.WebsiteNavigationPreviewGrant;
 import cn.iocoder.yudao.module.seo.dal.redis.navigation.WebsiteNavigationPreviewRedisDAO;
+import cn.iocoder.yudao.module.seo.enums.navigation.WebsiteNavigationPageKeyEnum;
 import cn.iocoder.yudao.module.seo.service.config.SeoSiteConfigService;
+import org.mockito.ArgumentCaptor;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -24,12 +27,17 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Duration;
+import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -139,6 +147,72 @@ class WebsiteNavigationServiceImplTest {
         assertThat(response.getSession()).startsWith("ps_");
         assertThat(response.getExpiresInSeconds()).isEqualTo(1800);
         verify(previewRedisDAO).setSession(eq(response.getSession()), eq(grant), eq(Duration.ofMinutes(30)));
+    }
+
+    @Test
+    void getHistory_shouldReturnPublishedAndArchivedRevisionDetails() {
+        LocalDateTime publishedTime = LocalDateTime.of(2026, 8, 4, 12, 30);
+        WebsiteNavigationRevisionDO published = revision(20L, "PUBLISHED", 8)
+                .setRevisionNo(4)
+                .setPublishedTime(publishedTime)
+                .setPublishedBy("100");
+        WebsiteNavigationRevisionDO archived = revision(19L, "ARCHIVED", 7)
+                .setRevisionNo(3);
+        when(revisionMapper.selectHistory(1L, "en")).thenReturn(List.of(published, archived));
+
+        var result = service.getHistory(1L, " EN ");
+
+        assertThat(result).hasSize(2);
+        assertThat(result.get(0).getRevisionId()).isEqualTo(20L);
+        assertThat(result.get(0).getRevisionNo()).isEqualTo(4);
+        assertThat(result.get(0).getStatus()).isEqualTo("PUBLISHED");
+        assertThat(result.get(0).getPublishedTime()).isEqualTo(publishedTime);
+        assertThat(result.get(0).getPublishedBy()).isEqualTo("100");
+    }
+
+    @Test
+    void restoreDraft_shouldCopyArchivedRevisionWithoutPublishingIt() {
+        WebsiteNavigationRevisionDO draft = revision(22L, "DRAFT", 9);
+        WebsiteNavigationRevisionDO archived = revision(21L, "ARCHIVED", 8);
+        List<WebsiteNavigationItemDO> sourceItems = Arrays.stream(WebsiteNavigationPageKeyEnum.values())
+                .map(page -> pageItem(archived.getId(), page.itemKey(), page.getCode(),
+                        page.getDefaultLabel(), page.getDefaultSort()))
+                .toList();
+        when(revisionMapper.selectByIdForTenant(22L)).thenReturn(draft);
+        when(revisionMapper.selectByIdForTenant(21L)).thenReturn(archived);
+        when(itemMapper.selectListByRevisionId(21L)).thenReturn(sourceItems);
+        when(productCategoryApi.getNavigationCategoryList()).thenReturn(CommonResult.success(List.of()));
+        when(revisionMapper.bumpDraftVersionAtomic(22L, 9, TENANT_ID, "100")).thenReturn(1);
+        WebsiteNavigationRestoreReqVO request = new WebsiteNavigationRestoreReqVO();
+        request.setDraftRevisionId(22L);
+        request.setDraftVersion(9);
+        request.setSourceRevisionId(21L);
+
+        service.restoreDraft(request);
+
+        verify(itemMapper).deleteByRevisionId(22L);
+        ArgumentCaptor<WebsiteNavigationItemDO> itemCaptor =
+                ArgumentCaptor.forClass(WebsiteNavigationItemDO.class);
+        verify(itemMapper, times(WebsiteNavigationPageKeyEnum.values().length)).insert(itemCaptor.capture());
+        assertThat(itemCaptor.getAllValues())
+                .allSatisfy(item -> {
+                    assertThat(item.getRevisionId()).isEqualTo(22L);
+                    assertThat(item.getTenantId()).isEqualTo(TENANT_ID);
+                });
+        verify(revisionMapper, times(0)).publishDraftAtomic(any(), any(), any(), any());
+    }
+
+    @Test
+    void restoreDraft_shouldRejectAnotherDraftAsHistorySource() {
+        when(revisionMapper.selectByIdForTenant(24L)).thenReturn(revision(24L, "DRAFT", 3));
+        when(revisionMapper.selectByIdForTenant(23L)).thenReturn(revision(23L, "DRAFT", 2));
+        WebsiteNavigationRestoreReqVO request = new WebsiteNavigationRestoreReqVO();
+        request.setDraftRevisionId(24L);
+        request.setDraftVersion(3);
+        request.setSourceRevisionId(23L);
+
+        assertThatThrownBy(() -> service.restoreDraft(request))
+                .hasMessageContaining("导航");
     }
 
     private static WebsiteNavigationRevisionDO revision(Long id, String status, Integer version) {

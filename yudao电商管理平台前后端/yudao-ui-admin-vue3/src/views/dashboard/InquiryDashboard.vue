@@ -81,6 +81,16 @@ const visitorToInquiryRate = computed(() => {
   if (!visitors || visitors <= 0) return null
   return (inquirySummary.value.total / visitors) * 100
 })
+const trafficWarning = computed(() => {
+  if (!canReadTraffic || loading.value) return ''
+  if (!trafficSummary.value || trafficSummary.value.trafficDataStatus === 'UNAVAILABLE') {
+    return '官网访问统计尚未接通或当前周期没有可用数据。询盘统计仍可使用，但访客、商品关注度和访客转询盘率暂不能用于经营判断。'
+  }
+  if (trafficSummary.value.trafficDataStatus === 'PARTIAL') {
+    return '官网访问数据当前只有部分覆盖，请结合数据截至时间谨慎判断。'
+  }
+  return ''
+})
 
 const coreMetrics = computed(() => [
   {
@@ -183,6 +193,7 @@ const clueParams = (processStatus?: InquiryProcessStatus) => ({
   pageNo: 1,
   pageSize: 1,
   processStatus,
+  testData: false,
   submittedAt: [`${dateRange.value[0]} 00:00:00`, `${dateRange.value[1]} 23:59:59`]
 })
 
@@ -313,6 +324,13 @@ onMounted(loadDashboard)
     </section>
 
     <el-alert v-if="error" :closable="false" show-icon :title="error" type="warning" />
+    <el-alert
+      v-if="trafficWarning"
+      :closable="false"
+      show-icon
+      :title="trafficWarning"
+      type="warning"
+    />
 
     <section class="inquiry-dashboard__metrics" aria-label="询盘指标">
       <button v-for="item in coreMetrics" :key="item.label" type="button" @click="go(item.path)">
@@ -431,11 +449,7 @@ onMounted(loadDashboard)
             <strong>{{ integer(productCounts['0'] || 0) }}</strong>
             <small>管理 B2B 网站展示内容</small>
           </button>
-          <button
-            v-if="canReadSeo"
-            type="button"
-            @click="go('/seo/metadata')"
-          >
+          <button v-if="canReadSeo" type="button" @click="go('/seo/metadata')">
             <Icon icon="ep:promotion" :size="22" />
             <span>已发布 SEO</span>
             <strong>{{ integer(seoCounts.published) }}</strong>

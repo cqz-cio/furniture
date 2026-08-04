@@ -9,6 +9,7 @@ import cn.iocoder.yudao.module.crm.controller.admin.clue.vo.CrmClueTransferReqVO
 import cn.iocoder.yudao.module.crm.controller.admin.clue.vo.CrmClueTransformRespVO;
 import cn.iocoder.yudao.module.crm.controller.admin.clue.vo.CrmInquiryProcessStatusUpdateReqVO;
 import cn.iocoder.yudao.module.crm.controller.admin.clue.vo.CrmInquirySummaryRespVO;
+import cn.iocoder.yudao.module.crm.controller.admin.clue.vo.CrmInquiryTestDataUpdateReqVO;
 import cn.iocoder.yudao.module.crm.dal.dataobject.clue.CrmClueDO;
 import jakarta.validation.Valid;
 
@@ -54,6 +55,11 @@ public interface CrmClueService {
      * 更新询盘处理状态。
      */
     void updateInquiryProcessStatus(@Valid CrmInquiryProcessStatusUpdateReqVO reqVO);
+
+    /**
+     * 标记询盘属于经营数据或测试数据。
+     */
+    void updateInquiryTestData(@Valid CrmInquiryTestDataUpdateReqVO reqVO);
 
     /**
      * 删除线索
@@ -109,7 +115,7 @@ public interface CrmClueService {
     /**
      * 获得当前用户可见的询盘状态汇总。
      */
-    CrmInquirySummaryRespVO getInquirySummary(Long userId);
+    CrmInquirySummaryRespVO getInquirySummary(Long userId, Boolean testData);
 
     /**
      * 获得分配给我的、待跟进的线索数量

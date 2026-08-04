@@ -13,6 +13,8 @@ import cn.iocoder.yudao.module.seo.controller.admin.navigation.vo.WebsiteNavigat
 import cn.iocoder.yudao.module.seo.controller.admin.navigation.vo.WebsiteNavigationPreviewTicketReqVO;
 import cn.iocoder.yudao.module.seo.controller.admin.navigation.vo.WebsiteNavigationPreviewTicketRespVO;
 import cn.iocoder.yudao.module.seo.controller.admin.navigation.vo.WebsiteNavigationPublishReqVO;
+import cn.iocoder.yudao.module.seo.controller.admin.navigation.vo.WebsiteNavigationRestoreReqVO;
+import cn.iocoder.yudao.module.seo.controller.admin.navigation.vo.WebsiteNavigationRevisionRespVO;
 import cn.iocoder.yudao.module.seo.controller.app.navigation.vo.AppWebsiteNavigationItemRespVO;
 import cn.iocoder.yudao.module.seo.controller.app.navigation.vo.AppWebsiteNavigationPreviewSessionRespVO;
 import cn.iocoder.yudao.module.seo.controller.app.navigation.vo.AppWebsiteNavigationRespVO;
@@ -131,6 +133,55 @@ public class WebsiteNavigationServiceImpl implements WebsiteNavigationService {
         if (affected == 0) {
             classifyAtomicFailure(draft.getId());
         }
+    }
+
+    @Override
+    public List<WebsiteNavigationRevisionRespVO> getHistory(Long siteId, String locale) {
+        return revisionMapper.selectHistory(siteId, SeoLocaleUtils.normalize(locale)).stream()
+                .map(revision -> {
+                    WebsiteNavigationRevisionRespVO response = new WebsiteNavigationRevisionRespVO();
+                    response.setRevisionId(revision.getId());
+                    response.setRevisionNo(revision.getRevisionNo());
+                    response.setVersion(revision.getVersion());
+                    response.setStatus(revision.getStatus());
+                    response.setPublishedTime(revision.getPublishedTime());
+                    response.setPublishedBy(revision.getPublishedBy());
+                    response.setUpdateTime(revision.getUpdateTime());
+                    return response;
+                }).toList();
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void restoreDraft(WebsiteNavigationRestoreReqVO reqVO) {
+        WebsiteNavigationRevisionDO draft = getRequiredDraft(reqVO.getDraftRevisionId());
+        WebsiteNavigationRevisionDO source = revisionMapper.selectByIdForTenant(reqVO.getSourceRevisionId());
+        if (source == null
+                || (!WebsiteNavigationRevisionStatusEnum.PUBLISHED.getCode().equals(source.getStatus())
+                        && !WebsiteNavigationRevisionStatusEnum.ARCHIVED.getCode().equals(source.getStatus()))
+                || !Objects.equals(source.getSiteId(), draft.getSiteId())
+                || !Objects.equals(source.getLocale(), draft.getLocale())) {
+            throw exception(NAVIGATION_CONFIG_INVALID);
+        }
+        List<WebsiteNavigationItemDO> sourceItems = itemMapper.selectListByRevisionId(source.getId());
+        validatePublishableItems(sourceItems);
+        int affected = revisionMapper.bumpDraftVersionAtomic(draft.getId(), reqVO.getDraftVersion(),
+                currentTenantId(), currentUpdater());
+        if (affected == 0) {
+            classifyAtomicFailure(draft.getId());
+        }
+        itemMapper.deleteByRevisionId(draft.getId());
+        insertItems(sourceItems.stream().map(item -> new WebsiteNavigationItemDO()
+                .setRevisionId(draft.getId())
+                .setItemKey(item.getItemKey())
+                .setParentItemKey(item.getParentItemKey())
+                .setItemType(item.getItemType())
+                .setLabel(item.getLabel())
+                .setPageKey(item.getPageKey())
+                .setCategoryId(item.getCategoryId())
+                .setSort(item.getSort())
+                .setVisible(item.getVisible())
+                .setOpenMode(item.getOpenMode())).toList());
     }
 
     @Override
@@ -303,8 +354,13 @@ public class WebsiteNavigationServiceImpl implements WebsiteNavigationService {
         response.setVersion(draft.getVersion());
         response.setStatus(draft.getStatus());
         response.setPublishedVersion(published == null ? null : published.getVersion());
+        response.setPublishedRevisionNo(published == null ? null : published.getRevisionNo());
         response.setLastPublishedTime(published == null ? null : published.getPublishedTime());
+        response.setLastPublishedBy(published == null ? null : published.getPublishedBy());
         response.setItems(items.stream().map(item -> toAdminItem(item, categoryMap)).toList());
+        response.setPublishedItems(published == null ? List.of()
+                : itemMapper.selectListByRevisionId(published.getId()).stream()
+                        .map(item -> toAdminItem(item, categoryMap)).toList());
         response.setCategoryOptions(categoryMap.values().stream().map(category -> {
             WebsiteNavigationCategoryOptionRespVO option = new WebsiteNavigationCategoryOptionRespVO();
             option.setId(category.getId());

@@ -137,6 +137,26 @@ public class CrmClueDO extends BaseDO {
      * 处理完成或标记无效的时间
      */
     private LocalDateTime processedAt;
+    /**
+     * 是否为测试、QA 或 E2E 询盘。测试数据默认不进入经营首页和报表。
+     */
+    private Boolean testData;
+    /**
+     * 询盘优先级。
+     *
+     * @see cn.iocoder.yudao.module.crm.enums.clue.CrmInquiryPriorityEnum
+     */
+    private Integer priority;
+    /**
+     * 销售阶段。
+     *
+     * @see cn.iocoder.yudao.module.crm.enums.clue.CrmInquirySalesStageEnum
+     */
+    private Integer salesStage;
+    /**
+     * 首次开始处理时间，用于响应 SLA。
+     */
+    private LocalDateTime firstResponseAt;
 
     /**
      * 手机号

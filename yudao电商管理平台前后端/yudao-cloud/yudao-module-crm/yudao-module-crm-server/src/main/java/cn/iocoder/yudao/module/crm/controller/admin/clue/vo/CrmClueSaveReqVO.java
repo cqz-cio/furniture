@@ -4,6 +4,8 @@ import cn.iocoder.yudao.framework.common.validation.InEnum;
 import cn.iocoder.yudao.framework.common.validation.Mobile;
 import cn.iocoder.yudao.framework.excel.core.annotations.DictFormat;
 import cn.iocoder.yudao.module.crm.enums.customer.CrmCustomerLevelEnum;
+import cn.iocoder.yudao.module.crm.enums.clue.CrmInquiryPriorityEnum;
+import cn.iocoder.yudao.module.crm.enums.clue.CrmInquirySalesStageEnum;
 import cn.iocoder.yudao.module.crm.framework.operatelog.core.CrmCustomerIndustryParseFunction;
 import cn.iocoder.yudao.module.crm.framework.operatelog.core.CrmCustomerLevelParseFunction;
 import cn.iocoder.yudao.module.crm.framework.operatelog.core.CrmCustomerSourceParseFunction;
@@ -63,6 +65,14 @@ public class CrmClueSaveReqVO {
     @DiffLogField(name = "下次联系时间")
     @DateTimeFormat(pattern = FORMAT_YEAR_MONTH_DAY_HOUR_MINUTE_SECOND)
     private LocalDateTime contactNextTime;
+
+    @Schema(description = "询盘优先级：10 高，20 普通，30 低", example = "20")
+    @InEnum(CrmInquiryPriorityEnum.class)
+    private Integer priority;
+
+    @Schema(description = "销售阶段", example = "10")
+    @InEnum(CrmInquirySalesStageEnum.class)
+    private Integer salesStage;
 
     @Schema(description = "负责人编号", example = "2048")
     @NotNull(message = "负责人编号不能为空")

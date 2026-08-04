@@ -32,6 +32,9 @@ public interface CrmClueMapper extends BaseMapperX<CrmClueDO> {
                 .likeIfPresent(CrmClueDO::getEmail, pageReqVO.getEmail())
                 .likeIfPresent(CrmClueDO::getInquirySubject, pageReqVO.getInquirySubject())
                 .eqIfPresent(CrmClueDO::getProcessStatus, pageReqVO.getProcessStatus())
+                .eqIfPresent(CrmClueDO::getTestData, pageReqVO.getTestData())
+                .eqIfPresent(CrmClueDO::getPriority, pageReqVO.getPriority())
+                .eqIfPresent(CrmClueDO::getSalesStage, pageReqVO.getSalesStage())
                 .eqIfPresent(CrmClueDO::getCustomerId, pageReqVO.getCustomerId())
                 .eqIfPresent(CrmClueDO::getTransformStatus, pageReqVO.getTransformStatus())
                 .likeIfPresent(CrmClueDO::getTelephone, pageReqVO.getTelephone())
@@ -51,11 +54,24 @@ public interface CrmClueMapper extends BaseMapperX<CrmClueDO> {
         return selectOne(CrmClueDO::getExternalInquiryId, externalInquiryId);
     }
 
-    default Long selectInquiryCount(Long userId, Integer processStatus) {
+    default Long selectInquiryCount(Long userId, Integer processStatus, Boolean testData) {
         MPJLambdaWrapperX<CrmClueDO> query = new MPJLambdaWrapperX<>();
         CrmPermissionUtils.appendPermissionCondition(query, CrmBizTypeEnum.CRM_CLUE.getType(),
                 CrmClueDO::getId, userId, null);
         query.eqIfPresent(CrmClueDO::getProcessStatus, processStatus)
+                .eqIfPresent(CrmClueDO::getTestData, testData)
+                .isNotNull(CrmClueDO::getExternalInquiryId);
+        return selectCount(query);
+    }
+
+    default Long selectOverdueInquiryCount(Long userId, Boolean testData,
+                                           java.time.LocalDateTime overdueBefore) {
+        MPJLambdaWrapperX<CrmClueDO> query = new MPJLambdaWrapperX<>();
+        CrmPermissionUtils.appendPermissionCondition(query, CrmBizTypeEnum.CRM_CLUE.getType(),
+                CrmClueDO::getId, userId, null);
+        query.eq(CrmClueDO::getProcessStatus, 0)
+                .eqIfPresent(CrmClueDO::getTestData, testData)
+                .le(CrmClueDO::getSubmittedAt, overdueBefore)
                 .isNotNull(CrmClueDO::getExternalInquiryId);
         return selectCount(query);
     }
@@ -70,6 +86,21 @@ public interface CrmClueMapper extends BaseMapperX<CrmClueDO> {
             update.set(CrmClueDO::getRemark, remark);
         }
         return update(null, update);
+    }
+
+    default int markFirstResponse(Long id, Integer qualifyingStage) {
+        return update(null, new LambdaUpdateWrapper<CrmClueDO>()
+                .eq(CrmClueDO::getId, id)
+                .set(CrmClueDO::getFollowUpStatus, true)
+                .setSql("first_response_at = COALESCE(first_response_at, CURRENT_TIMESTAMP)")
+                .setSql("sales_stage = CASE WHEN sales_stage = 0 THEN {0} ELSE sales_stage END",
+                        qualifyingStage));
+    }
+
+    default int updateSalesStage(Long id, Integer salesStage) {
+        return update(null, new LambdaUpdateWrapper<CrmClueDO>()
+                .eq(CrmClueDO::getId, id)
+                .set(CrmClueDO::getSalesStage, salesStage));
     }
 
     default Long selectCountByFollow(Long userId) {

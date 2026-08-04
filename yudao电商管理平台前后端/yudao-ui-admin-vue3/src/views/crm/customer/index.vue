@@ -26,12 +26,7 @@
         />
       </el-form-item>
       <el-form-item label="客户来源" prop="source">
-        <el-select
-          v-model="queryParams.source"
-          class="!w-180px"
-          clearable
-          placeholder="全部来源"
-        >
+        <el-select v-model="queryParams.source" class="!w-180px" clearable placeholder="全部来源">
           <el-option
             v-for="dict in getIntDictOptions(DICT_TYPE.CRM_CUSTOMER_SOURCE)"
             :key="dict.value"
@@ -43,11 +38,7 @@
       <el-form-item>
         <el-button @click="handleQuery"><Icon icon="ep:search" class="mr-5px" />搜索</el-button>
         <el-button @click="resetQuery"><Icon icon="ep:refresh" class="mr-5px" />重置</el-button>
-        <el-button
-          v-hasPermi="['crm:customer:create']"
-          type="primary"
-          @click="openForm('create')"
-        >
+        <el-button v-hasPermi="['crm:customer:create']" type="primary" @click="openForm('create')">
           <Icon icon="ep:plus" class="mr-5px" />新增客户档案
         </el-button>
         <el-button
@@ -77,16 +68,36 @@
           <dict-tag :type="DICT_TYPE.CRM_CUSTOMER_SOURCE" :value="row.source" />
         </template>
       </el-table-column>
+      <el-table-column label="客户阶段" width="120" align="center">
+        <template #default="{ row }">
+          <el-tag :type="customerStage(row).type" effect="plain">
+            {{ customerStage(row).label }}
+          </el-tag>
+        </template>
+      </el-table-column>
       <el-table-column label="联系电话" prop="telephone" min-width="150" />
       <el-table-column label="邮箱" prop="email" min-width="200" />
       <el-table-column label="负责人" prop="ownerUserName" width="120" />
-      <el-table-column label="备注" prop="remark" min-width="230" />
-      <el-table-column
-        label="建立时间"
-        prop="createTime"
-        :formatter="dateFormatter"
-        width="180"
-      />
+      <el-table-column label="最近联系" width="170">
+        <template #default="{ row }">{{ formatOptionalTime(row.contactLastTime) }}</template>
+      </el-table-column>
+      <el-table-column label="下次跟进" width="180">
+        <template #default="{ row }">
+          <span :class="{ 'is-overdue': isFollowUpOverdue(row.contactNextTime) }">
+            {{ row.contactNextTime ? formatOptionalTime(row.contactNextTime) : '待安排' }}
+          </span>
+          <el-tag
+            v-if="isFollowUpOverdue(row.contactNextTime)"
+            class="ml-6px"
+            size="small"
+            type="danger"
+            effect="plain"
+          >
+            已逾期
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="建立时间" prop="createTime" :formatter="dateFormatter" width="180" />
       <el-table-column label="操作" align="center" fixed="right" width="150">
         <template #default="{ row }">
           <el-button link type="primary" @click="openDetail(row.id)">查看</el-button>
@@ -113,6 +124,7 @@
 </template>
 
 <script lang="ts" setup>
+import dayjs from 'dayjs'
 import { DICT_TYPE, getIntDictOptions } from '@/utils/dict'
 import { dateFormatter } from '@/utils/formatTime'
 import download from '@/utils/download'
@@ -134,6 +146,15 @@ const queryParams = reactive({
   source: undefined as number | undefined
 })
 const queryFormRef = ref()
+const formatOptionalTime = (value?: Date | string) =>
+  value && dayjs(value).isValid() ? dayjs(value).format('YYYY-MM-DD HH:mm') : '-'
+const isFollowUpOverdue = (value?: Date | string) =>
+  Boolean(value && dayjs(value).isValid() && dayjs(value).isBefore(dayjs()))
+const customerStage = (row: CustomerApi.CustomerVO) => {
+  if (row.dealStatus) return { label: '已成交', type: 'success' as const }
+  if (!row.contactLastTime) return { label: '待首次跟进', type: 'warning' as const }
+  return { label: '跟进中', type: 'primary' as const }
+}
 
 const getList = async () => {
   loading.value = true
@@ -179,3 +200,10 @@ const handleExport = async () => {
 
 onMounted(getList)
 </script>
+
+<style scoped>
+.is-overdue {
+  color: var(--el-color-danger);
+  font-weight: 600;
+}
+</style>
