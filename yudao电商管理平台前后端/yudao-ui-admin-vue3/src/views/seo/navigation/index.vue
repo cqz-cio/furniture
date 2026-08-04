@@ -41,7 +41,7 @@
           type="primary"
           plain
           :loading="previewLoading"
-          :disabled="busy"
+          :disabled="busy || !siteConfigured"
           v-hasPermi="['seo:navigation:preview']"
           @click="refreshInlinePreview"
         >
@@ -276,6 +276,20 @@
 
           <p class="section-description"> 预览使用真实官网组件和商品数据，不会修改线上版本。 </p>
 
+          <el-alert
+            v-if="!siteConfigLoading && !siteConfigured"
+            title="首次预览前，请先确认官网地址"
+            type="warning"
+            show-icon
+            :closable="false"
+            class="mb-16px"
+          >
+            <template #default>
+              <span>系统需要知道在哪个官网打开预览；只需设置一次，不会发布导航。</span>
+              <el-button type="primary" link @click="goToSiteConfig">去确认官网地址</el-button>
+            </template>
+          </el-alert>
+
           <div v-if="inlinePreviewUrl" class="preview-browser">
             <div class="preview-browser__bar">
               <Icon icon="ep:monitor" />
@@ -306,7 +320,7 @@
             <el-button
               type="primary"
               :loading="previewLoading"
-              :disabled="busy"
+              :disabled="busy || !siteConfigured"
               v-hasPermi="['seo:navigation:preview']"
               @click="refreshInlinePreview"
             >
@@ -389,7 +403,8 @@
 
 <script setup lang="ts">
 import dayjs from 'dayjs'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onActivated, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import draggable from 'vuedraggable'
 import {
   createWebsiteNavigationPreviewTicket,
@@ -404,6 +419,7 @@ import {
   type WebsiteNavigationItemSaveReqVO,
   type WebsiteNavigationRevisionRespVO
 } from '@/api/seo/navigation'
+import { getSeoSiteConfig } from '@/api/seo/siteConfig'
 import { useMessage } from '@/hooks/web/useMessage'
 
 defineOptions({ name: 'SeoNavigation' })
@@ -421,6 +437,7 @@ const pageRoutes: Record<string, string> = {
 }
 
 const message = useMessage()
+const router = useRouter()
 const draft = ref<WebsiteNavigationDraftRespVO>()
 const primaryItems = ref<WebsiteNavigationItemRespVO[]>([])
 const categoryItems = ref<WebsiteNavigationItemRespVO[]>([])
@@ -440,6 +457,8 @@ const widePreviewVisible = ref(false)
 const historyVisible = ref(false)
 const historyLoading = ref(false)
 const history = ref<WebsiteNavigationRevisionRespVO[]>([])
+const siteConfigLoading = ref(false)
+const siteConfigured = ref(false)
 
 const busy = computed(
   () =>
@@ -448,7 +467,8 @@ const busy = computed(
     refreshing.value ||
     publishing.value ||
     previewLoading.value ||
-    widePreviewLoading.value
+    widePreviewLoading.value ||
+    siteConfigLoading.value
 )
 
 const publishedStatusLabel = computed(() =>
@@ -520,6 +540,21 @@ const availableCategoryOptions = computed(() =>
 )
 
 const inlinePreviewDisplayUrl = computed(() => safePreviewDisplayUrl(inlinePreviewUrl.value))
+
+const loadSiteConfig = async () => {
+  siteConfigLoading.value = true
+  try {
+    const config = await getSeoSiteConfig(SITE_ID)
+    siteConfigured.value = Boolean(config?.siteUrl)
+  } catch {
+    siteConfigured.value = false
+  } finally {
+    siteConfigLoading.value = false
+  }
+}
+
+const goToSiteConfig = () =>
+  router.push({ path: '/seo/site-config', query: { returnTo: '/seo/navigation' } })
 
 const loadDraft = async () => {
   loading.value = true
@@ -751,7 +786,13 @@ const safePreviewDisplayUrl = (value: string) => {
   }
 }
 
-onMounted(loadDraft)
+onMounted(() => {
+  loadDraft()
+  loadSiteConfig()
+})
+onActivated(() => {
+  if (draft.value) loadSiteConfig()
+})
 </script>
 
 <style scoped lang="scss">

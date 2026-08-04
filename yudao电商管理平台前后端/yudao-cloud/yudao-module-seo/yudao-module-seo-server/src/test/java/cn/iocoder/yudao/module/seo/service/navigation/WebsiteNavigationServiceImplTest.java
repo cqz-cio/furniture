@@ -129,6 +129,7 @@ class WebsiteNavigationServiceImplTest {
 
         assertThat(response.getPreviewUrl())
                 .startsWith("https://www.vanz.example/preview/navigation#ticket=pv_")
+                .endsWith("&tenantId=162")
                 .doesNotContain("?token=");
         assertThat(response.getExpiresInSeconds()).isEqualTo(600);
         verify(previewRedisDAO).setTicket(anyString(), eq(new WebsiteNavigationPreviewGrant(

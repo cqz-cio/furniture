@@ -228,12 +228,18 @@ const syncListingQueryFromLocation = () => {
   mobileFiltersOpen.value = false;
 };
 
+const resolveCategoryIdFromPath = (pathname = window.location.pathname) => {
+  const match = pathname.match(/^\/products\/category\/(\d+)\/?$/);
+  return match ? Number(match[1]) : undefined;
+};
+
 onMounted(async () => {
   window.addEventListener("popstate", syncListingQueryFromLocation);
   window.addEventListener("oakved:navigation", syncListingQueryFromLocation);
   loadProductWishlistState();
   try {
-    const page = await getAllProducts();
+    const categoryId = resolveCategoryIdFromPath();
+    const page = await getAllProducts(categoryId ? { categoryId } : {});
     products.value = page.list;
     source.value = "yudao";
     catalogError.value = false;

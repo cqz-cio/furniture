@@ -14,7 +14,7 @@ import { generatedFurnitureAssets } from "../data/generatedFurnitureAssets.js";
 import { useI18n } from "../i18n.js";
 import AuthModal from "./AuthModal.vue";
 
-defineProps({
+const props = defineProps({
   overlay: {
     type: Boolean,
     default: false,
@@ -26,6 +26,14 @@ defineProps({
   cartMode: {
     type: String,
     default: "local",
+  },
+  navigationItems: {
+    type: Array,
+    default: () => [],
+  },
+  navigationPreview: {
+    type: Boolean,
+    default: false,
   },
 });
 
@@ -75,45 +83,63 @@ const babyChildNavigationLabelKeys = {
   Sale: "navigation.babyChild.sale",
   Registry: "navigation.babyChild.registry",
 };
-const navItems = computed(() => (isBabyChildSitePage.value ? babyChildNavigation : primaryNavigation));
-const hasStorefrontDropdown = (item) =>
-  !isBabyChildSitePage.value && storefrontDropdownKeys.includes(item.key);
-const navItemLabel = (item) => t(item.labelKey);
-const menuItemLabel = (item) => t(item.labelKey);
+const navItems = computed(() => {
+  if (props.navigationPreview) return props.navigationItems;
+  return isBabyChildSitePage.value ? babyChildNavigation : primaryNavigation;
+});
+const hasStorefrontDropdown = (item) => {
+  if (props.navigationPreview) return Boolean(item?.children?.length);
+  return !isBabyChildSitePage.value && storefrontDropdownKeys.includes(item?.key);
+};
+const navItemLabel = (item) => item?.label || (item?.labelKey ? t(item.labelKey) : "");
+const menuItemLabel = (item) => item?.label || (item?.labelKey ? t(item.labelKey) : "");
 const babyChildItemLabel = (item) => {
   const labelKey = babyChildNavigationLabelKeys[item.label];
   return labelKey ? t(labelKey) : item.label;
 };
-const hoverMenuItems = computed(() => storefrontDropdownMenus[activeDropdown.value] || []);
+const hoverMenuItems = computed(() => {
+  if (props.navigationPreview) {
+    return navItems.value.find((item) => item.key === activeDropdown.value)?.children || [];
+  }
+  return storefrontDropdownMenus[activeDropdown.value] || [];
+});
 const dropdownPositionStyle = computed(() => ({
   "--category-menu-left": categoryMenuLeft.value,
 }));
-const mobileDrawerSections = computed(() => [
-  {
-    heading: t("navigation.storefront.mobile.shopFurniture"),
-    items: mobileDrawerNavigation,
-  },
-  {
-    heading: t("navigation.storefront.mobile.service"),
-    items: [
-      {
-        key: "membership-faq",
-        labelKey: "navigation.storefront.mobile.membershipFaq",
-        href: "/membership/faqs",
-      },
-      {
-        key: "gift-registry",
-        labelKey: "navigation.storefront.mobile.giftRegistry",
-        href: "/gift-registry",
-      },
-      {
-        key: "trade-program",
-        labelKey: "navigation.storefront.mobile.tradeProgram",
-        href: "/trade/sign-in",
-      },
-    ],
-  },
-]);
+const mobileDrawerSections = computed(() => {
+  const navigationSection = {
+    heading: props.navigationPreview
+      ? "Navigation"
+      : t("navigation.storefront.mobile.shopFurniture"),
+    items: props.navigationPreview
+      ? navItems.value.map((item) => ({ ...item, items: item.children || [] }))
+      : mobileDrawerNavigation,
+  };
+  if (props.navigationPreview) return [navigationSection];
+  return [
+    navigationSection,
+    {
+      heading: t("navigation.storefront.mobile.service"),
+      items: [
+        {
+          key: "membership-faq",
+          labelKey: "navigation.storefront.mobile.membershipFaq",
+          href: "/membership/faqs",
+        },
+        {
+          key: "gift-registry",
+          labelKey: "navigation.storefront.mobile.giftRegistry",
+          href: "/gift-registry",
+        },
+        {
+          key: "trade-program",
+          labelKey: "navigation.storefront.mobile.tradeProgram",
+          href: "/trade/sign-in",
+        },
+      ],
+    },
+  ];
+});
 const generatedGlobalMenuImages = [
   generatedFurnitureAssets.products.sofa.cover,
   generatedFurnitureAssets.home.modules["004"].desktop,
@@ -410,10 +436,10 @@ onBeforeUnmount(() => {
     </nav>
 
     <section
-      v-if="storefrontDropdownKeys.includes(activeDropdown)"
+      v-if="activeDropdown && hoverMenuItems.length"
       class="category-mega-menu"
       :style="dropdownPositionStyle"
-      :aria-label="`${navItemLabel(primaryNavigation.find((item) => item.key === activeDropdown))} category menu`"
+      :aria-label="`${navItemLabel(navItems.find((item) => item.key === activeDropdown))} category menu`"
     >
       <ul>
         <li v-for="item in hoverMenuItems" :key="item.key">

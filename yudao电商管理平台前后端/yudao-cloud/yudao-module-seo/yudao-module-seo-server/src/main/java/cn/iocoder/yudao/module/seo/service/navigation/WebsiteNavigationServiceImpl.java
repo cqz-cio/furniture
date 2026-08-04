@@ -205,7 +205,8 @@ public class WebsiteNavigationServiceImpl implements WebsiteNavigationService {
                 previewOrigin);
         String ticket = randomToken("pv_");
         previewRedisDAO.setTicket(ticket, grant, PREVIEW_TICKET_TTL);
-        String previewUrl = siteConfig.getSiteUrl() + "/preview/navigation#ticket=" + ticket;
+        String previewUrl = siteConfig.getSiteUrl() + "/preview/navigation#ticket=" + ticket
+                + "&tenantId=" + currentTenantId();
         return new WebsiteNavigationPreviewTicketRespVO(previewUrl, (int) PREVIEW_TICKET_TTL.toSeconds());
     }
 

@@ -1296,6 +1296,31 @@ button {
   min-height: 100vh;
 }
 
+.website-navigation-preview-state {
+  position: fixed;
+  z-index: 180;
+  top: 14px;
+  left: 50%;
+  display: grid;
+  max-width: min(620px, calc(100vw - 32px));
+  gap: 3px;
+  padding: 10px 16px;
+  border: 1px solid rgb(255 255 255 / 42%);
+  border-radius: 4px;
+  background: rgb(28 28 28 / 92%);
+  color: #fff;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  text-align: center;
+  transform: translateX(-50%);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 18%);
+}
+
+.website-navigation-preview-state.is-error {
+  border-color: rgb(191 70 70 / 55%);
+  background: rgb(92 31 31 / 94%);
+}
+
 .has-overlay-header {
   padding-top: 0;
 }
