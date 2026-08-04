@@ -10298,6 +10298,143 @@ ALTER TABLE `system_tenant`
     AFTER `business_mode`;
 
 -- BEGIN V035__single_tenant_single_role_accounts.sql
+-- Baseline-only VANZ bootstrap.
+-- Production upgrades keep V035's fail-closed account guard; a clean baseline
+-- creates the canonical tenant and operator account before that guard runs.
+SET @oakved_baseline_vanz_package_marker =
+  _utf8mb4'oakved:baseline:vanz-b2b' COLLATE utf8mb4_unicode_ci;
+
+INSERT INTO `system_tenant_package`
+  (`name`, `status`, `remark`, `menu_ids`, `creator`, `create_time`,
+   `updater`, `update_time`, `deleted`)
+SELECT
+  'Vanz B2B 初始化套餐', source_package.`status`,
+  @oakved_baseline_vanz_package_marker, source_package.`menu_ids`,
+  'baseline-vanz', CURRENT_TIMESTAMP, 'baseline-vanz', CURRENT_TIMESTAMP, b'0'
+FROM `system_tenant` AS source_tenant
+INNER JOIN `system_tenant_package` AS source_package
+  ON source_package.`id` = source_tenant.`package_id`
+ AND source_package.`status` = 0
+ AND source_package.`deleted` = b'0'
+WHERE source_tenant.`id` = 121
+  AND source_tenant.`status` = 0
+  AND source_tenant.`deleted` = b'0'
+  AND NOT EXISTS (
+    SELECT 1
+    FROM `system_tenant_package`
+    WHERE `remark` = @oakved_baseline_vanz_package_marker
+      AND `deleted` = b'0'
+  );
+
+SET @oakved_baseline_vanz_package_id = (
+  SELECT MIN(`id`)
+  FROM `system_tenant_package`
+  WHERE `remark` = @oakved_baseline_vanz_package_marker
+    AND `status` = 0
+    AND `deleted` = b'0'
+);
+
+INSERT INTO `system_tenant`
+  (`id`, `name`, `code`, `contact_user_id`, `contact_name`,
+   `contact_mobile`, `status`, `websites`, `business_mode`,
+   `website_product_fields`, `package_id`, `expire_time`,
+   `account_count`, `creator`, `create_time`, `updater`,
+   `update_time`, `deleted`)
+SELECT
+  162, 'Vanz家具', 'VANZ', NULL, 'vanz运营', '', 0, '', 'B2B',
+  source_tenant.`website_product_fields`, @oakved_baseline_vanz_package_id,
+  '2099-12-31 23:59:59', 20, 'baseline-vanz', CURRENT_TIMESTAMP,
+  'baseline-vanz', CURRENT_TIMESTAMP, b'0'
+FROM `system_tenant` AS source_tenant
+WHERE source_tenant.`id` = 121
+  AND source_tenant.`deleted` = b'0'
+  AND @oakved_baseline_vanz_package_id IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1 FROM `system_tenant` WHERE `id` = 162 AND `deleted` = b'0'
+  );
+
+INSERT INTO `system_users`
+  (`username`, `password`, `nickname`, `remark`, `dept_id`,
+   `post_ids`, `email`, `mobile`, `sex`, `avatar`, `status`,
+   `login_ip`, `login_date`, `creator`, `create_time`, `updater`,
+   `update_time`, `deleted`, `tenant_id`)
+SELECT
+  'vanzadmin', source_user.`password`, 'vanz运营', 'VANZ B2B 本地基线账号',
+  NULL, NULL, '', '', 0, NULL, 0, '', NULL, 'baseline-vanz',
+  CURRENT_TIMESTAMP, 'baseline-vanz', CURRENT_TIMESTAMP, b'0', 162
+FROM `system_users` AS source_user
+WHERE source_user.`username` = 'admin'
+  AND source_user.`tenant_id` = 1
+  AND source_user.`deleted` = b'0'
+  AND EXISTS (
+    SELECT 1 FROM `system_tenant` WHERE `id` = 162 AND `deleted` = b'0'
+  )
+  AND NOT EXISTS (
+    SELECT 1
+    FROM `system_users`
+    WHERE `username` = 'vanzadmin' AND `tenant_id` = 162 AND `deleted` = b'0'
+  )
+ORDER BY source_user.`id`
+LIMIT 1;
+
+SET @oakved_baseline_vanz_user_id = (
+  SELECT MIN(`id`)
+  FROM `system_users`
+  WHERE `username` = 'vanzadmin' AND `tenant_id` = 162 AND `deleted` = b'0'
+);
+
+UPDATE `system_tenant`
+SET `contact_user_id` = @oakved_baseline_vanz_user_id,
+    `updater` = 'baseline-vanz',
+    `update_time` = CURRENT_TIMESTAMP
+WHERE `id` = 162
+  AND `deleted` = b'0';
+
+INSERT INTO `system_role`
+  (`name`, `code`, `sort`, `data_scope`, `data_scope_dept_ids`,
+   `status`, `type`, `remark`, `creator`, `create_time`, `updater`,
+   `update_time`, `deleted`, `tenant_id`)
+SELECT
+  '租户管理员', 'tenant_admin', 1, 1, '', 0, 1,
+  'VANZ B2B 基线租户管理员', 'baseline-vanz', CURRENT_TIMESTAMP,
+  'baseline-vanz', CURRENT_TIMESTAMP, b'0', 162
+FROM `system_tenant`
+WHERE `id` = 162
+  AND `deleted` = b'0'
+  AND NOT EXISTS (
+    SELECT 1
+    FROM `system_role`
+    WHERE `tenant_id` = 162 AND `code` = 'tenant_admin' AND `deleted` = b'0'
+  );
+
+SET @oakved_baseline_source_admin_role_id = (
+  SELECT MIN(`id`) FROM `system_role`
+  WHERE `tenant_id` = 121 AND `code` = 'tenant_admin' AND `deleted` = b'0'
+);
+SET @oakved_baseline_vanz_admin_role_id = (
+  SELECT MIN(`id`) FROM `system_role`
+  WHERE `tenant_id` = 162 AND `code` = 'tenant_admin' AND `deleted` = b'0'
+);
+
+INSERT INTO `system_role_menu`
+  (`role_id`, `menu_id`, `creator`, `create_time`, `updater`,
+   `update_time`, `deleted`, `tenant_id`)
+SELECT
+  @oakved_baseline_vanz_admin_role_id, source_menu.`menu_id`,
+  'baseline-vanz', CURRENT_TIMESTAMP, 'baseline-vanz', CURRENT_TIMESTAMP, b'0', 162
+FROM `system_role_menu` AS source_menu
+WHERE source_menu.`role_id` = @oakved_baseline_source_admin_role_id
+  AND source_menu.`deleted` = b'0'
+  AND @oakved_baseline_vanz_admin_role_id IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1
+    FROM `system_role_menu` AS existing
+    WHERE existing.`role_id` = @oakved_baseline_vanz_admin_role_id
+      AND existing.`menu_id` = source_menu.`menu_id`
+      AND existing.`tenant_id` = 162
+      AND existing.`deleted` = b'0'
+  );
+
 -- Bind every ERP account to one immutable home tenant and one active role.
 -- Mainline V035 follows the existing tenant SKU and B2B product-field migrations.
 
