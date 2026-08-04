@@ -2,6 +2,17 @@
 
 目标：把本地后台管理系统、家具前台网站、商品/用户/订单等数据库数据、项目里用到的图片资源，迁移到云服务器后保持页面和数据尽量一模一样。
 
+> **站点边界：本文只适用于 Oakved 老站，禁止作为 VANZ 的部署模板。** 两个站点
+> 可共用 ERP 基础设施，但租户合同不可互换：
+>
+> | 站点 | 前端项目 | 固定租户 |
+> | --- | --- | --- |
+> | Oakved 家具 | `D:\code\furniture web` | `121` |
+> | VANZ B2B 官网 | `vanz-homepage-prototype` | `162` |
+>
+> VANZ 的构建和启动会拒绝任何非 `162` 配置；其部署说明以
+> `vanz-homepage-prototype/DEPLOYMENT.md` 为准。
+
 ## 1. 迁移范围
 
 必须迁移的内容：
@@ -140,7 +151,8 @@ java -jar /opt/oakved/backend/yudao-server.jar
 
 ```env
 VITE_YUDAO_APP_API_BASE=https://your-domain.com/app-api
-VITE_YUDAO_APP_TENANT_ID=121
+# 由 Oakved 发布流程按本站点合同替换；不要把该模板复制到 VANZ。
+VITE_YUDAO_APP_TENANT_ID=__OAKVED_TENANT_ID__
 VITE_YUDAO_US_DEFAULT_AREA_ID=100200
 VITE_YUDAO_PAY_CHANNEL_CODE=alipay_pc
 VITE_ADDRESS_VERIFICATION_PATH=/member/address/verify
