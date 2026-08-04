@@ -129,6 +129,7 @@ const pageFromPath = (path) => {
 const currentPage = ref(pageFromPath(window.location.pathname));
 const routeSignature = ref(`${window.location.pathname}${window.location.search}${window.location.hash}`);
 const navigationPreview = ref(null);
+const navigationPreviewTenantId = ref("");
 const navigationPreviewStatus = ref(currentPage.value === "navigation-preview" ? "loading" : "idle");
 const navigationPreviewError = ref("");
 const cartOpen = ref(false);
@@ -178,15 +179,21 @@ const pageComponent = computed(() => {
 
 const isNavigationPreview = computed(() => currentPage.value === "navigation-preview");
 const navigationPreviewItems = computed(() => navigationPreview.value?.items || []);
+const hasNavigationPreviewContext = computed(
+  () => isNavigationPreview.value || Boolean(navigationPreviewTenantId.value),
+);
 
 const loadNavigationPreview = async () => {
   navigationPreviewStatus.value = "loading";
   navigationPreviewError.value = "";
   try {
-    navigationPreview.value = await loadWebsiteNavigationPreview();
+    const { navigation, tenantId } = await loadWebsiteNavigationPreview();
+    navigationPreview.value = navigation;
+    navigationPreviewTenantId.value = tenantId;
     navigationPreviewStatus.value = "ready";
   } catch (error) {
     navigationPreview.value = null;
+    navigationPreviewTenantId.value = "";
     navigationPreviewStatus.value = "error";
     navigationPreviewError.value =
       error?.message || "预览凭证已失效，请返回 ERP 重新生成真实预览。";
@@ -527,7 +534,7 @@ onBeforeUnmount(() => {
     :cart-count="cartQuantity"
     :cart-mode="cartMode"
     :navigation-items="navigationPreviewItems"
-    :navigation-preview="isNavigationPreview"
+    :navigation-preview="hasNavigationPreviewContext"
     :overlay="usesOverlayHeader"
     @auth-change="handleAuthChange"
     @open-cart="cartOpen = true"
@@ -550,6 +557,7 @@ onBeforeUnmount(() => {
       :page-key="currentPage"
       :route-signature="routeSignature"
       :auth-version="authVersion"
+      :tenant-id="navigationPreviewTenantId"
       :items="cartItems"
       @add-to-cart="addToCart"
       @add-to-wishlist="addToWishlist"
