@@ -22,6 +22,10 @@ const props = defineProps({
     type: Number,
     default: 0,
   },
+  tenantId: {
+    type: String,
+    default: "",
+  },
 });
 const emit = defineEmits(["add-to-cart", "add-to-wishlist"]);
 const { t } = useI18n();
@@ -239,7 +243,8 @@ onMounted(async () => {
   loadProductWishlistState();
   try {
     const categoryId = resolveCategoryIdFromPath();
-    const page = await getAllProducts(categoryId ? { categoryId } : {});
+    const requestOptions = props.tenantId ? { tenantId: props.tenantId } : {};
+    const page = await getAllProducts(categoryId ? { categoryId } : {}, requestOptions);
     products.value = page.list;
     source.value = "yudao";
     catalogError.value = false;

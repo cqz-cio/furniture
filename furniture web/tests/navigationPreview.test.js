@@ -51,7 +51,7 @@ describe("website navigation preview", () => {
         location: { pathname: "/preview/navigation", search: "" },
         history,
       }),
-    ).resolves.toEqual(navigation);
+    ).resolves.toEqual({ navigation, tenantId: "162" });
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock.mock.calls[0][0]).toMatch(/\/seo\/navigation\/preview\/exchange$/);
@@ -90,6 +90,10 @@ describe("website navigation preview", () => {
     expect(headerSource).toContain("if (props.navigationPreview) return props.navigationItems;");
     expect(headerSource).toContain("item?.children?.length");
     expect(appSource).toContain('normalizedPath.startsWith("/products/category/")');
-    expect(productListSource).toContain("getAllProducts(categoryId ? { categoryId } : {})");
+    expect(appSource).toContain(':tenant-id="navigationPreviewTenantId"');
+    expect(productListSource).toContain(
+      "getAllProducts(categoryId ? { categoryId } : {}, requestOptions)",
+    );
+    expect(productListSource).toContain("{ tenantId: props.tenantId }");
   });
 });

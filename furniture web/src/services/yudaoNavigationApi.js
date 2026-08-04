@@ -46,5 +46,5 @@ export const loadWebsiteNavigationPreview = async ({
   const grant = await exchangeWebsiteNavigationPreviewTicket(ticket, tenantId);
   const navigation = await getWebsiteNavigationPreview(grant?.session, tenantId);
   history.replaceState(history.state, "", `${location.pathname}${location.search}`);
-  return navigation;
+  return { navigation, tenantId };
 };
