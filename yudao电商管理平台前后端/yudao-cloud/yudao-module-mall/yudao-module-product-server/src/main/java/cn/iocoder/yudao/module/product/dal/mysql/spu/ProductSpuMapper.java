@@ -15,10 +15,23 @@ import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 import org.apache.ibatis.annotations.*;
 
 import java.util.Objects;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 
 @Mapper
 public interface ProductSpuMapper extends BaseMapperX<ProductSpuDO> {
+
+    default List<ProductSpuDO> selectListByCategoryIdsAndStatus(
+            Collection<Long> categoryIds, Integer status) {
+        if (categoryIds == null || categoryIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return selectList(new LambdaQueryWrapperX<ProductSpuDO>()
+                .in(ProductSpuDO::getCategoryId, categoryIds)
+                .eq(ProductSpuDO::getStatus, status));
+    }
 
     /**
      * 查询商品 SPU（包含已删除）

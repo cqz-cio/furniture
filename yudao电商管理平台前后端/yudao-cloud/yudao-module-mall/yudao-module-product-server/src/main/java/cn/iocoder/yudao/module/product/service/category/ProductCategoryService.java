@@ -2,6 +2,7 @@ package cn.iocoder.yudao.module.product.service.category;
 
 import cn.iocoder.yudao.module.product.controller.admin.category.vo.ProductCategoryListReqVO;
 import cn.iocoder.yudao.module.product.controller.admin.category.vo.ProductCategorySaveReqVO;
+import cn.iocoder.yudao.module.product.api.category.dto.ProductCategoryNavigationRespDTO;
 import cn.iocoder.yudao.module.product.dal.dataobject.category.ProductCategoryDO;
 import jakarta.validation.Valid;
 
@@ -92,5 +93,10 @@ public interface ProductCategoryService {
      * @param ids 商品分类编号数组
      */
     void validateCategoryList(Collection<Long> ids);
+
+    /**
+     * Get enabled second-level categories for the website navigation picker.
+     */
+    List<ProductCategoryNavigationRespDTO> getNavigationCategoryList();
 
 }

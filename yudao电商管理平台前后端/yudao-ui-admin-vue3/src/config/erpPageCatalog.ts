@@ -73,6 +73,12 @@ const pages: Record<string, PageDefinition> = {
     description: '配置站点默认搜索规则、标题规范和社交分享基础信息。',
     recordLabel: '站点配置'
   },
+  '/seo/navigation': {
+    moduleLabel: 'SEO 管理',
+    kind: 'settings',
+    description: '维护官网一级导航和 Products 二级分类，并在发布前查看真实官网效果。',
+    recordLabel: '官网导航'
+  },
   '/seo/analysis': {
     moduleLabel: 'SEO 管理',
     kind: 'analytics',

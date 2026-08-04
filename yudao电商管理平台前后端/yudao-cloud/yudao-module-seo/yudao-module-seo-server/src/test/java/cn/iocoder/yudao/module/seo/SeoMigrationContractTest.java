@@ -24,6 +24,10 @@ class SeoMigrationContractTest {
             Path.of("sql", "mysql", "migrations", "V026__seo_keyword_relevance_analysis.sql");
     private static final Path KEYWORD_ANALYSIS_MENU_REPAIR_MIGRATION_RELATIVE_PATH =
             Path.of("sql", "mysql", "migrations", "V027__repair_seo_analysis_menu_registration.sql");
+    private static final Path WEBSITE_NAVIGATION_MIGRATION_RELATIVE_PATH =
+            Path.of("sql", "mysql", "migrations", "V039__website_navigation_preview.sql");
+    private static final Path MYSQL_BASELINE_RELATIVE_PATH =
+            Path.of("sql", "mysql", "oakved-baseline.sql");
     private static final String RELEASED_KEYWORD_ANALYSIS_MIGRATION_SHA256 =
             "91aeaf8bca0249c1692314c99ad5a9e7d7b380e257d003c26517c0e381114560";
 
@@ -72,6 +76,38 @@ class SeoMigrationContractTest {
                 "CREATE TEMPORARY TABLE `seo_analysis_menu_registration_guard`",
                 "CHECK (`valid` = 1)");
         assertThat(sql).doesNotContain("SELECT 8110,", "SELECT 8111,", "SELECT 8112,");
+    }
+
+    @Test
+    void shouldCreateVersionedWebsiteNavigationAndSecurePreviewPermissions() throws IOException {
+        String sql = migrationSql(WEBSITE_NAVIGATION_MIGRATION_RELATIVE_PATH);
+
+        assertThat(sql).contains(
+                "CREATE TABLE IF NOT EXISTS `website_navigation_revision`",
+                "CREATE TABLE IF NOT EXISTS `website_navigation_item`",
+                "UNIQUE KEY `uk_navigation_draft_active`",
+                "UNIQUE KEY `uk_navigation_published_active`",
+                "'navigation','ep:guide',",
+                "'seo/navigation/index','SeoNavigation'",
+                "'seo:navigation:query'",
+                "'seo:navigation:update'",
+                "'seo:navigation:preview'",
+                "'seo:navigation:publish'",
+                "tenant.`id` = 162",
+                "CREATE TEMPORARY TABLE `website_navigation_menu_guard`",
+                "CHECK (`valid` = 1)");
+        assertThat(sql).doesNotContain("UPDATE `system_tenant_package`\nSET");
+    }
+
+    @Test
+    void shouldIncludeWebsiteNavigationMigrationInInstallBaseline() throws IOException {
+        String baseline = migrationSql(MYSQL_BASELINE_RELATIVE_PATH);
+
+        assertThat(baseline).contains(
+                "-- BEGIN V039__website_navigation_preview.sql",
+                "CREATE TABLE IF NOT EXISTS `website_navigation_revision`",
+                "VALUES('039','website navigation preview','V039__website_navigation_preview.sql',"
+                        + "'33e5898a22e2fa9d8b50d7b7d08f7ec49aa4a89d034c53b04bdf1bee764f6030')");
     }
 
     @Test

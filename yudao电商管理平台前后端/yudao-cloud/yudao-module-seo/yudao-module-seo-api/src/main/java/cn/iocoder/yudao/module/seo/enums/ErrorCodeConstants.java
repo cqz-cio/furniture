@@ -38,4 +38,15 @@ public interface ErrorCodeConstants {
     ErrorCode DOCUMENT_FILE_TOO_LARGE = new ErrorCode(1_070_004_002, "SEO 分析文件超过允许大小");
     ErrorCode DOCUMENT_PARSE_FAILED = new ErrorCode(1_070_004_003, "SEO 分析文件内容解析失败");
 
+    ErrorCode NAVIGATION_REVISION_NOT_EXISTS = new ErrorCode(1_070_005_000, "官网导航草稿不存在");
+    ErrorCode NAVIGATION_VERSION_CONFLICT = new ErrorCode(1_070_005_001,
+            "官网导航已被其他用户修改，请刷新后重试");
+    ErrorCode NAVIGATION_CONFIG_INVALID = new ErrorCode(1_070_005_002, "官网导航配置不完整或格式不正确");
+    ErrorCode NAVIGATION_CATEGORY_UNAVAILABLE = new ErrorCode(1_070_005_003,
+            "官网导航引用的商品分类已停用或不存在：{}");
+    ErrorCode NAVIGATION_PREVIEW_EXPIRED = new ErrorCode(1_070_005_004,
+            "官网预览凭证已过期、已使用或草稿已更新，请重新生成预览");
+    ErrorCode NAVIGATION_PREVIEW_ORIGIN_MISMATCH = new ErrorCode(1_070_005_005,
+            "官网预览请求来源与站点配置不一致");
+
 }

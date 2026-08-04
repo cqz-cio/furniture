@@ -1,3 +1,5 @@
+DELETE FROM website_navigation_item;
+DELETE FROM website_navigation_revision;
 DELETE FROM seo_keyword_analysis_item;
 DELETE FROM seo_keyword_analysis;
 DELETE FROM seo_analysis_item;

@@ -4,10 +4,17 @@ import cn.hutool.core.collection.CollUtil;
 import cn.iocoder.yudao.framework.common.enums.CommonStatusEnum;
 import cn.iocoder.yudao.framework.common.util.collection.CollectionUtils;
 import cn.iocoder.yudao.framework.common.util.object.BeanUtils;
+import cn.iocoder.yudao.module.erp.api.integration.MallErpProductApi;
+import cn.iocoder.yudao.module.product.api.category.dto.ProductCategoryNavigationRespDTO;
 import cn.iocoder.yudao.module.product.controller.admin.category.vo.ProductCategoryListReqVO;
 import cn.iocoder.yudao.module.product.controller.admin.category.vo.ProductCategorySaveReqVO;
 import cn.iocoder.yudao.module.product.dal.dataobject.category.ProductCategoryDO;
+import cn.iocoder.yudao.module.product.dal.dataobject.sku.ProductSkuDO;
+import cn.iocoder.yudao.module.product.dal.dataobject.spu.ProductSpuDO;
 import cn.iocoder.yudao.module.product.dal.mysql.category.ProductCategoryMapper;
+import cn.iocoder.yudao.module.product.dal.mysql.spu.ProductSpuMapper;
+import cn.iocoder.yudao.module.product.enums.spu.ProductSpuStatusEnum;
+import cn.iocoder.yudao.module.product.service.sku.ProductSkuService;
 import cn.iocoder.yudao.module.product.service.spu.ProductSpuService;
 import jakarta.annotation.Resource;
 import org.springframework.context.annotation.Lazy;
@@ -15,9 +22,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static cn.iocoder.yudao.framework.common.exception.util.ServiceExceptionUtil.exception;
 import static cn.iocoder.yudao.module.product.dal.dataobject.category.ProductCategoryDO.CATEGORY_LEVEL;
@@ -35,6 +46,13 @@ public class ProductCategoryServiceImpl implements ProductCategoryService {
 
     @Resource
     private ProductCategoryMapper productCategoryMapper;
+    @Resource
+    private ProductSpuMapper productSpuMapper;
+    @Resource
+    private ProductSkuService productSkuService;
+    @Resource
+    @Lazy // 单体部署下 ERP 映射服务会反向依赖商品 API，延迟解析避免启动期循环依赖
+    private MallErpProductApi mallErpProductApi;
     @Resource
     @Lazy // 循环依赖，避免报错
     private ProductSpuService productSpuService;
@@ -179,6 +197,55 @@ public class ProductCategoryServiceImpl implements ProductCategoryService {
     @Override
     public List<ProductCategoryDO> getEnableCategoryList(List<Long> ids) {
         return productCategoryMapper.selectListByIdAndStatus(ids, CommonStatusEnum.ENABLE.getStatus());
+    }
+
+    @Override
+    public List<ProductCategoryNavigationRespDTO> getNavigationCategoryList() {
+        List<ProductCategoryDO> categories = getEnableCategoryList().stream()
+                .filter(category -> !Objects.equals(category.getParentId(), PARENT_ID_NULL))
+                .sorted(Comparator.comparing(ProductCategoryDO::getSort,
+                                Comparator.nullsLast(Comparator.reverseOrder()))
+                        .thenComparing(ProductCategoryDO::getId))
+                .toList();
+        if (categories.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, Long> countMap = getWebsiteVisibleProductCountMap(
+                CollectionUtils.convertSet(categories, ProductCategoryDO::getId));
+        return categories.stream().map(category -> {
+            ProductCategoryNavigationRespDTO response = BeanUtils.toBean(
+                    category, ProductCategoryNavigationRespDTO.class);
+            response.setPublishedProductCount(countMap.getOrDefault(category.getId(), 0L));
+            return response;
+        }).toList();
+    }
+
+    private Map<Long, Long> getWebsiteVisibleProductCountMap(Set<Long> categoryIds) {
+        List<ProductSpuDO> spus = productSpuMapper.selectListByCategoryIdsAndStatus(
+                categoryIds, ProductSpuStatusEnum.ENABLE.getStatus());
+        if (CollUtil.isEmpty(spus)) {
+            return Collections.emptyMap();
+        }
+        List<ProductSkuDO> skus = productSkuService.getSkuListBySpuId(
+                CollectionUtils.convertSet(spus, ProductSpuDO::getId));
+        if (CollUtil.isEmpty(skus)) {
+            return Collections.emptyMap();
+        }
+        Map<Long, List<ProductSkuDO>> skusBySpuId = skus.stream()
+                .collect(Collectors.groupingBy(ProductSkuDO::getSpuId));
+        Set<Long> mappedSkuIds = mallErpProductApi.getMappedMallSkuIds(
+                CollectionUtils.convertSet(skus, ProductSkuDO::getId)).getCheckedData();
+        if (mappedSkuIds == null) {
+            mappedSkuIds = Collections.emptySet();
+        }
+        Set<Long> finalMappedSkuIds = mappedSkuIds;
+        return spus.stream()
+                .filter(spu -> {
+                    List<ProductSkuDO> spuSkus = skusBySpuId.get(spu.getId());
+                    return CollUtil.isNotEmpty(spuSkus)
+                            && spuSkus.stream().allMatch(sku -> finalMappedSkuIds.contains(sku.getId()));
+                })
+                .collect(Collectors.groupingBy(ProductSpuDO::getCategoryId, Collectors.counting()));
     }
 
 }
