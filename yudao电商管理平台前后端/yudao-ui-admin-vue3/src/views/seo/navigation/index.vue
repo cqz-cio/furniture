@@ -20,6 +20,10 @@
           <span class="navigation-version__divider"></span>
           <span>{{ publishedStatusLabel }}</span>
         </div>
+        <el-button :disabled="busy" @click="openHistory">
+          <Icon icon="ep:clock" class="mr-5px" />
+          发布记录
+        </el-button>
         <el-button :loading="refreshing" :disabled="busy" @click="refreshCategories">
           <Icon icon="ep:refresh" class="mr-5px" />
           同步商品分类
@@ -37,7 +41,7 @@
           type="primary"
           plain
           :loading="previewLoading"
-          :disabled="busy"
+          :disabled="busy || !siteConfigured"
           v-hasPermi="['seo:navigation:preview']"
           @click="refreshInlinePreview"
         >
@@ -47,7 +51,7 @@
         <el-button
           type="primary"
           :loading="publishing"
-          :disabled="busy"
+          :disabled="busy || changeSummary.length === 0"
           v-hasPermi="['seo:navigation:publish']"
           @click="publishDraft"
         >
@@ -65,6 +69,20 @@
 
     <div v-loading="loading" class="navigation-workspace">
       <main class="navigation-editor">
+        <ContentWrap
+          title="本次发布变化"
+          message="发布前先确认访客会看到哪些变化。"
+          surface="panel"
+          :auto-title="false"
+        >
+          <div v-if="changeSummary.length" class="navigation-change-list">
+            <div v-for="item in changeSummary" :key="item">
+              <Icon icon="ep:circle-check" />
+              <span>{{ item }}</span>
+            </div>
+          </div>
+          <el-empty v-else :image-size="54" description="当前草稿与线上版本一致，无需重复发布" />
+        </ContentWrap>
         <ContentWrap
           title="一级导航"
           message="拖动调整官网顶部顺序；页面地址已固定，业务人员不用填写链接。"
@@ -258,6 +276,20 @@
 
           <p class="section-description"> 预览使用真实官网组件和商品数据，不会修改线上版本。 </p>
 
+          <el-alert
+            v-if="!siteConfigLoading && !siteConfigured"
+            title="首次预览前，请先确认官网地址"
+            type="warning"
+            show-icon
+            :closable="false"
+            class="mb-16px"
+          >
+            <template #default>
+              <span>系统需要知道在哪个官网打开预览；只需设置一次，不会发布导航。</span>
+              <el-button type="primary" link @click="goToSiteConfig">去确认官网地址</el-button>
+            </template>
+          </el-alert>
+
           <div v-if="inlinePreviewUrl" class="preview-browser">
             <div class="preview-browser__bar">
               <Icon icon="ep:monitor" />
@@ -288,7 +320,7 @@
             <el-button
               type="primary"
               :loading="previewLoading"
-              :disabled="busy"
+              :disabled="busy || !siteConfigured"
               v-hasPermi="['seo:navigation:preview']"
               @click="refreshInlinePreview"
             >
@@ -323,22 +355,71 @@
         class="wide-preview-frame"
       ></iframe>
     </el-dialog>
+
+    <el-drawer v-model="historyVisible" title="官网导航发布记录" size="520px">
+      <el-alert
+        class="mb-14px"
+        :closable="false"
+        show-icon
+        type="info"
+        title="恢复操作只会覆盖当前草稿；预览确认并再次发布后，官网才会变化。"
+      />
+      <el-empty v-if="!historyLoading && history.length === 0" description="尚无发布记录" />
+      <el-table v-else v-loading="historyLoading" :data="history" stripe>
+        <el-table-column label="版本" width="90">
+          <template #default="{ row }">v{{ row.revisionNo }}</template>
+        </el-table-column>
+        <el-table-column label="发布时间" min-width="165">
+          <template #default="{ row }">{{ formatHistoryTime(row.publishedTime) }}</template>
+        </el-table-column>
+        <el-table-column label="发布人" width="100">
+          <template #default="{ row }">{{
+            row.publishedBy ? `用户 #${row.publishedBy}` : '-'
+          }}</template>
+        </el-table-column>
+        <el-table-column label="状态" width="92">
+          <template #default="{ row }">
+            <el-tag :type="row.status === 'PUBLISHED' ? 'success' : 'info'" effect="plain">
+              {{ row.status === 'PUBLISHED' ? '当前线上' : '历史版本' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" fixed="right" width="96">
+          <template #default="{ row }">
+            <el-button
+              link
+              type="primary"
+              :disabled="row.status === 'PUBLISHED' || busy"
+              @click="restoreHistory(row)"
+            >
+              恢复为草稿
+            </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-drawer>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import dayjs from 'dayjs'
+import { computed, onActivated, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import draggable from 'vuedraggable'
 import {
   createWebsiteNavigationPreviewTicket,
+  getWebsiteNavigationHistory,
   getWebsiteNavigationDraft,
   publishWebsiteNavigation,
   saveWebsiteNavigationDraft,
+  restoreWebsiteNavigationDraft,
   type WebsiteNavigationCategoryOptionRespVO,
   type WebsiteNavigationDraftRespVO,
   type WebsiteNavigationItemRespVO,
-  type WebsiteNavigationItemSaveReqVO
+  type WebsiteNavigationItemSaveReqVO,
+  type WebsiteNavigationRevisionRespVO
 } from '@/api/seo/navigation'
+import { getSeoSiteConfig } from '@/api/seo/siteConfig'
 import { useMessage } from '@/hooks/web/useMessage'
 
 defineOptions({ name: 'SeoNavigation' })
@@ -356,6 +437,7 @@ const pageRoutes: Record<string, string> = {
 }
 
 const message = useMessage()
+const router = useRouter()
 const draft = ref<WebsiteNavigationDraftRespVO>()
 const primaryItems = ref<WebsiteNavigationItemRespVO[]>([])
 const categoryItems = ref<WebsiteNavigationItemRespVO[]>([])
@@ -372,6 +454,11 @@ const loadError = ref('')
 const inlinePreviewUrl = ref('')
 const widePreviewUrl = ref('')
 const widePreviewVisible = ref(false)
+const historyVisible = ref(false)
+const historyLoading = ref(false)
+const history = ref<WebsiteNavigationRevisionRespVO[]>([])
+const siteConfigLoading = ref(false)
+const siteConfigured = ref(false)
 
 const busy = computed(
   () =>
@@ -380,12 +467,69 @@ const busy = computed(
     refreshing.value ||
     publishing.value ||
     previewLoading.value ||
-    widePreviewLoading.value
+    widePreviewLoading.value ||
+    siteConfigLoading.value
 )
 
 const publishedStatusLabel = computed(() =>
-  draft.value?.publishedVersion ? `线上 v${draft.value.publishedVersion}` : '尚未发布'
+  draft.value?.publishedRevisionNo ? `线上 v${draft.value.publishedRevisionNo}` : '尚未发布'
 )
+
+const changeSummary = computed(() => {
+  const publishedItems = draft.value?.publishedItems || []
+  const draftItems = [...primaryItems.value, ...categoryItems.value]
+  if (!publishedItems.length) {
+    const visibleCount = draftItems.filter((item) => item.visible).length
+    return visibleCount ? [`首次发布 ${visibleCount} 个可见导航项`] : []
+  }
+  const messages: string[] = []
+  const publishedMap = new Map(publishedItems.map((item) => [item.itemKey, item]))
+  const draftMap = new Map(draftItems.map((item) => [item.itemKey, item]))
+  const addedCategories = categoryItems.value.filter((item) => !publishedMap.has(item.itemKey))
+  const removedCategories = publishedItems.filter(
+    (item) => item.itemType === 'CATEGORY' && !draftMap.has(item.itemKey)
+  )
+  if (addedCategories.length)
+    messages.push(`新增二级目录：${addedCategories.map((item) => item.label).join('、')}`)
+  if (removedCategories.length)
+    messages.push(`移除二级目录：${removedCategories.map((item) => item.label).join('、')}`)
+
+  const renamed = draftItems.filter((item) => {
+    const published = publishedMap.get(item.itemKey)
+    return published && published.label !== item.label
+  })
+  if (renamed.length) messages.push(`修改名称：${renamed.map((item) => item.label).join('、')}`)
+
+  const visibilityChanged = draftItems.filter((item) => {
+    const published = publishedMap.get(item.itemKey)
+    return published && published.visible !== item.visible
+  })
+  if (visibilityChanged.length) {
+    messages.push(
+      `调整显示状态：${visibilityChanged
+        .map((item) => `${item.label}（${item.visible ? '显示' : '隐藏'}）`)
+        .join('、')}`
+    )
+  }
+
+  const orderChanged = (['PAGE', 'CATEGORY'] as const).some((itemType) => {
+    const publishedOrder = publishedItems
+      .filter((item) => item.itemType === itemType)
+      .sort((left, right) => left.sort - right.sort)
+      .filter((item) => draftMap.has(item.itemKey))
+      .map((item) => item.itemKey)
+      .join('|')
+    const draftOrder = draftItems
+      .filter((item) => item.itemType === itemType)
+      .sort((left, right) => left.sort - right.sort)
+      .filter((item) => publishedMap.has(item.itemKey))
+      .map((item) => item.itemKey)
+      .join('|')
+    return publishedOrder !== draftOrder
+  })
+  if (orderChanged) messages.push('调整导航顺序')
+  return messages
+})
 
 const selectedCategoryIds = computed(
   () => new Set(categoryItems.value.map((item) => item.categoryId).filter(Boolean))
@@ -396,6 +540,21 @@ const availableCategoryOptions = computed(() =>
 )
 
 const inlinePreviewDisplayUrl = computed(() => safePreviewDisplayUrl(inlinePreviewUrl.value))
+
+const loadSiteConfig = async () => {
+  siteConfigLoading.value = true
+  try {
+    const config = await getSeoSiteConfig(SITE_ID)
+    siteConfigured.value = Boolean(config?.siteUrl)
+  } catch {
+    siteConfigured.value = false
+  } finally {
+    siteConfigLoading.value = false
+  }
+}
+
+const goToSiteConfig = () =>
+  router.push({ path: '/seo/site-config', query: { returnTo: '/seo/navigation' } })
 
 const loadDraft = async () => {
   loading.value = true
@@ -563,7 +722,13 @@ const openWidePreview = async () => {
 
 const publishDraft = async () => {
   if (!(await ensureDraftSaved()) || !draft.value) return
-  await message.confirm('确认把当前草稿发布到官网吗？发布后访客将立即看到新的导航结构。')
+  if (!changeSummary.value.length) {
+    message.info('当前草稿与线上版本一致，无需重复发布')
+    return
+  }
+  await message.confirm(
+    `确认发布以下变化吗？\n${changeSummary.value.map((item) => `• ${item}`).join('\n')}\n发布后访客将立即看到新导航。`
+  )
   publishing.value = true
   try {
     await publishWebsiteNavigation(draft.value.revisionId, draft.value.version)
@@ -577,6 +742,40 @@ const publishDraft = async () => {
   }
 }
 
+const loadHistory = async () => {
+  historyLoading.value = true
+  try {
+    history.value = await getWebsiteNavigationHistory(SITE_ID, LOCALE)
+  } finally {
+    historyLoading.value = false
+  }
+}
+
+const openHistory = async () => {
+  historyVisible.value = true
+  await loadHistory()
+}
+
+const restoreHistory = async (revision: WebsiteNavigationRevisionRespVO) => {
+  if (!draft.value) return
+  await message.confirm(
+    `确认把历史版本 v${revision.revisionNo} 恢复为当前草稿吗？当前未发布草稿会被覆盖，官网暂时不会变化。`
+  )
+  await restoreWebsiteNavigationDraft(
+    draft.value.revisionId,
+    draft.value.version,
+    revision.revisionId
+  )
+  historyVisible.value = false
+  inlinePreviewUrl.value = ''
+  widePreviewUrl.value = ''
+  await loadDraft()
+  message.success(`已恢复 v${revision.revisionNo} 为草稿，请预览确认后发布`)
+}
+
+const formatHistoryTime = (value?: string) =>
+  value && dayjs(value).isValid() ? dayjs(value).format('YYYY-MM-DD HH:mm') : '-'
+
 const safePreviewDisplayUrl = (value: string) => {
   if (!value) return ''
   try {
@@ -587,7 +786,13 @@ const safePreviewDisplayUrl = (value: string) => {
   }
 }
 
-onMounted(loadDraft)
+onMounted(() => {
+  loadDraft()
+  loadSiteConfig()
+})
+onActivated(() => {
+  if (draft.value) loadSiteConfig()
+})
 </script>
 
 <style scoped lang="scss">
@@ -682,6 +887,27 @@ onMounted(loadDraft)
 .navigation-editor {
   display: grid;
   gap: 14px;
+}
+
+.navigation-change-list {
+  display: grid;
+  gap: 8px;
+}
+
+.navigation-change-list > div {
+  display: flex;
+  padding: 9px 11px;
+  color: var(--furniture-admin-body);
+  background: var(--furniture-admin-panel-soft);
+  border-radius: 5px;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.navigation-change-list > div > :first-child {
+  margin-top: 2px;
+  color: var(--furniture-admin-primary);
+  flex: 0 0 auto;
 }
 
 .navigation-preview {

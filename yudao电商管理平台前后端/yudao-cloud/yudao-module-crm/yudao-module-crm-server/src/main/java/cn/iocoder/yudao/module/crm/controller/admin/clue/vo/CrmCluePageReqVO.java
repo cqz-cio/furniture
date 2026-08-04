@@ -3,6 +3,8 @@ package cn.iocoder.yudao.module.crm.controller.admin.clue.vo;
 import cn.iocoder.yudao.framework.common.pojo.PageParam;
 import cn.iocoder.yudao.framework.common.validation.InEnum;
 import cn.iocoder.yudao.module.crm.enums.clue.CrmInquiryProcessStatusEnum;
+import cn.iocoder.yudao.module.crm.enums.clue.CrmInquiryPriorityEnum;
+import cn.iocoder.yudao.module.crm.enums.clue.CrmInquirySalesStageEnum;
 import cn.iocoder.yudao.module.crm.enums.common.CrmSceneTypeEnum;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
@@ -38,6 +40,17 @@ public class CrmCluePageReqVO extends PageParam {
     @Schema(description = "处理状态", example = "10")
     @InEnum(CrmInquiryProcessStatusEnum.class)
     private Integer processStatus;
+
+    @Schema(description = "是否测试数据。经营页面默认传 false；不传表示全部", example = "false")
+    private Boolean testData;
+
+    @Schema(description = "询盘优先级", example = "20")
+    @InEnum(CrmInquiryPriorityEnum.class)
+    private Integer priority;
+
+    @Schema(description = "销售阶段", example = "10")
+    @InEnum(CrmInquirySalesStageEnum.class)
+    private Integer salesStage;
 
     @Schema(description = "关联客户编号", example = "1024")
     private Long customerId;

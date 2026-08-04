@@ -4,6 +4,8 @@
       <div class="flex items-center gap-12px">
         <span class="text-xl font-bold">{{ clue.inquirySubject || clue.name }}</span>
         <el-tag :type="statusMeta.type">{{ statusMeta.label }}</el-tag>
+        <el-tag :type="priority.type" effect="plain">{{ priority.label }}</el-tag>
+        <el-tag v-if="clue.testData" type="info" effect="plain">测试数据</el-tag>
       </div>
       <div>
         <slot></slot>
@@ -11,7 +13,7 @@
     </div>
   </div>
   <ContentWrap class="mt-10px">
-    <el-descriptions :column="5" direction="vertical">
+    <el-descriptions :column="6" direction="vertical">
       <el-descriptions-item label="公司名称">
         {{ clue.companyName || '待补充' }}
       </el-descriptions-item>
@@ -21,6 +23,9 @@
       <el-descriptions-item label="提交时间">
         {{ formatDate(clue.submittedAt || clue.createTime) }}
       </el-descriptions-item>
+      <el-descriptions-item label="响应 SLA">
+        <el-tag :type="sla.type" effect="plain">{{ sla.label }}</el-tag>
+      </el-descriptions-item>
     </el-descriptions>
   </ContentWrap>
 </template>
@@ -29,6 +34,7 @@
 import * as ClueApi from '@/api/crm/clue'
 import { InquiryProcessStatus } from '@/api/crm/clue'
 import { formatDate } from '@/utils/formatTime'
+import { inquirySlaMeta, priorityMeta } from '../inquiryOperations'
 
 defineOptions({ name: 'CrmClueDetailsHeader' })
 const props = defineProps<{
@@ -49,4 +55,6 @@ const statusMeta = computed(() => {
 const displayPhone = computed(
   () => [props.clue.countryCode, props.clue.telephone].filter(Boolean).join(' ') || '-'
 )
+const priority = computed(() => priorityMeta(props.clue.priority))
+const sla = computed(() => inquirySlaMeta(props.clue))
 </script>

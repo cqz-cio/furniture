@@ -114,7 +114,12 @@
             <Icon class="mr-5px" icon="ep:download" />
             导出
           </el-button>
-          <el-button v-hasPermi="['product:spu:update']" plain @click="handleErpSyncAll">
+          <el-button
+            v-hasPermi="['product:spu:sync-all']"
+            :loading="fullSyncLoading"
+            plain
+            @click="handleErpSyncAll"
+          >
             ERP 全量同步
           </el-button>
         </div>
@@ -264,8 +269,39 @@
             </el-tag>
           </template>
         </el-table-column>
+        <el-table-column v-if="isB2B" align="center" label="官网内容" min-width="170">
+          <template #default="{ row }">
+            <el-tooltip :content="contentCompleteness(row).hint" placement="top">
+              <div class="content-completeness">
+                <el-progress
+                  :percentage="contentCompleteness(row).percentage"
+                  :stroke-width="6"
+                  :show-text="false"
+                  :status="contentCompleteness(row).percentage === 100 ? 'success' : undefined"
+                />
+                <span>{{ contentCompleteness(row).percentage }}%</span>
+              </div>
+            </el-tooltip>
+          </template>
+        </el-table-column>
+        <el-table-column v-if="isB2B" align="center" label="SEO" min-width="110">
+          <template #default="{ row }">
+            <el-tag :type="seoStatusMeta(row.id).type" effect="plain">
+              {{ seoStatusMeta(row.id).label }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column v-if="isB2B" align="center" label="官网状态" min-width="110">
+          <template #default="{ row }">
+            <el-tag :type="row.status === 1 ? 'success' : 'info'" effect="plain">
+              {{ row.status === 1 ? '已展示' : '未展示' }}
+            </el-tag>
+          </template>
+        </el-table-column>
         <el-table-column align="center" label="最后同步" min-width="160">
-          <template #default="{ row }">{{ erpBySpuId[row.id]?.lastSyncedAt || '-' }}</template>
+          <template #default="{ row }">{{
+            formatSyncTime(erpBySpuId[row.id]?.lastSyncedAt)
+          }}</template>
         </el-table-column>
         <el-table-column align="center" label="排序" min-width="70" prop="sort" />
         <el-table-column align="center" fixed="right" label="操作" width="116">
@@ -344,6 +380,7 @@
   </template>
 </template>
 <script lang="ts" setup>
+import dayjs from 'dayjs'
 import { createImageViewer } from '@/components/ImageViewer'
 import { defaultProps, handleTree, treeToString } from '@/utils/tree'
 import { ProductSpuStatusEnum } from '@/utils/constants'
@@ -353,6 +390,7 @@ import * as ProductSpuApi from '@/api/mall/product/spu'
 import * as ProductCategoryApi from '@/api/mall/product/category'
 import { useTenantBusinessProfile } from '@/hooks/web/useTenantBusinessProfile'
 import { ErpPageState } from '@/components/ErpPageState'
+import { getSeoMetadataPage, type SeoMetadataRespVO } from '@/api/seo/metadata'
 
 defineOptions({ name: 'ProductSpu' })
 
@@ -365,9 +403,11 @@ const loading = ref(false) // 列表的加载中
 const listLoadState = ref<'idle' | 'loading' | 'ready' | 'error'>('idle')
 const erpIntegrationError = ref(false)
 const exportLoading = ref(false) // 导出的加载中
+const fullSyncLoading = ref(false)
 const total = ref(0) // 列表的总页数
 const list = ref<ProductSpuApi.Spu[]>([]) // 列表的数据
 const erpBySpuId = ref<Record<number, ProductSpuApi.ErpIntegration>>({})
+const seoBySpuId = ref<Record<number, SeoMetadataRespVO>>({})
 const {
   profileLoading,
   profileLoaded,
@@ -444,10 +484,32 @@ const getList = async () => {
         .map((result) => result.value)
         .filter(([, value]) => value)
     )
+    if (isB2B.value && list.value.length) {
+      try {
+        const seoPage = await getSeoMetadataPage({
+          pageNo: 1,
+          pageSize: 100,
+          siteId: 1,
+          entityType: 'PRODUCT',
+          locale: 'en'
+        })
+        const visibleIds = new Set(list.value.map((item) => item.id).filter(Boolean))
+        seoBySpuId.value = Object.fromEntries(
+          (seoPage.list || [])
+            .filter((item) => visibleIds.has(item.entityId))
+            .map((item) => [item.entityId, item])
+        )
+      } catch {
+        seoBySpuId.value = {}
+      }
+    } else {
+      seoBySpuId.value = {}
+    }
   } catch {
     list.value = []
     total.value = 0
     erpBySpuId.value = {}
+    seoBySpuId.value = {}
     listLoadState.value = 'error'
   } finally {
     loading.value = false
@@ -478,6 +540,38 @@ const erpStatusType = (status?: string): 'success' | 'warning' | 'danger' | 'inf
   return 'info'
 }
 
+const formatSyncTime = (value?: string) => {
+  if (!value) return '-'
+  const normalizedValue = /^\d{11,}$/.test(value) ? Number(value) : value
+  const parsed = dayjs(normalizedValue)
+  return parsed.isValid() ? parsed.format('YYYY-MM-DD HH:mm') : '-'
+}
+
+const contentCompleteness = (row: ProductSpuApi.Spu) => {
+  const checks = [
+    ['商品名称', Boolean(row.name?.trim())],
+    ['商品分类', Boolean(row.categoryId)],
+    ['封面图片', Boolean(row.picUrl)],
+    ['轮播图片', Boolean(row.sliderPicUrls?.length)],
+    ['商品简介', Boolean(row.introduction?.trim())],
+    ['商品详情', Boolean(row.description?.trim())]
+  ] as const
+  const completed = checks.filter(([, done]) => done).length
+  const missing = checks.filter(([, done]) => !done).map(([label]) => label)
+  return {
+    percentage: Math.round((completed / checks.length) * 100),
+    hint: missing.length ? `待补充：${missing.join('、')}` : '官网商品资料已完整'
+  }
+}
+
+const seoStatusMeta = (spuId?: number) => {
+  const metadata = spuId ? seoBySpuId.value[spuId] : undefined
+  if (!metadata) return { label: '未创建', type: 'warning' as const }
+  return metadata.publishStatus === 'PUBLISHED'
+    ? { label: '已发布', type: 'success' as const }
+    : { label: '草稿', type: 'info' as const }
+}
+
 const handleErpSync = async (spuId: number) => {
   await ProductSpuApi.syncErpIntegration(spuId)
   message.success('ERP 同步成功')
@@ -485,9 +579,17 @@ const handleErpSync = async (spuId: number) => {
 }
 
 const handleErpSyncAll = async () => {
-  await ProductSpuApi.syncAllErpIntegrations()
-  message.success('ERP 全量同步成功')
-  await getList()
+  await message.confirm(
+    '全量同步会重新读取全部商品的 ERP 编码、库存和同步状态，执行期间列表数据可能短暂变化。确认继续吗？'
+  )
+  fullSyncLoading.value = true
+  try {
+    await ProductSpuApi.syncAllErpIntegrations()
+    message.success('ERP 全量同步成功')
+    await getList()
+  } finally {
+    fullSyncLoading.value = false
+  }
 }
 
 /** 获得每个 Tab 的数量 */
@@ -848,6 +950,20 @@ onMounted(initializePage)
   height: 6px;
   background: currentcolor;
   border-radius: 50%;
+}
+
+.content-completeness {
+  display: grid;
+  min-width: 130px;
+  grid-template-columns: minmax(78px, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.content-completeness span {
+  color: var(--furniture-admin-body);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
 }
 
 .product-more-button {

@@ -54,7 +54,11 @@
       <el-tabs>
         <el-tab-pane label="询盘信息">
           <ClueDetailsInfo :clue="clue" />
-          <InquiryMailDeliveryPanel v-if="clueId && clue.externalInquiryId" :inquiry-id="clueId" />
+          <InquiryMailDeliveryPanel
+            v-if="clueId && clue.externalInquiryId"
+            :inquiry-id="clueId"
+            @configure="openMailSettings"
+          />
         </el-tab-pane>
         <el-tab-pane label="操作日志">
           <div v-if="logLoadError" class="clue-log-error">
@@ -74,6 +78,7 @@
       </el-tabs>
 
       <ClueForm ref="formRef" @success="getClue" />
+      <WebsiteInquiryMailSettings ref="mailSettingsRef" />
     </template>
   </div>
 </template>
@@ -86,6 +91,7 @@ import ClueForm from '@/views/crm/clue/ClueForm.vue'
 import ClueDetailsHeader from './ClueDetailsHeader.vue'
 import ClueDetailsInfo from './ClueDetailsInfo.vue'
 import InquiryMailDeliveryPanel from './InquiryMailDeliveryPanel.vue'
+import WebsiteInquiryMailSettings from '../WebsiteInquiryMailSettings.vue'
 import type { OperateLogVO } from '@/api/system/operatelog'
 import { getOperateLogPage } from '@/api/crm/operateLog'
 import { BizTypeEnum } from '@/api/crm/permission'
@@ -148,9 +154,11 @@ const getClue = async () => {
 }
 
 const formRef = ref<InstanceType<typeof ClueForm>>()
+const mailSettingsRef = ref<InstanceType<typeof WebsiteInquiryMailSettings>>()
 const openForm = () => {
   formRef.value?.open('update', clueId.value)
 }
+const openMailSettings = () => mailSettingsRef.value?.open()
 
 const updateStatus = async (status: InquiryProcessStatus) => {
   if (status === InquiryProcessStatus.INVALID) {

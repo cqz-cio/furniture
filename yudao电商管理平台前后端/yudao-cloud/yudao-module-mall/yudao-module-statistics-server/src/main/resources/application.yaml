@@ -125,17 +125,22 @@ yudao:
     ignore-tables:
   statistics:
     dashboard:
-      enabled-tenant-ids: [121]
+      enabled-tenant-ids: [121, 162]
       event-retention-days: ${DASHBOARD_EVENT_RETENTION_DAYS:180}
     behavior:
       enabled: ${STATISTICS_BEHAVIOR_ENABLED:false}
       consent-required: ${STATISTICS_BEHAVIOR_CONSENT_REQUIRED:true}
-      enabled-tenant-ids: [121]
+      enabled-tenant-ids: [121, 162]
       hmac-tenants:
         "121":
           active-version: ${STATISTICS_BEHAVIOR_HMAC_TENANT_121_ACTIVE_VERSION:1}
           active-key-ref: ${STATISTICS_BEHAVIOR_HMAC_TENANT_121_ACTIVE_KEY_REF:}
           consent-evidence-key-ref: ${STATISTICS_CONSENT_EVIDENCE_TENANT_121_KEY_REF:}
           activates-at: ${STATISTICS_BEHAVIOR_HMAC_TENANT_121_ACTIVATES_AT:2026-07-11T00:00:00+08:00}
+        "162":
+          active-version: ${STATISTICS_BEHAVIOR_HMAC_TENANT_162_ACTIVE_VERSION:1}
+          active-key-ref: ${STATISTICS_BEHAVIOR_HMAC_TENANT_162_ACTIVE_KEY_REF:}
+          consent-evidence-key-ref: ${STATISTICS_CONSENT_EVIDENCE_TENANT_162_KEY_REF:}
+          activates-at: ${STATISTICS_BEHAVIOR_HMAC_TENANT_162_ACTIVATES_AT:2026-08-04T00:00:00+08:00}
 
 debug: false

@@ -8,6 +8,14 @@
       :closable="false"
       class="mb-18px"
     />
+    <el-alert
+      v-else
+      title="当前维护 VANZ 英文官网。选择商品或分类后即可填写，不需要输入技术编号。"
+      type="info"
+      show-icon
+      :closable="false"
+      class="mb-18px"
+    />
     <el-form
       ref="formRef"
       v-loading="formLoading"
@@ -17,33 +25,62 @@
     >
       <el-row :gutter="16">
         <el-col :span="12">
-          <el-form-item label="站点 ID" prop="siteId">
-            <el-input-number v-model="formData.siteId" :disabled="isEdit" :min="1" :precision="0" class="!w-1/1" />
-          </el-form-item>
-        </el-col>
-        <el-col :span="12">
           <el-form-item label="内容类型" prop="entityType">
             <el-select v-model="formData.entityType" :disabled="isEdit" class="!w-1/1">
-              <el-option v-for="item in entityTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
+              <el-option
+                v-for="item in entityTypeOptions"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
+              />
             </el-select>
           </el-form-item>
         </el-col>
         <el-col :span="12">
-          <el-form-item label="实体 ID" prop="entityId">
-            <el-input-number v-model="formData.entityId" :disabled="isEdit" :min="1" :precision="0" class="!w-1/1" />
-          </el-form-item>
-        </el-col>
-        <el-col :span="12">
-          <el-form-item label="Locale" prop="locale">
-            <el-input v-model="formData.locale" :disabled="isEdit" placeholder="例如：zh-CN" />
+          <el-form-item label="内容对象" prop="entityId">
+            <el-select
+              v-if="entityOptions.length"
+              v-model="formData.entityId"
+              :disabled="isEdit"
+              class="!w-1/1"
+              filterable
+              placeholder="请选择要优化的内容"
+            >
+              <el-option
+                v-for="item in entityOptions"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
+              />
+            </el-select>
+            <el-input-number
+              v-else
+              v-model="formData.entityId"
+              :disabled="isEdit"
+              :min="1"
+              :precision="0"
+              class="!w-1/1"
+            />
           </el-form-item>
         </el-col>
       </el-row>
+      <el-form-item label="网站语言" prop="locale">
+        <el-select v-model="formData.locale" :disabled="isEdit" class="!w-240px">
+          <el-option label="English" value="en" />
+          <el-option label="简体中文" value="zh-CN" />
+        </el-select>
+      </el-form-item>
       <el-form-item label="SEO 标题" prop="seoTitle">
         <el-input v-model="formData.seoTitle" maxlength="255" show-word-limit />
       </el-form-item>
-      <el-form-item label="Meta 描述" prop="metaDescription">
-        <el-input v-model="formData.metaDescription" type="textarea" :rows="3" maxlength="500" show-word-limit />
+      <el-form-item label="搜索摘要" prop="metaDescription">
+        <el-input
+          v-model="formData.metaDescription"
+          type="textarea"
+          :rows="3"
+          maxlength="500"
+          show-word-limit
+        />
       </el-form-item>
       <el-form-item label="焦点关键词" prop="focusKeyphrase">
         <el-input v-model="formData.focusKeyphrase" maxlength="255" />
@@ -59,7 +96,7 @@
           class="!w-1/1"
         />
       </el-form-item>
-      <el-form-item label="Canonical URL" prop="canonicalUrl">
+      <el-form-item label="规范网址（可选）" prop="canonicalUrl">
         <el-input v-model="formData.canonicalUrl" placeholder="可留空，或输入绝对 HTTP(S) URL" />
       </el-form-item>
       <el-row :gutter="16">
@@ -74,18 +111,24 @@
           </el-form-item>
         </el-col>
       </el-row>
-      <el-form-item label="OG 标题" prop="ogTitle">
+      <el-form-item label="分享标题" prop="ogTitle">
         <el-input v-model="formData.ogTitle" maxlength="255" />
       </el-form-item>
-      <el-form-item label="OG 描述" prop="ogDescription">
+      <el-form-item label="分享摘要" prop="ogDescription">
         <el-input v-model="formData.ogDescription" type="textarea" :rows="2" maxlength="500" />
       </el-form-item>
-      <el-form-item label="OG 图片" prop="ogImage">
+      <el-form-item label="分享图片" prop="ogImage">
         <el-input v-model="formData.ogImage" placeholder="请输入图片 URL" />
       </el-form-item>
-      <el-form-item label="Schema 类型" prop="schemaType">
+      <el-form-item label="结构化类型" prop="schemaType">
         <el-input v-model="formData.schemaType" placeholder="例如：Product" />
       </el-form-item>
+
+      <div class="seo-form-preview" aria-label="搜索结果预览">
+        <small>{{ formData.canonicalUrl || 'https://vanz.com/' }}</small>
+        <strong>{{ formData.seoTitle || '搜索标题预览' }}</strong>
+        <p>{{ formData.metaDescription || '填写搜索摘要后，会在这里预览搜索结果展示效果。' }}</p>
+      </div>
     </el-form>
     <template #footer>
       <el-button type="primary" :disabled="formLoading" @click="submitForm">保存</el-button>
@@ -108,6 +151,8 @@ import {
   type SeoPublishStatus
 } from '@/api/seo/metadata'
 import { useMessage } from '@/hooks/web/useMessage'
+import * as ProductSpuApi from '@/api/mall/product/spu'
+import * as ProductCategoryApi from '@/api/mall/product/category'
 
 defineOptions({ name: 'SeoMetadataForm' })
 
@@ -124,6 +169,16 @@ const formLoading = ref(false)
 const formType = ref<'create' | 'update'>('create')
 const formRef = ref<FormInstance>()
 const isEdit = computed(() => formType.value === 'update')
+const productOptions = ref<Array<{ label: string; value: number }>>([])
+const categoryOptions = ref<Array<{ label: string; value: number }>>([])
+const pageOptions = [
+  { label: '首页', value: 1 },
+  { label: '产品中心', value: 2 },
+  { label: '品牌介绍', value: 3 },
+  { label: '工坊', value: 4 },
+  { label: '博客', value: 5 },
+  { label: '联系我们', value: 6 }
+]
 
 const entityTypeOptions: Array<{ label: string; value: SeoEntityType }> = [
   { label: '商品', value: 'PRODUCT' },
@@ -131,12 +186,18 @@ const entityTypeOptions: Array<{ label: string; value: SeoEntityType }> = [
   { label: '文章', value: 'ARTICLE' },
   { label: '页面', value: 'PAGE' }
 ]
+const entityOptions = computed(() => {
+  if (formData.value.entityType === 'PRODUCT') return productOptions.value
+  if (formData.value.entityType === 'CATEGORY') return categoryOptions.value
+  if (formData.value.entityType === 'PAGE') return pageOptions
+  return []
+})
 
 const createDefaultForm = (): SeoMetadataFormData => ({
   siteId: 1,
   entityType: 'PRODUCT',
-  entityId: 1,
-  locale: 'zh-CN',
+  entityId: 0,
+  locale: 'en',
   seoTitle: '',
   metaDescription: '',
   focusKeyphrase: '',
@@ -181,12 +242,39 @@ const validateCanonicalUrl = (_rule: unknown, value: string, callback: (error?: 
 }
 
 const formRules = {
-  siteId: [{ required: true, message: '站点 ID 不能为空', trigger: 'change' }],
   entityType: [{ required: true, message: '内容类型不能为空', trigger: 'change' }],
-  entityId: [{ required: true, message: '实体 ID 不能为空', trigger: 'change' }],
-  locale: [{ required: true, message: 'Locale 不能为空', trigger: 'blur' }],
+  entityId: [
+    {
+      validator: (_rule: unknown, value: number, callback: (error?: Error) => void) =>
+        value > 0 ? callback() : callback(new Error('请选择要优化的内容')),
+      trigger: 'change'
+    }
+  ],
+  locale: [{ required: true, message: '请选择网站语言', trigger: 'change' }],
   seoTitle: [{ required: true, message: 'SEO 标题不能为空', trigger: 'blur' }],
   canonicalUrl: [{ validator: validateCanonicalUrl, trigger: 'blur' }]
+}
+
+const loadEntityOptions = async () => {
+  const [products, categories] = await Promise.allSettled([
+    ProductSpuApi.getSpuSimpleList(),
+    ProductCategoryApi.getCategoryList({})
+  ])
+  productOptions.value =
+    products.status === 'fulfilled'
+      ? (products.value || [])
+          .filter((item: ProductSpuApi.Spu) => Boolean(item.id))
+          .map((item: ProductSpuApi.Spu) => ({
+            label: item.name || `商品 #${item.id}`,
+            value: item.id!
+          }))
+      : []
+  categoryOptions.value =
+    categories.status === 'fulfilled'
+      ? (categories.value || [])
+          .filter((item: ProductCategoryApi.CategoryVO) => Boolean(item.id))
+          .map((item: ProductCategoryApi.CategoryVO) => ({ label: item.name, value: item.id! }))
+      : []
 }
 
 const open = async (type: 'create' | 'update', id?: number) => {
@@ -195,6 +283,10 @@ const open = async (type: 'create' | 'update', id?: number) => {
   formType.value = type
   formData.value = createDefaultForm()
   formRef.value?.resetFields()
+  await loadEntityOptions()
+  if (type === 'create' && entityOptions.value.length) {
+    formData.value.entityId = entityOptions.value[0].value
+  }
   if (type === 'update' && id) {
     formLoading.value = true
     try {
@@ -209,6 +301,18 @@ const open = async (type: 'create' | 'update', id?: number) => {
   }
 }
 defineExpose({ open })
+
+watch(
+  () => formData.value.entityType,
+  (entityType) => {
+    if (isEdit.value) return
+    formData.value.entityId = entityOptions.value[0]?.value || 0
+    if (!formData.value.schemaType) {
+      formData.value.schemaType =
+        entityType === 'PRODUCT' ? 'Product' : entityType === 'ARTICLE' ? 'Article' : ''
+    }
+  }
+)
 
 const emit = defineEmits<{ success: [] }>()
 
@@ -258,3 +362,31 @@ const submitForm = async () => {
   }
 }
 </script>
+
+<style scoped>
+.seo-form-preview {
+  padding: 14px 18px;
+  margin: 4px 0 0 130px;
+  background: #fff;
+  border: 1px solid var(--furniture-admin-border);
+  border-radius: 6px;
+}
+
+.seo-form-preview small {
+  color: #188038;
+}
+
+.seo-form-preview strong {
+  display: block;
+  margin: 5px 0;
+  color: #1a0dab;
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.seo-form-preview p {
+  margin: 0;
+  color: #4d5156;
+  line-height: 1.55;
+}
+</style>

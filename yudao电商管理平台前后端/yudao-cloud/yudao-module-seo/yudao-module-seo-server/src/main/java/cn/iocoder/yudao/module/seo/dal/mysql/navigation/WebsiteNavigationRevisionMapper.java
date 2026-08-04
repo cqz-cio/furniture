@@ -10,6 +10,8 @@ import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
+import java.util.List;
+
 @Mapper
 public interface WebsiteNavigationRevisionMapper extends BaseMapperX<WebsiteNavigationRevisionDO> {
 
@@ -25,6 +27,16 @@ public interface WebsiteNavigationRevisionMapper extends BaseMapperX<WebsiteNavi
         return selectOne(new LambdaQueryWrapper<WebsiteNavigationRevisionDO>()
                 .eq(WebsiteNavigationRevisionDO::getId, id)
                 .eq(WebsiteNavigationRevisionDO::getTenantId, TenantContextHolder.getRequiredTenantId()));
+    }
+
+    default List<WebsiteNavigationRevisionDO> selectHistory(Long siteId, String locale) {
+        return selectList(new LambdaQueryWrapperX<WebsiteNavigationRevisionDO>()
+                .eq(WebsiteNavigationRevisionDO::getTenantId, TenantContextHolder.getRequiredTenantId())
+                .eq(WebsiteNavigationRevisionDO::getSiteId, siteId)
+                .eq(WebsiteNavigationRevisionDO::getLocale, locale)
+                .in(WebsiteNavigationRevisionDO::getStatus, List.of("PUBLISHED", "ARCHIVED"))
+                .orderByDesc(WebsiteNavigationRevisionDO::getRevisionNo)
+                .last("LIMIT 20"));
     }
 
     @Select("""

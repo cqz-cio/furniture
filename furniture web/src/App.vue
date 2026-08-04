@@ -18,6 +18,7 @@ import { trackCheckoutStart, trackHomeView } from "./services/analytics.js";
 import { addLocalWishlistItem } from "./services/localWishlist.js";
 import { ANNUAL_MEMBERSHIP_PRODUCT, hasMembershipService } from "./services/membershipCart.js";
 import { getCheckoutEntryRoute } from "./services/membershipNavigation.js";
+import { loadWebsiteNavigationPreview } from "./services/yudaoNavigationApi.js";
 import { addCartItem, deleteCartItems, getRemoteCartItems, updateCartItemCount } from "./services/yudaoCartApi.js";
 import { createFavorite } from "./services/yudaoFavoriteApi.js";
 import { getYudaoAppTenantId, isYudaoAuthError, isYudaoBusinessError, readYudaoToken } from "./services/yudaoRequest.js";
@@ -96,6 +97,7 @@ const pageRoutes = {
   "trade-sign-in": "/trade/sign-in",
   "trade-application": "/trade/apply",
   "trade-faq": "/trade/faq",
+  "navigation-preview": "/preview/navigation",
   missing: "/missing",
 };
 
@@ -119,12 +121,16 @@ const pageFromPath = (path) => {
   return (
     routePages[normalizedPath] ||
     routeAliases[normalizedPath] ||
+    (normalizedPath.startsWith("/products/category/") ? "sofas-plp" : null) ||
     (normalizedPath.startsWith("/gift-registry/") ? "gift-registry" : "missing")
   );
 };
 
 const currentPage = ref(pageFromPath(window.location.pathname));
 const routeSignature = ref(`${window.location.pathname}${window.location.search}${window.location.hash}`);
+const navigationPreview = ref(null);
+const navigationPreviewStatus = ref(currentPage.value === "navigation-preview" ? "loading" : "idle");
+const navigationPreviewError = ref("");
 const cartOpen = ref(false);
 const cartItems = ref(readLocalCart());
 const cartMode = ref("local");
@@ -166,8 +172,26 @@ const pageComponent = computed(() => {
   if (currentPage.value === "trade-sign-in") return TradeSignInPage;
   if (currentPage.value === "trade-application") return TradeApplicationPage;
   if (currentPage.value === "trade-faq") return TradeFaqPage;
+  if (currentPage.value === "navigation-preview") return HomePage;
   return MissingExtractionPage;
 });
+
+const isNavigationPreview = computed(() => currentPage.value === "navigation-preview");
+const navigationPreviewItems = computed(() => navigationPreview.value?.items || []);
+
+const loadNavigationPreview = async () => {
+  navigationPreviewStatus.value = "loading";
+  navigationPreviewError.value = "";
+  try {
+    navigationPreview.value = await loadWebsiteNavigationPreview();
+    navigationPreviewStatus.value = "ready";
+  } catch (error) {
+    navigationPreview.value = null;
+    navigationPreviewStatus.value = "error";
+    navigationPreviewError.value =
+      error?.message || "预览凭证已失效，请返回 ERP 重新生成真实预览。";
+  }
+};
 
 const pageSeo = {
   home: {
@@ -264,7 +288,9 @@ const handleInternalLinkClick = (event) => {
 };
 
 const cartQuantity = computed(() => cartItems.value.reduce((sum, item) => sum + item.quantity, 0));
-const usesOverlayHeader = computed(() => ["home", "sale"].includes(currentPage.value));
+const usesOverlayHeader = computed(() =>
+  ["home", "sale", "navigation-preview"].includes(currentPage.value),
+);
 const usesCheckoutShell = computed(() => currentPage.value === "checkout");
 
 const getYudaoCartErrorDetail = (error) => {
@@ -484,6 +510,7 @@ onMounted(() => {
   applySeo(currentPage.value);
   window.addEventListener("popstate", syncPageFromLocation);
   document.addEventListener("click", handleInternalLinkClick);
+  if (isNavigationPreview.value) void loadNavigationPreview();
   loadRemoteCart();
 });
 
@@ -499,10 +526,23 @@ onBeforeUnmount(() => {
     v-model:page="currentPage"
     :cart-count="cartQuantity"
     :cart-mode="cartMode"
+    :navigation-items="navigationPreviewItems"
+    :navigation-preview="isNavigationPreview"
     :overlay="usesOverlayHeader"
     @auth-change="handleAuthChange"
     @open-cart="cartOpen = true"
   />
+  <section
+    v-if="isNavigationPreview && navigationPreviewStatus !== 'ready'"
+    class="website-navigation-preview-state"
+    :class="`is-${navigationPreviewStatus}`"
+    role="status"
+  >
+    <strong>
+      {{ navigationPreviewStatus === 'loading' ? '正在载入 ERP 导航草稿…' : '导航预览不可用' }}
+    </strong>
+    <span v-if="navigationPreviewStatus === 'error'">{{ navigationPreviewError }}</span>
+  </section>
   <main class="app-main" :class="{ 'is-checkout-shell': usesCheckoutShell }">
     <component
       :key="`${currentPage}:${routeSignature}`"

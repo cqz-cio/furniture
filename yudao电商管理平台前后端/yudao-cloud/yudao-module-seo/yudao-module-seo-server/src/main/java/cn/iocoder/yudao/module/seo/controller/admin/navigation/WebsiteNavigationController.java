@@ -7,6 +7,8 @@ import cn.iocoder.yudao.module.seo.controller.admin.navigation.vo.WebsiteNavigat
 import cn.iocoder.yudao.module.seo.controller.admin.navigation.vo.WebsiteNavigationPreviewTicketReqVO;
 import cn.iocoder.yudao.module.seo.controller.admin.navigation.vo.WebsiteNavigationPreviewTicketRespVO;
 import cn.iocoder.yudao.module.seo.controller.admin.navigation.vo.WebsiteNavigationPublishReqVO;
+import cn.iocoder.yudao.module.seo.controller.admin.navigation.vo.WebsiteNavigationRestoreReqVO;
+import cn.iocoder.yudao.module.seo.controller.admin.navigation.vo.WebsiteNavigationRevisionRespVO;
 import cn.iocoder.yudao.module.seo.service.navigation.WebsiteNavigationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -66,6 +68,24 @@ public class WebsiteNavigationController {
     @PreAuthorize("@ss.hasPermission('seo:navigation:publish')")
     public CommonResult<Boolean> publish(@Valid @RequestBody WebsiteNavigationPublishReqVO reqVO) {
         navigationService.publish(reqVO);
+        return success(true);
+    }
+
+    @GetMapping("/history")
+    @Operation(summary = "获得官网导航发布历史")
+    @PreAuthorize("@ss.hasPermission('seo:navigation:query')")
+    public CommonResult<List<WebsiteNavigationRevisionRespVO>> getHistory(
+            @RequestParam("siteId") Long siteId,
+            @RequestParam(value = "locale", defaultValue = "en") String locale) {
+        return success(navigationService.getHistory(siteId, locale));
+    }
+
+    @PostMapping("/restore-draft")
+    @Operation(summary = "把历史导航版本恢复为草稿")
+    @PreAuthorize("@ss.hasPermission('seo:navigation:update')")
+    public CommonResult<Boolean> restoreDraft(
+            @Valid @RequestBody WebsiteNavigationRestoreReqVO reqVO) {
+        navigationService.restoreDraft(reqVO);
         return success(true);
     }
 

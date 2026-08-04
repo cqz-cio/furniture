@@ -6,6 +6,8 @@ import cn.iocoder.yudao.module.seo.controller.admin.navigation.vo.WebsiteNavigat
 import cn.iocoder.yudao.module.seo.controller.admin.navigation.vo.WebsiteNavigationPreviewTicketReqVO;
 import cn.iocoder.yudao.module.seo.controller.admin.navigation.vo.WebsiteNavigationPreviewTicketRespVO;
 import cn.iocoder.yudao.module.seo.controller.admin.navigation.vo.WebsiteNavigationPublishReqVO;
+import cn.iocoder.yudao.module.seo.controller.admin.navigation.vo.WebsiteNavigationRestoreReqVO;
+import cn.iocoder.yudao.module.seo.controller.admin.navigation.vo.WebsiteNavigationRevisionRespVO;
 import cn.iocoder.yudao.module.seo.controller.app.navigation.vo.AppWebsiteNavigationPreviewSessionRespVO;
 import cn.iocoder.yudao.module.seo.controller.app.navigation.vo.AppWebsiteNavigationRespVO;
 import jakarta.validation.Valid;
@@ -21,6 +23,10 @@ public interface WebsiteNavigationService {
     void saveDraft(@Valid WebsiteNavigationDraftSaveReqVO reqVO);
 
     void publish(@Valid WebsiteNavigationPublishReqVO reqVO);
+
+    List<WebsiteNavigationRevisionRespVO> getHistory(Long siteId, String locale);
+
+    void restoreDraft(@Valid WebsiteNavigationRestoreReqVO reqVO);
 
     AppWebsiteNavigationRespVO getPublished(Long siteId, String locale);
 

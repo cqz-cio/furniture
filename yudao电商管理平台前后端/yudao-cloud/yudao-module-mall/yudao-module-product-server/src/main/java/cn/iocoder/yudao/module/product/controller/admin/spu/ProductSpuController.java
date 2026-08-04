@@ -64,7 +64,7 @@ public class ProductSpuController {
     }
 
     @PostMapping("/erp-integration/sync-all")
-    @PreAuthorize("@ss.hasPermission('product:spu:update')")
+    @PreAuthorize("@ss.hasPermission('product:spu:sync-all')")
     public CommonResult<List<MallErpProductDTO>> syncAllErpIntegrations() {
         return mallErpProductApi.syncAllMallSkus();
     }

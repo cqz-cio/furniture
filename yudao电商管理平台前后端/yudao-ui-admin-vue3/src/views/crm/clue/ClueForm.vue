@@ -26,11 +26,7 @@
       <el-row :gutter="16">
         <el-col :span="12">
           <el-form-item label="电话区号" prop="countryCode">
-            <el-input
-              v-model="formData.countryCode"
-              maxlength="8"
-              placeholder="例如 +44"
-            />
+            <el-input v-model="formData.countryCode" maxlength="8" placeholder="例如 +44" />
           </el-form-item>
         </el-col>
         <el-col :span="12">
@@ -51,11 +47,7 @@
         />
       </el-form-item>
       <el-form-item label="询盘主题" prop="inquirySubject">
-        <el-input
-          v-model="formData.inquirySubject"
-          maxlength="100"
-          placeholder="请输入询盘主题"
-        />
+        <el-input v-model="formData.inquirySubject" maxlength="100" placeholder="请输入询盘主题" />
       </el-form-item>
       <el-form-item label="询盘内容" prop="inquiryMessage">
         <el-input
@@ -67,6 +59,44 @@
           placeholder="请输入客户的具体需求"
         />
       </el-form-item>
+      <el-row :gutter="16">
+        <el-col :span="8">
+          <el-form-item label="优先级" prop="priority">
+            <el-select v-model="formData.priority" class="w-1/1">
+              <el-option
+                v-for="item in inquiryPriorityOptions"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
+              />
+            </el-select>
+          </el-form-item>
+        </el-col>
+        <el-col :span="8">
+          <el-form-item label="销售阶段" prop="salesStage">
+            <el-select v-model="formData.salesStage" class="w-1/1">
+              <el-option
+                v-for="item in inquirySalesStageOptions"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
+              />
+            </el-select>
+          </el-form-item>
+        </el-col>
+        <el-col :span="8">
+          <el-form-item label="下次跟进" prop="contactNextTime">
+            <el-date-picker
+              v-model="formData.contactNextTime"
+              class="!w-1/1"
+              clearable
+              placeholder="选择下次跟进时间"
+              type="datetime"
+              value-format="YYYY-MM-DD HH:mm:ss"
+            />
+          </el-form-item>
+        </el-col>
+      </el-row>
       <el-row :gutter="16">
         <el-col :span="12">
           <el-form-item label="处理人" prop="ownerUserId">
@@ -86,11 +116,7 @@
         </el-col>
         <el-col :span="12">
           <el-form-item label="处理备注" prop="remark">
-            <el-input
-              v-model="formData.remark"
-              maxlength="500"
-              placeholder="可填写内部处理说明"
-            />
+            <el-input v-model="formData.remark" maxlength="500" placeholder="可填写内部处理说明" />
           </el-form-item>
         </el-col>
       </el-row>
@@ -103,9 +129,12 @@
 </template>
 
 <script lang="ts" setup>
+import dayjs from 'dayjs'
 import * as ClueApi from '@/api/crm/clue'
+import { InquiryPriority, InquirySalesStage } from '@/api/crm/clue'
 import * as UserApi from '@/api/system/user'
 import { useUserStore } from '@/store/modules/user'
+import { inquiryPriorityOptions, inquirySalesStageOptions } from './inquiryOperations'
 
 const message = useMessage()
 const dialogVisible = ref(false)
@@ -125,6 +154,9 @@ const emptyForm = () => ({
   companyName: '',
   inquirySubject: '',
   inquiryMessage: '',
+  priority: InquiryPriority.NORMAL,
+  salesStage: InquirySalesStage.NEW,
+  contactNextTime: undefined as string | undefined,
   ownerUserId: 0,
   remark: ''
 })
@@ -153,6 +185,9 @@ const open = async (type: string, id?: number) => {
         ...emptyForm(),
         ...(await ClueApi.getClue(id))
       }
+      formData.value.contactNextTime = formData.value.contactNextTime
+        ? dayjs(formData.value.contactNextTime).format('YYYY-MM-DD HH:mm:ss')
+        : undefined
     } finally {
       formLoading.value = false
     }

@@ -30,8 +30,11 @@ export interface WebsiteNavigationDraftRespVO {
   version: number
   status: 'DRAFT'
   publishedVersion?: number
+  publishedRevisionNo?: number
   lastPublishedTime?: string
+  lastPublishedBy?: string
   items: WebsiteNavigationItemRespVO[]
+  publishedItems: WebsiteNavigationItemRespVO[]
   categoryOptions: WebsiteNavigationCategoryOptionRespVO[]
 }
 
@@ -57,6 +60,16 @@ export interface WebsiteNavigationPreviewTicketRespVO {
   expiresInSeconds: number
 }
 
+export interface WebsiteNavigationRevisionRespVO {
+  revisionId: number
+  revisionNo: number
+  version: number
+  status: 'PUBLISHED' | 'ARCHIVED'
+  publishedTime?: string
+  publishedBy?: string
+  updateTime: string
+}
+
 export const getWebsiteNavigationDraft = (siteId: number, locale: string) =>
   request.get<WebsiteNavigationDraftRespVO>({
     url: '/seo/navigation/draft',
@@ -76,6 +89,22 @@ export const publishWebsiteNavigation = (revisionId: number, version: number) =>
   request.post<boolean>({
     url: '/seo/navigation/publish',
     data: { revisionId, version }
+  })
+
+export const getWebsiteNavigationHistory = (siteId: number, locale: string) =>
+  request.get<WebsiteNavigationRevisionRespVO[]>({
+    url: '/seo/navigation/history',
+    params: { siteId, locale }
+  })
+
+export const restoreWebsiteNavigationDraft = (
+  draftRevisionId: number,
+  draftVersion: number,
+  sourceRevisionId: number
+) =>
+  request.post<boolean>({
+    url: '/seo/navigation/restore-draft',
+    data: { draftRevisionId, draftVersion, sourceRevisionId }
   })
 
 export const createWebsiteNavigationPreviewTicket = (revisionId: number, version: number) =>

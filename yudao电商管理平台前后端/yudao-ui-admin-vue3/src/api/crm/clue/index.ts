@@ -29,6 +29,10 @@ export interface ClueVO {
   submittedAt: Date // 网页提交时间
   processStatus: InquiryProcessStatus // 处理状态
   processedAt?: Date // 处理完成时间
+  testData: boolean // 是否测试、QA 或 E2E 数据
+  priority: InquiryPriority // 询盘优先级
+  salesStage: InquirySalesStage // 销售阶段
+  firstResponseAt?: Date // 首次响应时间
   mobile: string // 手机号
   telephone: string // 电话
   qq: string // QQ
@@ -54,12 +58,30 @@ export enum InquiryProcessStatus {
   INVALID = 30
 }
 
+export enum InquiryPriority {
+  HIGH = 10,
+  NORMAL = 20,
+  LOW = 30
+}
+
+export enum InquirySalesStage {
+  NEW = 0,
+  QUALIFYING = 10,
+  QUOTING = 20,
+  SAMPLE = 30,
+  NEGOTIATION = 40,
+  WON = 50,
+  LOST = 60
+}
+
 export interface InquirySummaryVO {
   totalCount: number
   pendingCount: number
   processingCount: number
   processedCount: number
   invalidCount: number
+  overdueCount: number
+  testDataCount: number
 }
 
 export interface InquiryProcessStatusUpdateReqVO {
@@ -109,13 +131,17 @@ export const exportClue = async (params) => {
 }
 
 // 查询询盘处理状态汇总
-export const getInquirySummary = async (): Promise<InquirySummaryVO> => {
-  return await request.get({ url: '/crm/clue/summary' })
+export const getInquirySummary = async (testData?: boolean): Promise<InquirySummaryVO> => {
+  return await request.get({ url: '/crm/clue/summary', params: { testData } })
 }
 
 // 更新询盘处理状态
 export const updateInquiryProcessStatus = async (data: InquiryProcessStatusUpdateReqVO) => {
   return await request.put({ url: '/crm/clue/process-status', data })
+}
+
+export const updateInquiryTestData = async (id: number, testData: boolean) => {
+  return await request.put({ url: '/crm/clue/test-data', data: { id, testData } })
 }
 
 // 线索转移

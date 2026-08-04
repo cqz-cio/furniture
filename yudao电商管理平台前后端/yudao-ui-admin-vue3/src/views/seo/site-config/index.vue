@@ -20,6 +20,19 @@
           </template>
         </el-alert>
 
+        <el-alert
+          v-else-if="!loading && !hasSavedConfig"
+          title="首次使用只需确认一次官网地址"
+          type="warning"
+          show-icon
+          :closable="false"
+          class="mb-18px"
+        >
+          <template #default>
+            系统已带出本地官网地址；确认无误后保存，即可返回导航管理生成真实预览。
+          </template>
+        </el-alert>
+
         <el-form
           ref="formRef"
           v-loading="loading"
@@ -37,22 +50,15 @@
               <el-tag type="info" effect="plain">基础信息</el-tag>
             </div>
             <div class="seo-config-grid">
-              <el-form-item label="站点 ID" prop="siteId">
-                <el-input-number
-                  v-model="formData.siteId"
-                  :min="1"
-                  :precision="0"
-                  :disabled="saving"
-                  class="!w-full"
-                  @change="loadConfig"
-                />
-              </el-form-item>
-              <el-form-item label="默认 Locale" prop="defaultLocale">
-                <el-input
+              <el-form-item label="官网语言" prop="defaultLocale">
+                <el-select
                   v-model="formData.defaultLocale"
                   :disabled="editorDisabled"
-                  placeholder="例如：zh-CN"
-                />
+                  class="!w-full"
+                >
+                  <el-option label="English" value="en" />
+                  <el-option label="简体中文" value="zh-CN" />
+                </el-select>
               </el-form-item>
               <el-form-item label="站点名称" prop="siteName" class="seo-config-grid__wide">
                 <el-input
@@ -154,7 +160,7 @@
               @click="submitForm"
             >
               <Icon icon="ep:check" class="mr-5px" />
-              保存配置
+              {{ returnToNavigation ? '保存并返回导航' : '保存配置' }}
             </el-button>
           </div>
         </el-form>
@@ -201,6 +207,7 @@
 <script setup lang="ts">
 import type { FormInstance } from 'element-plus'
 import { computed, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import {
   getSeoSiteConfig,
   saveSeoSiteConfig,
@@ -210,22 +217,30 @@ import { useMessage } from '@/hooks/web/useMessage'
 
 defineOptions({ name: 'SeoSiteConfig' })
 
+const SITE_ID = 1
+const storefrontUrl = String(import.meta.env.VITE_FURNITURE_WEB_URL || '')
+  .trim()
+  .replace(/\/+$/, '')
 const message = useMessage()
+const route = useRoute()
+const router = useRouter()
 const loading = ref(false)
 const saving = ref(false)
 const loadError = ref('')
 const loadRequestId = ref(0)
 const formRef = ref<FormInstance>()
+const hasSavedConfig = ref(false)
+const returnToNavigation = computed(() => route.query.returnTo === '/seo/navigation')
 
-const createDefaultForm = (siteId = 1): SeoSiteConfigSaveReqVO => ({
+const createDefaultForm = (siteId = SITE_ID): SeoSiteConfigSaveReqVO => ({
   siteId,
-  siteName: '',
-  siteUrl: '',
+  siteName: 'VANZ 官网',
+  siteUrl: storefrontUrl,
   defaultTitleSuffix: '',
   defaultDescription: '',
   defaultRobots: 'index,follow',
   defaultOgImage: '',
-  defaultLocale: 'zh-CN'
+  defaultLocale: 'en'
 })
 
 const formData = ref<SeoSiteConfigSaveReqVO>(createDefaultForm())
@@ -310,11 +325,13 @@ const loadConfig = async (requestedSiteId?: number) => {
   try {
     const config = await getSeoSiteConfig(siteId)
     if (requestId !== loadRequestId.value || formData.value.siteId !== siteId) return
+    hasSavedConfig.value = Boolean(config)
     formData.value = config ? { ...config } : createDefaultForm(siteId)
     formRef.value?.clearValidate()
   } catch {
     if (requestId !== loadRequestId.value || formData.value.siteId !== siteId) return
     formData.value = createDefaultForm(siteId)
+    hasSavedConfig.value = false
     loadError.value = '站点 SEO 配置加载失败，请重试'
   } finally {
     if (requestId === loadRequestId.value && formData.value.siteId === siteId) {
@@ -331,6 +348,7 @@ const submitForm = async () => {
     await saveSeoSiteConfig(formData.value)
     message.success('站点 SEO 配置保存成功')
     await loadConfig()
+    if (returnToNavigation.value) await router.push('/seo/navigation')
   } finally {
     saving.value = false
   }

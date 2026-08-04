@@ -12,5 +12,7 @@ public class CrmInquirySummaryRespVO {
     private Long processingCount;
     private Long processedCount;
     private Long invalidCount;
+    private Long overdueCount;
+    private Long testDataCount;
 
 }

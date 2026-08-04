@@ -16,6 +16,7 @@ import cn.iocoder.yudao.module.crm.controller.admin.clue.vo.CrmClueTransferReqVO
 import cn.iocoder.yudao.module.crm.controller.admin.clue.vo.CrmClueTransformRespVO;
 import cn.iocoder.yudao.module.crm.controller.admin.clue.vo.CrmInquiryProcessStatusUpdateReqVO;
 import cn.iocoder.yudao.module.crm.controller.admin.clue.vo.CrmInquirySummaryRespVO;
+import cn.iocoder.yudao.module.crm.controller.admin.clue.vo.CrmInquiryTestDataUpdateReqVO;
 import cn.iocoder.yudao.module.crm.dal.dataobject.clue.CrmClueDO;
 import cn.iocoder.yudao.module.crm.dal.dataobject.customer.CrmCustomerDO;
 import cn.iocoder.yudao.module.crm.service.clue.CrmClueService;
@@ -126,8 +127,9 @@ public class CrmClueController {
     @GetMapping("/summary")
     @Operation(summary = "获得询盘处理状态汇总")
     @PreAuthorize("@ss.hasPermission('crm:clue:query')")
-    public CommonResult<CrmInquirySummaryRespVO> getInquirySummary() {
-        return success(clueService.getInquirySummary(getLoginUserId()));
+    public CommonResult<CrmInquirySummaryRespVO> getInquirySummary(
+            @RequestParam(value = "testData", required = false) Boolean testData) {
+        return success(clueService.getInquirySummary(getLoginUserId(), testData));
     }
 
     @PutMapping("/process-status")
@@ -136,6 +138,15 @@ public class CrmClueController {
     public CommonResult<Boolean> updateInquiryProcessStatus(
             @Valid @RequestBody CrmInquiryProcessStatusUpdateReqVO reqVO) {
         clueService.updateInquiryProcessStatus(reqVO);
+        return success(true);
+    }
+
+    @PutMapping("/test-data")
+    @Operation(summary = "标记询盘为经营数据或测试数据")
+    @PreAuthorize("@ss.hasPermission('crm:clue:update')")
+    public CommonResult<Boolean> updateInquiryTestData(
+            @Valid @RequestBody CrmInquiryTestDataUpdateReqVO reqVO) {
+        clueService.updateInquiryTestData(reqVO);
         return success(true);
     }
 

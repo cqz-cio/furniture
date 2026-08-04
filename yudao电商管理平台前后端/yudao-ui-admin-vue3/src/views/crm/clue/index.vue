@@ -18,6 +18,16 @@
     </button>
   </div>
 
+  <InquiryMailHealthAlert ref="mailHealthRef" @configure="openMailSettings" />
+
+  <el-alert class="mb-16px" :closable="false" show-icon type="info">
+    <template #title>经营指标默认排除测试数据</template>
+    <span>
+      已隔离 {{ summary.testDataCount }} 条 TEST / QA / E2E
+      询盘；可在“数据范围”中单独查看和纠正标记。
+    </span>
+  </el-alert>
+
   <ContentWrap>
     <el-form
       ref="queryFormRef"
@@ -77,6 +87,42 @@
           />
         </el-select>
       </el-form-item>
+      <el-form-item label="数据范围" prop="testData">
+        <el-select v-model="queryParams.testData" class="!w-150px" clearable placeholder="全部数据">
+          <el-option label="经营数据" :value="false" />
+          <el-option label="测试数据" :value="true" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="优先级" prop="priority">
+        <el-select
+          v-model="queryParams.priority"
+          class="!w-150px"
+          clearable
+          placeholder="全部优先级"
+        >
+          <el-option
+            v-for="option in inquiryPriorityOptions"
+            :key="option.value"
+            :label="option.label"
+            :value="option.value"
+          />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="销售阶段" prop="salesStage">
+        <el-select
+          v-model="queryParams.salesStage"
+          class="!w-160px"
+          clearable
+          placeholder="全部阶段"
+        >
+          <el-option
+            v-for="option in inquirySalesStageOptions"
+            :key="option.value"
+            :label="option.label"
+            :value="option.value"
+          />
+        </el-select>
+      </el-form-item>
       <el-form-item label="提交时间" prop="submittedAt">
         <el-date-picker
           v-model="queryParams.submittedAt"
@@ -109,6 +155,34 @@
 
   <ContentWrap>
     <el-table v-loading="loading" :data="list" :stripe="true" :show-overflow-tooltip="true">
+      <el-table-column type="expand" width="48">
+        <template #default="{ row }">
+          <el-descriptions class="inquiry-row-details" :column="4" border>
+            <el-descriptions-item label="邮箱">
+              <el-link v-if="row.email" :href="`mailto:${row.email}`" type="primary">
+                {{ row.email }}
+              </el-link>
+              <span v-else>-</span>
+            </el-descriptions-item>
+            <el-descriptions-item label="电话 / WhatsApp">{{
+              displayPhone(row)
+            }}</el-descriptions-item>
+            <el-descriptions-item label="提交页面">{{
+              row.sourcePage || '-'
+            }}</el-descriptions-item>
+            <el-descriptions-item label="客户档案">{{
+              row.customerName || '尚未生成'
+            }}</el-descriptions-item>
+          </el-descriptions>
+        </template>
+      </el-table-column>
+      <el-table-column label="优先级" align="center" fixed="left" width="96">
+        <template #default="{ row }">
+          <el-tag :type="priorityMeta(row.priority).type" effect="plain">
+            {{ priorityMeta(row.priority).label }}
+          </el-tag>
+        </template>
+      </el-table-column>
       <el-table-column label="状态" align="center" fixed="left" width="92">
         <template #default="{ row }">
           <el-tag :type="getProcessStatusMeta(row.processStatus).type">
@@ -121,30 +195,35 @@
           <el-link :underline="false" type="primary" @click="openDetail(row.id)">
             {{ row.inquirySubject || row.name }}
           </el-link>
+          <el-tag v-if="row.testData" class="ml-6px" size="small" type="info" effect="plain">
+            测试
+          </el-tag>
         </template>
       </el-table-column>
       <el-table-column label="公司名称" prop="companyName" min-width="170">
         <template #default="{ row }">{{ row.companyName || '待补充' }}</template>
       </el-table-column>
       <el-table-column label="联系人" prop="contactName" width="130" />
-      <el-table-column label="电话 / WhatsApp" min-width="165">
-        <template #default="{ row }">{{ displayPhone(row) }}</template>
+      <el-table-column label="销售阶段" align="center" width="116">
+        <template #default="{ row }">{{ salesStageLabel(row.salesStage) }}</template>
       </el-table-column>
-      <el-table-column label="邮箱" prop="email" min-width="200">
+      <el-table-column label="响应 SLA" min-width="150">
         <template #default="{ row }">
-          <el-link v-if="row.email" :href="`mailto:${row.email}`" type="primary">
-            {{ row.email }}
-          </el-link>
-          <span v-else>-</span>
+          <el-tooltip :content="inquirySlaMeta(row).hint" placement="top">
+            <el-tag :type="inquirySlaMeta(row).type" effect="plain">
+              {{ inquirySlaMeta(row).label }}
+            </el-tag>
+          </el-tooltip>
         </template>
       </el-table-column>
-      <el-table-column label="提交页面" prop="sourcePage" min-width="190" />
+      <el-table-column label="下次跟进" min-width="160">
+        <template #default="{ row }">
+          {{ row.contactNextTime ? formatDateTime(row.contactNextTime) : '待安排' }}
+        </template>
+      </el-table-column>
       <el-table-column label="提交时间" prop="submittedAt" :formatter="dateFormatter" width="180" />
       <el-table-column label="处理人" prop="ownerUserName" width="110" />
-      <el-table-column label="客户档案" prop="customerName" min-width="150">
-        <template #default="{ row }">{{ row.customerName || '-' }}</template>
-      </el-table-column>
-      <el-table-column label="操作" align="center" fixed="right" width="260">
+      <el-table-column label="操作" align="center" fixed="right" width="190">
         <template #default="{ row }">
           <el-button link type="primary" @click="openDetail(row.id)">查看</el-button>
           <el-button
@@ -156,33 +235,31 @@
           >
             开始处理
           </el-button>
-          <el-button
-            v-if="!row.transformStatus && row.processStatus !== InquiryProcessStatus.INVALID"
-            v-hasPermi="['crm:clue:update']"
-            :disabled="!row.companyName"
-            link
-            type="success"
-            @click="transformInquiry(row)"
-          >
-            生成客户档案
-          </el-button>
-          <el-dropdown
-            v-if="
-              row.processStatus !== InquiryProcessStatus.PROCESSED &&
-              row.processStatus !== InquiryProcessStatus.INVALID
-            "
-            v-hasPermi="['crm:clue:update']"
-            class="ml-12px"
-            @command="(command) => updateStatus(row, command)"
-          >
+          <el-dropdown v-hasPermi="['crm:clue:update']" class="ml-12px">
             <el-button link type="primary">更多<Icon icon="ep:arrow-down" /></el-button>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item :command="InquiryProcessStatus.PROCESSED">
+                <el-dropdown-item
+                  v-if="!row.transformStatus && row.processStatus !== InquiryProcessStatus.INVALID"
+                  :disabled="!row.companyName"
+                  @click="transformInquiry(row)"
+                >
+                  生成客户档案
+                </el-dropdown-item>
+                <el-dropdown-item
+                  v-if="row.processStatus !== InquiryProcessStatus.PROCESSED"
+                  @click="updateStatus(row, InquiryProcessStatus.PROCESSED)"
+                >
                   标记已处理
                 </el-dropdown-item>
-                <el-dropdown-item :command="InquiryProcessStatus.INVALID" divided>
+                <el-dropdown-item
+                  v-if="row.processStatus !== InquiryProcessStatus.INVALID"
+                  @click="updateStatus(row, InquiryProcessStatus.INVALID)"
+                >
                   标记无效
+                </el-dropdown-item>
+                <el-dropdown-item divided @click="toggleTestData(row)">
+                  {{ row.testData ? '恢复为经营数据' : '标记为测试数据' }}
                 </el-dropdown-item>
               </el-dropdown-menu>
             </template>
@@ -198,15 +275,24 @@
     />
   </ContentWrap>
 
-  <WebsiteInquiryMailSettings ref="mailSettingsRef" />
+  <WebsiteInquiryMailSettings ref="mailSettingsRef" @success="handleMailSettingsSaved" />
 </template>
 
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import { dateFormatter } from '@/utils/formatTime'
 import download from '@/utils/download'
 import * as ClueApi from '@/api/crm/clue'
 import { InquiryProcessStatus } from '@/api/crm/clue'
 import WebsiteInquiryMailSettings from './WebsiteInquiryMailSettings.vue'
+import InquiryMailHealthAlert from './InquiryMailHealthAlert.vue'
+import {
+  inquiryPriorityOptions,
+  inquirySalesStageOptions,
+  inquirySlaMeta,
+  priorityMeta,
+  salesStageLabel
+} from './inquiryOperations'
 
 defineOptions({ name: 'CrmClue' })
 
@@ -220,7 +306,9 @@ const summary = ref<ClueApi.InquirySummaryVO>({
   pendingCount: 0,
   processingCount: 0,
   processedCount: 0,
-  invalidCount: 0
+  invalidCount: 0,
+  overdueCount: 0,
+  testDataCount: 0
 })
 const queryParams = reactive({
   pageNo: 1,
@@ -230,10 +318,14 @@ const queryParams = reactive({
   email: undefined as string | undefined,
   inquirySubject: undefined as string | undefined,
   processStatus: undefined as InquiryProcessStatus | undefined,
+  testData: false as boolean | undefined,
+  priority: undefined as ClueApi.InquiryPriority | undefined,
+  salesStage: undefined as ClueApi.InquirySalesStage | undefined,
   submittedAt: undefined as string[] | undefined
 })
 const queryFormRef = ref()
 const mailSettingsRef = ref<InstanceType<typeof WebsiteInquiryMailSettings>>()
+const mailHealthRef = ref<InstanceType<typeof InquiryMailHealthAlert>>()
 
 const processStatusOptions = [
   { value: InquiryProcessStatus.PENDING, label: '待处理', type: 'warning' },
@@ -293,7 +385,7 @@ const getList = async () => {
   try {
     const [page, aggregate] = await Promise.all([
       ClueApi.getCluePage(queryParams),
-      ClueApi.getInquirySummary()
+      ClueApi.getInquirySummary(queryParams.testData)
     ])
     list.value = page.list
     total.value = page.total
@@ -311,6 +403,7 @@ const handleQuery = () => {
 const resetQuery = () => {
   queryFormRef.value?.resetFields()
   queryParams.processStatus = undefined
+  queryParams.testData = false
   handleQuery()
 }
 
@@ -321,6 +414,8 @@ const filterByStatus = (status?: InquiryProcessStatus) => {
 
 const displayPhone = (row: ClueApi.ClueVO) =>
   [row.countryCode, row.telephone].filter(Boolean).join(' ') || '-'
+const formatDateTime = (value?: Date | string) =>
+  value && dayjs(value).isValid() ? dayjs(value).format('YYYY-MM-DD HH:mm') : '-'
 
 const { push } = useRouter()
 const openDetail = (id: number) => {
@@ -347,6 +442,18 @@ const transformInquiry = async (row: ClueApi.ClueVO) => {
   await getList()
 }
 
+const toggleTestData = async (row: ClueApi.ClueVO) => {
+  const nextValue = !row.testData
+  await message.confirm(
+    nextValue
+      ? `确定把“${row.inquirySubject || row.name}”标记为测试数据吗？它将从经营首页和报表中排除。`
+      : `确定把“${row.inquirySubject || row.name}”恢复为经营数据吗？它将重新进入经营统计。`
+  )
+  await ClueApi.updateInquiryTestData(row.id, nextValue)
+  message.success(nextValue ? '已隔离为测试数据' : '已恢复为经营数据')
+  await getList()
+}
+
 const handleExport = async () => {
   try {
     await message.exportConfirm()
@@ -360,6 +467,10 @@ const handleExport = async () => {
 
 const openMailSettings = () => {
   mailSettingsRef.value?.open()
+}
+
+const handleMailSettingsSaved = () => {
+  mailHealthRef.value?.refresh()
 }
 
 onMounted(getList)
@@ -440,6 +551,10 @@ onMounted(getList)
   color: var(--furniture-admin-muted);
   grid-row: 3;
   grid-column: 1 / -1;
+}
+
+.inquiry-row-details {
+  padding: 14px 24px;
 }
 
 @media (width <= 1100px) {

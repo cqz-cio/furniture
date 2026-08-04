@@ -121,6 +121,22 @@ public class CrmClueRespVO {
     @ExcelProperty("处理完成时间")
     private LocalDateTime processedAt;
 
+    @Schema(description = "是否测试数据", example = "false")
+    @ExcelProperty("数据类型")
+    private Boolean testData;
+
+    @Schema(description = "询盘优先级：10 高，20 普通，30 低", example = "20")
+    @ExcelProperty("优先级")
+    private Integer priority;
+
+    @Schema(description = "销售阶段：0 新询盘，10 需求确认，20 报价中，30 打样中，40 商务谈判，50 赢单，60 丢单", example = "10")
+    @ExcelProperty("销售阶段")
+    private Integer salesStage;
+
+    @Schema(description = "首次响应时间")
+    @ExcelProperty("首次响应时间")
+    private LocalDateTime firstResponseAt;
+
     @Schema(description = "手机号", example = "18000000000")
     @ExcelProperty("手机号")
     private String mobile;

@@ -17,6 +17,13 @@
       </el-space>
     </div>
 
+    <InquiryMailHealthAlert
+      v-if="canReadInquiry"
+      ref="mailHealthRef"
+      class="b2b-home-alert"
+      @configure="openMailSettings"
+    />
+
     <el-alert
       v-if="loadError"
       class="b2b-home-alert"
@@ -133,6 +140,11 @@
         </el-table-column>
       </el-table>
     </el-card>
+    <WebsiteInquiryMailSettings
+      v-if="canReadInquiry"
+      ref="mailSettingsRef"
+      @success="mailHealthRef?.refresh()"
+    />
   </section>
 </template>
 
@@ -144,6 +156,8 @@ import { InquiryProcessStatus } from '@/api/crm/clue'
 import * as ProductSpuApi from '@/api/mall/product/spu'
 import { getSeoMetadataPage } from '@/api/seo/metadata'
 import { checkPermi } from '@/utils/permission'
+import InquiryMailHealthAlert from '@/views/crm/clue/InquiryMailHealthAlert.vue'
+import WebsiteInquiryMailSettings from '@/views/crm/clue/WebsiteInquiryMailSettings.vue'
 
 defineOptions({ name: 'B2BHome' })
 
@@ -161,8 +175,12 @@ const summary = ref<ClueApi.InquirySummaryVO>({
   pendingCount: 0,
   processingCount: 0,
   processedCount: 0,
-  invalidCount: 0
+  invalidCount: 0,
+  overdueCount: 0,
+  testDataCount: 0
 })
+const mailHealthRef = ref<InstanceType<typeof InquiryMailHealthAlert>>()
+const mailSettingsRef = ref<InstanceType<typeof WebsiteInquiryMailSettings>>()
 
 const canReadInquiry = checkPermi(['crm:clue:query'])
 const canReadProduct = checkPermi(['product:spu:query'])
@@ -171,6 +189,7 @@ const canReadCustomer = checkPermi(['crm:customer:query'])
 const canReadContact = checkPermi(['crm:contact:query'])
 
 const go = (path: string) => router.push(path)
+const openMailSettings = () => mailSettingsRef.value?.open()
 const openInquiry = (id: number) => router.push({ name: 'CrmClueDetail', params: { id } })
 const formatTime = (value?: Date | string) =>
   value ? dayjs(value).format('YYYY-MM-DD HH:mm') : '-'
@@ -179,7 +198,7 @@ const metrics = computed(() => [
   {
     label: '全部询盘',
     value: canReadInquiry ? summary.value.totalCount : '—',
-    hint: '当前可见的客户询盘',
+    hint: '已排除测试数据',
     path: '/crm/clue'
   },
   {
@@ -219,6 +238,15 @@ const queues = computed<
     path: string
   }> = []
   if (canReadInquiry) {
+    if (summary.value.overdueCount > 0) {
+      items.push({
+        title: '首次回复已超时',
+        description: '已超过 24 小时，请立即联系客户',
+        count: summary.value.overdueCount,
+        type: 'danger',
+        path: '/crm/clue'
+      })
+    }
     items.push(
       {
         title: '待首次回复',
@@ -281,7 +309,7 @@ const actions = computed(() => [
   ...(canReadSeo
     ? [
         {
-          title: 'SEO 管理',
+          title: '官网运营',
           description: `已发布 ${seoPublishedCount.value} 项元数据`,
           icon: 'ep:promotion',
           path: '/seo/metadata'
@@ -326,8 +354,8 @@ const loadOverview = async () => {
   if (canReadInquiry) {
     requests.push(
       Promise.all([
-        ClueApi.getInquirySummary(),
-        ClueApi.getCluePage({ pageNo: 1, pageSize: 5 })
+        ClueApi.getInquirySummary(false),
+        ClueApi.getCluePage({ pageNo: 1, pageSize: 5, testData: false })
       ]).then(([aggregate, page]) => {
         summary.value = aggregate
         recentInquiries.value = page.list || []

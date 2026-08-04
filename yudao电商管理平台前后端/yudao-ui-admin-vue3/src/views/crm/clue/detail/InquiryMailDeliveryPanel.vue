@@ -9,10 +9,18 @@
         v-hasPermi="['crm:clue:update']"
         :loading="resendLoading"
         :type="delivery?.status === DeliveryStatus.SUCCESS ? 'default' : 'primary'"
-        @click="handleResend"
+        @click="
+          delivery?.status === DeliveryStatus.CONFIG_REQUIRED ? emit('configure') : handleResend()
+        "
       >
         <Icon icon="ep:promotion" class="mr-5px" />
-        {{ delivery ? '重新发送' : '发送到绑定邮箱' }}
+        {{
+          delivery?.status === DeliveryStatus.CONFIG_REQUIRED
+            ? '配置邮件通知'
+            : delivery
+              ? '重新发送'
+              : '发送到绑定邮箱'
+        }}
       </el-button>
     </div>
 
@@ -72,6 +80,7 @@
       </el-descriptions>
 
       <el-alert
+        v-if="delivery.status === DeliveryStatus.SUCCESS"
         class="mt-14px"
         type="success"
         :closable="false"
@@ -92,6 +101,7 @@ defineOptions({ name: 'InquiryMailDeliveryPanel' })
 const props = defineProps<{
   inquiryId: number
 }>()
+const emit = defineEmits<{ configure: [] }>()
 
 const message = useMessage()
 const loading = ref(false)
