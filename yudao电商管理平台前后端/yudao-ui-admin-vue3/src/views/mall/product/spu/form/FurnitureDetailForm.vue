@@ -1,21 +1,152 @@
 <template>
-  <el-form ref="formRef" :model="detailConfig" label-width="140px" :disabled="isDetail">
+  <el-form
+    ref="formRef"
+    :model="detailConfig"
+    :rules="detailRules"
+    label-width="140px"
+    :disabled="isDetail"
+  >
     <el-alert
       class="mb-16px"
       :title="
         isB2B
-          ? '以下字段直接对应 B2B 家具网站商品详情页；留空时使用前台模板默认值。'
-          : '以下配置控制家具网站商品详情页；留空时使用前台模板默认值。'
+          ? '以下字段直接对应 B2B 家具网站商品详情页；公开参数必须填写，其他可选内容留空时不会生成示例数据。'
+          : '以下配置控制家具网站商品详情页；未填写的可选内容保持为空。'
       "
       type="info"
       :closable="false"
     />
+
+    <el-divider content-position="left">Product information</el-divider>
+    <el-alert
+      class="mb-16px"
+      title="网站公开参数固定为 Material、Finish、Dimension、Packing。Dimension 统一使用 cm；Packing 使用 pc 或 set，并记录 carton 数量。"
+      type="success"
+      :closable="false"
+    />
+    <el-form-item label="Material" prop="material">
+      <el-input
+        v-model="detailConfig.material"
+        class="w-100!"
+        maxlength="255"
+        placeholder="Solid oak and oak veneer"
+      />
+    </el-form-item>
+    <el-form-item label="Finish" prop="finish">
+      <el-input
+        v-model="detailConfig.finish"
+        class="w-100!"
+        maxlength="255"
+        placeholder="Natural oak, clear matte lacquer"
+      />
+    </el-form-item>
+    <el-form-item label="Dimension" prop="dimension">
+      <div class="product-dimension-grid">
+        <el-select v-model="detailConfig.dimension.shape" aria-label="Dimension shape">
+          <el-option label="Rectangular" value="rectangular" />
+          <el-option label="Round" value="round" />
+        </el-select>
+        <template v-if="detailConfig.dimension.shape === 'round'">
+          <div class="product-number-field">
+            <span>Diameter</span>
+            <el-input-number
+              v-model="detailConfig.dimension.diameter"
+              :min="0.1"
+              :max="1000"
+              :precision="1"
+              :step="1"
+              controls-position="right"
+            />
+            <span>cm</span>
+          </div>
+        </template>
+        <template v-else>
+          <div class="product-number-field">
+            <span>W</span>
+            <el-input-number
+              v-model="detailConfig.dimension.width"
+              :min="0.1"
+              :max="1000"
+              :precision="1"
+              :step="1"
+              controls-position="right"
+            />
+            <span>cm</span>
+          </div>
+          <div class="product-number-field">
+            <span>D</span>
+            <el-input-number
+              v-model="detailConfig.dimension.depth"
+              :min="0.1"
+              :max="1000"
+              :precision="1"
+              :step="1"
+              controls-position="right"
+            />
+            <span>cm</span>
+          </div>
+        </template>
+        <div class="product-number-field">
+          <span>H</span>
+          <el-input-number
+            v-model="detailConfig.dimension.height"
+            :min="0.1"
+            :max="1000"
+            :precision="1"
+            :step="1"
+            controls-position="right"
+          />
+          <span>cm</span>
+        </div>
+      </div>
+    </el-form-item>
+    <el-form-item label="Packing" prop="packing">
+      <div class="product-packing-grid">
+        <el-select
+          v-model="detailConfig.packing.method"
+          allow-create
+          filterable
+          placeholder="Packing method"
+        >
+          <el-option label="Knock-down carton" value="Knock-down carton" />
+          <el-option label="Fully assembled carton" value="Fully assembled carton" />
+          <el-option label="Protective export carton" value="Protective export carton" />
+          <el-option label="Mail-order carton" value="Mail-order carton" />
+        </el-select>
+        <el-input-number
+          v-model="detailConfig.packing.itemQuantity"
+          :min="1"
+          :max="999"
+          :precision="0"
+          controls-position="right"
+          aria-label="Item quantity"
+        />
+        <el-select v-model="detailConfig.packing.itemUnit" aria-label="Item unit">
+          <el-option label="pc" value="pc" />
+          <el-option label="set" value="set" />
+        </el-select>
+        <span>/</span>
+        <el-input-number
+          v-model="detailConfig.packing.cartonQuantity"
+          :min="1"
+          :max="999"
+          :precision="0"
+          controls-position="right"
+          aria-label="Carton quantity"
+        />
+        <span>carton(s)</span>
+      </div>
+    </el-form-item>
 
     <el-form-item label="Product type">
       <el-select v-model="detailConfig.productType" class="w-80!" @change="applyTemplate">
         <el-option label="Bed" value="bed" />
         <el-option label="Sofa" value="sofa" />
         <el-option label="Dining table" value="dining-table" />
+        <el-option label="Coffee table" value="coffee-table" />
+        <el-option label="Media console" value="media-console" />
+        <el-option label="Nightstand" value="nightstand" />
+        <el-option label="Dresser" value="dresser" />
         <el-option label="Chair" value="chair" />
         <el-option label="Lighting" value="lighting" />
       </el-select>
@@ -158,7 +289,25 @@ defineOptions({ name: 'ProductFurnitureDetailForm' })
 type Swatch = { label: string; swatch: string }
 type OptionGroup = { key: string; label: string; helper: string; values: Array<string | Swatch> }
 type AccordionSection = { title: string; rows: string[][] }
+type Dimension = {
+  shape: 'rectangular' | 'round'
+  width: number | null
+  depth: number | null
+  diameter: number | null
+  height: number | null
+  unit: 'cm'
+}
+type Packing = {
+  method: string
+  itemQuantity: number
+  itemUnit: 'pc' | 'set'
+  cartonQuantity: number
+}
 type DetailConfig = {
+  material: string
+  finish: string
+  dimension: Dimension
+  packing: Packing
   productType: string
   collection: string
   heroNote: string
@@ -188,7 +337,7 @@ const emit = defineEmits(['update:activeName'])
 const formRef = ref()
 const message = useMessage()
 
-const templates: Record<string, DetailConfig> = {
+const templates: Record<string, Partial<DetailConfig>> = {
   bed: {
     productType: 'bed',
     collection: 'LUXE BED COLLECTION',
@@ -386,21 +535,86 @@ const templates: Record<string, DetailConfig> = {
 }
 
 const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value))
-const detailConfig = reactive<DetailConfig>(clone(templates.bed))
+
+const createEmptyConfig = (): DetailConfig => ({
+  material: '',
+  finish: '',
+  dimension: {
+    shape: 'rectangular',
+    width: null,
+    depth: null,
+    diameter: null,
+    height: null,
+    unit: 'cm'
+  },
+  packing: {
+    method: '',
+    itemQuantity: 1,
+    itemUnit: 'pc',
+    cartonQuantity: 1
+  },
+  productType: '',
+  collection: '',
+  heroNote: '',
+  fabricSelector: {
+    stockedCount: 0,
+    specialOrderCount: 0,
+    label: '',
+    swatches: []
+  },
+  highlights: [],
+  optionGroups: [],
+  accordions: [],
+  relatedLinks: []
+})
+
+const detailConfig = reactive<DetailConfig>(createEmptyConfig())
+
+const positiveNumberOrNull = (value: unknown): number | null => {
+  const number = Number(value)
+  return Number.isFinite(number) && number > 0 ? number : null
+}
+
+const positiveInteger = (value: unknown, fallback = 1): number => {
+  const number = Number(value)
+  return Number.isInteger(number) && number > 0 ? number : fallback
+}
 
 const normalizeConfig = (config?: Partial<DetailConfig>): DetailConfig => {
-  const type = config?.productType && templates[config.productType] ? config.productType : 'bed'
+  const empty = createEmptyConfig()
+  const dimension = config?.dimension || empty.dimension
+  const rawPacking = config?.packing as Packing | string | undefined
+  const packing =
+    typeof rawPacking === 'string'
+      ? { ...empty.packing, method: rawPacking }
+      : rawPacking || empty.packing
   return {
-    ...clone(templates[type]),
+    ...empty,
     ...(config || {}),
+    material: typeof config?.material === 'string' ? config.material : '',
+    finish: typeof config?.finish === 'string' ? config.finish : '',
+    dimension: {
+      shape: dimension.shape === 'round' ? 'round' : 'rectangular',
+      width: positiveNumberOrNull(dimension.width),
+      depth: positiveNumberOrNull(dimension.depth),
+      diameter: positiveNumberOrNull(dimension.diameter),
+      height: positiveNumberOrNull(dimension.height),
+      unit: 'cm'
+    },
+    packing: {
+      method: typeof packing.method === 'string' ? packing.method : '',
+      itemQuantity: positiveInteger(packing.itemQuantity),
+      itemUnit: packing.itemUnit === 'set' ? 'set' : 'pc',
+      cartonQuantity: positiveInteger(packing.cartonQuantity)
+    },
     fabricSelector: {
-      ...clone(templates[type].fabricSelector),
+      ...empty.fabricSelector,
       ...(config?.fabricSelector || {})
     },
-    highlights: config?.highlights || clone(templates[type].highlights),
-    optionGroups: config?.optionGroups || clone(templates[type].optionGroups),
-    accordions: config?.accordions || clone(templates[type].accordions),
-    relatedLinks: config?.relatedLinks || clone(templates[type].relatedLinks)
+    highlights: config?.highlights || [],
+    optionGroups: config?.optionGroups || [],
+    accordions: config?.accordions || [],
+    relatedLinks: config?.relatedLinks || []
   }
 }
 
@@ -413,8 +627,48 @@ watch(
 )
 
 const applyTemplate = () => {
-  Object.assign(detailConfig, clone(templates[detailConfig.productType] || templates.bed))
+  const template = templates[detailConfig.productType]
+  if (!template) return
+  Object.assign(detailConfig, normalizeConfig(clone(template)))
 }
+
+const validateText =
+  (label: string) => (_rule: unknown, value: unknown, callback: (error?: Error) => void) => {
+    if (typeof value === 'string' && value.trim()) {
+      callback()
+      return
+    }
+    callback(new Error(`${label} is required`))
+  }
+
+const validateDimension = (_rule: unknown, value: Dimension, callback: (error?: Error) => void) => {
+  const commonValid = value?.unit === 'cm' && positiveNumberOrNull(value?.height) !== null
+  const footprintValid =
+    value?.shape === 'round'
+      ? positiveNumberOrNull(value?.diameter) !== null
+      : positiveNumberOrNull(value?.width) !== null && positiveNumberOrNull(value?.depth) !== null
+  callback(commonValid && footprintValid ? undefined : new Error('Enter complete dimensions in cm'))
+}
+
+const validatePacking = (_rule: unknown, value: Packing, callback: (error?: Error) => void) => {
+  const valid =
+    Boolean(value?.method?.trim()) &&
+    positiveInteger(value?.itemQuantity, 0) > 0 &&
+    ['pc', 'set'].includes(value?.itemUnit) &&
+    positiveInteger(value?.cartonQuantity, 0) > 0
+  callback(valid ? undefined : new Error('Enter the packing method, item quantity and cartons'))
+}
+
+const detailRules = computed(() =>
+  isB2B.value
+    ? {
+        material: [{ validator: validateText('Material'), trigger: 'blur' }],
+        finish: [{ validator: validateText('Finish'), trigger: 'blur' }],
+        dimension: [{ validator: validateDimension, trigger: 'change' }],
+        packing: [{ validator: validatePacking, trigger: 'change' }]
+      }
+    : {}
+)
 
 const optionValuesText = (group: OptionGroup) =>
   group.values.map((value) => (typeof value === 'string' ? value : value.label)).join('\n')
@@ -451,7 +705,11 @@ const removeRelatedLink = (index: number) => detailConfig.relatedLinks.splice(in
 const validate = async () => {
   try {
     await unref(formRef)?.validate()
-    ;(props.propFormData as any).detailConfig = clone(detailConfig)
+    const normalized = normalizeConfig(detailConfig)
+    normalized.material = normalized.material.trim()
+    normalized.finish = normalized.finish.trim()
+    normalized.packing.method = normalized.packing.method.trim()
+    ;(props.propFormData as any).detailConfig = clone(normalized)
   } catch (e) {
     message.error('Furniture detail configuration is incomplete')
     emit('update:activeName', 'furnitureDetail')
@@ -483,5 +741,29 @@ defineExpose({ validate })
   width: min(760px, calc(100% - 140px));
   border: 1px solid var(--el-border-color);
   padding: 12px;
+}
+
+.product-dimension-grid,
+.product-packing-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  width: min(980px, 100%);
+}
+
+.product-dimension-grid > .el-select,
+.product-packing-grid > .el-select:first-child {
+  width: 220px;
+}
+
+.product-packing-grid > .el-select:not(:first-child) {
+  width: 90px;
+}
+
+.product-number-field {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
 }
 </style>

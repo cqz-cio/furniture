@@ -394,7 +394,7 @@ CREATE TABLE IF NOT EXISTS "system_tenant" (
     "status" tinyint NOT NULL,
     "websites" varchar(1024) DEFAULT '',
     "business_mode" varchar(16) NOT NULL DEFAULT 'B2C',
-    "website_product_fields" varchar(1024) NOT NULL DEFAULT 'category,badges,introduction,skuCode,collection,heroNote,fabricSelector,optionGroups,highlights,description,accordions,skuProperties,relatedProducts,relatedLinks',
+    "website_product_fields" varchar(1024) NOT NULL DEFAULT 'category,badges,introduction,skuCode,collection,heroNote,fabricSelector,optionGroups,highlights,description,material,finish,dimension,packing,accordions,skuProperties,relatedProducts,relatedLinks',
     "package_id"  bigint NOT NULL,
     "expire_time" timestamp NOT NULL,
     "account_count" int NOT NULL,

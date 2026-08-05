@@ -27,14 +27,18 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class ProductWebsiteFieldPolicyService {
 
-    private static final Map<String, String> DETAIL_CONFIG_POLICY_FIELDS = Map.of(
-            "collection", TenantProductFieldEnum.COLLECTION.getCode(),
-            "heroNote", TenantProductFieldEnum.HERO_NOTE.getCode(),
-            "fabricSelector", TenantProductFieldEnum.FABRIC_SELECTOR.getCode(),
-            "optionGroups", TenantProductFieldEnum.OPTION_GROUPS.getCode(),
-            "highlights", TenantProductFieldEnum.HIGHLIGHTS.getCode(),
-            "accordions", TenantProductFieldEnum.ACCORDIONS.getCode(),
-            "relatedLinks", TenantProductFieldEnum.RELATED_LINKS.getCode());
+    private static final Map<String, String> DETAIL_CONFIG_POLICY_FIELDS = Map.ofEntries(
+            Map.entry("collection", TenantProductFieldEnum.COLLECTION.getCode()),
+            Map.entry("heroNote", TenantProductFieldEnum.HERO_NOTE.getCode()),
+            Map.entry("fabricSelector", TenantProductFieldEnum.FABRIC_SELECTOR.getCode()),
+            Map.entry("optionGroups", TenantProductFieldEnum.OPTION_GROUPS.getCode()),
+            Map.entry("highlights", TenantProductFieldEnum.HIGHLIGHTS.getCode()),
+            Map.entry("material", TenantProductFieldEnum.MATERIAL.getCode()),
+            Map.entry("finish", TenantProductFieldEnum.FINISH.getCode()),
+            Map.entry("dimension", TenantProductFieldEnum.DIMENSION.getCode()),
+            Map.entry("packing", TenantProductFieldEnum.PACKING.getCode()),
+            Map.entry("accordions", TenantProductFieldEnum.ACCORDIONS.getCode()),
+            Map.entry("relatedLinks", TenantProductFieldEnum.RELATED_LINKS.getCode()));
 
     private final TenantApi tenantApi;
 
