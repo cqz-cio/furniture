@@ -5,7 +5,10 @@ import cn.iocoder.yudao.framework.security.core.LoginUser;
 import cn.iocoder.yudao.framework.security.core.util.SecurityFrameworkUtils;
 import cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder;
 import cn.iocoder.yudao.module.product.api.category.ProductCategoryApi;
+import cn.iocoder.yudao.module.product.api.category.dto.ProductCategoryNavigationNameUpdateReqDTO;
 import cn.iocoder.yudao.module.product.api.category.dto.ProductCategoryNavigationRespDTO;
+import cn.iocoder.yudao.module.seo.controller.admin.navigation.vo.WebsiteNavigationDraftSaveReqVO;
+import cn.iocoder.yudao.module.seo.controller.admin.navigation.vo.WebsiteNavigationItemSaveReqVO;
 import cn.iocoder.yudao.module.seo.controller.admin.navigation.vo.WebsiteNavigationPreviewTicketReqVO;
 import cn.iocoder.yudao.module.seo.controller.admin.navigation.vo.WebsiteNavigationRestoreReqVO;
 import cn.iocoder.yudao.module.seo.controller.app.navigation.vo.AppWebsiteNavigationRespVO;
@@ -28,6 +31,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -112,6 +116,58 @@ class WebsiteNavigationServiceImplTest {
 
         assertThat(response.getItems()).hasSize(1);
         assertThat(response.getItems().get(0).getChildren()).isEmpty();
+    }
+
+    @Test
+    void saveDraft_shouldSynchronizeExplicitlyEditedCategoryName() {
+        WebsiteNavigationRevisionDO draft = revision(30L, "DRAFT", 5);
+        when(revisionMapper.selectByIdForTenant(30L)).thenReturn(draft);
+        when(productCategoryApi.getNavigationCategoryList()).thenReturn(CommonResult.success(List.of(
+                category(25L, "Dining Room", 3L))));
+        when(revisionMapper.bumpDraftVersionAtomic(30L, 5, TENANT_ID, "100")).thenReturn(1);
+        when(productCategoryApi.updateNavigationCategoryName(any()))
+                .thenReturn(CommonResult.success(true));
+        WebsiteNavigationDraftSaveReqVO request = draftSaveRequest(
+                draft, categoryRequest(25L, "Contract Dining", true));
+
+        service.saveDraft(request);
+
+        ArgumentCaptor<ProductCategoryNavigationNameUpdateReqDTO> updateCaptor =
+                ArgumentCaptor.forClass(ProductCategoryNavigationNameUpdateReqDTO.class);
+        verify(productCategoryApi).updateNavigationCategoryName(updateCaptor.capture());
+        assertThat(updateCaptor.getValue().getId()).isEqualTo(25L);
+        assertThat(updateCaptor.getValue().getName()).isEqualTo("Contract Dining");
+        ArgumentCaptor<WebsiteNavigationItemDO> itemCaptor =
+                ArgumentCaptor.forClass(WebsiteNavigationItemDO.class);
+        verify(itemMapper, times(WebsiteNavigationPageKeyEnum.values().length + 1))
+                .insert(itemCaptor.capture());
+        assertThat(itemCaptor.getAllValues())
+                .filteredOn(item -> Long.valueOf(25L).equals(item.getCategoryId()))
+                .extracting(WebsiteNavigationItemDO::getLabel)
+                .containsExactly("Contract Dining");
+    }
+
+    @Test
+    void saveDraft_shouldNotOverwriteCategoryNameWithoutExplicitEditFlag() {
+        WebsiteNavigationRevisionDO draft = revision(31L, "DRAFT", 2);
+        when(revisionMapper.selectByIdForTenant(31L)).thenReturn(draft);
+        when(productCategoryApi.getNavigationCategoryList()).thenReturn(CommonResult.success(List.of(
+                category(25L, "Current Category Name", 3L))));
+        when(revisionMapper.bumpDraftVersionAtomic(31L, 2, TENANT_ID, "100")).thenReturn(1);
+        WebsiteNavigationDraftSaveReqVO request = draftSaveRequest(
+                draft, categoryRequest(25L, "Stale Browser Value", false));
+
+        service.saveDraft(request);
+
+        verify(productCategoryApi, times(0)).updateNavigationCategoryName(any());
+        ArgumentCaptor<WebsiteNavigationItemDO> itemCaptor =
+                ArgumentCaptor.forClass(WebsiteNavigationItemDO.class);
+        verify(itemMapper, times(WebsiteNavigationPageKeyEnum.values().length + 1))
+                .insert(itemCaptor.capture());
+        assertThat(itemCaptor.getAllValues())
+                .filteredOn(item -> Long.valueOf(25L).equals(item.getCategoryId()))
+                .extracting(WebsiteNavigationItemDO::getLabel)
+                .containsExactly("Current Category Name");
     }
 
     @Test
@@ -259,6 +315,40 @@ class WebsiteNavigationServiceImplTest {
         category.setStatus(0);
         category.setPublishedProductCount(count);
         return category;
+    }
+
+    private static WebsiteNavigationDraftSaveReqVO draftSaveRequest(
+            WebsiteNavigationRevisionDO draft, WebsiteNavigationItemSaveReqVO categoryItem) {
+        List<WebsiteNavigationItemSaveReqVO> items = new ArrayList<>();
+        for (WebsiteNavigationPageKeyEnum page : WebsiteNavigationPageKeyEnum.values()) {
+            WebsiteNavigationItemSaveReqVO item = new WebsiteNavigationItemSaveReqVO();
+            item.setItemType("PAGE");
+            item.setPageKey(page.getCode());
+            item.setLabel(page.getDefaultLabel());
+            item.setSort(page.getDefaultSort());
+            item.setVisible(true);
+            items.add(item);
+        }
+        items.add(categoryItem);
+        WebsiteNavigationDraftSaveReqVO request = new WebsiteNavigationDraftSaveReqVO();
+        request.setRevisionId(draft.getId());
+        request.setSiteId(draft.getSiteId());
+        request.setLocale(draft.getLocale());
+        request.setVersion(draft.getVersion());
+        request.setItems(items);
+        return request;
+    }
+
+    private static WebsiteNavigationItemSaveReqVO categoryRequest(
+            Long categoryId, String label, boolean syncCategoryName) {
+        WebsiteNavigationItemSaveReqVO item = new WebsiteNavigationItemSaveReqVO();
+        item.setItemType("CATEGORY");
+        item.setCategoryId(categoryId);
+        item.setLabel(label);
+        item.setSyncCategoryName(syncCategoryName);
+        item.setSort(10);
+        item.setVisible(true);
+        return item;
     }
 
 }

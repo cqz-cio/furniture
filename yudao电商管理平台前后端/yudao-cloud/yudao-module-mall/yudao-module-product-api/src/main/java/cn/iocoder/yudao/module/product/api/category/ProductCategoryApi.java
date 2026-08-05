@@ -1,13 +1,17 @@
 package cn.iocoder.yudao.module.product.api.category;
 
 import cn.iocoder.yudao.framework.common.pojo.CommonResult;
+import cn.iocoder.yudao.module.product.api.category.dto.ProductCategoryNavigationNameUpdateReqDTO;
 import cn.iocoder.yudao.module.product.api.category.dto.ProductCategoryNavigationRespDTO;
 import cn.iocoder.yudao.module.product.enums.ApiConstants;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.Collection;
@@ -27,5 +31,10 @@ public interface ProductCategoryApi {
     @GetMapping(PREFIX + "/navigation-list")
     @Operation(summary = "获得官网导航可使用的商品分类")
     CommonResult<List<ProductCategoryNavigationRespDTO>> getNavigationCategoryList();
+
+    @PutMapping(PREFIX + "/navigation-name")
+    @Operation(summary = "从官网导航同步修改商品分类名称")
+    CommonResult<Boolean> updateNavigationCategoryName(
+            @Valid @RequestBody ProductCategoryNavigationNameUpdateReqDTO reqDTO);
 
 }

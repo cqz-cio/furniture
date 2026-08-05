@@ -20,9 +20,12 @@ public class WebsiteNavigationItemSaveReqVO {
     @Schema(description = "商品分类编号")
     private Long categoryId;
 
-    @Schema(description = "前台显示名称；商品分类名称由商品中心同步")
+    @Schema(description = "前台显示名称；分类项可在确认后同步回商品中心")
     @Size(max = 64)
     private String label;
+
+    @Schema(description = "是否把分类项名称同步回商品中心")
+    private Boolean syncCategoryName;
 
     @Schema(description = "排序值，越小越靠前", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotNull

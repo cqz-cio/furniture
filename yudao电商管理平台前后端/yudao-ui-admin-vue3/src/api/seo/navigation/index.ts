@@ -43,6 +43,7 @@ export interface WebsiteNavigationItemSaveReqVO {
   pageKey?: string
   categoryId?: number
   label: string
+  syncCategoryName?: boolean
   sort: number
   visible: boolean
 }

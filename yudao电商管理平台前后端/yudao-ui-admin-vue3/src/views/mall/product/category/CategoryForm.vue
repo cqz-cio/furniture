@@ -19,7 +19,10 @@
         </el-select>
       </el-form-item>
       <el-form-item label="分类名称" prop="name">
-        <el-input v-model="formData.name" placeholder="请输入分类名称" />
+        <div class="category-name-field">
+          <el-input v-model="formData.name" maxlength="64" show-word-limit placeholder="请输入分类名称" />
+          <span>如果该分类已加入官网 Products 导航，确认修改后已发布官网会立即同步。</span>
+        </div>
       </el-form-item>
       <el-form-item label="移动端分类图" prop="picUrl">
         <UploadImg v-model="formData.picUrl" :limit="1" :is-show-tip="false" />
@@ -47,9 +50,12 @@
   </Dialog>
 </template>
 <script lang="ts" setup>
+import { reactive, ref } from 'vue'
 import { DICT_TYPE, getIntDictOptions } from '@/utils/dict'
 import { CommonStatusEnum } from '@/utils/constants'
 import * as ProductCategoryApi from '@/api/mall/product/category'
+import { useI18n } from '@/hooks/web/useI18n'
+import { useMessage } from '@/hooks/web/useMessage'
 
 defineOptions({ name: 'ProductCategory' })
 
@@ -60,6 +66,7 @@ const dialogVisible = ref(false) // 弹窗的是否展示
 const dialogTitle = ref('') // 弹窗的标题
 const formLoading = ref(false) // 表单的加载中：1）修改时的数据加载；2）提交的按钮禁用
 const formType = ref('') // 表单的类型：create - 新增；update - 修改
+const originalCategoryName = ref('')
 const formData = ref({
   id: undefined,
   parentId: 0,
@@ -89,6 +96,7 @@ const open = async (type: string, id?: number) => {
     formLoading.value = true
     try {
       formData.value = await ProductCategoryApi.getCategory(id)
+      originalCategoryName.value = formData.value.name
     } finally {
       formLoading.value = false
     }
@@ -101,6 +109,7 @@ defineExpose({ open }) // 提供 open 方法，用于打开弹窗
 /** 提交表单 */
 const emit = defineEmits(['success']) // 定义 success 事件，用于操作成功后的回调
 const submitForm = async () => {
+  formData.value.name = formData.value.name.trim()
   // 校验表单
   if (!formRef) return
   const valid = await formRef.value.validate()
@@ -109,12 +118,22 @@ const submitForm = async () => {
   formLoading.value = true
   try {
     const data = formData.value as ProductCategoryApi.CategoryVO
+    const categoryNameChanged =
+      formType.value === 'update' && data.name !== originalCategoryName.value.trim()
+    if (categoryNameChanged) {
+      await message.confirm(
+        `确认把分类名称“${originalCategoryName.value}”修改为“${data.name}”吗？\n如果该分类已加入官网 Products 二级导航，已发布官网会立即同步，无需再次发布。`,
+        '同步分类名称'
+      )
+    }
     if (formType.value === 'create') {
       await ProductCategoryApi.createCategory(data)
       message.success(t('common.createSuccess'))
     } else {
       await ProductCategoryApi.updateCategory(data)
-      message.success(t('common.updateSuccess'))
+      message.success(
+        categoryNameChanged ? '商品分类与官网二级导航名称已同步' : t('common.updateSuccess')
+      )
     }
     dialogVisible.value = false
     // 发送操作成功的事件
@@ -126,6 +145,7 @@ const submitForm = async () => {
 
 /** 重置表单 */
 const resetForm = () => {
+  originalCategoryName.value = ''
   formData.value = {
     id: undefined,
     parentId: 0,
@@ -137,3 +157,17 @@ const resetForm = () => {
   formRef.value?.resetFields()
 }
 </script>
+
+<style scoped>
+.category-name-field {
+  display: grid;
+  width: 100%;
+  gap: 6px;
+}
+
+.category-name-field span {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--el-text-color-secondary);
+}
+</style>

@@ -99,4 +99,12 @@ public interface ProductCategoryService {
      */
     List<ProductCategoryNavigationRespDTO> getNavigationCategoryList();
 
+    /**
+     * 从官网导航同步修改二级商品分类名称
+     *
+     * @param id 分类编号
+     * @param name 新分类名称
+     */
+    void updateNavigationCategoryName(Long id, String name);
+
 }

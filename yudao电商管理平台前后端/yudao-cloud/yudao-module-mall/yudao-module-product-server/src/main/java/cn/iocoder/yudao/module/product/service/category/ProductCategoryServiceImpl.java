@@ -1,6 +1,7 @@
 package cn.iocoder.yudao.module.product.service.category;
 
 import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.util.StrUtil;
 import cn.iocoder.yudao.framework.common.enums.CommonStatusEnum;
 import cn.iocoder.yudao.framework.common.util.collection.CollectionUtils;
 import cn.iocoder.yudao.framework.common.util.object.BeanUtils;
@@ -218,6 +219,23 @@ public class ProductCategoryServiceImpl implements ProductCategoryService {
             response.setPublishedProductCount(countMap.getOrDefault(category.getId(), 0L));
             return response;
         }).toList();
+    }
+
+    @Override
+    public void updateNavigationCategoryName(Long id, String name) {
+        ProductCategoryDO category = productCategoryMapper.selectById(id);
+        if (category == null) {
+            throw exception(CATEGORY_NOT_EXISTS);
+        }
+        if (!CommonStatusEnum.ENABLE.getStatus().equals(category.getStatus())) {
+            throw exception(CATEGORY_DISABLED, category.getName());
+        }
+        if (Objects.equals(category.getParentId(), PARENT_ID_NULL)) {
+            throw exception(SPU_SAVE_FAIL_CATEGORY_LEVEL_ERROR);
+        }
+        productCategoryMapper.updateById(new ProductCategoryDO()
+                .setId(id)
+                .setName(StrUtil.trim(name)));
     }
 
     private Map<Long, Long> getWebsiteVisibleProductCountMap(Set<Long> categoryIds) {

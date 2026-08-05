@@ -4,6 +4,7 @@ import cn.hutool.core.util.StrUtil;
 import cn.iocoder.yudao.framework.security.core.util.SecurityFrameworkUtils;
 import cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder;
 import cn.iocoder.yudao.module.product.api.category.ProductCategoryApi;
+import cn.iocoder.yudao.module.product.api.category.dto.ProductCategoryNavigationNameUpdateReqDTO;
 import cn.iocoder.yudao.module.product.api.category.dto.ProductCategoryNavigationRespDTO;
 import cn.iocoder.yudao.module.seo.controller.admin.navigation.vo.WebsiteNavigationCategoryOptionRespVO;
 import cn.iocoder.yudao.module.seo.controller.admin.navigation.vo.WebsiteNavigationDraftRespVO;
@@ -108,12 +109,15 @@ public class WebsiteNavigationServiceImpl implements WebsiteNavigationService {
                 || !Objects.equals(draft.getLocale(), normalizedLocale)) {
             throw exception(NAVIGATION_CONFIG_INVALID);
         }
-        List<WebsiteNavigationItemDO> items = validateAndConvertItems(reqVO.getItems(), draft.getId());
+        Map<Long, ProductCategoryNavigationRespDTO> categoryMap = loadCategoryMap();
+        List<WebsiteNavigationItemDO> items = validateAndConvertItems(
+                reqVO.getItems(), draft.getId(), categoryMap);
         int affected = revisionMapper.bumpDraftVersionAtomic(draft.getId(), reqVO.getVersion(),
                 currentTenantId(), currentUpdater());
         if (affected == 0) {
             classifyAtomicFailure(draft.getId());
         }
+        syncCategoryNames(reqVO.getItems(), categoryMap);
         itemMapper.deleteByRevisionId(draft.getId());
         insertItems(items);
     }
@@ -288,10 +292,15 @@ public class WebsiteNavigationServiceImpl implements WebsiteNavigationService {
 
     private List<WebsiteNavigationItemDO> validateAndConvertItems(
             List<WebsiteNavigationItemSaveReqVO> requestItems, Long revisionId) {
+        return validateAndConvertItems(requestItems, revisionId, loadCategoryMap());
+    }
+
+    private List<WebsiteNavigationItemDO> validateAndConvertItems(
+            List<WebsiteNavigationItemSaveReqVO> requestItems, Long revisionId,
+            Map<Long, ProductCategoryNavigationRespDTO> categoryMap) {
         if (requestItems == null || requestItems.isEmpty() || requestItems.size() > MAX_NAVIGATION_ITEMS) {
             throw exception(NAVIGATION_CONFIG_INVALID);
         }
-        Map<Long, ProductCategoryNavigationRespDTO> categoryMap = loadCategoryMap();
         Set<WebsiteNavigationPageKeyEnum> pageKeys = EnumSet.noneOf(WebsiteNavigationPageKeyEnum.class);
         Set<Long> categoryIds = new HashSet<>();
         List<WebsiteNavigationItemDO> items = new ArrayList<>();
@@ -314,7 +323,13 @@ public class WebsiteNavigationServiceImpl implements WebsiteNavigationService {
             if (category == null && Boolean.TRUE.equals(requestItem.getVisible())) {
                 throw exception(NAVIGATION_CATEGORY_UNAVAILABLE, requestItem.getCategoryId());
             }
-            String label = category == null ? defaultCategoryLabel(requestItem) : category.getName();
+            if (Boolean.TRUE.equals(requestItem.getSyncCategoryName())
+                    && StrUtil.isBlank(requestItem.getLabel())) {
+                throw exception(NAVIGATION_CONFIG_INVALID);
+            }
+            String label = category == null ? defaultCategoryLabel(requestItem)
+                    : Boolean.TRUE.equals(requestItem.getSyncCategoryName())
+                            ? requestItem.getLabel().trim() : category.getName();
             items.add(categoryItem(revisionId, requestItem.getCategoryId(), label,
                     requestItem.getSort(), requestItem.getVisible()));
         }
@@ -322,6 +337,26 @@ public class WebsiteNavigationServiceImpl implements WebsiteNavigationService {
             throw exception(NAVIGATION_CONFIG_INVALID);
         }
         return items;
+    }
+
+    private void syncCategoryNames(List<WebsiteNavigationItemSaveReqVO> requestItems,
+                                   Map<Long, ProductCategoryNavigationRespDTO> categoryMap) {
+        requestItems.stream()
+                .filter(item -> WebsiteNavigationItemTypeEnum.CATEGORY.getCode().equals(item.getItemType()))
+                .filter(item -> Boolean.TRUE.equals(item.getSyncCategoryName()))
+                .filter(item -> item.getCategoryId() != null && StrUtil.isNotBlank(item.getLabel()))
+                .forEach(item -> {
+                    ProductCategoryNavigationRespDTO category = categoryMap.get(item.getCategoryId());
+                    String normalizedName = item.getLabel().trim();
+                    if (category == null || Objects.equals(category.getName(), normalizedName)) {
+                        return;
+                    }
+                    ProductCategoryNavigationNameUpdateReqDTO request =
+                            new ProductCategoryNavigationNameUpdateReqDTO();
+                    request.setId(item.getCategoryId());
+                    request.setName(normalizedName);
+                    productCategoryApi.updateNavigationCategoryName(request).getCheckedData();
+                });
     }
 
     private void validatePublishableItems(List<WebsiteNavigationItemDO> items) {

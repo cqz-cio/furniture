@@ -10,7 +10,7 @@
             <strong>VANZ 官网导航</strong>
             <el-tag size="small" type="info" effect="plain">English</el-tag>
           </div>
-          <p>改名称、排顺序、控制显示；产品分类会自动跟随商品中心。</p>
+          <p>两个入口都能改分类名称；确认保存后，商品中心和官网导航保持一致。</p>
         </div>
       </div>
 
@@ -140,18 +140,18 @@
 
         <ContentWrap
           title="Products 二级目录"
-          message="这里只选择商品中心里的分类；改分类名称后，官网会自动同步。"
+          message="名称可直接修改；确认保存后会同步更新商品中心和已发布官网。"
           surface="form"
           :auto-title="false"
         >
           <template #header>
             <div class="section-header-actions">
-              <el-tag type="success" effect="plain">商品中心同步</el-tag>
+              <el-tag type="success" effect="plain">名称双向同步</el-tag>
             </div>
           </template>
 
           <p class="section-description">
-            这里只选择商品中心里的分类；改分类名称后，官网会自动同步。
+            商品分类页和这里都可以改名；保存时确认一次，两边会立即使用同一个名称。
           </p>
 
           <div class="category-picker">
@@ -207,11 +207,17 @@
                 </button>
                 <span class="navigation-row__order">{{ index + 1 }}</span>
                 <div class="navigation-row__body">
-                  <strong>{{ element.label }}</strong>
+                  <el-input
+                    v-model="element.label"
+                    maxlength="64"
+                    show-word-limit
+                    :disabled="busy || !element.available"
+                    @input="markCategoryNameDirty(element)"
+                  />
                   <small v-if="element.available">
                     <Icon icon="ep:goods" />
                     分类 ID {{ element.categoryId }} ·
-                    {{ element.publishedProductCount || 0 }} 个在线商品
+                    {{ element.publishedProductCount || 0 }} 个在线商品 · 保存后同步商品中心
                   </small>
                   <small v-else class="is-error">
                     <Icon icon="ep:warning-filled" />
@@ -219,7 +225,7 @@
                   </small>
                 </div>
                 <el-tag v-if="element.available" size="small" type="info" effect="plain">
-                  自动同步名称
+                  双向同步
                 </el-tag>
                 <div class="navigation-row__visibility">
                   <span>{{ element.visible ? '官网显示' : '已隐藏' }}</span>
@@ -442,6 +448,8 @@ const draft = ref<WebsiteNavigationDraftRespVO>()
 const primaryItems = ref<WebsiteNavigationItemRespVO[]>([])
 const categoryItems = ref<WebsiteNavigationItemRespVO[]>([])
 const categoryOptions = ref<WebsiteNavigationCategoryOptionRespVO[]>([])
+const originalCategoryNames = ref<Map<number, string>>(new Map())
+const editedCategoryIds = ref<Set<number>>(new Set())
 const categoryToAdd = ref<number>()
 const loading = ref(false)
 const saving = ref(false)
@@ -539,6 +547,16 @@ const availableCategoryOptions = computed(() =>
   categoryOptions.value.filter((option) => !selectedCategoryIds.value.has(option.id))
 )
 
+const pendingCategoryRenames = computed(() =>
+  categoryItems.value.filter(
+    (item) =>
+      item.available &&
+      item.categoryId &&
+      editedCategoryIds.value.has(item.categoryId) &&
+      item.label.trim() !== (originalCategoryNames.value.get(item.categoryId) || '').trim()
+  )
+)
+
 const inlinePreviewDisplayUrl = computed(() => safePreviewDisplayUrl(inlinePreviewUrl.value))
 
 const loadSiteConfig = async () => {
@@ -576,6 +594,12 @@ const loadDraft = async () => {
         return { ...item }
       })
     categoryOptions.value = response.categoryOptions.map((option) => ({ ...option }))
+    originalCategoryNames.value = new Map(
+      categoryItems.value
+        .filter((item) => item.categoryId)
+        .map((item) => [item.categoryId as number, item.label])
+    )
+    editedCategoryIds.value = new Set()
     dirty.value = normalizedUnavailableCategory
   } catch {
     loadError.value = '官网导航加载失败，请确认 SEO 服务和商品中心已启动'
@@ -587,6 +611,19 @@ const loadDraft = async () => {
 const markDirty = () => {
   dirty.value = true
   inlinePreviewUrl.value = ''
+}
+
+const markCategoryNameDirty = (item: WebsiteNavigationItemRespVO) => {
+  if (!item.categoryId) return
+  const nextEditedIds = new Set(editedCategoryIds.value)
+  const originalName = originalCategoryNames.value.get(item.categoryId) || ''
+  if (item.label.trim() === originalName.trim()) {
+    nextEditedIds.delete(item.categoryId)
+  } else {
+    nextEditedIds.add(item.categoryId)
+  }
+  editedCategoryIds.value = nextEditedIds
+  markDirty()
 }
 
 const normalizeSort = () => {
@@ -622,12 +659,19 @@ const addCategory = () => {
     available: true,
     publishedProductCount: option.publishedProductCount
   })
+  originalCategoryNames.value = new Map(originalCategoryNames.value).set(option.id, option.name)
   categoryToAdd.value = undefined
   markDirty()
 }
 
 const removeCategory = (index: number) => {
+  const categoryId = categoryItems.value[index]?.categoryId
   categoryItems.value.splice(index, 1)
+  if (categoryId) {
+    const nextEditedIds = new Set(editedCategoryIds.value)
+    nextEditedIds.delete(categoryId)
+    editedCategoryIds.value = nextEditedIds
+  }
   normalizeSort()
   markDirty()
 }
@@ -640,6 +684,13 @@ const validateLocalItems = () => {
     message.warning('一级导航名称不能为空')
     return false
   }
+  const blankCategory = categoryItems.value.find(
+    (item) => item.available && !item.label.trim()
+  )
+  if (blankCategory) {
+    message.warning('二级导航名称不能为空')
+    return false
+  }
   return true
 }
 
@@ -648,12 +699,27 @@ const toSaveItem = (item: WebsiteNavigationItemRespVO): WebsiteNavigationItemSav
   pageKey: item.pageKey,
   categoryId: item.categoryId,
   label: item.label.trim(),
+  syncCategoryName:
+    item.itemType === 'CATEGORY' &&
+    Boolean(item.categoryId && editedCategoryIds.value.has(item.categoryId)),
   sort: item.sort,
   visible: item.visible
 })
 
 const persistDraft = async (notify = true) => {
   if (!draft.value || !validateLocalItems()) return false
+  const categoryRenames = [...pendingCategoryRenames.value]
+  if (categoryRenames.length) {
+    await message.confirm(
+      `确认同步修改以下分类名称吗？\n${categoryRenames
+        .map(
+          (item) =>
+            `• ${originalCategoryNames.value.get(item.categoryId as number) || '-'} → ${item.label.trim()}`
+        )
+        .join('\n')}\n确认后会同时更新商品中心和已发布官网的 Products 二级导航，无需再次发布。`,
+      '同步分类名称'
+    )
+  }
   normalizeSort()
   saving.value = true
   try {
@@ -667,7 +733,13 @@ const persistDraft = async (notify = true) => {
     inlinePreviewUrl.value = ''
     widePreviewUrl.value = ''
     await loadDraft()
-    if (notify) message.success('导航草稿已保存，线上官网未受影响')
+    if (notify) {
+      message.success(
+        categoryRenames.length
+          ? `已同步 ${categoryRenames.length} 个商品分类名称，并保存导航草稿`
+          : '导航草稿已保存，线上官网未受影响'
+      )
+    }
     return true
   } finally {
     saving.value = false

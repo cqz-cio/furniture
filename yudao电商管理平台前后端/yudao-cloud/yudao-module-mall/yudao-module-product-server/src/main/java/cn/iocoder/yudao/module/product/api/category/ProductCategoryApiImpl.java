@@ -1,6 +1,7 @@
 package cn.iocoder.yudao.module.product.api.category;
 
 import cn.iocoder.yudao.framework.common.pojo.CommonResult;
+import cn.iocoder.yudao.module.product.api.category.dto.ProductCategoryNavigationNameUpdateReqDTO;
 import cn.iocoder.yudao.module.product.api.category.dto.ProductCategoryNavigationRespDTO;
 import cn.iocoder.yudao.module.product.service.category.ProductCategoryService;
 import org.springframework.validation.annotation.Validated;
@@ -33,6 +34,13 @@ public class ProductCategoryApiImpl implements ProductCategoryApi {
     @Override
     public CommonResult<List<ProductCategoryNavigationRespDTO>> getNavigationCategoryList() {
         return success(productCategoryService.getNavigationCategoryList());
+    }
+
+    @Override
+    public CommonResult<Boolean> updateNavigationCategoryName(
+            ProductCategoryNavigationNameUpdateReqDTO reqDTO) {
+        productCategoryService.updateNavigationCategoryName(reqDTO.getId(), reqDTO.getName());
+        return success(true);
     }
 
 }

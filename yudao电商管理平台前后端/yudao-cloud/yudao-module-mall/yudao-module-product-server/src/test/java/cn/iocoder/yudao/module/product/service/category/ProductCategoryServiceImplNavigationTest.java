@@ -12,6 +12,7 @@ import cn.iocoder.yudao.module.product.dal.mysql.spu.ProductSpuMapper;
 import cn.iocoder.yudao.module.product.enums.spu.ProductSpuStatusEnum;
 import cn.iocoder.yudao.module.product.service.sku.ProductSkuService;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 
@@ -21,8 +22,10 @@ import java.util.Set;
 
 import static cn.iocoder.yudao.framework.common.enums.CommonStatusEnum.ENABLE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class ProductCategoryServiceImplNavigationTest extends BaseMockitoUnitTest {
@@ -66,6 +69,21 @@ class ProductCategoryServiceImplNavigationTest extends BaseMockitoUnitTest {
                 result.stream().map(ProductCategoryNavigationRespDTO::getName).toList());
         assertEquals(List.of(1L, 1L),
                 result.stream().map(ProductCategoryNavigationRespDTO::getPublishedProductCount).toList());
+    }
+
+    @Test
+    void updateNavigationCategoryNameUpdatesOnlyTrimmedName() {
+        when(productCategoryMapper.selectById(10L)).thenReturn(
+                category(10L, 1L, "Dining Tables", 20));
+
+        productCategoryService.updateNavigationCategoryName(10L, "  Contract Tables  ");
+
+        ArgumentCaptor<ProductCategoryDO> captor = ArgumentCaptor.forClass(ProductCategoryDO.class);
+        verify(productCategoryMapper).updateById(captor.capture());
+        assertEquals(10L, captor.getValue().getId());
+        assertEquals("Contract Tables", captor.getValue().getName());
+        assertNull(captor.getValue().getParentId());
+        assertNull(captor.getValue().getStatus());
     }
 
     private static ProductCategoryDO category(Long id, Long parentId, String name, Integer sort) {
