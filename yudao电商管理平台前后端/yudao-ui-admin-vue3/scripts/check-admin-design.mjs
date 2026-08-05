@@ -33,17 +33,18 @@ for (const token of [
 
 const topLevelLeafLayout =
   adminStyle.match(/\.erp-shell #v-menu \.el-menu \.el-menu-item \{([\s\S]*?)\}/)?.[1] || ''
-const nestedLeafLayout =
-  adminStyle.match(/\.erp-shell #v-menu \.el-menu \.el-menu \.el-menu-item \{([\s\S]*?)\}/)?.[1] ||
-  ''
+const nestedNavigationLayout =
+  adminStyle.match(
+    /\.erp-shell #v-menu \.el-menu \.el-menu \.el-menu-item,\s*\.erp-shell #v-menu \.el-menu \.el-menu \.el-sub-menu__title \{([\s\S]*?)\}/
+  )?.[1] || ''
 
 assert.ok(
   !topLevelLeafLayout.includes('padding-left: 46px'),
   'top-level leaf routes must align with top-level submenu titles'
 )
 assert.ok(
-  nestedLeafLayout.includes('padding-left: 46px !important'),
-  'only nested leaf routes should receive child-menu indentation'
+  nestedNavigationLayout.includes('padding-left: 46px !important'),
+  'nested leaf routes and expandable directories must share child-menu indentation'
 )
 assert.ok(
   !adminStyle.includes('left: -10px;'),

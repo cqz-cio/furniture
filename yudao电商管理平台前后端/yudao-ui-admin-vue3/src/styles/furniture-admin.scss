@@ -594,9 +594,10 @@ p.furniture-admin-kicker {
   margin-left: 10px;
 }
 
-/* Only real child entries are indented. Top-level leaf routes such as Home and
- * Dashboard share the same icon/text anchor as top-level submenu titles. */
-.erp-shell #v-menu .el-menu .el-menu .el-menu-item {
+/* Every real child row is indented, including expandable child directories.
+ * Top-level leaf routes such as Home and Dashboard keep the root anchor. */
+.erp-shell #v-menu .el-menu .el-menu .el-menu-item,
+.erp-shell #v-menu .el-menu .el-menu .el-sub-menu__title {
   padding-left: 46px !important;
 }
 
