@@ -13,6 +13,8 @@ public class AppWebsiteNavigationItemRespVO {
     private String label;
     private String href;
     private String itemType;
+    private String openMode;
+    private String styleVariant;
     private Long categoryId;
     private Long publishedProductCount;
     private List<AppWebsiteNavigationItemRespVO> children;

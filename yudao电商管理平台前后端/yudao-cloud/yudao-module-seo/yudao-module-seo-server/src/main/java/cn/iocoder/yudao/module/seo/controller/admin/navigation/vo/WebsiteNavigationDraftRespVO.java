@@ -13,6 +13,7 @@ public class WebsiteNavigationDraftRespVO {
     private Long revisionId;
     private Long siteId;
     private String locale;
+    private String navigationTemplate;
     private Integer revisionNo;
     private Integer version;
     private String status;
@@ -23,5 +24,6 @@ public class WebsiteNavigationDraftRespVO {
     private List<WebsiteNavigationItemRespVO> items;
     private List<WebsiteNavigationItemRespVO> publishedItems;
     private List<WebsiteNavigationCategoryOptionRespVO> categoryOptions;
+    private List<WebsiteNavigationTargetOptionRespVO> targetOptions;
 
 }

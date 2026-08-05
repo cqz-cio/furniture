@@ -11869,6 +11869,84 @@ WHERE (
 
 DROP TEMPORARY TABLE `vanz_inquiry_operations_guard`;
 
+-- BEGIN V042__product_information_fields.sql
+-- Add the four stable public product-information fields to the B2B tenant
+-- allowlist. The value is a comma-separated varchar mapped to List<String>.
+
+ALTER TABLE `system_tenant`
+  MODIFY COLUMN `website_product_fields` varchar(1024) NOT NULL
+    DEFAULT 'category,badges,introduction,skuCode,collection,heroNote,fabricSelector,optionGroups,highlights,description,material,finish,dimension,packing,accordions,skuProperties,relatedProducts,relatedLinks'
+    COMMENT '网站公开商品字段，逗号分隔';
+
+SET @default_b2b_product_fields :=
+  'category,badges,introduction,skuCode,collection,heroNote,fabricSelector,optionGroups,highlights,description,material,finish,dimension,packing,accordions,skuProperties,relatedProducts,relatedLinks';
+
+UPDATE `system_tenant`
+SET `website_product_fields` = CASE
+      WHEN TRIM(COALESCE(`website_product_fields`, '')) = ''
+        THEN @default_b2b_product_fields
+      ELSE CONCAT(
+        `website_product_fields`,
+        IF(FIND_IN_SET('material', `website_product_fields`) = 0, ',material', ''),
+        IF(FIND_IN_SET('finish', `website_product_fields`) = 0, ',finish', ''),
+        IF(FIND_IN_SET('dimension', `website_product_fields`) = 0, ',dimension', ''),
+        IF(FIND_IN_SET('packing', `website_product_fields`) = 0, ',packing', '')
+      )
+    END,
+    `updater` = 'V042',
+    `update_time` = CURRENT_TIMESTAMP
+WHERE `business_mode` = 'B2B'
+  AND `deleted` = b'0';
+
+DROP TEMPORARY TABLE IF EXISTS `product_information_fields_guard`;
+CREATE TEMPORARY TABLE `product_information_fields_guard` (
+  `valid` tinyint NOT NULL,
+  CONSTRAINT `chk_product_information_fields_guard` CHECK (`valid` = 1)
+) ENGINE=InnoDB;
+
+INSERT INTO `product_information_fields_guard` (`valid`)
+SELECT 0
+WHERE EXISTS (
+  SELECT 1
+  FROM `system_tenant`
+  WHERE `business_mode` = 'B2B'
+    AND `deleted` = b'0'
+    AND (
+      FIND_IN_SET('material', `website_product_fields`) = 0
+      OR FIND_IN_SET('finish', `website_product_fields`) = 0
+      OR FIND_IN_SET('dimension', `website_product_fields`) = 0
+      OR FIND_IN_SET('packing', `website_product_fields`) = 0
+    )
+);
+
+DROP TEMPORARY TABLE `product_information_fields_guard`;
+
+-- BEGIN V043__oakved_b2c_navigation_tree.sql
+-- Extend the shared website-navigation engine for the Oakved B2C header.
+-- The selected renderer remains a site-level setting; business_mode alone is intentionally not used.
+
+ALTER TABLE `seo_site_config`
+  ADD COLUMN `navigation_template` varchar(32) NOT NULL DEFAULT 'VANZ_B2B'
+    COMMENT '导航模板：VANZ_B2B/OAKVED_B2C'
+    AFTER `default_locale`;
+
+ALTER TABLE `website_navigation_item`
+  ADD COLUMN `target_key` varchar(64) DEFAULT NULL
+    COMMENT '服务端安全路由/筛选目标标识'
+    AFTER `page_key`,
+  ADD COLUMN `style_variant` varchar(32) NOT NULL DEFAULT 'DEFAULT'
+    COMMENT '导航视觉样式：DEFAULT/SALE'
+    AFTER `open_mode`;
+
+-- Bootstrap the existing Oakved site without coupling the application frontend to a numeric tenant id.
+UPDATE `seo_site_config` config
+JOIN `system_tenant` tenant
+  ON tenant.`id` = config.`tenant_id` AND tenant.`deleted` = b'0'
+SET config.`navigation_template` = 'OAKVED_B2C'
+WHERE LOWER(COALESCE(tenant.`code`, '')) = 'oakved'
+   OR LOWER(config.`site_name`) LIKE '%oakved%'
+   OR LOWER(config.`site_url`) LIKE '%oakved%';
+
 -- BEGIN Oakved demo catalog
 -- Oakved demo catalog: tenant 121, 26 mall products, ERP products, stock and mappings.
 SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -12089,4 +12167,6 @@ INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256)
 INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('039','website navigation preview','V039__website_navigation_preview.sql','33e5898a22e2fa9d8b50d7b7d08f7ec49aa4a89d034c53b04bdf1bee764f6030') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
 INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('040','grant navigation to vanz operator','V040__grant_navigation_to_vanz_operator.sql','c8dfc30734258cd2cd1cca1c9370461ee892f4b98f0b482f5943dfd36d7840d9') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
 INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('041','vanz inquiry operations','V041__vanz_inquiry_operations.sql','c08bf4008b257c01c26705a0f5ffbfc3b334555e5020854540a51f0540a787c4') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
+INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('042','product information fields','V042__product_information_fields.sql','7b3a133c61b7558ff25aee9489370254ede553c755026b0042b060ecf729a40e') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
+INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('043','oakved b2c navigation tree','V043__oakved_b2c_navigation_tree.sql','c916ab1dbd9333d1588874696951cb25090530bd6c38c081a9ac14e5ac39b550') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
 SET FOREIGN_KEY_CHECKS = 1;

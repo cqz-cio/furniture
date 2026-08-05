@@ -11,6 +11,7 @@ public class AppWebsiteNavigationRespVO {
 
     private Long siteId;
     private String locale;
+    private String navigationTemplate;
     private Long revisionId;
     private Integer version;
     private List<AppWebsiteNavigationItemRespVO> items;

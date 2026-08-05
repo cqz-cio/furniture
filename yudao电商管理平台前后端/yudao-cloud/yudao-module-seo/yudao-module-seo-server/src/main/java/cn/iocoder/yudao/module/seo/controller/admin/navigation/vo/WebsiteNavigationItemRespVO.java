@@ -8,12 +8,16 @@ import lombok.Data;
 public class WebsiteNavigationItemRespVO {
 
     private String itemKey;
+    private String parentItemKey;
     private String itemType;
     private String pageKey;
+    private String targetKey;
     private Long categoryId;
     private String label;
     private Integer sort;
     private Boolean visible;
+    private String openMode;
+    private String styleVariant;
     private Boolean available;
     private Long publishedProductCount;
 

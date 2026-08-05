@@ -18,9 +18,7 @@
           placeholder="例如 VANZ"
           @input="handleTenantCodeInput"
         />
-        <div class="text-12px text-gray-500">
-          用于生成 SKU，创建后不可修改
-        </div>
+        <div class="text-12px text-gray-500"> 用于生成 SKU，创建后不可修改 </div>
       </el-form-item>
       <el-form-item label="租户套餐" prop="packageId">
         <el-select v-model="formData.packageId" clearable placeholder="请选择租户套餐">
@@ -153,6 +151,10 @@ const websiteProductFieldOptions = [
   { label: '营销选项组', value: 'optionGroups' },
   { label: '商品亮点', value: 'highlights' },
   { label: '商品详情', value: 'description' },
+  { label: '公开材质 Material', value: 'material' },
+  { label: '公开饰面 Finish', value: 'finish' },
+  { label: '公开尺寸 Dimension', value: 'dimension' },
+  { label: '公开包装 Packing', value: 'packing' },
   { label: '规格详情区', value: 'accordions' },
   { label: 'SKU 规格属性', value: 'skuProperties' },
   { label: '重量/体积', value: 'skuMeasurements' },
@@ -171,6 +173,10 @@ const recommendedB2BProductFields = [
   'optionGroups',
   'highlights',
   'description',
+  'material',
+  'finish',
+  'dimension',
+  'packing',
   'accordions',
   'skuProperties',
   'relatedProducts',
@@ -216,7 +222,10 @@ const formRef = ref() // 表单 Ref
 const packageList = ref([] as TenantPackageApi.TenantPackageVO[]) // 租户套餐
 
 const handleTenantCodeInput = (value: string) => {
-  formData.value.code = value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 16)
+  formData.value.code = value
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, '')
+    .slice(0, 16)
 }
 
 const useRecommendedB2BProductFields = () => {

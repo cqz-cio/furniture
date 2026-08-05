@@ -76,7 +76,7 @@ const pages: Record<string, PageDefinition> = {
   '/seo/navigation': {
     moduleLabel: 'SEO 管理',
     kind: 'settings',
-    description: '维护官网一级导航和 Products 二级分类，并在发布前查看真实官网效果。',
+    description: '维护官网导航结构，并在发布前查看真实官网效果。',
     recordLabel: '官网导航'
   },
   '/seo/analysis': {

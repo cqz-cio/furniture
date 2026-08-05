@@ -8,7 +8,10 @@ import lombok.Getter;
 public enum WebsiteNavigationItemTypeEnum {
 
     PAGE("PAGE"),
-    CATEGORY("CATEGORY");
+    CATEGORY("CATEGORY"),
+    DIRECTORY("DIRECTORY"),
+    ROUTE("ROUTE"),
+    FILTER("FILTER");
 
     private final String code;
 

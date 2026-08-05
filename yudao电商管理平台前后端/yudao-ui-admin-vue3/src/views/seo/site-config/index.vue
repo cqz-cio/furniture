@@ -60,6 +60,16 @@
                   <el-option label="简体中文" value="zh-CN" />
                 </el-select>
               </el-form-item>
+              <el-form-item label="导航模板" prop="navigationTemplate">
+                <el-select
+                  v-model="formData.navigationTemplate"
+                  :disabled="editorDisabled"
+                  class="!w-full"
+                >
+                  <el-option label="VANZ · 2B 官网导航" value="VANZ_B2B" />
+                  <el-option label="Oakved · 2C 家具导航" value="OAKVED_B2C" />
+                </el-select>
+              </el-form-item>
               <el-form-item label="站点名称" prop="siteName" class="seo-config-grid__wide">
                 <el-input
                   v-model="formData.siteName"
@@ -240,7 +250,8 @@ const createDefaultForm = (siteId = SITE_ID): SeoSiteConfigSaveReqVO => ({
   defaultDescription: '',
   defaultRobots: 'index,follow',
   defaultOgImage: '',
-  defaultLocale: 'en'
+  defaultLocale: 'en',
+  navigationTemplate: 'VANZ_B2B'
 })
 
 const formData = ref<SeoSiteConfigSaveReqVO>(createDefaultForm())
@@ -281,6 +292,7 @@ const configChecks = computed(() => [
   { label: '默认页面描述', done: Boolean(formData.value.defaultDescription.trim()) },
   { label: '抓取规则', done: Boolean(formData.value.defaultRobots) },
   { label: '语言区域', done: Boolean(formData.value.defaultLocale.trim()) },
+  { label: '导航模板', done: Boolean(formData.value.navigationTemplate) },
   { label: '社交分享图', done: isAbsoluteHttpUrl(formData.value.defaultOgImage) }
 ])
 const completedChecks = computed(() => configChecks.value.filter((item) => item.done).length)
@@ -311,7 +323,8 @@ const validateSiteUrl = (_rule: unknown, value: string, callback: (error?: Error
 const formRules = {
   siteId: [{ required: true, message: '站点 ID 不能为空', trigger: 'change' }],
   siteName: [{ required: true, message: '站点名称不能为空', trigger: 'blur' }],
-  siteUrl: [{ required: true, validator: validateSiteUrl, trigger: 'blur' }]
+  siteUrl: [{ required: true, validator: validateSiteUrl, trigger: 'blur' }],
+  navigationTemplate: [{ required: true, message: '请选择导航模板', trigger: 'change' }]
 }
 
 const loadConfig = async (requestedSiteId?: number) => {
@@ -326,7 +339,9 @@ const loadConfig = async (requestedSiteId?: number) => {
     const config = await getSeoSiteConfig(siteId)
     if (requestId !== loadRequestId.value || formData.value.siteId !== siteId) return
     hasSavedConfig.value = Boolean(config)
-    formData.value = config ? { ...config } : createDefaultForm(siteId)
+    formData.value = config
+      ? { ...createDefaultForm(siteId), ...config }
+      : createDefaultForm(siteId)
     formRef.value?.clearValidate()
   } catch {
     if (requestId !== loadRequestId.value || formData.value.siteId !== siteId) return

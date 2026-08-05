@@ -16,6 +16,7 @@ import cn.iocoder.yudao.module.seo.controller.admin.navigation.vo.WebsiteNavigat
 import cn.iocoder.yudao.module.seo.controller.admin.navigation.vo.WebsiteNavigationPublishReqVO;
 import cn.iocoder.yudao.module.seo.controller.admin.navigation.vo.WebsiteNavigationRestoreReqVO;
 import cn.iocoder.yudao.module.seo.controller.admin.navigation.vo.WebsiteNavigationRevisionRespVO;
+import cn.iocoder.yudao.module.seo.controller.admin.navigation.vo.WebsiteNavigationTargetOptionRespVO;
 import cn.iocoder.yudao.module.seo.controller.app.navigation.vo.AppWebsiteNavigationItemRespVO;
 import cn.iocoder.yudao.module.seo.controller.app.navigation.vo.AppWebsiteNavigationPreviewSessionRespVO;
 import cn.iocoder.yudao.module.seo.controller.app.navigation.vo.AppWebsiteNavigationRespVO;
@@ -29,6 +30,8 @@ import cn.iocoder.yudao.module.seo.dal.redis.navigation.WebsiteNavigationPreview
 import cn.iocoder.yudao.module.seo.enums.navigation.WebsiteNavigationItemTypeEnum;
 import cn.iocoder.yudao.module.seo.enums.navigation.WebsiteNavigationPageKeyEnum;
 import cn.iocoder.yudao.module.seo.enums.navigation.WebsiteNavigationRevisionStatusEnum;
+import cn.iocoder.yudao.module.seo.enums.navigation.WebsiteNavigationTargetEnum;
+import cn.iocoder.yudao.module.seo.enums.navigation.WebsiteNavigationTemplateEnum;
 import cn.iocoder.yudao.module.seo.service.SeoLocaleUtils;
 import cn.iocoder.yudao.module.seo.service.config.SeoSiteConfigService;
 import jakarta.annotation.Resource;
@@ -42,15 +45,20 @@ import java.net.URISyntaxException;
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
+import java.util.Comparator;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static cn.iocoder.yudao.framework.common.exception.util.ServiceExceptionUtil.exception;
@@ -69,7 +77,65 @@ public class WebsiteNavigationServiceImpl implements WebsiteNavigationService {
     private static final Duration PREVIEW_SESSION_TTL = Duration.ofMinutes(30);
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     private static final int MAX_NAVIGATION_ITEMS = 100;
+    private static final int MAX_NAVIGATION_DEPTH = 3;
     private static final String SELF_OPEN_MODE = "_self";
+    private static final String BLANK_OPEN_MODE = "_blank";
+    private static final String DEFAULT_STYLE_VARIANT = "DEFAULT";
+    private static final String SALE_STYLE_VARIANT = "SALE";
+    private static final Pattern ITEM_KEY_PATTERN = Pattern.compile("^[A-Z0-9_-]{3,64}$");
+    private static final List<OakvedSeedSpec> OAKVED_SEED_ITEMS = List.of(
+            oakvedSeed("OAKVED_NEW", "", "FILTER", "FILTER_NEW", "NEW", 10, DEFAULT_STYLE_VARIANT),
+            oakvedSeed("OAKVED_COLLECTIONS", "", "FILTER", "FILTER_COLLECTIONS_ALL", "SHOP BY COLLECTIONS", 20, DEFAULT_STYLE_VARIANT),
+            oakvedSeed("OAKVED_BEDROOM", "", "FILTER", "FILTER_ROOM_BEDROOM", "BEDROOM", 30, DEFAULT_STYLE_VARIANT),
+            oakvedSeed("OAKVED_LIVING", "", "FILTER", "FILTER_ROOM_LIVING", "LIVING", 40, DEFAULT_STYLE_VARIANT),
+            oakvedSeed("OAKVED_DINING", "", "FILTER", "FILTER_ROOM_DINING", "DINING", 50, DEFAULT_STYLE_VARIANT),
+            oakvedSeed("OAKVED_BESPOKE", "", "FILTER", "FILTER_COLLECTION_BESPOKE", "BESPOKE", 60, DEFAULT_STYLE_VARIANT),
+            oakvedSeed("OAKVED_DECOR", "", "FILTER", "FILTER_CATEGORY_DECOR", "DECOR", 70, DEFAULT_STYLE_VARIANT),
+            oakvedSeed("OAKVED_SALE", "", "ROUTE", "ROUTE_SALE", "SALE", 80, SALE_STYLE_VARIANT),
+
+            oakvedSeed("OAKVED_COLLECTIONS_CATALOG", "OAKVED_COLLECTIONS", "ROUTE", "ROUTE_CATALOG", "OAKVED catalog", 10, DEFAULT_STYLE_VARIANT),
+            oakvedSeed("OAKVED_COLLECTIONS_SOLSTICE", "OAKVED_COLLECTIONS", "FILTER", "FILTER_COLLECTION_SOLSTICE", "The Solstice", 20, DEFAULT_STYLE_VARIANT),
+            oakvedSeed("OAKVED_COLLECTIONS_HALCYON", "OAKVED_COLLECTIONS", "FILTER", "FILTER_COLLECTION_HALCYON", "Halcyon", 30, DEFAULT_STYLE_VARIANT),
+            oakvedSeed("OAKVED_COLLECTIONS_KINDRED", "OAKVED_COLLECTIONS", "FILTER", "FILTER_COLLECTION_KINDRED", "Kindred", 40, DEFAULT_STYLE_VARIANT),
+
+            oakvedSeed("OAKVED_BEDROOM_CATALOG", "OAKVED_BEDROOM", "ROUTE", "ROUTE_CATALOG", "OAKVED catalog", 10, DEFAULT_STYLE_VARIANT),
+            oakvedSeed("OAKVED_BEDROOM_BEDS", "OAKVED_BEDROOM", "FILTER", "FILTER_CATEGORY_BED", "Beds", 20, DEFAULT_STYLE_VARIANT),
+            oakvedSeed("OAKVED_BEDROOM_HEADBOARD", "OAKVED_BEDROOM", "FILTER", "FILTER_CATEGORY_HEADBOARD", "Headboard", 30, DEFAULT_STYLE_VARIANT),
+            oakvedSeed("OAKVED_BEDROOM_NIGHTSTANDS", "OAKVED_BEDROOM", "FILTER", "FILTER_CATEGORY_NIGHTSTAND", "Nightstands", 40, DEFAULT_STYLE_VARIANT),
+            oakvedSeed("OAKVED_BEDROOM_BENCHES", "OAKVED_BEDROOM", "FILTER", "FILTER_CATEGORY_BENCH", "Benches", 50, DEFAULT_STYLE_VARIANT),
+            oakvedSeed("OAKVED_BEDROOM_DRESSERS", "OAKVED_BEDROOM", "FILTER", "FILTER_CATEGORY_DRESSER", "Dressers", 60, DEFAULT_STYLE_VARIANT),
+            oakvedSeed("OAKVED_BEDROOM_CHAIRS", "OAKVED_BEDROOM", "FILTER", "FILTER_CATEGORY_CHAIR", "Chairs", 70, DEFAULT_STYLE_VARIANT),
+            oakvedSeed("OAKVED_BEDROOM_SIDE_TABLES", "OAKVED_BEDROOM", "FILTER", "FILTER_CATEGORY_SIDE_TABLE", "Side Tables", 80, DEFAULT_STYLE_VARIANT),
+            oakvedSeed("OAKVED_BEDROOM_FABRIC_CARE", "OAKVED_BEDROOM", "FILTER", "FILTER_GROUP_FABRIC_CARE", "Fabric Care", 90, DEFAULT_STYLE_VARIANT),
+            oakvedSeed("OAKVED_BEDROOM_CRAFTSMANSHIP", "OAKVED_BEDROOM", "FILTER", "FILTER_GROUP_MATERIALS_CRAFTSMANSHIP", "Materials & Craftsmanship", 100, DEFAULT_STYLE_VARIANT),
+            oakvedSeed("OAKVED_BEDROOM_SALES", "OAKVED_BEDROOM", "ROUTE", "ROUTE_SALE", "Sales", 110, DEFAULT_STYLE_VARIANT),
+
+            oakvedSeed("OAKVED_LIVING_CATALOG", "OAKVED_LIVING", "ROUTE", "ROUTE_CATALOG", "OAKVED catalog", 10, DEFAULT_STYLE_VARIANT),
+            oakvedSeed("OAKVED_LIVING_SOFAS", "OAKVED_LIVING", "FILTER", "FILTER_CATEGORY_SOFA", "Sofas", 20, DEFAULT_STYLE_VARIANT),
+            oakvedSeed("OAKVED_LIVING_TABLES", "OAKVED_LIVING", "FILTER", "FILTER_CATEGORY_TABLE", "Tables", 30, DEFAULT_STYLE_VARIANT),
+            oakvedSeed("OAKVED_LIVING_CONSOLES", "OAKVED_LIVING", "FILTER", "FILTER_CATEGORY_CONSOLE", "Consoles", 40, DEFAULT_STYLE_VARIANT),
+            oakvedSeed("OAKVED_LIVING_SIDEBOARDS", "OAKVED_LIVING", "FILTER", "FILTER_CATEGORY_SIDEBOARD", "Sideboards", 50, DEFAULT_STYLE_VARIANT),
+            oakvedSeed("OAKVED_LIVING_CABINETS", "OAKVED_LIVING", "FILTER", "FILTER_CATEGORY_CABINET", "Cabinets", 60, DEFAULT_STYLE_VARIANT),
+            oakvedSeed("OAKVED_LIVING_BENCHES", "OAKVED_LIVING", "FILTER", "FILTER_CATEGORY_BENCH", "Benches", 70, DEFAULT_STYLE_VARIANT),
+            oakvedSeed("OAKVED_LIVING_CHAIRS", "OAKVED_LIVING", "FILTER", "FILTER_CATEGORY_CHAIR", "Chairs", 80, DEFAULT_STYLE_VARIANT),
+            oakvedSeed("OAKVED_LIVING_STOOLS", "OAKVED_LIVING", "FILTER", "FILTER_CATEGORY_STOOL", "Stools", 90, DEFAULT_STYLE_VARIANT),
+            oakvedSeed("OAKVED_LIVING_FABRIC_CARE", "OAKVED_LIVING", "FILTER", "FILTER_GROUP_FABRIC_CARE", "Fabric Care", 100, DEFAULT_STYLE_VARIANT),
+            oakvedSeed("OAKVED_LIVING_CRAFTSMANSHIP", "OAKVED_LIVING", "FILTER", "FILTER_GROUP_MATERIALS_CRAFTSMANSHIP", "Materials & Craftsmanship", 110, DEFAULT_STYLE_VARIANT),
+            oakvedSeed("OAKVED_LIVING_SALES", "OAKVED_LIVING", "ROUTE", "ROUTE_SALE", "Sales", 120, DEFAULT_STYLE_VARIANT),
+
+            oakvedSeed("OAKVED_DINING_CATALOG", "OAKVED_DINING", "ROUTE", "ROUTE_CATALOG", "OAKVED catalog", 10, DEFAULT_STYLE_VARIANT),
+            oakvedSeed("OAKVED_DINING_RECTANGULAR_TABLES", "OAKVED_DINING", "FILTER", "FILTER_CATEGORY_RECTANGULAR_TABLE", "Rectangular Tables", 20, DEFAULT_STYLE_VARIANT),
+            oakvedSeed("OAKVED_DINING_ROUND_OVAL_TABLES", "OAKVED_DINING", "FILTER", "FILTER_CATEGORY_ROUND_OVAL_TABLE", "Round & Oval Tables", 30, DEFAULT_STYLE_VARIANT),
+            oakvedSeed("OAKVED_DINING_BISTRO_TABLES", "OAKVED_DINING", "FILTER", "FILTER_CATEGORY_BISTRO_TABLE", "Bistro Tables", 40, DEFAULT_STYLE_VARIANT),
+            oakvedSeed("OAKVED_DINING_FABRIC_CHAIRS", "OAKVED_DINING", "FILTER", "FILTER_CATEGORY_FABRIC_CHAIR", "Fabric Chairs", 50, DEFAULT_STYLE_VARIANT),
+            oakvedSeed("OAKVED_DINING_WOOD_WOVEN_CHAIRS", "OAKVED_DINING", "FILTER", "FILTER_CATEGORY_WOOD_WOVEN_CHAIR", "Wood & Woven Chairs", 60, DEFAULT_STYLE_VARIANT),
+            oakvedSeed("OAKVED_DINING_BAR_COUNTER_STOOLS", "OAKVED_DINING", "FILTER", "FILTER_CATEGORY_BAR_COUNTER_STOOL", "Bar & Counter Stools", 70, DEFAULT_STYLE_VARIANT),
+            oakvedSeed("OAKVED_DINING_UPHOLSTERY_SWATCHES", "OAKVED_DINING", "FILTER", "FILTER_GROUP_UPHOLSTERY_SWATCHES", "Upholstery Swatches", 80, DEFAULT_STYLE_VARIANT),
+            oakvedSeed("OAKVED_DINING_SALES", "OAKVED_DINING", "ROUTE", "ROUTE_SALE", "Sales", 90, DEFAULT_STYLE_VARIANT));
+    private static final Set<String> OAKVED_PRIMARY_KEYS = OAKVED_SEED_ITEMS.stream()
+            .filter(item -> StrUtil.isBlank(item.parentItemKey()))
+            .map(OakvedSeedSpec::itemKey)
+            .collect(Collectors.toUnmodifiableSet());
 
     @Resource
     private WebsiteNavigationRevisionMapper revisionMapper;
@@ -86,12 +152,14 @@ public class WebsiteNavigationServiceImpl implements WebsiteNavigationService {
     @Transactional(rollbackFor = Exception.class)
     public WebsiteNavigationDraftRespVO getDraft(Long siteId, String locale) {
         String normalizedLocale = SeoLocaleUtils.normalize(locale);
+        WebsiteNavigationTemplateEnum template = navigationTemplate(siteId);
         WebsiteNavigationRevisionDO draft = revisionMapper.selectActive(siteId, normalizedLocale,
                 WebsiteNavigationRevisionStatusEnum.DRAFT.getCode());
         if (draft == null) {
-            draft = createDraft(siteId, normalizedLocale);
+            draft = createDraft(siteId, normalizedLocale, template);
         }
-        return buildDraftResponse(draft);
+        ensureDraftTemplate(draft, template);
+        return buildDraftResponse(draft, template);
     }
 
     @Override
@@ -109,15 +177,18 @@ public class WebsiteNavigationServiceImpl implements WebsiteNavigationService {
                 || !Objects.equals(draft.getLocale(), normalizedLocale)) {
             throw exception(NAVIGATION_CONFIG_INVALID);
         }
+        WebsiteNavigationTemplateEnum template = navigationTemplate(draft.getSiteId());
         Map<Long, ProductCategoryNavigationRespDTO> categoryMap = loadCategoryMap();
         List<WebsiteNavigationItemDO> items = validateAndConvertItems(
-                reqVO.getItems(), draft.getId(), categoryMap);
+                reqVO.getItems(), draft.getId(), template, categoryMap);
         int affected = revisionMapper.bumpDraftVersionAtomic(draft.getId(), reqVO.getVersion(),
                 currentTenantId(), currentUpdater());
         if (affected == 0) {
             classifyAtomicFailure(draft.getId());
         }
-        syncCategoryNames(reqVO.getItems(), categoryMap);
+        if (template == WebsiteNavigationTemplateEnum.VANZ_B2B) {
+            syncCategoryNames(reqVO.getItems(), categoryMap);
+        }
         itemMapper.deleteByRevisionId(draft.getId());
         insertItems(items);
     }
@@ -129,7 +200,7 @@ public class WebsiteNavigationServiceImpl implements WebsiteNavigationService {
         if (!Objects.equals(draft.getVersion(), reqVO.getVersion())) {
             throw exception(NAVIGATION_VERSION_CONFLICT);
         }
-        validatePublishableItems(itemMapper.selectListByRevisionId(draft.getId()));
+        validatePublishableItems(itemMapper.selectListByRevisionId(draft.getId()), draft.getSiteId());
         String updater = currentUpdater();
         revisionMapper.archivePublished(draft.getSiteId(), draft.getLocale(), currentTenantId(), updater);
         int affected = revisionMapper.publishDraftAtomic(draft.getId(), reqVO.getVersion(),
@@ -168,7 +239,7 @@ public class WebsiteNavigationServiceImpl implements WebsiteNavigationService {
             throw exception(NAVIGATION_CONFIG_INVALID);
         }
         List<WebsiteNavigationItemDO> sourceItems = itemMapper.selectListByRevisionId(source.getId());
-        validatePublishableItems(sourceItems);
+        validatePublishableItems(sourceItems, draft.getSiteId());
         int affected = revisionMapper.bumpDraftVersionAtomic(draft.getId(), reqVO.getDraftVersion(),
                 currentTenantId(), currentUpdater());
         if (affected == 0) {
@@ -182,17 +253,24 @@ public class WebsiteNavigationServiceImpl implements WebsiteNavigationService {
                 .setItemType(item.getItemType())
                 .setLabel(item.getLabel())
                 .setPageKey(item.getPageKey())
+                .setTargetKey(item.getTargetKey())
                 .setCategoryId(item.getCategoryId())
                 .setSort(item.getSort())
                 .setVisible(item.getVisible())
-                .setOpenMode(item.getOpenMode())).toList());
+                .setOpenMode(item.getOpenMode())
+                .setStyleVariant(item.getStyleVariant())).toList());
     }
 
     @Override
     public AppWebsiteNavigationRespVO getPublished(Long siteId, String locale) {
         WebsiteNavigationRevisionDO published = revisionMapper.selectActive(siteId,
                 SeoLocaleUtils.normalize(locale), WebsiteNavigationRevisionStatusEnum.PUBLISHED.getCode());
-        return published == null ? null : buildPublicResponse(published);
+        if (published == null) {
+            return null;
+        }
+        WebsiteNavigationTemplateEnum template = navigationTemplate(siteId);
+        List<WebsiteNavigationItemDO> items = itemMapper.selectListByRevisionId(published.getId());
+        return isTemplateCompatible(items, template) ? buildPublicResponse(published, template, items) : null;
     }
 
     @Override
@@ -228,10 +306,12 @@ public class WebsiteNavigationServiceImpl implements WebsiteNavigationService {
     public AppWebsiteNavigationRespVO getPreview(String session, String requestOrigin) {
         WebsiteNavigationPreviewGrant grant = previewRedisDAO.getSession(session);
         WebsiteNavigationRevisionDO revision = verifyPreviewGrant(grant, requestOrigin);
-        return buildPublicResponse(revision);
+        WebsiteNavigationTemplateEnum template = navigationTemplate(revision.getSiteId());
+        return buildPublicResponse(revision, template, itemMapper.selectListByRevisionId(revision.getId()));
     }
 
-    private WebsiteNavigationRevisionDO createDraft(Long siteId, String locale) {
+    private WebsiteNavigationRevisionDO createDraft(Long siteId, String locale,
+                                                     WebsiteNavigationTemplateEnum template) {
         WebsiteNavigationRevisionDO published = revisionMapper.selectActive(siteId, locale,
                 WebsiteNavigationRevisionStatusEnum.PUBLISHED.getCode());
         Integer maxRevisionNo = revisionMapper.selectMaxRevisionNo(currentTenantId(), siteId, locale);
@@ -253,14 +333,23 @@ public class WebsiteNavigationServiceImpl implements WebsiteNavigationService {
             return concurrentDraft;
         }
         if (published == null) {
-            insertItems(createSeedItems(draft.getId()));
+            insertItems(createSeedItems(draft.getId(), template));
         } else {
-            insertItems(cloneItems(published.getId(), draft.getId()));
+            List<WebsiteNavigationItemDO> publishedItems = itemMapper.selectListByRevisionId(published.getId());
+            insertItems(isTemplateCompatible(publishedItems, template)
+                    ? cloneItems(publishedItems, draft.getId())
+                    : createSeedItems(draft.getId(), template));
         }
         return draft;
     }
 
-    private List<WebsiteNavigationItemDO> createSeedItems(Long revisionId) {
+    private List<WebsiteNavigationItemDO> createSeedItems(Long revisionId,
+                                                          WebsiteNavigationTemplateEnum template) {
+        if (template == WebsiteNavigationTemplateEnum.OAKVED_B2C) {
+            return OAKVED_SEED_ITEMS.stream()
+                    .map(seed -> oakvedItem(revisionId, seed))
+                    .toList();
+        }
         List<WebsiteNavigationItemDO> items = new ArrayList<>();
         for (WebsiteNavigationPageKeyEnum page : WebsiteNavigationPageKeyEnum.values()) {
             items.add(pageItem(revisionId, page, page.getDefaultLabel(), page.getDefaultSort(), true));
@@ -274,8 +363,9 @@ public class WebsiteNavigationServiceImpl implements WebsiteNavigationService {
         return items;
     }
 
-    private List<WebsiteNavigationItemDO> cloneItems(Long sourceRevisionId, Long targetRevisionId) {
-        return itemMapper.selectListByRevisionId(sourceRevisionId).stream()
+    private List<WebsiteNavigationItemDO> cloneItems(List<WebsiteNavigationItemDO> sourceItems,
+                                                     Long targetRevisionId) {
+        return sourceItems.stream()
                 .map(source -> new WebsiteNavigationItemDO()
                         .setRevisionId(targetRevisionId)
                         .setItemKey(source.getItemKey())
@@ -283,29 +373,44 @@ public class WebsiteNavigationServiceImpl implements WebsiteNavigationService {
                         .setItemType(source.getItemType())
                         .setLabel(source.getLabel())
                         .setPageKey(source.getPageKey())
+                        .setTargetKey(source.getTargetKey())
                         .setCategoryId(source.getCategoryId())
                         .setSort(source.getSort())
                         .setVisible(source.getVisible())
-                        .setOpenMode(source.getOpenMode()))
+                        .setOpenMode(source.getOpenMode())
+                        .setStyleVariant(source.getStyleVariant()))
                 .toList();
     }
 
     private List<WebsiteNavigationItemDO> validateAndConvertItems(
-            List<WebsiteNavigationItemSaveReqVO> requestItems, Long revisionId) {
-        return validateAndConvertItems(requestItems, revisionId, loadCategoryMap());
+            List<WebsiteNavigationItemSaveReqVO> requestItems, Long revisionId,
+            WebsiteNavigationTemplateEnum template) {
+        return validateAndConvertItems(requestItems, revisionId, template, loadCategoryMap());
     }
 
     private List<WebsiteNavigationItemDO> validateAndConvertItems(
             List<WebsiteNavigationItemSaveReqVO> requestItems, Long revisionId,
+            WebsiteNavigationTemplateEnum template,
             Map<Long, ProductCategoryNavigationRespDTO> categoryMap) {
         if (requestItems == null || requestItems.isEmpty() || requestItems.size() > MAX_NAVIGATION_ITEMS) {
             throw exception(NAVIGATION_CONFIG_INVALID);
         }
+        List<WebsiteNavigationItemDO> items = template == WebsiteNavigationTemplateEnum.OAKVED_B2C
+                ? validateOakvedItems(requestItems, revisionId, categoryMap)
+                : validateVanzItems(requestItems, revisionId, categoryMap);
+        validateTree(items);
+        return items;
+    }
+
+    private List<WebsiteNavigationItemDO> validateVanzItems(
+            List<WebsiteNavigationItemSaveReqVO> requestItems, Long revisionId,
+            Map<Long, ProductCategoryNavigationRespDTO> categoryMap) {
         Set<WebsiteNavigationPageKeyEnum> pageKeys = EnumSet.noneOf(WebsiteNavigationPageKeyEnum.class);
         Set<Long> categoryIds = new HashSet<>();
         List<WebsiteNavigationItemDO> items = new ArrayList<>();
         for (WebsiteNavigationItemSaveReqVO requestItem : requestItems) {
             validateSort(requestItem.getSort());
+            validateVisible(requestItem.getVisible());
             if (WebsiteNavigationItemTypeEnum.PAGE.getCode().equals(requestItem.getItemType())) {
                 WebsiteNavigationPageKeyEnum page = WebsiteNavigationPageKeyEnum.fromCode(requestItem.getPageKey());
                 if (page == null || !pageKeys.add(page) || StrUtil.isBlank(requestItem.getLabel())) {
@@ -359,21 +464,142 @@ public class WebsiteNavigationServiceImpl implements WebsiteNavigationService {
                 });
     }
 
-    private void validatePublishableItems(List<WebsiteNavigationItemDO> items) {
+    private List<WebsiteNavigationItemDO> validateOakvedItems(
+            List<WebsiteNavigationItemSaveReqVO> requestItems, Long revisionId,
+            Map<Long, ProductCategoryNavigationRespDTO> categoryMap) {
+        Map<String, OakvedSeedSpec> primarySpecs = OAKVED_SEED_ITEMS.stream()
+                .filter(seed -> StrUtil.isBlank(seed.parentItemKey()))
+                .collect(Collectors.toMap(OakvedSeedSpec::itemKey, Function.identity()));
+        Set<String> itemKeys = new HashSet<>();
+        List<WebsiteNavigationItemDO> items = new ArrayList<>();
+        for (WebsiteNavigationItemSaveReqVO requestItem : requestItems) {
+            validateSort(requestItem.getSort());
+            validateVisible(requestItem.getVisible());
+            String itemKey = normalizeItemKey(requestItem.getItemKey());
+            if (!itemKeys.add(itemKey) || StrUtil.isBlank(requestItem.getLabel())) {
+                throw exception(NAVIGATION_CONFIG_INVALID);
+            }
+            String parentItemKey = StrUtil.blankToDefault(requestItem.getParentItemKey(), "").trim();
+            String itemType = StrUtil.blankToDefault(requestItem.getItemType(), "")
+                    .trim().toUpperCase(Locale.ROOT);
+            String targetKey = StrUtil.isBlank(requestItem.getTargetKey())
+                    ? null : requestItem.getTargetKey().trim();
+            Long categoryId = requestItem.getCategoryId();
+            String label = requestItem.getLabel().trim();
+            String openMode = normalizeOpenMode(requestItem.getOpenMode());
+            String styleVariant = normalizeStyleVariant(requestItem.getStyleVariant());
+
+            if (WebsiteNavigationItemTypeEnum.DIRECTORY.getCode().equals(itemType)) {
+                if (targetKey != null || categoryId != null) {
+                    throw exception(NAVIGATION_CONFIG_INVALID);
+                }
+            } else if (WebsiteNavigationItemTypeEnum.ROUTE.getCode().equals(itemType)
+                    || WebsiteNavigationItemTypeEnum.FILTER.getCode().equals(itemType)) {
+                WebsiteNavigationTargetEnum target = WebsiteNavigationTargetEnum.fromCode(targetKey);
+                if (target == null || !itemType.equals(target.getItemType()) || categoryId != null) {
+                    throw exception(NAVIGATION_CONFIG_INVALID);
+                }
+            } else if (WebsiteNavigationItemTypeEnum.CATEGORY.getCode().equals(itemType)) {
+                if (categoryId == null || targetKey != null) {
+                    throw exception(NAVIGATION_CONFIG_INVALID);
+                }
+                ProductCategoryNavigationRespDTO category = categoryMap.get(categoryId);
+                if (category == null && Boolean.TRUE.equals(requestItem.getVisible())) {
+                    throw exception(NAVIGATION_CATEGORY_UNAVAILABLE, categoryId);
+                }
+                label = category == null ? defaultCategoryLabel(requestItem) : category.getName();
+            } else {
+                throw exception(NAVIGATION_CONFIG_INVALID);
+            }
+
+            OakvedSeedSpec primarySpec = primarySpecs.get(itemKey);
+            if (StrUtil.isBlank(parentItemKey)) {
+                if (primarySpec == null
+                        || !primarySpec.itemType().equals(itemType)
+                        || !Objects.equals(primarySpec.targetKey(), targetKey)
+                        || !primarySpec.styleVariant().equals(styleVariant)) {
+                    throw exception(NAVIGATION_CONFIG_INVALID);
+                }
+            }
+            items.add(new WebsiteNavigationItemDO()
+                    .setRevisionId(revisionId)
+                    .setItemKey(itemKey)
+                    .setParentItemKey(parentItemKey)
+                    .setItemType(itemType)
+                    .setLabel(label)
+                    .setPageKey(null)
+                    .setTargetKey(targetKey)
+                    .setCategoryId(categoryId)
+                    .setSort(requestItem.getSort())
+                    .setVisible(requestItem.getVisible())
+                    .setOpenMode(openMode)
+                    .setStyleVariant(styleVariant));
+        }
+        Set<String> rootKeys = items.stream()
+                .filter(item -> StrUtil.isBlank(item.getParentItemKey()))
+                .map(WebsiteNavigationItemDO::getItemKey)
+                .collect(Collectors.toSet());
+        if (!rootKeys.equals(OAKVED_PRIMARY_KEYS)) {
+            throw exception(NAVIGATION_CONFIG_INVALID);
+        }
+        return items;
+    }
+
+    private static void validateTree(List<WebsiteNavigationItemDO> items) {
+        Map<String, WebsiteNavigationItemDO> itemMap = items.stream()
+                .collect(Collectors.toMap(WebsiteNavigationItemDO::getItemKey, Function.identity(),
+                        (left, right) -> {
+                            throw exception(NAVIGATION_CONFIG_INVALID);
+                        }, LinkedHashMap::new));
+        Map<String, Integer> depthCache = new HashMap<>();
+        for (WebsiteNavigationItemDO item : items) {
+            int depth = resolveDepth(item.getItemKey(), itemMap, depthCache, new HashSet<>());
+            if (depth > MAX_NAVIGATION_DEPTH) {
+                throw exception(NAVIGATION_CONFIG_INVALID);
+            }
+        }
+    }
+
+    private static int resolveDepth(String itemKey, Map<String, WebsiteNavigationItemDO> itemMap,
+                                    Map<String, Integer> depthCache, Set<String> visiting) {
+        Integer cached = depthCache.get(itemKey);
+        if (cached != null) {
+            return cached;
+        }
+        WebsiteNavigationItemDO item = itemMap.get(itemKey);
+        if (item == null || !visiting.add(itemKey)) {
+            throw exception(NAVIGATION_CONFIG_INVALID);
+        }
+        String parentItemKey = item.getParentItemKey();
+        int depth = StrUtil.isBlank(parentItemKey)
+                ? 1 : resolveDepth(parentItemKey, itemMap, depthCache, visiting) + 1;
+        visiting.remove(itemKey);
+        depthCache.put(itemKey, depth);
+        return depth;
+    }
+
+    private void validatePublishableItems(List<WebsiteNavigationItemDO> items, Long siteId) {
         List<WebsiteNavigationItemSaveReqVO> requestItems = items.stream().map(item -> {
             WebsiteNavigationItemSaveReqVO request = new WebsiteNavigationItemSaveReqVO();
+            request.setItemKey(item.getItemKey());
+            request.setParentItemKey(item.getParentItemKey());
             request.setItemType(item.getItemType());
             request.setPageKey(item.getPageKey());
+            request.setTargetKey(item.getTargetKey());
             request.setCategoryId(item.getCategoryId());
             request.setLabel(item.getLabel());
             request.setSort(item.getSort());
             request.setVisible(item.getVisible());
+            request.setOpenMode(item.getOpenMode());
+            request.setStyleVariant(item.getStyleVariant());
             return request;
         }).toList();
-        validateAndConvertItems(requestItems, items.isEmpty() ? 0L : items.get(0).getRevisionId());
+        validateAndConvertItems(requestItems, items.isEmpty() ? 0L : items.get(0).getRevisionId(),
+                navigationTemplate(siteId));
     }
 
-    private WebsiteNavigationDraftRespVO buildDraftResponse(WebsiteNavigationRevisionDO draft) {
+    private WebsiteNavigationDraftRespVO buildDraftResponse(WebsiteNavigationRevisionDO draft,
+                                                             WebsiteNavigationTemplateEnum template) {
         List<WebsiteNavigationItemDO> items = itemMapper.selectListByRevisionId(draft.getId());
         Map<Long, ProductCategoryNavigationRespDTO> categoryMap = loadCategoryMap();
         Set<Long> selectedCategoryIds = items.stream()
@@ -386,6 +612,7 @@ public class WebsiteNavigationServiceImpl implements WebsiteNavigationService {
         response.setRevisionId(draft.getId());
         response.setSiteId(draft.getSiteId());
         response.setLocale(draft.getLocale());
+        response.setNavigationTemplate(template.getCode());
         response.setRevisionNo(draft.getRevisionNo());
         response.setVersion(draft.getVersion());
         response.setStatus(draft.getStatus());
@@ -406,6 +633,12 @@ public class WebsiteNavigationServiceImpl implements WebsiteNavigationService {
             option.setSelected(selectedCategoryIds.contains(category.getId()));
             return option;
         }).toList());
+        response.setTargetOptions(template == WebsiteNavigationTemplateEnum.OAKVED_B2C
+                ? Arrays.stream(WebsiteNavigationTargetEnum.values())
+                        .map(target -> new WebsiteNavigationTargetOptionRespVO(
+                                target.getCode(), target.getItemType(), target.getLabel(), target.getHref()))
+                        .toList()
+                : List.of());
         return response;
     }
 
@@ -413,11 +646,15 @@ public class WebsiteNavigationServiceImpl implements WebsiteNavigationService {
                                                      Map<Long, ProductCategoryNavigationRespDTO> categoryMap) {
         WebsiteNavigationItemRespVO response = new WebsiteNavigationItemRespVO();
         response.setItemKey(item.getItemKey());
+        response.setParentItemKey(item.getParentItemKey());
         response.setItemType(item.getItemType());
         response.setPageKey(item.getPageKey());
+        response.setTargetKey(item.getTargetKey());
         response.setCategoryId(item.getCategoryId());
         response.setSort(item.getSort());
         response.setVisible(item.getVisible());
+        response.setOpenMode(StrUtil.blankToDefault(item.getOpenMode(), SELF_OPEN_MODE));
+        response.setStyleVariant(StrUtil.blankToDefault(item.getStyleVariant(), DEFAULT_STYLE_VARIANT));
         if (item.getCategoryId() == null) {
             response.setLabel(item.getLabel());
             response.setAvailable(true);
@@ -431,61 +668,86 @@ public class WebsiteNavigationServiceImpl implements WebsiteNavigationService {
         return response;
     }
 
-    private AppWebsiteNavigationRespVO buildPublicResponse(WebsiteNavigationRevisionDO revision) {
-        List<WebsiteNavigationItemDO> rows = itemMapper.selectListByRevisionId(revision.getId());
+    private AppWebsiteNavigationRespVO buildPublicResponse(
+            WebsiteNavigationRevisionDO revision, WebsiteNavigationTemplateEnum template,
+            List<WebsiteNavigationItemDO> rows) {
         Map<Long, ProductCategoryNavigationRespDTO> categoryMap = loadCategoryMap();
-        List<WebsiteNavigationItemDO> categoryRows = rows.stream()
-                .filter(row -> WebsiteNavigationItemTypeEnum.CATEGORY.getCode().equals(row.getItemType()))
+        Comparator<WebsiteNavigationItemDO> comparator = Comparator
+                .comparing((WebsiteNavigationItemDO item) -> Objects.requireNonNullElse(item.getSort(), 0))
+                .thenComparing(item -> Objects.requireNonNullElse(item.getItemKey(), ""));
+        Map<String, List<WebsiteNavigationItemDO>> childrenByParent = rows.stream()
                 .filter(row -> Boolean.TRUE.equals(row.getVisible()))
-                .toList();
-        List<AppWebsiteNavigationItemRespVO> items = new ArrayList<>();
-        for (WebsiteNavigationItemDO row : rows) {
-            if (!WebsiteNavigationItemTypeEnum.PAGE.getCode().equals(row.getItemType())
-                    || !Boolean.TRUE.equals(row.getVisible())) {
-                continue;
-            }
-            WebsiteNavigationPageKeyEnum page = WebsiteNavigationPageKeyEnum.fromCode(row.getPageKey());
-            if (page == null) {
-                continue;
-            }
-            AppWebsiteNavigationItemRespVO item = new AppWebsiteNavigationItemRespVO();
-            item.setKey(row.getItemKey());
-            item.setLabel(row.getLabel());
-            item.setHref(page.getHref());
-            item.setItemType(WebsiteNavigationItemTypeEnum.PAGE.getCode());
-            item.setChildren(List.of());
-            if (page == WebsiteNavigationPageKeyEnum.PRODUCTS) {
-                item.setChildren(categoryRows.stream()
-                        .map(categoryRow -> toPublicCategoryItem(categoryRow, categoryMap))
-                        .filter(Objects::nonNull)
-                        .toList());
-            }
-            items.add(item);
-        }
+                .collect(Collectors.groupingBy(
+                        row -> StrUtil.blankToDefault(row.getParentItemKey(), ""),
+                        LinkedHashMap::new,
+                        Collectors.collectingAndThen(Collectors.toList(), list -> list.stream()
+                                .sorted(comparator)
+                                .toList())));
+        List<AppWebsiteNavigationItemRespVO> items = buildPublicChildren(
+                "", childrenByParent, categoryMap, 1);
         AppWebsiteNavigationRespVO response = new AppWebsiteNavigationRespVO();
         response.setSiteId(revision.getSiteId());
         response.setLocale(revision.getLocale());
+        response.setNavigationTemplate(template.getCode());
         response.setRevisionId(revision.getId());
         response.setVersion(revision.getVersion());
         response.setItems(items);
         return response;
     }
 
-    private AppWebsiteNavigationItemRespVO toPublicCategoryItem(
-            WebsiteNavigationItemDO row, Map<Long, ProductCategoryNavigationRespDTO> categoryMap) {
-        ProductCategoryNavigationRespDTO category = categoryMap.get(row.getCategoryId());
-        if (category == null) {
+    private List<AppWebsiteNavigationItemRespVO> buildPublicChildren(
+            String parentItemKey, Map<String, List<WebsiteNavigationItemDO>> childrenByParent,
+            Map<Long, ProductCategoryNavigationRespDTO> categoryMap, int depth) {
+        if (depth > MAX_NAVIGATION_DEPTH) {
+            return List.of();
+        }
+        return childrenByParent.getOrDefault(parentItemKey, List.of()).stream()
+                .map(row -> toPublicItem(row, childrenByParent, categoryMap, depth))
+                .filter(Objects::nonNull)
+                .toList();
+    }
+
+    private AppWebsiteNavigationItemRespVO toPublicItem(
+            WebsiteNavigationItemDO row, Map<String, List<WebsiteNavigationItemDO>> childrenByParent,
+            Map<Long, ProductCategoryNavigationRespDTO> categoryMap, int depth) {
+        ProductCategoryNavigationRespDTO category = row.getCategoryId() == null
+                ? null : categoryMap.get(row.getCategoryId());
+        if (WebsiteNavigationItemTypeEnum.CATEGORY.getCode().equals(row.getItemType()) && category == null) {
+            return null;
+        }
+        String href = resolveHref(row, category);
+        if (!WebsiteNavigationItemTypeEnum.DIRECTORY.getCode().equals(row.getItemType())
+                && StrUtil.isBlank(href)) {
             return null;
         }
         AppWebsiteNavigationItemRespVO item = new AppWebsiteNavigationItemRespVO();
         item.setKey(row.getItemKey());
-        item.setLabel(category.getName());
-        item.setHref("/products/category/" + category.getId());
-        item.setItemType(WebsiteNavigationItemTypeEnum.CATEGORY.getCode());
-        item.setCategoryId(category.getId());
-        item.setPublishedProductCount(category.getPublishedProductCount());
-        item.setChildren(List.of());
+        item.setLabel(category == null ? row.getLabel() : category.getName());
+        item.setHref(href);
+        item.setItemType(row.getItemType());
+        item.setOpenMode(StrUtil.blankToDefault(row.getOpenMode(), SELF_OPEN_MODE));
+        item.setStyleVariant(StrUtil.blankToDefault(row.getStyleVariant(), DEFAULT_STYLE_VARIANT));
+        item.setCategoryId(category == null ? null : category.getId());
+        item.setPublishedProductCount(category == null ? null : category.getPublishedProductCount());
+        item.setChildren(buildPublicChildren(row.getItemKey(), childrenByParent, categoryMap, depth + 1));
         return item;
+    }
+
+    private static String resolveHref(WebsiteNavigationItemDO row,
+                                      ProductCategoryNavigationRespDTO category) {
+        if (WebsiteNavigationItemTypeEnum.PAGE.getCode().equals(row.getItemType())) {
+            WebsiteNavigationPageKeyEnum page = WebsiteNavigationPageKeyEnum.fromCode(row.getPageKey());
+            return page == null ? null : page.getHref();
+        }
+        if (WebsiteNavigationItemTypeEnum.CATEGORY.getCode().equals(row.getItemType())) {
+            return category == null ? null : "/products/category/" + category.getId();
+        }
+        if (WebsiteNavigationItemTypeEnum.DIRECTORY.getCode().equals(row.getItemType())) {
+            return "";
+        }
+        WebsiteNavigationTargetEnum target = WebsiteNavigationTargetEnum.fromCode(row.getTargetKey());
+        return target == null || !Objects.equals(target.getItemType(), row.getItemType())
+                ? null : target.getHref();
     }
 
     private WebsiteNavigationRevisionDO verifyPreviewGrant(
@@ -521,6 +783,50 @@ public class WebsiteNavigationServiceImpl implements WebsiteNavigationService {
         throw exception(NAVIGATION_VERSION_CONFLICT);
     }
 
+    private void ensureDraftTemplate(WebsiteNavigationRevisionDO draft,
+                                     WebsiteNavigationTemplateEnum template) {
+        List<WebsiteNavigationItemDO> currentItems = itemMapper.selectListByRevisionId(draft.getId());
+        if (isTemplateCompatible(currentItems, template)) {
+            return;
+        }
+        int affected = revisionMapper.bumpDraftVersionAtomic(draft.getId(), draft.getVersion(),
+                currentTenantId(), currentUpdater());
+        if (affected == 0) {
+            classifyAtomicFailure(draft.getId());
+        }
+        itemMapper.deleteByRevisionId(draft.getId());
+        insertItems(createSeedItems(draft.getId(), template));
+        draft.setVersion(draft.getVersion() + 1);
+    }
+
+    private WebsiteNavigationTemplateEnum navigationTemplate(Long siteId) {
+        SeoSiteConfigDO config = siteConfigService.getSiteConfig(siteId);
+        String code = config == null || StrUtil.isBlank(config.getNavigationTemplate())
+                ? WebsiteNavigationTemplateEnum.VANZ_B2B.getCode()
+                : config.getNavigationTemplate();
+        WebsiteNavigationTemplateEnum template = WebsiteNavigationTemplateEnum.fromCode(code);
+        if (template == null) {
+            throw exception(NAVIGATION_CONFIG_INVALID);
+        }
+        return template;
+    }
+
+    private static boolean isTemplateCompatible(List<WebsiteNavigationItemDO> items,
+                                                WebsiteNavigationTemplateEnum template) {
+        if (items == null || items.isEmpty()) {
+            return false;
+        }
+        if (template == WebsiteNavigationTemplateEnum.OAKVED_B2C) {
+            Set<String> rootKeys = items.stream()
+                    .filter(item -> StrUtil.isBlank(item.getParentItemKey()))
+                    .map(WebsiteNavigationItemDO::getItemKey)
+                    .collect(Collectors.toSet());
+            return rootKeys.equals(OAKVED_PRIMARY_KEYS);
+        }
+        return items.stream().anyMatch(item ->
+                WebsiteNavigationItemTypeEnum.PAGE.getCode().equals(item.getItemType()));
+    }
+
     private List<ProductCategoryNavigationRespDTO> loadCategories() {
         List<ProductCategoryNavigationRespDTO> categories = productCategoryApi
                 .getNavigationCategoryList().getCheckedData();
@@ -549,10 +855,12 @@ public class WebsiteNavigationServiceImpl implements WebsiteNavigationService {
                 .setItemType(WebsiteNavigationItemTypeEnum.PAGE.getCode())
                 .setLabel(label)
                 .setPageKey(page.getCode())
+                .setTargetKey(null)
                 .setCategoryId(null)
                 .setSort(sort)
                 .setVisible(visible)
-                .setOpenMode(SELF_OPEN_MODE);
+                .setOpenMode(SELF_OPEN_MODE)
+                .setStyleVariant(DEFAULT_STYLE_VARIANT);
     }
 
     private static WebsiteNavigationItemDO categoryItem(Long revisionId, Long categoryId, String label,
@@ -564,10 +872,34 @@ public class WebsiteNavigationServiceImpl implements WebsiteNavigationService {
                 .setItemType(WebsiteNavigationItemTypeEnum.CATEGORY.getCode())
                 .setLabel(label)
                 .setPageKey(null)
+                .setTargetKey(null)
                 .setCategoryId(categoryId)
                 .setSort(sort)
                 .setVisible(visible)
-                .setOpenMode(SELF_OPEN_MODE);
+                .setOpenMode(SELF_OPEN_MODE)
+                .setStyleVariant(DEFAULT_STYLE_VARIANT);
+    }
+
+    private static WebsiteNavigationItemDO oakvedItem(Long revisionId, OakvedSeedSpec seed) {
+        return new WebsiteNavigationItemDO()
+                .setRevisionId(revisionId)
+                .setItemKey(seed.itemKey())
+                .setParentItemKey(seed.parentItemKey())
+                .setItemType(seed.itemType())
+                .setLabel(seed.label())
+                .setPageKey(null)
+                .setTargetKey(seed.targetKey())
+                .setCategoryId(null)
+                .setSort(seed.sort())
+                .setVisible(true)
+                .setOpenMode(SELF_OPEN_MODE)
+                .setStyleVariant(seed.styleVariant());
+    }
+
+    private static OakvedSeedSpec oakvedSeed(String itemKey, String parentItemKey, String itemType,
+                                              String targetKey, String label, Integer sort,
+                                              String styleVariant) {
+        return new OakvedSeedSpec(itemKey, parentItemKey, itemType, targetKey, label, sort, styleVariant);
     }
 
     private static String defaultCategoryLabel(WebsiteNavigationItemSaveReqVO item) {
@@ -578,6 +910,37 @@ public class WebsiteNavigationServiceImpl implements WebsiteNavigationService {
         if (sort == null || sort < 0 || sort > 10_000) {
             throw exception(NAVIGATION_CONFIG_INVALID);
         }
+    }
+
+    private static void validateVisible(Boolean visible) {
+        if (visible == null) {
+            throw exception(NAVIGATION_CONFIG_INVALID);
+        }
+    }
+
+    private static String normalizeItemKey(String itemKey) {
+        String normalized = StrUtil.blankToDefault(itemKey, "").trim();
+        if (!ITEM_KEY_PATTERN.matcher(normalized).matches()) {
+            throw exception(NAVIGATION_CONFIG_INVALID);
+        }
+        return normalized;
+    }
+
+    private static String normalizeOpenMode(String openMode) {
+        String normalized = StrUtil.blankToDefault(openMode, SELF_OPEN_MODE).trim();
+        if (!SELF_OPEN_MODE.equals(normalized) && !BLANK_OPEN_MODE.equals(normalized)) {
+            throw exception(NAVIGATION_CONFIG_INVALID);
+        }
+        return normalized;
+    }
+
+    private static String normalizeStyleVariant(String styleVariant) {
+        String normalized = StrUtil.blankToDefault(styleVariant, DEFAULT_STYLE_VARIANT)
+                .trim().toUpperCase(Locale.ROOT);
+        if (!DEFAULT_STYLE_VARIANT.equals(normalized) && !SALE_STYLE_VARIANT.equals(normalized)) {
+            throw exception(NAVIGATION_CONFIG_INVALID);
+        }
+        return normalized;
     }
 
     private static String randomToken(String prefix) {
@@ -610,6 +973,11 @@ public class WebsiteNavigationServiceImpl implements WebsiteNavigationService {
 
     private static String currentUpdater() {
         return Objects.toString(SecurityFrameworkUtils.getLoginUserId(), "");
+    }
+
+    private record OakvedSeedSpec(String itemKey, String parentItemKey, String itemType,
+                                  String targetKey, String label, Integer sort,
+                                  String styleVariant) {
     }
 
 }

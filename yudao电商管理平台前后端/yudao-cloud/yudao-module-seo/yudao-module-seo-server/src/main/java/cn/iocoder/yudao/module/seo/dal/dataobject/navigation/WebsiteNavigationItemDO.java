@@ -23,9 +23,11 @@ public class WebsiteNavigationItemDO extends TenantBaseDO {
     private String itemType;
     private String label;
     private String pageKey;
+    private String targetKey;
     private Long categoryId;
     private Integer sort;
     private Boolean visible;
     private String openMode;
+    private String styleVariant;
 
 }

@@ -28,6 +28,8 @@ class SeoMigrationContractTest {
             Path.of("sql", "mysql", "migrations", "V039__website_navigation_preview.sql");
     private static final Path WEBSITE_NAVIGATION_OPERATOR_PERMISSION_MIGRATION_RELATIVE_PATH =
             Path.of("sql", "mysql", "migrations", "V040__grant_navigation_to_vanz_operator.sql");
+    private static final Path OAKVED_NAVIGATION_TREE_MIGRATION_RELATIVE_PATH =
+            Path.of("sql", "mysql", "migrations", "V043__oakved_b2c_navigation_tree.sql");
     private static final Path MYSQL_BASELINE_RELATIVE_PATH =
             Path.of("sql", "mysql", "oakved-baseline.sql");
     private static final String RELEASED_KEYWORD_ANALYSIS_MIGRATION_SHA256 =
@@ -112,7 +114,25 @@ class SeoMigrationContractTest {
                         + "'33e5898a22e2fa9d8b50d7b7d08f7ec49aa4a89d034c53b04bdf1bee764f6030')",
                 "-- BEGIN V040__grant_navigation_to_vanz_operator.sql",
                 "VALUES('040','grant navigation to vanz operator','V040__grant_navigation_to_vanz_operator.sql',"
-                        + "'c8dfc30734258cd2cd1cca1c9370461ee892f4b98f0b482f5943dfd36d7840d9')");
+                        + "'c8dfc30734258cd2cd1cca1c9370461ee892f4b98f0b482f5943dfd36d7840d9')",
+                "-- BEGIN V043__oakved_b2c_navigation_tree.sql",
+                "VALUES('043','oakved b2c navigation tree','V043__oakved_b2c_navigation_tree.sql',"
+                        + "'c916ab1dbd9333d1588874696951cb25090530bd6c38c081a9ac14e5ac39b550')");
+    }
+
+    @Test
+    void shouldExtendSharedNavigationModelForOakvedWithoutTenantIdCoupling() throws IOException {
+        String sql = migrationSql(OAKVED_NAVIGATION_TREE_MIGRATION_RELATIVE_PATH);
+
+        assertThat(sql).contains(
+                "ADD COLUMN `navigation_template` varchar(32) NOT NULL DEFAULT 'VANZ_B2B'",
+                "ADD COLUMN `target_key` varchar(64) DEFAULT NULL",
+                "ADD COLUMN `style_variant` varchar(32) NOT NULL DEFAULT 'DEFAULT'",
+                "SET config.`navigation_template` = 'OAKVED_B2C'",
+                "LOWER(COALESCE(tenant.`code`, '')) = 'oakved'",
+                "LOWER(config.`site_name`) LIKE '%oakved%'",
+                "LOWER(config.`site_url`) LIKE '%oakved%'");
+        assertThat(sql).doesNotContain("tenant.`id` = 121", "tenant_id = 121", "business_mode = 'B2C'");
     }
 
     @Test
