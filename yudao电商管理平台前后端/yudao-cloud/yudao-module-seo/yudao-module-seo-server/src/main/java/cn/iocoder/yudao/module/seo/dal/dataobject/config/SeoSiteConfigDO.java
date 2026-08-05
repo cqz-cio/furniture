@@ -25,5 +25,6 @@ public class SeoSiteConfigDO extends TenantBaseDO {
     private String defaultRobots;
     private String defaultOgImage;
     private String defaultLocale;
+    private String navigationTemplate;
 
 }

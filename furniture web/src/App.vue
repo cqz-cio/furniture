@@ -18,7 +18,10 @@ import { trackCheckoutStart, trackHomeView } from "./services/analytics.js";
 import { addLocalWishlistItem } from "./services/localWishlist.js";
 import { ANNUAL_MEMBERSHIP_PRODUCT, hasMembershipService } from "./services/membershipCart.js";
 import { getCheckoutEntryRoute } from "./services/membershipNavigation.js";
-import { loadWebsiteNavigationPreview } from "./services/yudaoNavigationApi.js";
+import {
+  loadWebsiteNavigationPreview,
+  loadWebsiteNavigationPublished,
+} from "./services/yudaoNavigationApi.js";
 import { addCartItem, deleteCartItems, getRemoteCartItems, updateCartItemCount } from "./services/yudaoCartApi.js";
 import { createFavorite } from "./services/yudaoFavoriteApi.js";
 import { getYudaoAppTenantId, isYudaoAuthError, isYudaoBusinessError, readYudaoToken } from "./services/yudaoRequest.js";
@@ -129,6 +132,7 @@ const pageFromPath = (path) => {
 const currentPage = ref(pageFromPath(window.location.pathname));
 const routeSignature = ref(`${window.location.pathname}${window.location.search}${window.location.hash}`);
 const navigationPreview = ref(null);
+const publishedNavigation = ref(null);
 const navigationPreviewTenantId = ref("");
 const navigationPreviewStatus = ref(currentPage.value === "navigation-preview" ? "loading" : "idle");
 const navigationPreviewError = ref("");
@@ -178,7 +182,10 @@ const pageComponent = computed(() => {
 });
 
 const isNavigationPreview = computed(() => currentPage.value === "navigation-preview");
-const navigationPreviewItems = computed(() => navigationPreview.value?.items || []);
+const managedNavigationItems = computed(
+  () => navigationPreview.value?.items || publishedNavigation.value?.items || [],
+);
+const hasManagedNavigation = computed(() => managedNavigationItems.value.length > 0);
 const hasNavigationPreviewContext = computed(
   () => isNavigationPreview.value || Boolean(navigationPreviewTenantId.value),
 );
@@ -197,6 +204,14 @@ const loadNavigationPreview = async () => {
     navigationPreviewStatus.value = "error";
     navigationPreviewError.value =
       error?.message || "预览凭证已失效，请返回 ERP 重新生成真实预览。";
+  }
+};
+
+const loadPublishedNavigation = async () => {
+  try {
+    publishedNavigation.value = await loadWebsiteNavigationPublished();
+  } catch {
+    publishedNavigation.value = null;
   }
 };
 
@@ -517,7 +532,11 @@ onMounted(() => {
   applySeo(currentPage.value);
   window.addEventListener("popstate", syncPageFromLocation);
   document.addEventListener("click", handleInternalLinkClick);
-  if (isNavigationPreview.value) void loadNavigationPreview();
+  if (isNavigationPreview.value) {
+    void loadNavigationPreview();
+  } else {
+    void loadPublishedNavigation();
+  }
   loadRemoteCart();
 });
 
@@ -533,7 +552,8 @@ onBeforeUnmount(() => {
     v-model:page="currentPage"
     :cart-count="cartQuantity"
     :cart-mode="cartMode"
-    :navigation-items="navigationPreviewItems"
+    :navigation-items="managedNavigationItems"
+    :managed-navigation="hasManagedNavigation"
     :navigation-preview="hasNavigationPreviewContext"
     :overlay="usesOverlayHeader"
     @auth-change="handleAuthChange"

@@ -35,6 +35,10 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  managedNavigation: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const emit = defineEmits(["open-cart", "auth-change"]);
@@ -84,11 +88,12 @@ const babyChildNavigationLabelKeys = {
   Registry: "navigation.babyChild.registry",
 };
 const navItems = computed(() => {
-  if (props.navigationPreview) return props.navigationItems;
-  return isBabyChildSitePage.value ? babyChildNavigation : primaryNavigation;
+  if (isBabyChildSitePage.value) return babyChildNavigation;
+  if (props.managedNavigation) return props.navigationItems;
+  return primaryNavigation;
 });
 const hasStorefrontDropdown = (item) => {
-  if (props.navigationPreview) return Boolean(item?.children?.length);
+  if (props.managedNavigation) return Boolean(item?.children?.length);
   return !isBabyChildSitePage.value && storefrontDropdownKeys.includes(item?.key);
 };
 const navItemLabel = (item) => item?.label || (item?.labelKey ? t(item.labelKey) : "");
@@ -98,24 +103,27 @@ const babyChildItemLabel = (item) => {
   return labelKey ? t(labelKey) : item.label;
 };
 const hoverMenuItems = computed(() => {
-  if (props.navigationPreview) {
+  if (props.managedNavigation) {
     return navItems.value.find((item) => item.key === activeDropdown.value)?.children || [];
   }
   return storefrontDropdownMenus[activeDropdown.value] || [];
 });
+const activeMegaChildren = computed(
+  () => hoverMenuItems.value.find((item) => item.key === activeMegaItem.value)?.children || [],
+);
 const dropdownPositionStyle = computed(() => ({
   "--category-menu-left": categoryMenuLeft.value,
 }));
 const mobileDrawerSections = computed(() => {
   const navigationSection = {
-    heading: props.navigationPreview
+    heading: props.managedNavigation
       ? "Navigation"
       : t("navigation.storefront.mobile.shopFurniture"),
-    items: props.navigationPreview
+    items: props.managedNavigation
       ? navItems.value.map((item) => ({ ...item, items: item.children || [] }))
       : mobileDrawerNavigation,
   };
-  if (props.navigationPreview) return [navigationSection];
+  if (props.managedNavigation) return [navigationSection];
   return [
     navigationSection,
     {
@@ -281,11 +289,29 @@ const handleNavClick = (item) => {
     return;
   }
 
+  openNavigationItem(item);
+};
+
+const openNavigationItem = (item) => {
+  if (!item?.href) return;
+  if (item.openMode === "_blank") {
+    window.open(item.href, "_blank", "noopener,noreferrer");
+    return;
+  }
   window.location.assign(item.href);
 };
 
-const activateMegaItem = (label) => {
-  activeMegaItem.value = label;
+const activateMegaItem = (item) => {
+  activeMegaItem.value = item?.children?.length ? item.key : "";
+};
+
+const handleMegaItemClick = (event, item) => {
+  if (!item?.href) {
+    event.preventDefault();
+    activateMegaItem(item);
+    return;
+  }
+  hideDropdown();
 };
 
 const generatedGlobalMenuImage = (index) => generatedGlobalMenuImages[index % generatedGlobalMenuImages.length];
@@ -305,6 +331,10 @@ const handleWindowResize = () => {
 };
 
 watch(menuOpen, setBodyMenuState);
+watch(activeDropdown, () => {
+  const firstWithChildren = hoverMenuItems.value.find((item) => item.children?.length);
+  activeMegaItem.value = firstWithChildren?.key || "";
+});
 
 onMounted(() => {
   document.addEventListener("pointerdown", handleDocumentPointerDown);
@@ -424,7 +454,7 @@ onBeforeUnmount(() => {
           class="nav-link"
           :class="{
             active: isBabyChildSitePage ? isActive(item.label) : activeDropdown === item.key,
-            accent: item.accent,
+            accent: item.accent || item.styleVariant === 'SALE',
           }"
           type="button"
           :aria-expanded="hasStorefrontDropdown(item) ? activeDropdown === item.key : undefined"
@@ -445,14 +475,32 @@ onBeforeUnmount(() => {
         <li v-for="item in hoverMenuItems" :key="item.key">
           <a
             class="category-mega-link"
-            :href="item.href"
-            @click="hideDropdown"
+            :class="{ active: activeMegaItem === item.key }"
+            :href="item.href || undefined"
+            :target="item.openMode === '_blank' ? '_blank' : undefined"
+            :rel="item.openMode === '_blank' ? 'noopener noreferrer' : undefined"
+            @mouseenter="activateMegaItem(item)"
+            @focus="activateMegaItem(item)"
+            @click="handleMegaItemClick($event, item)"
           >
             {{ menuItemLabel(item) }}
           </a>
         </li>
       </ul>
-      <div class="category-mega-empty" aria-hidden="true"></div>
+      <ul v-if="activeMegaChildren.length" class="category-mega-secondary">
+        <li v-for="child in activeMegaChildren" :key="child.key">
+          <a
+            class="category-mega-link"
+            :href="child.href || undefined"
+            :target="child.openMode === '_blank' ? '_blank' : undefined"
+            :rel="child.openMode === '_blank' ? 'noopener noreferrer' : undefined"
+            @click="handleMegaItemClick($event, child)"
+          >
+            {{ menuItemLabel(child) }}
+          </a>
+        </li>
+      </ul>
+      <div v-else class="category-mega-empty" aria-hidden="true"></div>
     </section>
 
     <section v-if="menuOpen" class="global-menu" aria-label="Oakved menu">
@@ -481,14 +529,39 @@ onBeforeUnmount(() => {
         <section v-for="section in mobileDrawerSections" :key="section.heading" class="mobile-drawer-section">
           <h2>{{ section.heading }}</h2>
           <div v-for="item in section.items" :key="item.key || item.label" class="mobile-nav-group">
-            <a :class="{ accent: item.accent }" :href="item.href" @click="closeMenu">
+            <a
+              :class="{ accent: item.accent || item.styleVariant === 'SALE' }"
+              :href="item.href || undefined"
+              :target="item.openMode === '_blank' ? '_blank' : undefined"
+              :rel="item.openMode === '_blank' ? 'noopener noreferrer' : undefined"
+              @click="closeMenu"
+            >
               <span>{{ item.labelKey ? navItemLabel(item) : babyChildItemLabel(item) }}</span>
               <span aria-hidden="true">›</span>
             </a>
             <div v-if="item.items?.length" class="mobile-nav-children">
-              <a v-for="child in item.items" :key="child.key" :href="child.href" @click="closeMenu">
-                {{ menuItemLabel(child) }}
-              </a>
+              <div v-for="child in item.items" :key="child.key" class="mobile-nav-child-group">
+                <a
+                  :href="child.href || undefined"
+                  :target="child.openMode === '_blank' ? '_blank' : undefined"
+                  :rel="child.openMode === '_blank' ? 'noopener noreferrer' : undefined"
+                  @click="child.href ? closeMenu() : undefined"
+                >
+                  {{ menuItemLabel(child) }}
+                </a>
+                <div v-if="child.children?.length" class="mobile-nav-grandchildren">
+                  <a
+                    v-for="grandchild in child.children"
+                    :key="grandchild.key"
+                    :href="grandchild.href || undefined"
+                    :target="grandchild.openMode === '_blank' ? '_blank' : undefined"
+                    :rel="grandchild.openMode === '_blank' ? 'noopener noreferrer' : undefined"
+                    @click="closeMenu"
+                  >
+                    {{ menuItemLabel(grandchild) }}
+                  </a>
+                </div>
+              </div>
             </div>
           </div>
         </section>

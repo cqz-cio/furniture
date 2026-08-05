@@ -5,6 +5,7 @@ import cn.iocoder.yudao.framework.common.util.object.BeanUtils;
 import cn.iocoder.yudao.module.seo.controller.admin.config.vo.SeoSiteConfigSaveReqVO;
 import cn.iocoder.yudao.module.seo.dal.dataobject.config.SeoSiteConfigDO;
 import cn.iocoder.yudao.module.seo.dal.mysql.config.SeoSiteConfigMapper;
+import cn.iocoder.yudao.module.seo.enums.navigation.WebsiteNavigationTemplateEnum;
 import cn.iocoder.yudao.module.seo.service.SeoLocaleUtils;
 import jakarta.annotation.Resource;
 import org.springframework.dao.DuplicateKeyException;
@@ -18,6 +19,7 @@ import java.util.Locale;
 
 import static cn.iocoder.yudao.framework.common.exception.util.ServiceExceptionUtil.exception;
 import static cn.iocoder.yudao.module.seo.enums.ErrorCodeConstants.SITE_CONFIG_NOT_EXISTS;
+import static cn.iocoder.yudao.module.seo.enums.ErrorCodeConstants.SITE_CONFIG_NAVIGATION_TEMPLATE_INVALID;
 import static cn.iocoder.yudao.module.seo.enums.ErrorCodeConstants.SITE_CONFIG_URL_INVALID;
 
 @Service
@@ -26,6 +28,8 @@ public class SeoSiteConfigServiceImpl implements SeoSiteConfigService {
 
     private static final String DEFAULT_ROBOTS = "index,follow";
     private static final String DEFAULT_LOCALE = "zh-CN";
+    private static final String DEFAULT_NAVIGATION_TEMPLATE =
+            WebsiteNavigationTemplateEnum.VANZ_B2B.getCode();
 
     @Resource
     private SeoSiteConfigMapper siteConfigMapper;
@@ -40,7 +44,8 @@ public class SeoSiteConfigServiceImpl implements SeoSiteConfigService {
                 .setDefaultRobots(defaultIfBlank(reqVO.getDefaultRobots(), DEFAULT_ROBOTS))
                 .setDefaultOgImage(defaultIfBlank(reqVO.getDefaultOgImage(), ""))
                 .setDefaultLocale(SeoLocaleUtils.normalize(
-                        defaultIfBlank(reqVO.getDefaultLocale(), DEFAULT_LOCALE)));
+                        defaultIfBlank(reqVO.getDefaultLocale(), DEFAULT_LOCALE)))
+                .setNavigationTemplate(normalizeNavigationTemplate(reqVO.getNavigationTemplate()));
         SeoSiteConfigDO existing = siteConfigMapper.selectBySiteId(reqVO.getSiteId());
         if (existing != null) {
             updateExisting(config, existing);
@@ -80,6 +85,14 @@ public class SeoSiteConfigServiceImpl implements SeoSiteConfigService {
 
     private static String defaultIfBlank(String value, String defaultValue) {
         return StrUtil.isBlank(value) ? defaultValue : value;
+    }
+
+    private static String normalizeNavigationTemplate(String value) {
+        String template = defaultIfBlank(value, DEFAULT_NAVIGATION_TEMPLATE).trim().toUpperCase(Locale.ROOT);
+        if (WebsiteNavigationTemplateEnum.fromCode(template) == null) {
+            throw exception(SITE_CONFIG_NAVIGATION_TEMPLATE_INVALID);
+        }
+        return template;
     }
 
     static String normalizeSiteUrl(String value) {

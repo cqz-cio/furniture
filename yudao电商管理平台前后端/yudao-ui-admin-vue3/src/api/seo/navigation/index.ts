@@ -1,17 +1,30 @@
 import request from '@/config/axios'
 
-export type WebsiteNavigationItemType = 'PAGE' | 'CATEGORY'
+export type WebsiteNavigationTemplate = 'VANZ_B2B' | 'OAKVED_B2C'
+export type WebsiteNavigationItemType = 'PAGE' | 'CATEGORY' | 'DIRECTORY' | 'ROUTE' | 'FILTER'
 
 export interface WebsiteNavigationItemRespVO {
   itemKey: string
+  parentItemKey: string
   itemType: WebsiteNavigationItemType
   pageKey?: string
+  targetKey?: string
   categoryId?: number
   label: string
   sort: number
   visible: boolean
+  openMode: '_self' | '_blank'
+  styleVariant: 'DEFAULT' | 'SALE'
   available: boolean
   publishedProductCount?: number
+  children?: WebsiteNavigationItemRespVO[]
+}
+
+export interface WebsiteNavigationTargetOptionRespVO {
+  targetKey: string
+  itemType: 'ROUTE' | 'FILTER'
+  label: string
+  href: string
 }
 
 export interface WebsiteNavigationCategoryOptionRespVO {
@@ -26,6 +39,7 @@ export interface WebsiteNavigationDraftRespVO {
   revisionId: number
   siteId: number
   locale: string
+  navigationTemplate: WebsiteNavigationTemplate
   revisionNo: number
   version: number
   status: 'DRAFT'
@@ -36,15 +50,21 @@ export interface WebsiteNavigationDraftRespVO {
   items: WebsiteNavigationItemRespVO[]
   publishedItems: WebsiteNavigationItemRespVO[]
   categoryOptions: WebsiteNavigationCategoryOptionRespVO[]
+  targetOptions: WebsiteNavigationTargetOptionRespVO[]
 }
 
 export interface WebsiteNavigationItemSaveReqVO {
+  itemKey: string
+  parentItemKey: string
   itemType: WebsiteNavigationItemType
   pageKey?: string
+  targetKey?: string
   categoryId?: number
   label: string
   sort: number
   visible: boolean
+  openMode: '_self' | '_blank'
+  styleVariant: 'DEFAULT' | 'SALE'
 }
 
 export interface WebsiteNavigationDraftSaveReqVO {

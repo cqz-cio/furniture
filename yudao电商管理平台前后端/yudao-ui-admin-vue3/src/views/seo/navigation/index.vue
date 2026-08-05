@@ -7,10 +7,10 @@
         </div>
         <div>
           <div class="navigation-toolbar__title">
-            <strong>VANZ 官网导航</strong>
+            <strong>{{ navigationBrandLabel }}</strong>
             <el-tag size="small" type="info" effect="plain">English</el-tag>
           </div>
-          <p>改名称、排顺序、控制显示；产品分类会自动跟随商品中心。</p>
+          <p>{{ navigationDescription }}</p>
         </div>
       </div>
 
@@ -26,7 +26,7 @@
         </el-button>
         <el-button :loading="refreshing" :disabled="busy" @click="refreshCategories">
           <Icon icon="ep:refresh" class="mr-5px" />
-          同步商品分类
+          {{ isOakvedNavigation ? '刷新可选分类' : '同步商品分类' }}
         </el-button>
         <el-button
           :loading="saving"
@@ -85,18 +85,26 @@
         </ContentWrap>
         <ContentWrap
           title="一级导航"
-          message="拖动调整官网顶部顺序；页面地址已固定，业务人员不用填写链接。"
+          :message="
+            isOakvedNavigation
+              ? '顺序与家具官网顶部一致；名称和显示状态可调整，真实地址由系统安全生成。'
+              : '拖动调整官网顶部顺序；页面地址已固定，业务人员不用填写链接。'
+          "
           surface="form"
           :auto-title="false"
         >
           <template #header>
             <div class="section-header-actions">
-              <el-tag type="info" effect="plain">{{ primaryItems.length }} 项固定页面</el-tag>
+              <el-tag type="info" effect="plain">{{ primarySectionTag }}</el-tag>
             </div>
           </template>
 
           <p class="section-description">
-            拖动调整官网顶部顺序；页面地址已固定，业务人员不用填写链接。
+            {{
+              isOakvedNavigation
+                ? '拖动调整 NEW、SHOP BY COLLECTIONS、BEDROOM 等顶部顺序；不需要填写原始 URL。'
+                : '拖动调整官网顶部顺序；页面地址已固定，业务人员不用填写链接。'
+            }}
           </p>
 
           <draggable
@@ -111,7 +119,10 @@
             <template #item="{ element, index }">
               <article
                 class="navigation-row"
-                :class="{ 'navigation-row--hidden': !element.visible }"
+                :class="{
+                  'navigation-row--hidden': !element.visible,
+                  'navigation-row--styled': element.styleVariant === 'SALE'
+                }"
               >
                 <button type="button" class="navigation-row__handle" aria-label="拖动调整顺序">
                   <Icon icon="ep:rank" />
@@ -126,9 +137,17 @@
                   />
                   <small>
                     <Icon icon="ep:link" />
-                    {{ pageRouteLabel(element.pageKey) }}
+                    {{ itemTargetLabel(element) }}
                   </small>
                 </div>
+                <el-tag
+                  v-if="element.styleVariant === 'SALE'"
+                  size="small"
+                  type="danger"
+                  effect="plain"
+                >
+                  SALE 强调
+                </el-tag>
                 <div class="navigation-row__visibility">
                   <span>{{ element.visible ? '官网显示' : '已隐藏' }}</span>
                   <el-switch v-model="element.visible" :disabled="busy" @change="markDirty" />
@@ -139,6 +158,7 @@
         </ContentWrap>
 
         <ContentWrap
+          v-if="!isOakvedNavigation"
           title="Products 二级目录"
           message="这里只选择商品中心里的分类；改分类名称后，官网会自动同步。"
           surface="form"
@@ -247,6 +267,302 @@
             <span> 新建商品分类不会自动出现在官网；在这里勾选并发布后才会上线，避免误展示。 </span>
           </div>
         </ContentWrap>
+
+        <ContentWrap
+          v-if="isOakvedNavigation"
+          title="下拉导航（二、三级）"
+          message="每个一级导航下最多配置两层；桌面端按左侧二级、右侧三级展示。"
+          surface="form"
+          :auto-title="false"
+        >
+          <template #header>
+            <div class="section-header-actions">
+              <el-tag type="success" effect="plain">最多三级</el-tag>
+            </div>
+          </template>
+
+          <p class="section-description">
+            二级和三级导航只需选择“固定页面、商品筛选或商品分类”；系统会生成真实官网地址。
+          </p>
+
+          <el-collapse v-model="oakvedExpandedKeys" class="oakved-navigation-tree">
+            <el-collapse-item
+              v-for="primary in primaryItems"
+              :key="primary.itemKey"
+              :name="primary.itemKey"
+            >
+              <template #title>
+                <div class="oakved-tree-heading">
+                  <div>
+                    <strong>{{ primary.label }}</strong>
+                    <small>{{ descendantCount(primary) }} 个下拉导航项</small>
+                  </div>
+                  <el-tag v-if="!primary.visible" size="small" type="info" effect="plain">
+                    一级已隐藏
+                  </el-tag>
+                </div>
+              </template>
+
+              <div class="oakved-tree-panel">
+                <div class="oakved-tree-panel__toolbar">
+                  <span>二级导航</span>
+                  <el-button
+                    type="primary"
+                    plain
+                    size="small"
+                    :disabled="busy"
+                    @click.stop="addDropdownItem(primary)"
+                  >
+                    <Icon icon="ep:plus" class="mr-4px" />
+                    新增二级导航
+                  </el-button>
+                </div>
+
+                <div v-if="!(primary.children || []).length" class="oakved-tree-empty">
+                  <Icon icon="ep:folder-opened" />
+                  <span>当前一级导航没有下拉内容；官网只显示顶部链接。</span>
+                </div>
+
+                <draggable
+                  v-else
+                  v-model="primary.children"
+                  item-key="itemKey"
+                  handle=".oakved-node__handle"
+                  ghost-class="navigation-row--ghost"
+                  :animation="180"
+                  class="oakved-node-list"
+                  @end="onOakvedSortEnd"
+                >
+                  <template #item="{ element, index }">
+                    <article
+                      class="oakved-node"
+                      :class="{ 'navigation-row--hidden': !element.visible }"
+                    >
+                      <div class="oakved-node__main">
+                        <button
+                          type="button"
+                          class="oakved-node__handle"
+                          aria-label="拖动调整二级导航顺序"
+                        >
+                          <Icon icon="ep:rank" />
+                        </button>
+                        <span class="navigation-row__order">{{ index + 1 }}</span>
+                        <div class="oakved-node__name">
+                          <el-input
+                            v-model="element.label"
+                            maxlength="64"
+                            :disabled="busy || element.itemType === 'CATEGORY'"
+                            @input="markDirty"
+                          />
+                          <small>{{ itemTargetLabel(element) }}</small>
+                        </div>
+                        <el-select
+                          v-model="element.itemType"
+                          class="oakved-node__type"
+                          :disabled="busy"
+                          aria-label="二级导航类型"
+                          @change="onDropdownItemTypeChange(element)"
+                        >
+                          <el-option
+                            v-for="option in oakvedItemTypeOptions"
+                            :key="option.value"
+                            :label="option.label"
+                            :value="option.value"
+                          />
+                        </el-select>
+                        <el-select
+                          v-if="['ROUTE', 'FILTER'].includes(element.itemType)"
+                          v-model="element.targetKey"
+                          class="oakved-node__target"
+                          filterable
+                          :disabled="busy"
+                          placeholder="选择跳转目标"
+                          @change="markDirty"
+                        >
+                          <el-option
+                            v-for="option in targetOptionsFor(element.itemType)"
+                            :key="option.targetKey"
+                            :label="`${option.label} · ${option.href}`"
+                            :value="option.targetKey"
+                          />
+                        </el-select>
+                        <el-select
+                          v-else-if="element.itemType === 'CATEGORY'"
+                          v-model="element.categoryId"
+                          class="oakved-node__target"
+                          filterable
+                          :disabled="busy"
+                          placeholder="选择商品分类"
+                          @change="onDropdownCategoryChange(element)"
+                        >
+                          <el-option
+                            v-for="option in categoryOptions"
+                            :key="option.id"
+                            :label="`${option.name} · ${option.publishedProductCount} 个在线商品`"
+                            :value="option.id"
+                          />
+                        </el-select>
+                        <div v-else class="oakved-node__directory-label">无需跳转目标</div>
+                        <el-select
+                          v-model="element.openMode"
+                          class="oakved-node__open"
+                          :disabled="busy || element.itemType === 'DIRECTORY'"
+                          aria-label="打开方式"
+                          @change="markDirty"
+                        >
+                          <el-option label="当前窗口" value="_self" />
+                          <el-option label="新窗口" value="_blank" />
+                        </el-select>
+                        <div class="oakved-node__visibility">
+                          <el-switch
+                            v-model="element.visible"
+                            :disabled="busy"
+                            @change="markDirty"
+                          />
+                        </div>
+                        <div class="oakved-node__actions">
+                          <el-button
+                            type="primary"
+                            link
+                            :disabled="busy"
+                            @click="addDropdownItem(element)"
+                          >
+                            添加三级
+                          </el-button>
+                          <el-button
+                            type="danger"
+                            link
+                            :disabled="busy"
+                            @click="removeDropdownItem(primary.children || [], index)"
+                          >
+                            删除
+                          </el-button>
+                        </div>
+                      </div>
+
+                      <draggable
+                        v-if="(element.children || []).length"
+                        v-model="element.children"
+                        item-key="itemKey"
+                        handle=".oakved-node__handle"
+                        ghost-class="navigation-row--ghost"
+                        :animation="180"
+                        class="oakved-node-list oakved-node-list--third"
+                        @end="onOakvedSortEnd"
+                      >
+                        <template #item="{ element: child, index: childIndex }">
+                          <article
+                            class="oakved-node oakved-node--third"
+                            :class="{ 'navigation-row--hidden': !child.visible }"
+                          >
+                            <div class="oakved-node__main">
+                              <button
+                                type="button"
+                                class="oakved-node__handle"
+                                aria-label="拖动调整三级导航顺序"
+                              >
+                                <Icon icon="ep:rank" />
+                              </button>
+                              <span class="navigation-row__order">{{ childIndex + 1 }}</span>
+                              <div class="oakved-node__name">
+                                <el-input
+                                  v-model="child.label"
+                                  maxlength="64"
+                                  :disabled="busy || child.itemType === 'CATEGORY'"
+                                  @input="markDirty"
+                                />
+                                <small>{{ itemTargetLabel(child) }}</small>
+                              </div>
+                              <el-select
+                                v-model="child.itemType"
+                                class="oakved-node__type"
+                                :disabled="busy"
+                                aria-label="三级导航类型"
+                                @change="onDropdownItemTypeChange(child)"
+                              >
+                                <el-option
+                                  v-for="option in oakvedItemTypeOptions"
+                                  :key="option.value"
+                                  :label="option.label"
+                                  :value="option.value"
+                                />
+                              </el-select>
+                              <el-select
+                                v-if="['ROUTE', 'FILTER'].includes(child.itemType)"
+                                v-model="child.targetKey"
+                                class="oakved-node__target"
+                                filterable
+                                :disabled="busy"
+                                placeholder="选择跳转目标"
+                                @change="markDirty"
+                              >
+                                <el-option
+                                  v-for="option in targetOptionsFor(child.itemType)"
+                                  :key="option.targetKey"
+                                  :label="`${option.label} · ${option.href}`"
+                                  :value="option.targetKey"
+                                />
+                              </el-select>
+                              <el-select
+                                v-else-if="child.itemType === 'CATEGORY'"
+                                v-model="child.categoryId"
+                                class="oakved-node__target"
+                                filterable
+                                :disabled="busy"
+                                placeholder="选择商品分类"
+                                @change="onDropdownCategoryChange(child)"
+                              >
+                                <el-option
+                                  v-for="option in categoryOptions"
+                                  :key="option.id"
+                                  :label="`${option.name} · ${option.publishedProductCount} 个在线商品`"
+                                  :value="option.id"
+                                />
+                              </el-select>
+                              <div v-else class="oakved-node__directory-label">无需跳转目标</div>
+                              <el-select
+                                v-model="child.openMode"
+                                class="oakved-node__open"
+                                :disabled="busy || child.itemType === 'DIRECTORY'"
+                                aria-label="打开方式"
+                                @change="markDirty"
+                              >
+                                <el-option label="当前窗口" value="_self" />
+                                <el-option label="新窗口" value="_blank" />
+                              </el-select>
+                              <div class="oakved-node__visibility">
+                                <el-switch
+                                  v-model="child.visible"
+                                  :disabled="busy"
+                                  @change="markDirty"
+                                />
+                              </div>
+                              <div class="oakved-node__actions">
+                                <el-button
+                                  type="danger"
+                                  link
+                                  :disabled="busy"
+                                  @click="removeDropdownItem(element.children || [], childIndex)"
+                                >
+                                  删除
+                                </el-button>
+                              </div>
+                            </div>
+                          </article>
+                        </template>
+                      </draggable>
+                    </article>
+                  </template>
+                </draggable>
+              </div>
+            </el-collapse-item>
+          </el-collapse>
+
+          <div class="category-sync-note">
+            <Icon icon="ep:info-filled" />
+            <span>隐藏一级导航会连同其二、三级内容一起隐藏；删除二级导航也会删除其三级内容。</span>
+          </div>
+        </ContentWrap>
       </main>
 
       <aside class="navigation-preview" aria-label="官网真实预览">
@@ -306,7 +622,7 @@
             <iframe
               :key="inlinePreviewUrl"
               :src="inlinePreviewUrl"
-              title="VANZ 官网未发布导航预览"
+              :title="`${navigationBrandLabel}未发布导航预览`"
               class="preview-browser__frame"
             ></iframe>
           </div>
@@ -341,7 +657,7 @@
 
     <el-dialog
       v-model="widePreviewVisible"
-      title="VANZ 官网 · 未发布导航宽屏预览"
+      :title="`${navigationBrandLabel} · 未发布导航宽屏预览`"
       width="96%"
       top="2vh"
       destroy-on-close
@@ -351,7 +667,7 @@
         v-if="widePreviewUrl"
         :key="widePreviewUrl"
         :src="widePreviewUrl"
-        title="VANZ 官网未发布导航宽屏预览"
+        :title="`${navigationBrandLabel}未发布导航宽屏预览`"
         class="wide-preview-frame"
       ></iframe>
     </el-dialog>
@@ -417,7 +733,9 @@ import {
   type WebsiteNavigationDraftRespVO,
   type WebsiteNavigationItemRespVO,
   type WebsiteNavigationItemSaveReqVO,
-  type WebsiteNavigationRevisionRespVO
+  type WebsiteNavigationRevisionRespVO,
+  type WebsiteNavigationTargetOptionRespVO,
+  type WebsiteNavigationItemType
 } from '@/api/seo/navigation'
 import { getSeoSiteConfig } from '@/api/seo/siteConfig'
 import { useMessage } from '@/hooks/web/useMessage'
@@ -442,6 +760,8 @@ const draft = ref<WebsiteNavigationDraftRespVO>()
 const primaryItems = ref<WebsiteNavigationItemRespVO[]>([])
 const categoryItems = ref<WebsiteNavigationItemRespVO[]>([])
 const categoryOptions = ref<WebsiteNavigationCategoryOptionRespVO[]>([])
+const targetOptions = ref<WebsiteNavigationTargetOptionRespVO[]>([])
+const oakvedExpandedKeys = ref<string[]>([])
 const categoryToAdd = ref<number>()
 const loading = ref(false)
 const saving = ref(false)
@@ -460,6 +780,24 @@ const history = ref<WebsiteNavigationRevisionRespVO[]>([])
 const siteConfigLoading = ref(false)
 const siteConfigured = ref(false)
 
+const isOakvedNavigation = computed(() => draft.value?.navigationTemplate === 'OAKVED_B2C')
+const navigationBrandLabel = computed(() =>
+  isOakvedNavigation.value ? 'Oakved 官网导航' : 'VANZ 官网导航'
+)
+const navigationDescription = computed(() =>
+  isOakvedNavigation.value
+    ? '管理家具官网顶部导航及二、三级下拉目录；链接从安全目标中选择。'
+    : '改名称、排顺序、控制显示；产品分类会自动跟随商品中心。'
+)
+const primarySectionTag = computed(
+  () => `${primaryItems.value.length} 项固定${isOakvedNavigation.value ? '导航' : '页面'}`
+)
+const allDraftItems = computed(() =>
+  isOakvedNavigation.value
+    ? flattenTree(primaryItems.value)
+    : [...primaryItems.value, ...categoryItems.value]
+)
+
 const busy = computed(
   () =>
     loading.value ||
@@ -477,7 +815,7 @@ const publishedStatusLabel = computed(() =>
 
 const changeSummary = computed(() => {
   const publishedItems = draft.value?.publishedItems || []
-  const draftItems = [...primaryItems.value, ...categoryItems.value]
+  const draftItems = allDraftItems.value
   if (!publishedItems.length) {
     const visibleCount = draftItems.filter((item) => item.visible).length
     return visibleCount ? [`首次发布 ${visibleCount} 个可见导航项`] : []
@@ -485,14 +823,26 @@ const changeSummary = computed(() => {
   const messages: string[] = []
   const publishedMap = new Map(publishedItems.map((item) => [item.itemKey, item]))
   const draftMap = new Map(draftItems.map((item) => [item.itemKey, item]))
-  const addedCategories = categoryItems.value.filter((item) => !publishedMap.has(item.itemKey))
-  const removedCategories = publishedItems.filter(
-    (item) => item.itemType === 'CATEGORY' && !draftMap.has(item.itemKey)
+  const addedItems = draftItems.filter(
+    (item) => item.parentItemKey && !publishedMap.has(item.itemKey)
   )
-  if (addedCategories.length)
-    messages.push(`新增二级目录：${addedCategories.map((item) => item.label).join('、')}`)
-  if (removedCategories.length)
-    messages.push(`移除二级目录：${removedCategories.map((item) => item.label).join('、')}`)
+  const removedItems = publishedItems.filter(
+    (item) => item.parentItemKey && !draftMap.has(item.itemKey)
+  )
+  if (addedItems.length) {
+    messages.push(
+      `${isOakvedNavigation.value ? '新增下拉导航' : '新增二级目录'}：${addedItems
+        .map((item) => item.label)
+        .join('、')}`
+    )
+  }
+  if (removedItems.length) {
+    messages.push(
+      `${isOakvedNavigation.value ? '移除下拉导航' : '移除二级目录'}：${removedItems
+        .map((item) => item.label)
+        .join('、')}`
+    )
+  }
 
   const renamed = draftItems.filter((item) => {
     const published = publishedMap.get(item.itemKey)
@@ -512,21 +862,28 @@ const changeSummary = computed(() => {
     )
   }
 
-  const orderChanged = (['PAGE', 'CATEGORY'] as const).some((itemType) => {
-    const publishedOrder = publishedItems
-      .filter((item) => item.itemType === itemType)
-      .sort((left, right) => left.sort - right.sort)
-      .filter((item) => draftMap.has(item.itemKey))
-      .map((item) => item.itemKey)
+  const orderSignature = (
+    items: WebsiteNavigationItemRespVO[],
+    existingKeys: Map<string, WebsiteNavigationItemRespVO>
+  ) => {
+    const groups = new Map<string, WebsiteNavigationItemRespVO[]>()
+    items
+      .filter((item) => existingKeys.has(item.itemKey))
+      .forEach((item) => {
+        const parentKey = item.parentItemKey || ''
+        groups.set(parentKey, [...(groups.get(parentKey) || []), item])
+      })
+    return [...groups.entries()]
+      .sort(([left], [right]) => left.localeCompare(right))
+      .flatMap(([parentKey, siblings]) =>
+        siblings
+          .sort((left, right) => left.sort - right.sort)
+          .map((item) => `${parentKey}:${item.itemKey}`)
+      )
       .join('|')
-    const draftOrder = draftItems
-      .filter((item) => item.itemType === itemType)
-      .sort((left, right) => left.sort - right.sort)
-      .filter((item) => publishedMap.has(item.itemKey))
-      .map((item) => item.itemKey)
-      .join('|')
-    return publishedOrder !== draftOrder
-  })
+  }
+  const orderChanged =
+    orderSignature(publishedItems, draftMap) !== orderSignature(draftItems, publishedMap)
   if (orderChanged) messages.push('调整导航顺序')
   return messages
 })
@@ -540,6 +897,104 @@ const availableCategoryOptions = computed(() =>
 )
 
 const inlinePreviewDisplayUrl = computed(() => safePreviewDisplayUrl(inlinePreviewUrl.value))
+
+const oakvedItemTypeOptions: Array<{ label: string; value: WebsiteNavigationItemType }> = [
+  { label: '仅作为目录', value: 'DIRECTORY' },
+  { label: '固定页面', value: 'ROUTE' },
+  { label: '商品筛选', value: 'FILTER' },
+  { label: '商品分类', value: 'CATEGORY' }
+]
+
+const buildTree = (items: WebsiteNavigationItemRespVO[]) => {
+  const nodeMap = new Map<string, WebsiteNavigationItemRespVO>()
+  items.forEach((item) => nodeMap.set(item.itemKey, { ...item, children: [] }))
+  const roots: WebsiteNavigationItemRespVO[] = []
+  ;[...nodeMap.values()]
+    .sort((left, right) => left.sort - right.sort)
+    .forEach((item) => {
+      const parent = item.parentItemKey ? nodeMap.get(item.parentItemKey) : undefined
+      if (parent) {
+        parent.children = [...(parent.children || []), item]
+      } else {
+        roots.push(item)
+      }
+    })
+  return roots
+}
+
+const flattenTree = (
+  items: WebsiteNavigationItemRespVO[],
+  parentItemKey = ''
+): WebsiteNavigationItemRespVO[] =>
+  items.flatMap((item) => [
+    { ...item, parentItemKey },
+    ...flattenTree(item.children || [], item.itemKey)
+  ])
+
+const targetOptionsFor = (itemType: WebsiteNavigationItemType) =>
+  targetOptions.value.filter((option) => option.itemType === itemType)
+
+const itemTargetLabel = (item: WebsiteNavigationItemRespVO) => {
+  if (item.itemType === 'PAGE') return pageRouteLabel(item.pageKey)
+  if (item.itemType === 'CATEGORY') {
+    return item.categoryId ? `商品分类 /products/category/${item.categoryId}` : '请选择商品分类'
+  }
+  if (item.itemType === 'DIRECTORY') return '仅展开下级导航，不直接跳转'
+  const target = targetOptions.value.find((option) => option.targetKey === item.targetKey)
+  return target ? `${target.label} ${target.href}` : '请选择安全跳转目标'
+}
+
+const descendantCount = (item: WebsiteNavigationItemRespVO): number =>
+  (item.children || []).reduce((count, child) => count + 1 + descendantCount(child), 0)
+
+const createCustomItemKey = () => {
+  const randomPart = globalThis.crypto?.randomUUID?.().replaceAll('-', '').slice(0, 16)
+  return `CUSTOM_${String(randomPart || Date.now()).toUpperCase()}`
+}
+
+const addDropdownItem = (parent: WebsiteNavigationItemRespVO) => {
+  const children = parent.children || []
+  parent.children = [
+    ...children,
+    {
+      itemKey: createCustomItemKey(),
+      parentItemKey: parent.itemKey,
+      itemType: 'DIRECTORY',
+      label: children.length ? 'New navigation item' : 'New menu',
+      sort: (children.length + 1) * 10,
+      visible: true,
+      openMode: '_self',
+      styleVariant: 'DEFAULT',
+      available: true,
+      children: []
+    }
+  ]
+  markDirty()
+}
+
+const removeDropdownItem = (siblings: WebsiteNavigationItemRespVO[], index: number) => {
+  siblings.splice(index, 1)
+  normalizeSort()
+  markDirty()
+}
+
+const onDropdownItemTypeChange = (item: WebsiteNavigationItemRespVO) => {
+  item.targetKey = undefined
+  item.categoryId = undefined
+  item.available = true
+  item.publishedProductCount = undefined
+  markDirty()
+}
+
+const onDropdownCategoryChange = (item: WebsiteNavigationItemRespVO) => {
+  const category = categoryOptions.value.find((option) => option.id === item.categoryId)
+  if (category) {
+    item.label = category.name
+    item.available = true
+    item.publishedProductCount = category.publishedProductCount
+  }
+  markDirty()
+}
 
 const loadSiteConfig = async () => {
   siteConfigLoading.value = true
@@ -562,20 +1017,30 @@ const loadDraft = async () => {
   try {
     const response = await getWebsiteNavigationDraft(SITE_ID, LOCALE)
     draft.value = response
-    primaryItems.value = response.items
-      .filter((item) => item.itemType === 'PAGE')
-      .map((item) => ({ ...item }))
     let normalizedUnavailableCategory = false
-    categoryItems.value = response.items
-      .filter((item) => item.itemType === 'CATEGORY')
-      .map((item) => {
-        if (!item.available && item.visible) {
-          normalizedUnavailableCategory = true
-          return { ...item, visible: false }
-        }
-        return { ...item }
-      })
+    const normalizedItems = response.items.map((item) => {
+      if (!item.available && item.visible) {
+        normalizedUnavailableCategory = true
+        return { ...item, visible: false, children: [] }
+      }
+      return { ...item, children: [] }
+    })
+    if (response.navigationTemplate === 'OAKVED_B2C') {
+      primaryItems.value = buildTree(normalizedItems)
+      oakvedExpandedKeys.value = primaryItems.value
+        .filter((item) => (item.children || []).length > 0)
+        .map((item) => item.itemKey)
+      categoryItems.value = []
+    } else {
+      primaryItems.value = normalizedItems
+        .filter((item) => item.itemType === 'PAGE')
+        .map((item) => ({ ...item }))
+      categoryItems.value = normalizedItems
+        .filter((item) => item.itemType === 'CATEGORY')
+        .map((item) => ({ ...item }))
+    }
     categoryOptions.value = response.categoryOptions.map((option) => ({ ...option }))
+    targetOptions.value = response.targetOptions.map((option) => ({ ...option }))
     dirty.value = normalizedUnavailableCategory
   } catch {
     loadError.value = '官网导航加载失败，请确认 SEO 服务和商品中心已启动'
@@ -590,10 +1055,23 @@ const markDirty = () => {
 }
 
 const normalizeSort = () => {
+  if (isOakvedNavigation.value) {
+    const normalizeBranch = (items: WebsiteNavigationItemRespVO[], parentItemKey = '') => {
+      items.forEach((item, index) => {
+        item.parentItemKey = parentItemKey
+        item.sort = (index + 1) * 10
+        normalizeBranch(item.children || [], item.itemKey)
+      })
+    }
+    normalizeBranch(primaryItems.value)
+    return
+  }
   primaryItems.value.forEach((item, index) => {
+    item.parentItemKey = ''
     item.sort = (index + 1) * 10
   })
   categoryItems.value.forEach((item, index) => {
+    item.parentItemKey = 'PAGE_PRODUCTS'
     item.sort = (index + 1) * 10
   })
 }
@@ -608,17 +1086,25 @@ const onCategorySortEnd = () => {
   markDirty()
 }
 
+const onOakvedSortEnd = () => {
+  normalizeSort()
+  markDirty()
+}
+
 const addCategory = () => {
   if (!categoryToAdd.value) return
   const option = categoryOptions.value.find((item) => item.id === categoryToAdd.value)
   if (!option) return
   categoryItems.value.push({
     itemKey: `CATEGORY_${option.id}`,
+    parentItemKey: 'PAGE_PRODUCTS',
     itemType: 'CATEGORY',
     categoryId: option.id,
     label: option.name,
     sort: (categoryItems.value.length + 1) * 10,
     visible: true,
+    openMode: '_self',
+    styleVariant: 'DEFAULT',
     available: true,
     publishedProductCount: option.publishedProductCount
   })
@@ -635,21 +1121,43 @@ const removeCategory = (index: number) => {
 const pageRouteLabel = (pageKey?: string) => (pageKey ? pageRoutes[pageKey] : '')
 
 const validateLocalItems = () => {
-  const blankPage = primaryItems.value.find((item) => !item.label.trim())
-  if (blankPage) {
-    message.warning('一级导航名称不能为空')
+  const blankItem = allDraftItems.value.find((item) => !item.label.trim())
+  if (blankItem) {
+    message.warning('导航名称不能为空')
     return false
+  }
+  if (isOakvedNavigation.value) {
+    const invalidTarget = allDraftItems.value.find(
+      (item) => ['ROUTE', 'FILTER'].includes(item.itemType) && !item.targetKey
+    )
+    if (invalidTarget) {
+      message.warning(`请为“${invalidTarget.label}”选择跳转目标`)
+      return false
+    }
+    const invalidCategory = allDraftItems.value.find(
+      (item) =>
+        item.itemType === 'CATEGORY' && (!item.categoryId || (item.visible && !item.available))
+    )
+    if (invalidCategory) {
+      message.warning(`请为“${invalidCategory.label}”选择可用商品分类`)
+      return false
+    }
   }
   return true
 }
 
 const toSaveItem = (item: WebsiteNavigationItemRespVO): WebsiteNavigationItemSaveReqVO => ({
+  itemKey: item.itemKey,
+  parentItemKey: item.parentItemKey || '',
   itemType: item.itemType,
   pageKey: item.pageKey,
+  targetKey: item.targetKey,
   categoryId: item.categoryId,
   label: item.label.trim(),
   sort: item.sort,
-  visible: item.visible
+  visible: item.visible,
+  openMode: item.openMode || '_self',
+  styleVariant: item.styleVariant || 'DEFAULT'
 })
 
 const persistDraft = async (notify = true) => {
@@ -662,7 +1170,7 @@ const persistDraft = async (notify = true) => {
       siteId: draft.value.siteId,
       locale: draft.value.locale,
       version: draft.value.version,
-      items: [...primaryItems.value, ...categoryItems.value].map(toSaveItem)
+      items: allDraftItems.value.map(toSaveItem)
     })
     inlinePreviewUrl.value = ''
     widePreviewUrl.value = ''
@@ -969,6 +1477,10 @@ onActivated(() => {
   grid-template-columns: 28px 28px minmax(0, 1fr) auto auto 28px;
 }
 
+.navigation-row--styled {
+  grid-template-columns: 28px 28px minmax(0, 1fr) auto auto;
+}
+
 .navigation-row--hidden {
   background: var(--furniture-admin-panel-soft);
 }
@@ -1125,6 +1637,208 @@ onActivated(() => {
   flex: 0 0 auto;
 }
 
+.oakved-navigation-tree {
+  border-top: 1px solid var(--furniture-admin-border);
+}
+
+:deep(.oakved-navigation-tree .el-collapse-item__header) {
+  min-height: 58px;
+  height: auto;
+  padding: 8px 12px;
+  background: #fff;
+  border-right: 1px solid var(--furniture-admin-border);
+  border-left: 1px solid var(--furniture-admin-border);
+}
+
+:deep(.oakved-navigation-tree .el-collapse-item__wrap) {
+  background: var(--furniture-admin-panel-soft);
+  border-right: 1px solid var(--furniture-admin-border);
+  border-left: 1px solid var(--furniture-admin-border);
+}
+
+:deep(.oakved-navigation-tree .el-collapse-item__content) {
+  padding: 0;
+}
+
+.oakved-tree-heading {
+  display: flex;
+  width: 100%;
+  padding-right: 12px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.oakved-tree-heading > div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.oakved-tree-heading strong {
+  overflow: hidden;
+  font-size: 13px;
+  color: var(--furniture-admin-ink);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.oakved-tree-heading small {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--furniture-admin-muted);
+}
+
+.oakved-tree-panel {
+  padding: 12px;
+}
+
+.oakved-tree-panel__toolbar {
+  display: flex;
+  margin-bottom: 10px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.oakved-tree-panel__toolbar > span {
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--furniture-admin-body);
+}
+
+.oakved-tree-empty {
+  display: flex;
+  min-height: 68px;
+  padding: 14px;
+  font-size: 11px;
+  color: var(--furniture-admin-muted);
+  background: #fff;
+  border: 1px dashed var(--furniture-admin-border);
+  border-radius: 6px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.oakved-node-list {
+  display: grid;
+  gap: 8px;
+}
+
+.oakved-node {
+  padding: 10px;
+  background: #fff;
+  border: 1px solid var(--furniture-admin-border);
+  border-radius: 6px;
+}
+
+.oakved-node__main {
+  display: grid;
+  grid-template-columns: 28px 28px minmax(0, 1fr) 108px;
+  align-items: center;
+  gap: 8px;
+}
+
+.oakved-node__handle {
+  display: grid;
+  grid-column: 1;
+  grid-row: 1;
+  width: 28px;
+  height: 32px;
+  padding: 0;
+  font-size: 16px;
+  color: var(--furniture-admin-muted);
+  cursor: grab;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  place-items: center;
+}
+
+.oakved-node__handle:hover,
+.oakved-node__handle:focus-visible {
+  color: var(--furniture-admin-primary);
+  background: var(--furniture-admin-primary-soft, #edf5ff);
+  outline: none;
+}
+
+.oakved-node__main > .navigation-row__order {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.oakved-node__name {
+  min-width: 0;
+  grid-column: 3;
+  grid-row: 1;
+}
+
+.oakved-node__name small {
+  display: block;
+  margin-top: 4px;
+  overflow: hidden;
+  font-size: 10px;
+  color: var(--furniture-admin-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.oakved-node__visibility {
+  display: flex;
+  grid-column: 4;
+  grid-row: 1;
+  justify-content: flex-end;
+}
+
+.oakved-node__type {
+  grid-column: 3;
+  grid-row: 2;
+}
+
+.oakved-node__open {
+  grid-column: 4;
+  grid-row: 2;
+}
+
+.oakved-node__target,
+.oakved-node__directory-label {
+  grid-column: 3 / -1;
+  grid-row: 3;
+}
+
+.oakved-node__directory-label {
+  display: flex;
+  min-height: 32px;
+  padding: 0 10px;
+  font-size: 11px;
+  color: var(--furniture-admin-muted);
+  background: var(--furniture-admin-panel-soft);
+  border: 1px dashed var(--furniture-admin-border);
+  border-radius: 4px;
+  align-items: center;
+}
+
+.oakved-node__actions {
+  display: flex;
+  grid-column: 3 / -1;
+  grid-row: 4;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.oakved-node-list--third {
+  padding: 10px 0 0 28px;
+  margin-top: 10px;
+  border-top: 1px solid var(--furniture-admin-border);
+}
+
+.oakved-node--third {
+  background: var(--furniture-admin-panel-soft);
+  border-left: 3px solid
+    color-mix(in srgb, var(--furniture-admin-primary) 36%, var(--furniture-admin-border));
+}
+
 .preview-browser {
   overflow: hidden;
   background: #111;
@@ -1270,7 +1984,8 @@ onActivated(() => {
   }
 
   .navigation-row,
-  .navigation-row--category {
+  .navigation-row--category,
+  .navigation-row--styled {
     grid-template-columns: 24px 24px minmax(0, 1fr) auto;
   }
 
@@ -1278,6 +1993,19 @@ onActivated(() => {
   .navigation-row--category > .navigation-row__visibility {
     grid-column: 3 / -1;
     justify-self: start;
+  }
+
+  .navigation-row--styled > .navigation-row__visibility {
+    grid-column: 3 / -1;
+    justify-self: start;
+  }
+
+  .oakved-node__main {
+    grid-template-columns: 24px 24px minmax(0, 1fr) 96px;
+  }
+
+  .oakved-node-list--third {
+    padding-left: 14px;
   }
 }
 </style>

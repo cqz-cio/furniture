@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import {
+  getWebsiteNavigationTenantId,
+  loadWebsiteNavigationPublished,
   loadWebsiteNavigationPreview,
   parseWebsiteNavigationPreviewHash,
 } from "../src/services/yudaoNavigationApi.js";
@@ -74,6 +76,37 @@ describe("website navigation preview", () => {
     );
   });
 
+  it("loads the published navigation for the real storefront and keeps tenant isolation", async () => {
+    const navigation = {
+      siteId: 1,
+      locale: "en",
+      navigationTemplate: "OAKVED_B2C",
+      items: [{ key: "OAKVED_NEW", label: "NEW", href: "/products?tag=new", children: [] }],
+    };
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ code: 0, data: navigation }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(loadWebsiteNavigationPublished({ tenantId: "121" })).resolves.toEqual(navigation);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringMatching(/\/seo\/navigation\/public\?siteId=1&locale=en$/),
+      expect.objectContaining({
+        method: "GET",
+        headers: expect.objectContaining({ "tenant-id": "121" }),
+      }),
+    );
+  });
+
+  it("resolves the published-navigation tenant from site runtime configuration", () => {
+    vi.stubGlobal("__OAKVED_SITE_CONFIG__", { tenantId: "162" });
+
+    expect(getWebsiteNavigationTenantId()).toBe("162");
+  });
+
   it("wires the preview result into the real shared header", () => {
     const appSource = readFileSync(new URL("../src/App.vue", import.meta.url), "utf8");
     const headerSource = readFileSync(
@@ -86,9 +119,14 @@ describe("website navigation preview", () => {
     );
 
     expect(appSource).toContain('"navigation-preview": "/preview/navigation"');
-    expect(appSource).toContain(":navigation-items=\"navigationPreviewItems\"");
-    expect(headerSource).toContain("if (props.navigationPreview) return props.navigationItems;");
+    expect(appSource).toContain(":navigation-items=\"managedNavigationItems\"");
+    expect(appSource).toContain(":managed-navigation=\"hasManagedNavigation\"");
+    expect(appSource).toContain("void loadPublishedNavigation()");
+    expect(appSource).toContain("await loadWebsiteNavigationPublished()");
+    expect(headerSource).toContain("if (props.managedNavigation) return props.navigationItems;");
     expect(headerSource).toContain("item?.children?.length");
+    expect(headerSource).toContain("activeMegaChildren");
+    expect(headerSource).toContain("mobile-nav-grandchildren");
     expect(appSource).toContain('normalizedPath.startsWith("/products/category/")');
     expect(appSource).toContain(':tenant-id="navigationPreviewTenantId"');
     expect(productListSource).toContain(

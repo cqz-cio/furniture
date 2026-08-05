@@ -115,6 +115,39 @@ class WebsiteNavigationServiceImplTest {
     }
 
     @Test
+    void getPublished_shouldReturnOakvedThreeLevelTreeAndSaleStyle() {
+        WebsiteNavigationRevisionDO revision = revision(12L, "PUBLISHED", 4);
+        when(revisionMapper.selectActive(1L, "en", "PUBLISHED")).thenReturn(revision);
+        when(siteConfigService.getSiteConfig(1L)).thenReturn(new SeoSiteConfigDO()
+                .setSiteId(1L)
+                .setNavigationTemplate("OAKVED_B2C"));
+        when(itemMapper.selectListByRevisionId(12L)).thenReturn(List.of(
+                oakvedItem(12L, "OAKVED_NEW", "", "FILTER", "FILTER_NEW", "NEW", 10, "DEFAULT"),
+                oakvedItem(12L, "OAKVED_COLLECTIONS", "", "FILTER", "FILTER_COLLECTIONS_ALL", "SHOP BY COLLECTIONS", 20, "DEFAULT"),
+                oakvedItem(12L, "OAKVED_BEDROOM", "", "FILTER", "FILTER_ROOM_BEDROOM", "BEDROOM", 30, "DEFAULT"),
+                oakvedItem(12L, "OAKVED_LIVING", "", "FILTER", "FILTER_ROOM_LIVING", "LIVING", 40, "DEFAULT"),
+                oakvedItem(12L, "OAKVED_DINING", "", "FILTER", "FILTER_ROOM_DINING", "DINING", 50, "DEFAULT"),
+                oakvedItem(12L, "OAKVED_BESPOKE", "", "FILTER", "FILTER_COLLECTION_BESPOKE", "BESPOKE", 60, "DEFAULT"),
+                oakvedItem(12L, "OAKVED_DECOR", "", "FILTER", "FILTER_CATEGORY_DECOR", "DECOR", 70, "DEFAULT"),
+                oakvedItem(12L, "OAKVED_SALE", "", "ROUTE", "ROUTE_SALE", "SALE", 80, "SALE"),
+                oakvedItem(12L, "OAKVED_LIVING_SEATING", "OAKVED_LIVING", "DIRECTORY", null,
+                        "Seating", 10, "DEFAULT"),
+                oakvedItem(12L, "CUSTOM_SECTIONALS", "OAKVED_LIVING_SEATING", "FILTER",
+                        "FILTER_CATEGORY_SOFA", "Sectionals", 10, "DEFAULT")));
+        when(productCategoryApi.getNavigationCategoryList()).thenReturn(CommonResult.success(List.of()));
+
+        AppWebsiteNavigationRespVO response = service.getPublished(1L, "en");
+
+        assertThat(response.getNavigationTemplate()).isEqualTo("OAKVED_B2C");
+        assertThat(response.getItems()).hasSize(8);
+        assertThat(response.getItems().get(3).getChildren()).hasSize(1);
+        assertThat(response.getItems().get(3).getChildren().get(0).getChildren()).hasSize(1);
+        assertThat(response.getItems().get(3).getChildren().get(0).getChildren().get(0).getHref())
+                .isEqualTo("/products?category=sofa");
+        assertThat(response.getItems().get(7).getStyleVariant()).isEqualTo("SALE");
+    }
+
+    @Test
     void createPreviewTicket_shouldUseFragmentAndBindStoredGrant() {
         WebsiteNavigationRevisionDO draft = revision(10L, "DRAFT", 5);
         when(revisionMapper.selectByIdForTenant(10L)).thenReturn(draft);
@@ -231,6 +264,7 @@ class WebsiteNavigationServiceImplTest {
         return new WebsiteNavigationItemDO()
                 .setRevisionId(revisionId)
                 .setItemKey(itemKey)
+                .setParentItemKey("")
                 .setItemType("PAGE")
                 .setPageKey(pageKey)
                 .setLabel(label)
@@ -243,11 +277,28 @@ class WebsiteNavigationServiceImplTest {
         return new WebsiteNavigationItemDO()
                 .setRevisionId(revisionId)
                 .setItemKey("CATEGORY_" + categoryId)
+                .setParentItemKey(WebsiteNavigationPageKeyEnum.PRODUCTS.itemKey())
                 .setItemType("CATEGORY")
                 .setCategoryId(categoryId)
                 .setLabel(label)
                 .setSort(sort)
                 .setVisible(true);
+    }
+
+    private static WebsiteNavigationItemDO oakvedItem(
+            Long revisionId, String itemKey, String parentItemKey, String itemType,
+            String targetKey, String label, Integer sort, String styleVariant) {
+        return new WebsiteNavigationItemDO()
+                .setRevisionId(revisionId)
+                .setItemKey(itemKey)
+                .setParentItemKey(parentItemKey)
+                .setItemType(itemType)
+                .setTargetKey(targetKey)
+                .setLabel(label)
+                .setSort(sort)
+                .setVisible(true)
+                .setOpenMode("_self")
+                .setStyleVariant(styleVariant);
     }
 
     private static ProductCategoryNavigationRespDTO category(Long id, String name, Long count) {

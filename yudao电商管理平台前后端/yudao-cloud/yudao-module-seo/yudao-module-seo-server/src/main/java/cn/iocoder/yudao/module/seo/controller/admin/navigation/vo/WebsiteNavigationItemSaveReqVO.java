@@ -10,7 +10,15 @@ import lombok.Data;
 @Data
 public class WebsiteNavigationItemSaveReqVO {
 
-    @Schema(description = "类型：PAGE 或 CATEGORY", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "稳定节点标识；PAGE/CATEGORY 兼容旧客户端时可由服务端生成")
+    @Size(max = 64)
+    private String itemKey;
+
+    @Schema(description = "父节点稳定标识；空字符串代表一级导航")
+    @Size(max = 64)
+    private String parentItemKey;
+
+    @Schema(description = "类型：PAGE、CATEGORY、DIRECTORY、ROUTE 或 FILTER", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotBlank
     private String itemType;
 
@@ -19,6 +27,10 @@ public class WebsiteNavigationItemSaveReqVO {
 
     @Schema(description = "商品分类编号")
     private Long categoryId;
+
+    @Schema(description = "安全目标标识，由服务端映射真实前台地址")
+    @Size(max = 64)
+    private String targetKey;
 
     @Schema(description = "前台显示名称；商品分类名称由商品中心同步")
     @Size(max = 64)
@@ -31,5 +43,13 @@ public class WebsiteNavigationItemSaveReqVO {
     @Schema(description = "是否在官网显示", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotNull
     private Boolean visible;
+
+    @Schema(description = "打开方式：_self 或 _blank")
+    @Size(max = 16)
+    private String openMode;
+
+    @Schema(description = "视觉样式：DEFAULT 或 SALE")
+    @Size(max = 32)
+    private String styleVariant;
 
 }

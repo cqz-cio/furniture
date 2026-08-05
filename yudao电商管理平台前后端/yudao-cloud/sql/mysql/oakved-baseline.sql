@@ -11921,6 +11921,32 @@ WHERE EXISTS (
 
 DROP TEMPORARY TABLE `product_information_fields_guard`;
 
+-- BEGIN V043__oakved_b2c_navigation_tree.sql
+-- Extend the shared website-navigation engine for the Oakved B2C header.
+-- The selected renderer remains a site-level setting; business_mode alone is intentionally not used.
+
+ALTER TABLE `seo_site_config`
+  ADD COLUMN `navigation_template` varchar(32) NOT NULL DEFAULT 'VANZ_B2B'
+    COMMENT '导航模板：VANZ_B2B/OAKVED_B2C'
+    AFTER `default_locale`;
+
+ALTER TABLE `website_navigation_item`
+  ADD COLUMN `target_key` varchar(64) DEFAULT NULL
+    COMMENT '服务端安全路由/筛选目标标识'
+    AFTER `page_key`,
+  ADD COLUMN `style_variant` varchar(32) NOT NULL DEFAULT 'DEFAULT'
+    COMMENT '导航视觉样式：DEFAULT/SALE'
+    AFTER `open_mode`;
+
+-- Bootstrap the existing Oakved site without coupling the application frontend to a numeric tenant id.
+UPDATE `seo_site_config` config
+JOIN `system_tenant` tenant
+  ON tenant.`id` = config.`tenant_id` AND tenant.`deleted` = b'0'
+SET config.`navigation_template` = 'OAKVED_B2C'
+WHERE LOWER(COALESCE(tenant.`code`, '')) = 'oakved'
+   OR LOWER(config.`site_name`) LIKE '%oakved%'
+   OR LOWER(config.`site_url`) LIKE '%oakved%';
+
 -- BEGIN Oakved demo catalog
 -- Oakved demo catalog: tenant 121, 26 mall products, ERP products, stock and mappings.
 SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -12142,4 +12168,5 @@ INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256)
 INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('040','grant navigation to vanz operator','V040__grant_navigation_to_vanz_operator.sql','c8dfc30734258cd2cd1cca1c9370461ee892f4b98f0b482f5943dfd36d7840d9') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
 INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('041','vanz inquiry operations','V041__vanz_inquiry_operations.sql','c08bf4008b257c01c26705a0f5ffbfc3b334555e5020854540a51f0540a787c4') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
 INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('042','product information fields','V042__product_information_fields.sql','7b3a133c61b7558ff25aee9489370254ede553c755026b0042b060ecf729a40e') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
+INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('043','oakved b2c navigation tree','V043__oakved_b2c_navigation_tree.sql','c916ab1dbd9333d1588874696951cb25090530bd6c38c081a9ac14e5ac39b550') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
 SET FOREIGN_KEY_CHECKS = 1;

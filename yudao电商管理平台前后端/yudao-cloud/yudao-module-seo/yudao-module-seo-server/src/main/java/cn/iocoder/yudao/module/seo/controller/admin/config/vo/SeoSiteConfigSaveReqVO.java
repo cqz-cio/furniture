@@ -44,4 +44,8 @@ public class SeoSiteConfigSaveReqVO {
     @Size(max = 32)
     private String defaultLocale;
 
+    @Schema(description = "导航模板：VANZ_B2B 或 OAKVED_B2C")
+    @Size(max = 32)
+    private String navigationTemplate;
+
 }

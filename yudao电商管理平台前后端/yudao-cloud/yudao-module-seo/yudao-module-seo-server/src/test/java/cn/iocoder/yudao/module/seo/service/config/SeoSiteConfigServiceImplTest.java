@@ -32,6 +32,7 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import static cn.iocoder.yudao.module.seo.enums.ErrorCodeConstants.SITE_CONFIG_NOT_EXISTS;
+import static cn.iocoder.yudao.module.seo.enums.ErrorCodeConstants.SITE_CONFIG_NAVIGATION_TEMPLATE_INVALID;
 import static cn.iocoder.yudao.module.seo.enums.ErrorCodeConstants.SITE_CONFIG_URL_INVALID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -85,6 +86,7 @@ class SeoSiteConfigServiceImplTest extends BaseDbUnitTest {
         assertThat(saved.getDefaultTitleSuffix()).isEmpty();
         assertThat(saved.getDefaultDescription()).isEmpty();
         assertThat(saved.getDefaultOgImage()).isEmpty();
+        assertThat(saved.getNavigationTemplate()).isEqualTo("VANZ_B2B");
         assertThat(saved.getTenantId()).isEqualTo(TENANT_ONE);
     }
 
@@ -96,6 +98,7 @@ class SeoSiteConfigServiceImplTest extends BaseDbUnitTest {
         SeoSiteConfigSaveReqVO update = newRequest(20L, "https://NEW.example.com:8443/base/./catalog/../");
         update.setSiteName("Updated Store");
         update.setDefaultLocale("en-US");
+        update.setNavigationTemplate("OAKVED_B2C");
         siteConfigService.saveSiteConfig(update);
 
         SeoSiteConfigDO after = siteConfigMapper.selectBySiteId(20L);
@@ -103,7 +106,20 @@ class SeoSiteConfigServiceImplTest extends BaseDbUnitTest {
         assertThat(after.getSiteName()).isEqualTo("Updated Store");
         assertThat(after.getSiteUrl()).isEqualTo("https://new.example.com:8443/base");
         assertThat(after.getDefaultLocale()).isEqualTo("en-US");
+        assertThat(after.getNavigationTemplate()).isEqualTo("OAKVED_B2C");
         assertThat(siteConfigMapper.selectCount()).isOne();
+    }
+
+    @Test
+    void saveSiteConfig_shouldRejectUnknownNavigationTemplate() {
+        SeoSiteConfigSaveReqVO reqVO = newRequest(23L, "https://shop.example.com");
+        reqVO.setNavigationTemplate("B2C");
+
+        assertThatThrownBy(() -> siteConfigService.saveSiteConfig(reqVO))
+                .isInstanceOf(ServiceException.class)
+                .extracting("code")
+                .isEqualTo(SITE_CONFIG_NAVIGATION_TEMPLATE_INVALID.getCode());
+        assertThat(siteConfigMapper.selectCount()).isZero();
     }
 
     @Test
