@@ -39,8 +39,8 @@ import static cn.iocoder.yudao.module.system.dal.dataobject.permission.MenuDO.ID
 @Slf4j
 public class FurnitureNavigationPermissionServiceImpl implements FurnitureNavigationPermissionService {
 
-    private static final List<String> BUSINESS_NAVIGATION_ROOTS = List.of(
-            "/mall", "/member", "/pay", "/crm", "/seo", "/dashboard", "/ai");
+    private static final List<String> MANAGED_NAVIGATION_ROOTS = List.of(
+            "/mall", "/member", "/pay", "/crm", "/seo", "/dashboard", "/ai", "/infra", "/system");
 
     @Resource
     private FurnitureNavigationProperties properties;
@@ -73,7 +73,7 @@ public class FurnitureNavigationPermissionServiceImpl implements FurnitureNaviga
         if (defaultDesiredMenuIds.isEmpty()) {
             throw new IllegalStateException("家具导航目录没有匹配到任何可用系统菜单，拒绝清空租户套餐权限");
         }
-        Set<Long> managedBusinessMenuIds = resolveManagedBusinessMenuIds(menus);
+        Set<Long> managedNavigationMenuIds = resolveManagedNavigationMenuIds(menus);
 
         Map<Long, List<TenantDO>> tenantsByPackageId = new HashMap<>();
         for (TenantDO tenant : targetTenants) {
@@ -107,9 +107,8 @@ public class FurnitureNavigationPermissionServiceImpl implements FurnitureNaviga
             }
 
             Set<Long> synchronizedMenuIds = new HashSet<>(CollUtil.emptyIfNull(tenantPackage.getMenuIds()));
-            if (TenantBusinessModeEnum.B2B.getCode().equals(businessMode)) {
-                synchronizedMenuIds.removeAll(managedBusinessMenuIds);
-            }
+            // 对 B2C、B2B 都先清理受控导航，再写入各自目录，避免历史套餐残留 CRM、系统配置等越权入口。
+            synchronizedMenuIds.removeAll(managedNavigationMenuIds);
             synchronizedMenuIds.addAll(desiredMenuIds);
             synchronizedMenuIds = sortedSet(synchronizedMenuIds);
             if (!Objects.equals(tenantPackage.getMenuIds(), synchronizedMenuIds)) {
@@ -121,7 +120,7 @@ public class FurnitureNavigationPermissionServiceImpl implements FurnitureNaviga
             for (TenantDO tenant : entry.getValue()) {
                 tenantService.updateTenantRoleMenu(tenant.getId(), synchronizedMenuIds);
             }
-            log.info("[syncMenuPermissions][套餐({}) 已补齐 {} 个家具导航菜单，套餐菜单总数 {}，租户数 {}]",
+            log.info("[syncMenuPermissions][套餐({}) 已同步 {} 个家具导航菜单，套餐菜单总数 {}，租户数 {}]",
                     packageId, desiredMenuIds.size(), synchronizedMenuIds.size(), entry.getValue().size());
         }
     }
@@ -188,7 +187,7 @@ public class FurnitureNavigationPermissionServiceImpl implements FurnitureNaviga
         return desiredMenuIds;
     }
 
-    private Set<Long> resolveManagedBusinessMenuIds(List<MenuDO> menus) {
+    private Set<Long> resolveManagedNavigationMenuIds(List<MenuDO> menus) {
         Map<Long, MenuDO> menuMap = new HashMap<>();
         for (MenuDO menu : menus) {
             menuMap.put(menu.getId(), menu);
@@ -202,7 +201,7 @@ public class FurnitureNavigationPermissionServiceImpl implements FurnitureNaviga
                 continue;
             }
             String fullPath = resolveFullPath(menu, menuMap, pathCache, new HashSet<>());
-            if (fullPath != null && isBusinessNavigationPath(fullPath)) {
+            if (fullPath != null && isManagedNavigationPath(fullPath)) {
                 managedRouteIds.add(menu.getId());
             }
         }
@@ -216,8 +215,8 @@ public class FurnitureNavigationPermissionServiceImpl implements FurnitureNaviga
         return managedMenuIds;
     }
 
-    private static boolean isBusinessNavigationPath(String path) {
-        return BUSINESS_NAVIGATION_ROOTS.stream()
+    private static boolean isManagedNavigationPath(String path) {
+        return MANAGED_NAVIGATION_ROOTS.stream()
                 .anyMatch(root -> path.equals(root) || path.startsWith(root + "/"));
     }
 

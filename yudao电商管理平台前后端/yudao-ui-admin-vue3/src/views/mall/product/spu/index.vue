@@ -450,6 +450,15 @@ const queryParams = ref({
   categoryId: undefined as any,
   createTime: undefined
 }) // 查询参数
+
+const resolveRouteTabType = (value: unknown): number => {
+  const rawValue = Array.isArray(value) ? value[0] : value
+  if (rawValue === undefined || rawValue === null || rawValue === '') {
+    return 0
+  }
+  const tabType = Number(rawValue)
+  return Number.isInteger(tabType) && tabType >= 0 && tabType <= 4 ? tabType : 0
+}
 const hasActiveFilters = computed(
   () =>
     Boolean(queryParams.value.name) ||
@@ -756,6 +765,7 @@ onActivated(() => {
 
 const initializePage = async () => {
   pageInitialized.value = false
+  queryParams.value.tabType = resolveRouteTabType(route.query.tabType)
   // 解析路由的 categoryId
   if (route.query.categoryId) {
     queryParams.value.categoryId = route.query.categoryId
@@ -774,6 +784,19 @@ const initializePage = async () => {
 
 /** 初始化 **/
 onMounted(initializePage)
+
+watch(
+  () => route.query.tabType,
+  async (tabType) => {
+    const nextTabType = resolveRouteTabType(tabType)
+    if (!pageInitialized.value || nextTabType === Number(queryParams.value.tabType)) {
+      return
+    }
+    queryParams.value.tabType = nextTabType
+    queryParams.value.pageNo = 1
+    await getList()
+  }
+)
 </script>
 <style lang="scss" scoped>
 .product-status-bar {

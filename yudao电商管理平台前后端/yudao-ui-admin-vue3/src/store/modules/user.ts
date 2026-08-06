@@ -84,10 +84,16 @@ export const useUserStore = defineStore('admin-user', {
       wsCache.set(CACHE_KEY.USER, userInfo)
     },
     async loginOut() {
-      await loginOut()
-      removeToken()
-      deleteUserCache() // 删除用户缓存
-      this.resetState()
+      try {
+        await loginOut()
+      } catch {
+        // 旧环境或错误租户签发的令牌可能被后端拒绝；本地会话仍必须可清理，
+        // 否则会一直复用旧菜单和旧租户上下文，无法重新登录到正确租户。
+      } finally {
+        removeToken()
+        deleteUserCache() // 删除用户缓存
+        this.resetState()
+      }
     },
     resetState() {
       this.permissions = new Set<string>()

@@ -5,6 +5,7 @@
   "/seo/metadata",
   "/seo/site-config",
   "/seo/navigation",
+  "/seo/analysis",
   "/crm",
   "/crm/clue",
   "/crm/customer",
@@ -15,15 +16,5 @@
   "/mall/product/brand",
   "/mall/product/property",
   "/mall/product/comment",
-  "/infra/file",
-  "/infra/file-config",
-  "/infra/file/file-config",
-  "/system/user",
-  "/system/role",
-  "/system/menu",
-  "/system/tenant",
-  "/system/tenant/list",
-  "/system/messages/mail/mail-account",
-  "/system/messages/mail/mail-template",
-  "/system/messages/mail/mail-log"
+  "/infra/file"
 ]

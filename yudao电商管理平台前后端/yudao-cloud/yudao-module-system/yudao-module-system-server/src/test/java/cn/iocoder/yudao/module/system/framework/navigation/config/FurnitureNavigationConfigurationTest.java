@@ -11,13 +11,24 @@ import static org.assertj.core.api.Assertions.assertThat;
 class FurnitureNavigationConfigurationTest {
 
     @Test
-    void shouldRegisterWebsiteNavigationInFullAndB2bCatalogs() throws IOException {
+    void shouldKeepPlatformAdminFullAndSeparateB2cFromB2bCatalogs() throws IOException {
         FurnitureNavigationCatalog catalog = new FurnitureNavigationConfiguration()
                 .furnitureNavigationCatalog(new ObjectMapper());
 
-        assertThat(catalog.getMenuPaths()).contains("/seo/navigation");
+        assertThat(catalog.getMenuPaths())
+                .contains("/system/role", "/ai/chat", "/crm/clue", "/member/user", "/seo/navigation");
+
+        assertThat(catalog.getMenuPaths(TenantBusinessModeEnum.B2C.getCode()))
+                .contains("/mall/trade/order", "/mall/trade/after-sale", "/member/user",
+                        "/pay/order", "/pay/refund", "/infra/file", "/seo/navigation", "/seo/analysis")
+                .doesNotContain("/crm", "/crm/clue", "/member/trade-application", "/pay/app",
+                        "/ai", "/system/role", "/infra/file-config");
+
         assertThat(catalog.getMenuPaths(TenantBusinessModeEnum.B2B.getCode()))
-                .contains("/seo/navigation");
+                .contains("/crm/clue", "/crm/customer", "/crm/contact", "/mall/product/spu",
+                        "/infra/file", "/seo/navigation", "/seo/analysis")
+                .doesNotContain("/mall/trade/order", "/member/user", "/pay/order", "/ai",
+                        "/system/role", "/infra/file-config");
     }
 
 }

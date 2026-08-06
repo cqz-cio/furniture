@@ -134,6 +134,54 @@ class FurnitureNavigationPermissionServiceImplTest extends BaseDbUnitTest {
     }
 
     @Test
+    void syncMenuPermissions_b2cRemovesInquiryAndTechnicalModulesButKeepsOperations() {
+        Set<String> fullCatalog = Set.of(
+                "/mall/trade/order", "/crm/clue", "/system/role", "/pay/app", "/pay/order",
+                "/infra/file-config", "/infra/file");
+        when(catalog.getMenuPaths()).thenReturn(fullCatalog);
+        when(catalog.getMenuPaths(TenantBusinessModeEnum.B2C.getCode()))
+                .thenReturn(Set.of("/mall/trade/order", "/pay/order", "/infra/file"));
+        insertTargetPackageAndTenant(TenantBusinessModeEnum.B2C.getCode());
+        tenantPackageMapper.updateById(new TenantPackageDO()
+                .setId(TARGET_PACKAGE_ID)
+                .setMenuIds(Set.of(
+                        1L, 2L, 3L, 4L,
+                        10L, 11L, 12L,
+                        20L, 21L, 22L,
+                        30L, 31L, 32L, 33L, 34L,
+                        40L, 41L, 42L, 43L, 44L,
+                        999L)));
+
+        menuMapper.insert(buildMenu(1L, 0L, "/mall", MenuTypeEnum.DIR));
+        menuMapper.insert(buildMenu(2L, 1L, "trade", MenuTypeEnum.DIR));
+        menuMapper.insert(buildMenu(3L, 2L, "order", MenuTypeEnum.MENU));
+        menuMapper.insert(buildMenu(4L, 3L, "", MenuTypeEnum.BUTTON));
+        menuMapper.insert(buildMenu(10L, 0L, "/crm", MenuTypeEnum.DIR));
+        menuMapper.insert(buildMenu(11L, 10L, "clue", MenuTypeEnum.MENU));
+        menuMapper.insert(buildMenu(12L, 11L, "", MenuTypeEnum.BUTTON));
+        menuMapper.insert(buildMenu(20L, 0L, "/system", MenuTypeEnum.DIR));
+        menuMapper.insert(buildMenu(21L, 20L, "role", MenuTypeEnum.MENU));
+        menuMapper.insert(buildMenu(22L, 21L, "", MenuTypeEnum.BUTTON));
+        menuMapper.insert(buildMenu(30L, 0L, "/pay", MenuTypeEnum.DIR));
+        menuMapper.insert(buildMenu(31L, 30L, "app", MenuTypeEnum.MENU));
+        menuMapper.insert(buildMenu(32L, 31L, "", MenuTypeEnum.BUTTON));
+        menuMapper.insert(buildMenu(33L, 30L, "order", MenuTypeEnum.MENU));
+        menuMapper.insert(buildMenu(34L, 33L, "", MenuTypeEnum.BUTTON));
+        menuMapper.insert(buildMenu(40L, 0L, "/infra", MenuTypeEnum.DIR));
+        menuMapper.insert(buildMenu(41L, 40L, "file-config", MenuTypeEnum.MENU));
+        menuMapper.insert(buildMenu(42L, 41L, "", MenuTypeEnum.BUTTON));
+        menuMapper.insert(buildMenu(43L, 40L, "file", MenuTypeEnum.MENU));
+        menuMapper.insert(buildMenu(44L, 43L, "", MenuTypeEnum.BUTTON));
+
+        navigationPermissionService.syncMenuPermissions();
+
+        Set<Long> expected = new LinkedHashSet<>(Set.of(
+                1L, 2L, 3L, 4L, 30L, 33L, 34L, 40L, 43L, 44L, 999L));
+        assertEquals(expected, tenantPackageMapper.selectById(TARGET_PACKAGE_ID).getMenuIds());
+        verify(tenantService).updateTenantRoleMenu(TARGET_TENANT_ID, expected);
+    }
+
+    @Test
     void syncMenuPermissions_b2bRejectsEmptyMatchedCatalogBeforePruning() {
         when(catalog.getMenuPaths(TenantBusinessModeEnum.B2B.getCode())).thenReturn(Set.of());
         insertTargetPackageAndTenant(TenantBusinessModeEnum.B2B.getCode());

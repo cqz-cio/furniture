@@ -33,6 +33,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 import static cn.iocoder.yudao.framework.common.util.collection.SetUtils.asSet;
 import static cn.iocoder.yudao.framework.common.util.date.LocalDateTimeUtils.buildBetweenTime;
@@ -202,6 +203,54 @@ public class TenantServiceImplTest extends BaseDbUnitTest {
     }
 
     @Test
+    public void testUpdateTenantRoleMenu_refreshesMallOperatorTemplateFromPackage() {
+        Long tenantId = 162L;
+        RoleDO tenantAdmin = randomPojo(RoleDO.class, role -> {
+            role.setId(100L);
+            role.setTenantId(tenantId);
+            role.setCode(RoleCodeEnum.TENANT_ADMIN.getCode());
+        });
+        RoleDO mallOperator = randomPojo(RoleDO.class, role -> {
+            role.setId(101L);
+            role.setTenantId(tenantId);
+            role.setCode(RoleCodeEnum.MALL_OPERATOR.getCode());
+        });
+        RoleDO customRole = randomPojo(RoleDO.class, role -> {
+            role.setId(102L);
+            role.setTenantId(tenantId);
+            role.setCode("custom_operator");
+        });
+        when(roleService.getRoleList()).thenReturn(asList(tenantAdmin, mallOperator, customRole));
+
+        MenuDO mallRoot = new MenuDO().setId(10L).setParentId(MenuDO.ID_ROOT)
+                .setStatus(CommonStatusEnum.ENABLE.getStatus());
+        MenuDO productMenu = new MenuDO().setId(11L).setParentId(10L)
+                .setPermission("product:spu:query")
+                .setStatus(CommonStatusEnum.ENABLE.getStatus());
+        MenuDO payRoot = new MenuDO().setId(20L).setParentId(MenuDO.ID_ROOT)
+                .setStatus(CommonStatusEnum.ENABLE.getStatus());
+        MenuDO payOrderMenu = new MenuDO().setId(21L).setParentId(20L)
+                .setPermission("pay:order:query")
+                .setStatus(CommonStatusEnum.ENABLE.getStatus());
+        MenuDO systemRoot = new MenuDO().setId(30L).setParentId(MenuDO.ID_ROOT)
+                .setStatus(CommonStatusEnum.ENABLE.getStatus());
+        MenuDO systemRoleMenu = new MenuDO().setId(31L).setParentId(30L)
+                .setPermission("system:role:query")
+                .setStatus(CommonStatusEnum.ENABLE.getStatus());
+        Set<Long> packageMenuIds = asSet(10L, 11L, 20L, 21L, 30L, 31L);
+        when(menuService.getMenuList(packageMenuIds))
+                .thenReturn(asList(mallRoot, productMenu, payRoot, payOrderMenu, systemRoot, systemRoleMenu));
+        when(permissionService.getRoleMenuListByRoleId(102L)).thenReturn(asSet(11L, 31L, 999L));
+
+        tenantService.updateTenantRoleMenu(tenantId, packageMenuIds);
+
+        verify(permissionService).assignRoleMenu(100L, packageMenuIds);
+        verify(permissionService).assignRoleMenu(101L, asSet(10L, 11L, 20L, 21L));
+        verify(permissionService).assignRoleMenu(102L, asSet(11L, 31L));
+        verify(permissionService, never()).getRoleMenuListByRoleId(101L);
+    }
+
+    @Test
     public void testUpdateTenant_success() {
         // mock 数据
         TenantDO dbTenant = randomPojo(TenantDO.class, o -> o
@@ -225,7 +274,10 @@ public class TenantServiceImplTest extends BaseDbUnitTest {
         // mock 所有角色
         RoleDO role100 = randomPojo(RoleDO.class, o -> o.setId(100L).setCode(RoleCodeEnum.TENANT_ADMIN.getCode()));
         role100.setTenantId(dbTenant.getId());
-        RoleDO role101 = randomPojo(RoleDO.class, o -> o.setId(101L));
+        RoleDO role101 = randomPojo(RoleDO.class, o -> {
+            o.setId(101L);
+            o.setCode("custom_operator");
+        });
         role101.setTenantId(dbTenant.getId());
         when(roleService.getRoleList()).thenReturn(asList(role100, role101));
         // mock 每个角色的权限

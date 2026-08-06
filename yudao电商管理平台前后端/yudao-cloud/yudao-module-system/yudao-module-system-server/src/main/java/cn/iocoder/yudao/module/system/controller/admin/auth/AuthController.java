@@ -136,7 +136,10 @@ public class AuthController {
             return furnitureNavigationCatalog.getMenuPaths();
         }
         TenantDO tenant = tenantService.getTenant(tenantId);
-        return furnitureNavigationCatalog.getMenuPaths(tenant != null ? tenant.getBusinessMode() : null);
+        if (tenant == null || TenantDO.PACKAGE_ID_SYSTEM.equals(tenant.getPackageId())) {
+            return furnitureNavigationCatalog.getMenuPaths();
+        }
+        return furnitureNavigationCatalog.getMenuPaths(tenant.getBusinessMode());
     }
 
     @PostMapping("/register")

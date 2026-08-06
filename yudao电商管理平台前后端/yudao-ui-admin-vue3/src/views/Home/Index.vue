@@ -138,7 +138,12 @@ const metrics = [
   { label: '今日订单', value: '128', hint: '较昨日 +12%', path: '/mall/trade/order' },
   { label: '待发货', value: '34', hint: '优先核对大件物流', path: '/mall/trade/order' },
   { label: '售后待处理', value: '7', hint: '含 2 单高优先级', path: '/mall/trade/after-sale' },
-  { label: '低库存', value: '18', hint: '软装与灯具补货', path: '/mall/product/spu' }
+  {
+    label: '低库存',
+    value: '18',
+    hint: '软装与灯具补货',
+    path: '/mall/product/spu?tabType=3'
+  }
 ]
 
 const queues: Array<{
@@ -210,10 +215,10 @@ const actions = [
     path: '/infra/file'
   },
   {
-    title: '角色权限',
-    description: '运营、客服、仓配分权',
-    icon: 'ep:lock',
-    path: '/system/role'
+    title: '售后管理',
+    description: '退换货、补发与安装反馈',
+    icon: 'ep:service',
+    path: '/mall/trade/after-sale'
   }
 ]
 

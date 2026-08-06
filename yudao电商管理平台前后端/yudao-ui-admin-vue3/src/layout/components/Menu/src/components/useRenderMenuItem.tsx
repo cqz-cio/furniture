@@ -16,6 +16,7 @@ export const useRenderMenuItem = () =>
           const meta = v.meta ?? {}
           const { oneShowingChild, onlyOneChild } = hasOneShowingChild(v.children, v)
           const fullPath = isUrl(v.path) ? v.path : pathResolve(parentPath, v.path) // getAllParentPath<AppRouteRecordRaw>(allRouters, v.path).join('/')
+          const menuPath = typeof meta.menuPath === 'string' ? meta.menuPath : fullPath
 
           if (
             oneShowingChild &&
@@ -24,7 +25,13 @@ export const useRenderMenuItem = () =>
           ) {
             return (
               <ElMenuItem
-                index={onlyOneChild ? pathResolve(fullPath, onlyOneChild.path) : fullPath}
+                index={
+                  onlyOneChild
+                    ? typeof onlyOneChild.meta?.menuPath === 'string'
+                      ? onlyOneChild.meta.menuPath
+                      : pathResolve(fullPath, onlyOneChild.path)
+                    : menuPath
+                }
               >
                 {{
                   default: () => renderMenuTitle(onlyOneChild ? onlyOneChild?.meta : meta)
@@ -33,7 +40,7 @@ export const useRenderMenuItem = () =>
             )
           } else {
             return (
-              <ElSubMenu index={fullPath}>
+              <ElSubMenu index={menuPath}>
                 {{
                   title: () => renderMenuTitle(meta),
                   default: () => renderMenuItem(v.children!, fullPath)

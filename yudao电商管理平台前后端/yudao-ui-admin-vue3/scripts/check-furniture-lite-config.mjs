@@ -19,6 +19,18 @@ const furnitureNavigationMenuPaths = JSON.parse(
     'The backend-owned furniture navigation catalog must be available to both permission sync and the admin UI.'
   )
 )
+const furnitureB2cMenuPaths = JSON.parse(
+  readRequired(
+    '../yudao-cloud/yudao-module-system/yudao-module-system-server/src/main/resources/navigation/furniture-b2c-menu-paths.json',
+    'B2C workers must have a backend-owned navigation and permission catalog.'
+  )
+)
+const furnitureB2bMenuPaths = JSON.parse(
+  readRequired(
+    '../yudao-cloud/yudao-module-system/yudao-module-system-server/src/main/resources/navigation/furniture-b2b-menu-paths.json',
+    'B2B workers must keep a separate navigation and permission catalog.'
+  )
+)
 const permissionStore = readRequired(
   'src/store/modules/permission.ts',
   'Task 2 should wire furniture lite menu and fixed route filters into the permission store.'
@@ -42,6 +54,14 @@ const loginForm = readRequired(
 const productSpuList = readRequired(
   'src/views/mall/product/spu/index.vue',
   'The product list should expose a frontend product preview action for furniture operators.'
+)
+const homeView = readRequired(
+  'src/views/Home/Index.vue',
+  'The B2C homepage shortcuts must only link to routes available to B2C workers.'
+)
+const menuRenderer = readRequired(
+  'src/layout/components/Menu/src/components/useRenderMenuItem.tsx',
+  'The sidebar must support business grouping while preserving the real route target.'
 )
 const membershipApi = readRequired(
   'src/api/member/membership/index.ts',
@@ -91,6 +111,7 @@ const requiredFurnitureLiteExports = [
   'isDocAlertVisible',
   'isDevLinksVisible',
   'filterFurnitureLiteMenus',
+  'buildFurnitureLiteNavigationRoutes',
   'filterFurnitureLiteFixedRoutes'
 ]
 
@@ -105,7 +126,10 @@ for (const exportName of requiredFurnitureLiteExports) {
 const requiredFurnitureLiteConfigTokens = [
   'synchronizedMenuPaths',
   'allowedMenuPaths',
-  'deniedFixedRoutePrefixes'
+  'deniedFixedRoutePrefixes',
+  "'/mall/product/spu?tabType=3'",
+  "'/pay/order'",
+  "'/infra/file'"
 ]
 
 for (const token of requiredFurnitureLiteConfigTokens) {
@@ -154,18 +178,51 @@ assert.ok(
   'src/config/furnitureLite.ts must not deny /ai fixed routes in furniture-lite mode'
 )
 
-const requiredCrmRoutes = [
-  '/crm',
-  '/crm/clue',
-  '/crm/customer',
-  '/crm/contact'
-]
+const requiredCrmRoutes = ['/crm', '/crm/clue', '/crm/customer', '/crm/contact']
 
 for (const route of requiredCrmRoutes) {
   assert.ok(
     furnitureNavigationMenuPaths.includes(route),
     `the backend furniture navigation catalog must allow CRM menu route ${route}`
   )
+}
+
+for (const route of [
+  '/mall/product/spu',
+  '/mall/trade/order',
+  '/mall/trade/after-sale',
+  '/member/user',
+  '/member/membership',
+  '/member/gift-registry',
+  '/pay/order',
+  '/pay/refund',
+  '/infra/file',
+  '/seo/navigation',
+  '/seo/analysis',
+  '/dashboard'
+]) {
+  assert.ok(furnitureB2cMenuPaths.includes(route), `the B2C catalog must include ${route}`)
+}
+
+for (const route of [
+  '/crm',
+  '/crm/clue',
+  '/member/trade-application',
+  '/pay/app',
+  '/ai',
+  '/system/user',
+  '/system/role',
+  '/infra/file-config'
+]) {
+  assert.ok(!furnitureB2cMenuPaths.includes(route), `the B2C catalog must not include ${route}`)
+}
+
+for (const route of ['/crm/clue', '/crm/customer', '/crm/contact', '/mall/product/spu']) {
+  assert.ok(furnitureB2bMenuPaths.includes(route), `the B2B catalog must include ${route}`)
+}
+
+for (const route of ['/mall/trade/order', '/member/user', '/pay/order', '/system/role']) {
+  assert.ok(!furnitureB2bMenuPaths.includes(route), `the B2B catalog must not include ${route}`)
 }
 
 for (const route of [
@@ -210,6 +267,24 @@ assert.ok(
   permissionStore.includes('userInfo?.furnitureNavigationMenuPaths'),
   'src/store/modules/permission.ts must filter menus with the backend-synchronized navigation paths'
 )
+assert.ok(
+  permissionStore.includes('buildFurnitureLiteNavigationRoutes'),
+  'src/store/modules/permission.ts must build the B2C business navigation tree'
+)
+assert.ok(
+  menuRenderer.includes('meta.menuPath'),
+  'the sidebar must use the real target of regrouped B2C menu items'
+)
+assert.ok(
+  homeView.includes("path: '/mall/trade/after-sale'") &&
+    !homeView.includes("path: '/system/role'") &&
+    homeView.includes("path: '/mall/product/spu?tabType=3'"),
+  'the B2C homepage must link to after-sales and low stock without exposing role management'
+)
+assert.ok(
+  productSpuList.includes('route.query.tabType') && productSpuList.includes('resolveRouteTabType'),
+  'the product page must open the requested inventory tab from the navigation query'
+)
 
 assert.ok(
   routerIndex.includes('filterFurnitureLiteFixedRoutes') &&
@@ -237,17 +312,61 @@ assert.ok(
 )
 
 const requiredRealAccountAdminTokens = [
-  [membershipApi, '/member/membership/page', 'src/api/member/membership/index.ts must read membership pages'],
-  [membershipApi, '/member/membership/get', 'src/api/member/membership/index.ts must read membership details'],
-  [membershipApi, '/member/membership/open', 'src/api/member/membership/index.ts must keep Admin membership opening'],
-  [membershipApi, '/member/membership/update', 'src/api/member/membership/index.ts must update membership status'],
-  [membershipView, 'member:membership:query', 'src/views/member/membership/index.vue must guard membership queries'],
-  [membershipView, 'member:membership:update', 'src/views/member/membership/index.vue must guard membership updates'],
-  [giftRegistryApi, '/member/gift-registry/page', 'src/api/member/giftRegistry/index.ts must read registry pages'],
-  [giftRegistryApi, '/member/gift-registry/get', 'src/api/member/giftRegistry/index.ts must read registry details'],
-  [giftRegistryApi, '/member/gift-registry/status', 'src/api/member/giftRegistry/index.ts must update registry status'],
-  [giftRegistryView, 'member:gift-registry:query', 'src/views/member/gift-registry/index.vue must guard registry queries'],
-  [giftRegistryView, 'member:gift-registry:update', 'src/views/member/gift-registry/index.vue must guard registry updates'],
+  [
+    membershipApi,
+    '/member/membership/page',
+    'src/api/member/membership/index.ts must read membership pages'
+  ],
+  [
+    membershipApi,
+    '/member/membership/get',
+    'src/api/member/membership/index.ts must read membership details'
+  ],
+  [
+    membershipApi,
+    '/member/membership/open',
+    'src/api/member/membership/index.ts must keep Admin membership opening'
+  ],
+  [
+    membershipApi,
+    '/member/membership/update',
+    'src/api/member/membership/index.ts must update membership status'
+  ],
+  [
+    membershipView,
+    'member:membership:query',
+    'src/views/member/membership/index.vue must guard membership queries'
+  ],
+  [
+    membershipView,
+    'member:membership:update',
+    'src/views/member/membership/index.vue must guard membership updates'
+  ],
+  [
+    giftRegistryApi,
+    '/member/gift-registry/page',
+    'src/api/member/giftRegistry/index.ts must read registry pages'
+  ],
+  [
+    giftRegistryApi,
+    '/member/gift-registry/get',
+    'src/api/member/giftRegistry/index.ts must read registry details'
+  ],
+  [
+    giftRegistryApi,
+    '/member/gift-registry/status',
+    'src/api/member/giftRegistry/index.ts must update registry status'
+  ],
+  [
+    giftRegistryView,
+    'member:gift-registry:query',
+    'src/views/member/gift-registry/index.vue must guard registry queries'
+  ],
+  [
+    giftRegistryView,
+    'member:gift-registry:update',
+    'src/views/member/gift-registry/index.vue must guard registry updates'
+  ],
   [
     tradeApplicationApi,
     '/member/trade-application/page',

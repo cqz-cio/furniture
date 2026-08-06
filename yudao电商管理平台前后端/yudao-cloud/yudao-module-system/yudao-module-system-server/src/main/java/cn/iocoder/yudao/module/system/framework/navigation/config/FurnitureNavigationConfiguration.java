@@ -22,18 +22,25 @@ import java.util.Set;
 public class FurnitureNavigationConfiguration {
 
     private static final String CATALOG_RESOURCE = "navigation/furniture-lite-menu-paths.json";
+    private static final String B2C_CATALOG_RESOURCE = "navigation/furniture-b2c-menu-paths.json";
     private static final String B2B_CATALOG_RESOURCE = "navigation/furniture-b2b-menu-paths.json";
 
     @Bean
     public FurnitureNavigationCatalog furnitureNavigationCatalog(ObjectMapper objectMapper) throws IOException {
         Set<String> menuPaths = loadCatalog(objectMapper, CATALOG_RESOURCE);
+        Set<String> b2cMenuPaths = loadCatalog(objectMapper, B2C_CATALOG_RESOURCE);
         Set<String> b2bMenuPaths = loadCatalog(objectMapper, B2B_CATALOG_RESOURCE);
-        if (!menuPaths.containsAll(b2bMenuPaths)) {
-            Set<String> unknownPaths = new LinkedHashSet<>(b2bMenuPaths);
+        validateSubset(menuPaths, b2cMenuPaths, "B2C");
+        validateSubset(menuPaths, b2bMenuPaths, "B2B");
+        return new FurnitureNavigationCatalog(menuPaths, b2cMenuPaths, b2bMenuPaths);
+    }
+
+    private static void validateSubset(Set<String> menuPaths, Set<String> scopedMenuPaths, String scope) {
+        if (!menuPaths.containsAll(scopedMenuPaths)) {
+            Set<String> unknownPaths = new LinkedHashSet<>(scopedMenuPaths);
             unknownPaths.removeAll(menuPaths);
-            throw new IllegalStateException("B2B 导航目录包含未登记路径: " + unknownPaths);
+            throw new IllegalStateException(scope + " 导航目录包含未登记路径: " + unknownPaths);
         }
-        return new FurnitureNavigationCatalog(menuPaths, b2bMenuPaths);
     }
 
     private static Set<String> loadCatalog(ObjectMapper objectMapper, String resourcePath) throws IOException {

@@ -65,7 +65,11 @@ public class TenantServiceImpl implements TenantService {
             "member:group:",
             "member:tag:",
             "member:level:",
-            "member:trade-application:",
+            "member:membership:",
+            "member:gift-registry:",
+            "pay:order:",
+            "pay:refund:",
+            "infra:file:",
             "promotion:",
             "seo:",
             "statistics:member:",
@@ -293,6 +297,14 @@ public class TenantServiceImpl implements TenantService {
                 if (Objects.equals(role.getCode(), RoleCodeEnum.TENANT_ADMIN.getCode())) {
                     permissionService.assignRoleMenu(role.getId(), menuIds);
                     log.info("[updateTenantRoleMenu][租户管理员({}/{}) 的权限修改为({})]", role.getId(), role.getTenantId(), menuIds);
+                    return;
+                }
+                // mall_operator 是 B2C/B2B 工作人员账号模板，套餐同步时应精确跟随本业务模式的安全权限。
+                if (Objects.equals(role.getCode(), RoleCodeEnum.MALL_OPERATOR.getCode())) {
+                    Set<Long> operatorMenuIds = getMallOperatorMenuIds(menuIds);
+                    permissionService.assignRoleMenu(role.getId(), operatorMenuIds);
+                    log.info("[updateTenantRoleMenu][工作人员模板({}/{}) 的权限修改为({})]",
+                            role.getId(), role.getTenantId(), operatorMenuIds);
                     return;
                 }
                 // 如果是其他角色，则去掉超过套餐的权限
