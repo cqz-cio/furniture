@@ -171,6 +171,38 @@ class WebsiteNavigationServiceImplTest {
     }
 
     @Test
+    void saveDraft_shouldAllowAdditionalVanzPrimaryEntryUsingApprovedPage() {
+        WebsiteNavigationRevisionDO draft = revision(32L, "DRAFT", 3);
+        when(revisionMapper.selectByIdForTenant(32L)).thenReturn(draft);
+        when(productCategoryApi.getNavigationCategoryList()).thenReturn(CommonResult.success(List.of()));
+        when(revisionMapper.bumpDraftVersionAtomic(32L, 3, TENANT_ID, "100")).thenReturn(1);
+        WebsiteNavigationItemSaveReqVO additionalPrimary = new WebsiteNavigationItemSaveReqVO();
+        additionalPrimary.setItemKey("CUSTOM_CONTRACT_CATALOG");
+        additionalPrimary.setParentItemKey("");
+        additionalPrimary.setItemType("PAGE");
+        additionalPrimary.setPageKey("PRODUCTS");
+        additionalPrimary.setLabel("Contract Catalog");
+        additionalPrimary.setSort(70);
+        additionalPrimary.setVisible(true);
+        WebsiteNavigationDraftSaveReqVO request = draftSaveRequest(draft, additionalPrimary);
+
+        service.saveDraft(request);
+
+        ArgumentCaptor<WebsiteNavigationItemDO> itemCaptor =
+                ArgumentCaptor.forClass(WebsiteNavigationItemDO.class);
+        verify(itemMapper, times(WebsiteNavigationPageKeyEnum.values().length + 1))
+                .insert(itemCaptor.capture());
+        assertThat(itemCaptor.getAllValues())
+                .filteredOn(item -> "CUSTOM_CONTRACT_CATALOG".equals(item.getItemKey()))
+                .singleElement()
+                .satisfies(item -> {
+                    assertThat(item.getPageKey()).isEqualTo("PRODUCTS");
+                    assertThat(item.getLabel()).isEqualTo("Contract Catalog");
+                    assertThat(item.getParentItemKey()).isEmpty();
+                });
+    }
+
+    @Test
     void getPublished_shouldReturnOakvedThreeLevelTreeAndSaleStyle() {
         WebsiteNavigationRevisionDO revision = revision(12L, "PUBLISHED", 4);
         when(revisionMapper.selectActive(1L, "en", "PUBLISHED")).thenReturn(revision);
@@ -369,10 +401,12 @@ class WebsiteNavigationServiceImplTest {
     }
 
     private static WebsiteNavigationDraftSaveReqVO draftSaveRequest(
-            WebsiteNavigationRevisionDO draft, WebsiteNavigationItemSaveReqVO categoryItem) {
+            WebsiteNavigationRevisionDO draft, WebsiteNavigationItemSaveReqVO... additionalItems) {
         List<WebsiteNavigationItemSaveReqVO> items = new ArrayList<>();
         for (WebsiteNavigationPageKeyEnum page : WebsiteNavigationPageKeyEnum.values()) {
             WebsiteNavigationItemSaveReqVO item = new WebsiteNavigationItemSaveReqVO();
+            item.setItemKey(page.itemKey());
+            item.setParentItemKey("");
             item.setItemType("PAGE");
             item.setPageKey(page.getCode());
             item.setLabel(page.getDefaultLabel());
@@ -380,7 +414,7 @@ class WebsiteNavigationServiceImplTest {
             item.setVisible(true);
             items.add(item);
         }
-        items.add(categoryItem);
+        items.addAll(Arrays.asList(additionalItems));
         WebsiteNavigationDraftSaveReqVO request = new WebsiteNavigationDraftSaveReqVO();
         request.setRevisionId(draft.getId());
         request.setSiteId(draft.getSiteId());

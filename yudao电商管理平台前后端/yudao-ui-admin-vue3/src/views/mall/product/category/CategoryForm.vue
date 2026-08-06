@@ -7,9 +7,17 @@
       label-width="120px"
       v-loading="formLoading"
     >
+      <el-alert
+        v-if="props.navigationCreate && formType === 'create'"
+        title="创建完成后会自动加入 Products 二级目录，保存并发布后才会在官网显示。"
+        type="info"
+        show-icon
+        :closable="false"
+        class="mb-16px"
+      />
       <el-form-item label="上级分类" prop="parentId">
         <el-select v-model="formData.parentId" placeholder="请选择上级分类">
-          <el-option :key="0" label="顶级分类" :value="0" />
+          <el-option v-if="!props.navigationCreate" :key="0" label="顶级分类" :value="0" />
           <el-option
             v-for="item in categoryList"
             :key="item.id"
@@ -20,7 +28,12 @@
       </el-form-item>
       <el-form-item label="分类名称" prop="name">
         <div class="category-name-field">
-          <el-input v-model="formData.name" maxlength="64" show-word-limit placeholder="请输入分类名称" />
+          <el-input
+            v-model="formData.name"
+            maxlength="64"
+            show-word-limit
+            placeholder="请输入分类名称"
+          />
           <span>如果该分类已加入官网 Products 导航，确认修改后已发布官网会立即同步。</span>
         </div>
       </el-form-item>
@@ -28,10 +41,10 @@
         <UploadImg v-model="formData.picUrl" :limit="1" :is-show-tip="false" />
         <div style="font-size: 10px" class="pl-10px">推荐 180x180 图片分辨率</div>
       </el-form-item>
-      <el-form-item label="分类排序" prop="sort">
+      <el-form-item v-if="!props.navigationCreate" label="分类排序" prop="sort">
         <el-input-number v-model="formData.sort" controls-position="right" :min="0" />
       </el-form-item>
-      <el-form-item label="开启状态" prop="status">
+      <el-form-item v-if="!props.navigationCreate" label="开启状态" prop="status">
         <el-radio-group v-model="formData.status">
           <el-radio
             v-for="dict in getIntDictOptions(DICT_TYPE.COMMON_STATUS)"
@@ -44,7 +57,9 @@
       </el-form-item>
     </el-form>
     <template #footer>
-      <el-button @click="submitForm" type="primary" :disabled="formLoading">确 定</el-button>
+      <el-button @click="submitForm" type="primary" :disabled="formLoading">
+        {{ props.navigationCreate && formType === 'create' ? '创建并加入导航' : '确 定' }}
+      </el-button>
       <el-button @click="dialogVisible = false">取 消</el-button>
     </template>
   </Dialog>
@@ -59,6 +74,15 @@ import { useMessage } from '@/hooks/web/useMessage'
 
 defineOptions({ name: 'ProductCategory' })
 
+const props = withDefaults(
+  defineProps<{
+    navigationCreate?: boolean
+  }>(),
+  {
+    navigationCreate: false
+  }
+)
+
 const { t } = useI18n() // 国际化
 const message = useMessage() // 消息弹窗
 
@@ -67,9 +91,9 @@ const dialogTitle = ref('') // 弹窗的标题
 const formLoading = ref(false) // 表单的加载中：1）修改时的数据加载；2）提交的按钮禁用
 const formType = ref('') // 表单的类型：create - 新增；update - 修改
 const originalCategoryName = ref('')
-const formData = ref({
+const formData = ref<ProductCategoryApi.CategoryVO>({
   id: undefined,
-  parentId: 0,
+  parentId: props.navigationCreate ? undefined : 0,
   name: '',
   picUrl: '',
   sort: 0,
@@ -88,8 +112,9 @@ const categoryList = ref<any[]>([]) // 分类树
 /** 打开弹窗 */
 const open = async (type: string, id?: number) => {
   dialogVisible.value = true
-  dialogTitle.value = t('action.' + type)
   formType.value = type
+  dialogTitle.value =
+    props.navigationCreate && type === 'create' ? '新建商品分类并加入导航' : t('action.' + type)
   resetForm()
   // 修改时，设置数据
   if (id) {
@@ -103,6 +128,9 @@ const open = async (type: string, id?: number) => {
   }
   // 获得分类树
   categoryList.value = await ProductCategoryApi.getCategoryList({ parentId: 0 })
+  if (props.navigationCreate && type === 'create' && categoryList.value.length === 1) {
+    formData.value.parentId = categoryList.value[0].id
+  }
 }
 defineExpose({ open }) // 提供 open 方法，用于打开弹窗
 
@@ -118,6 +146,7 @@ const submitForm = async () => {
   formLoading.value = true
   try {
     const data = formData.value as ProductCategoryApi.CategoryVO
+    let savedCategoryId = data.id
     const categoryNameChanged =
       formType.value === 'update' && data.name !== originalCategoryName.value.trim()
     if (categoryNameChanged) {
@@ -127,8 +156,10 @@ const submitForm = async () => {
       )
     }
     if (formType.value === 'create') {
-      await ProductCategoryApi.createCategory(data)
-      message.success(t('common.createSuccess'))
+      savedCategoryId = await ProductCategoryApi.createCategory(data)
+      if (!props.navigationCreate) {
+        message.success(t('common.createSuccess'))
+      }
     } else {
       await ProductCategoryApi.updateCategory(data)
       message.success(
@@ -137,7 +168,7 @@ const submitForm = async () => {
     }
     dialogVisible.value = false
     // 发送操作成功的事件
-    emit('success')
+    emit('success', { id: savedCategoryId, name: data.name })
   } finally {
     formLoading.value = false
   }
@@ -148,7 +179,7 @@ const resetForm = () => {
   originalCategoryName.value = ''
   formData.value = {
     id: undefined,
-    parentId: 0,
+    parentId: props.navigationCreate ? undefined : 0,
     name: '',
     picUrl: '',
     sort: 0,

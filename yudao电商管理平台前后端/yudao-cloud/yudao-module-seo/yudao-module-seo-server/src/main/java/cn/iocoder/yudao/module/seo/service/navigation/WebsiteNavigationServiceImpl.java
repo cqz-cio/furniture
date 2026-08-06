@@ -405,7 +405,7 @@ public class WebsiteNavigationServiceImpl implements WebsiteNavigationService {
     private List<WebsiteNavigationItemDO> validateVanzItems(
             List<WebsiteNavigationItemSaveReqVO> requestItems, Long revisionId,
             Map<Long, ProductCategoryNavigationRespDTO> categoryMap) {
-        Set<WebsiteNavigationPageKeyEnum> pageKeys = EnumSet.noneOf(WebsiteNavigationPageKeyEnum.class);
+        Set<WebsiteNavigationPageKeyEnum> requiredPageKeys = EnumSet.noneOf(WebsiteNavigationPageKeyEnum.class);
         Set<Long> categoryIds = new HashSet<>();
         List<WebsiteNavigationItemDO> items = new ArrayList<>();
         for (WebsiteNavigationItemSaveReqVO requestItem : requestItems) {
@@ -413,10 +413,25 @@ public class WebsiteNavigationServiceImpl implements WebsiteNavigationService {
             validateVisible(requestItem.getVisible());
             if (WebsiteNavigationItemTypeEnum.PAGE.getCode().equals(requestItem.getItemType())) {
                 WebsiteNavigationPageKeyEnum page = WebsiteNavigationPageKeyEnum.fromCode(requestItem.getPageKey());
-                if (page == null || !pageKeys.add(page) || StrUtil.isBlank(requestItem.getLabel())) {
+                String itemKey = StrUtil.isBlank(requestItem.getItemKey())
+                        ? page == null ? "" : page.itemKey()
+                        : normalizeItemKey(requestItem.getItemKey());
+                if (page == null || StrUtil.isNotBlank(requestItem.getParentItemKey())
+                        || StrUtil.isBlank(requestItem.getLabel())
+                        || requestItem.getCategoryId() != null || StrUtil.isNotBlank(requestItem.getTargetKey())) {
                     throw exception(NAVIGATION_CONFIG_INVALID);
                 }
-                items.add(pageItem(revisionId, page, requestItem.getLabel().trim(),
+                WebsiteNavigationPageKeyEnum fixedPage = Arrays.stream(WebsiteNavigationPageKeyEnum.values())
+                        .filter(candidate -> candidate.itemKey().equals(itemKey))
+                        .findFirst()
+                        .orElse(null);
+                if (fixedPage != null && fixedPage != page) {
+                    throw exception(NAVIGATION_CONFIG_INVALID);
+                }
+                if (page.itemKey().equals(itemKey)) {
+                    requiredPageKeys.add(page);
+                }
+                items.add(pageItem(revisionId, itemKey, page, requestItem.getLabel().trim(),
                         requestItem.getSort(), requestItem.getVisible()));
                 continue;
             }
@@ -438,7 +453,7 @@ public class WebsiteNavigationServiceImpl implements WebsiteNavigationService {
             items.add(categoryItem(revisionId, requestItem.getCategoryId(), label,
                     requestItem.getSort(), requestItem.getVisible()));
         }
-        if (pageKeys.size() != WebsiteNavigationPageKeyEnum.values().length) {
+        if (requiredPageKeys.size() != WebsiteNavigationPageKeyEnum.values().length) {
             throw exception(NAVIGATION_CONFIG_INVALID);
         }
         return items;
@@ -848,9 +863,15 @@ public class WebsiteNavigationServiceImpl implements WebsiteNavigationService {
 
     private static WebsiteNavigationItemDO pageItem(Long revisionId, WebsiteNavigationPageKeyEnum page,
                                                      String label, Integer sort, Boolean visible) {
+        return pageItem(revisionId, page.itemKey(), page, label, sort, visible);
+    }
+
+    private static WebsiteNavigationItemDO pageItem(Long revisionId, String itemKey,
+                                                     WebsiteNavigationPageKeyEnum page,
+                                                     String label, Integer sort, Boolean visible) {
         return new WebsiteNavigationItemDO()
                 .setRevisionId(revisionId)
-                .setItemKey(page.itemKey())
+                .setItemKey(itemKey)
                 .setParentItemKey("")
                 .setItemType(WebsiteNavigationItemTypeEnum.PAGE.getCode())
                 .setLabel(label)

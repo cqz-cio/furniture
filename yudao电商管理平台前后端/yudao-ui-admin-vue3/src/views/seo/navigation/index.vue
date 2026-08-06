@@ -95,6 +95,17 @@
         >
           <template #header>
             <div class="section-header-actions">
+              <el-button
+                v-if="!isOakvedNavigation"
+                type="primary"
+                plain
+                size="small"
+                :disabled="busy"
+                @click="openPrimaryCreator"
+              >
+                <Icon icon="ep:plus" class="mr-4px" />
+                新增一级导航
+              </el-button>
               <el-tag type="info" effect="plain">{{ primarySectionTag }}</el-tag>
             </div>
           </template>
@@ -103,7 +114,7 @@
             {{
               isOakvedNavigation
                 ? '拖动调整 NEW、SHOP BY COLLECTIONS、BEDROOM 等顶部顺序；不需要填写原始 URL。'
-                : '拖动调整官网顶部顺序；页面地址已固定，业务人员不用填写链接。'
+                : '基础入口可改名、排序或隐藏；也可以新增指向现有官网页面的导航入口，不需要填写链接。'
             }}
           </p>
 
@@ -151,6 +162,16 @@
                 <div class="navigation-row__visibility">
                   <span>{{ element.visible ? '官网显示' : '已隐藏' }}</span>
                   <el-switch v-model="element.visible" :disabled="busy" @change="markDirty" />
+                  <el-button
+                    v-if="isRemovableVanzPrimary(element)"
+                    type="danger"
+                    link
+                    :disabled="busy"
+                    aria-label="删除新增的一级导航"
+                    @click="removePrimaryItem(index)"
+                  >
+                    <Icon icon="ep:delete" />
+                  </el-button>
                 </div>
               </article>
             </template>
@@ -175,32 +196,59 @@
           </p>
 
           <div class="category-picker">
-            <el-select
-              v-model="categoryToAdd"
-              filterable
-              clearable
-              :disabled="busy || availableCategoryOptions.length === 0"
-              placeholder="选择一个商品分类"
-              class="category-picker__select"
-            >
-              <el-option
-                v-for="option in availableCategoryOptions"
-                :key="option.id"
-                :label="`${option.name} · ${option.publishedProductCount} 个在线商品`"
-                :value="option.id"
-              />
-            </el-select>
-            <el-button type="primary" plain :disabled="busy || !categoryToAdd" @click="addCategory">
-              <Icon icon="ep:plus" class="mr-5px" />
-              加入二级目录
-            </el-button>
+            <div class="category-picker__controls">
+              <el-select
+                v-model="categoryToAdd"
+                filterable
+                clearable
+                :disabled="busy"
+                :placeholder="categoryPickerPlaceholder"
+                :no-data-text="
+                  availableCategoryOptions.length
+                    ? '未找到匹配的商品分类'
+                    : '所有已有分类均已加入，可新建商品分类'
+                "
+                class="category-picker__select"
+              >
+                <el-option
+                  v-for="option in availableCategoryOptions"
+                  :key="option.id"
+                  :label="`${option.name} · ${option.publishedProductCount} 个在线商品`"
+                  :value="option.id"
+                />
+              </el-select>
+              <div class="category-picker__actions">
+                <el-button
+                  type="primary"
+                  plain
+                  :disabled="busy || !categoryToAdd"
+                  @click="addCategory"
+                >
+                  <Icon icon="ep:plus" class="mr-5px" />
+                  加入已有分类
+                </el-button>
+                <el-button
+                  type="primary"
+                  :disabled="busy"
+                  v-hasPermi="['product:category:create']"
+                  @click="openCategoryCreator"
+                >
+                  <Icon icon="ep:circle-plus" class="mr-5px" />
+                  新建分类并加入
+                </el-button>
+              </div>
+            </div>
+            <p v-if="availableCategoryOptions.length === 0" class="category-picker__hint">
+              <Icon icon="ep:circle-check" />
+              当前所有已有分类都已加入；仍可点击“新建分类并加入”继续添加。
+            </p>
           </div>
 
           <div v-if="categoryItems.length === 0" class="category-empty">
             <Icon icon="ep:folder-opened" />
             <div>
               <strong>Products 暂无二级目录</strong>
-              <p>从上方选择商品分类即可加入，不需要手工填写链接。</p>
+              <p>可从上方选择已有分类，或直接新建分类并加入，不需要手工填写链接。</p>
             </div>
           </div>
 
@@ -270,7 +318,7 @@
 
           <div class="category-sync-note">
             <Icon icon="ep:info-filled" />
-            <span> 新建商品分类不会自动出现在官网；在这里勾选并发布后才会上线，避免误展示。 </span>
+            <span> 新建分类会自动加入当前导航草稿；仍需保存并发布，官网访客才会看到。 </span>
           </div>
         </ContentWrap>
 
@@ -678,6 +726,54 @@
       ></iframe>
     </el-dialog>
 
+    <el-dialog
+      v-model="primaryCreateVisible"
+      title="新增一级导航"
+      width="480px"
+      destroy-on-close
+      append-to-body
+    >
+      <el-alert
+        title="这里新增的是导航入口，不会创建新的网页。跳转页面由系统安全生成，无需填写链接。"
+        type="info"
+        show-icon
+        :closable="false"
+        class="mb-16px"
+      />
+      <el-form label-position="top" @submit.prevent>
+        <el-form-item label="跳转到哪个页面" required>
+          <el-select
+            v-model="primaryCreateForm.pageKey"
+            class="w-100%"
+            placeholder="请选择官网页面"
+            @change="handlePrimaryTargetChange"
+          >
+            <el-option
+              v-for="option in vanzPageTargets"
+              :key="option.pageKey"
+              :label="`${option.title} · ${option.href}`"
+              :value="option.pageKey"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="导航显示名称" required>
+          <el-input
+            v-model="primaryCreateForm.label"
+            maxlength="64"
+            show-word-limit
+            placeholder="例如 Contract Catalog"
+            @keyup.enter="confirmAddPrimary"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="primaryCreateVisible = false">取消</el-button>
+        <el-button type="primary" @click="confirmAddPrimary">加入一级导航</el-button>
+      </template>
+    </el-dialog>
+
+    <ProductCategoryForm ref="categoryFormRef" navigation-create @success="handleCategoryCreated" />
+
     <el-drawer v-model="historyVisible" title="官网导航发布记录" size="520px">
       <el-alert
         class="mb-14px"
@@ -730,6 +826,7 @@ import { useRouter } from 'vue-router'
 import draggable from 'vuedraggable'
 import {
   createWebsiteNavigationPreviewTicket,
+  getWebsiteNavigationCategoryOptions,
   getWebsiteNavigationHistory,
   getWebsiteNavigationDraft,
   publishWebsiteNavigation,
@@ -745,20 +842,25 @@ import {
 } from '@/api/seo/navigation'
 import { getSeoSiteConfig } from '@/api/seo/siteConfig'
 import { useMessage } from '@/hooks/web/useMessage'
+import ProductCategoryForm from '@/views/mall/product/category/CategoryForm.vue'
 
 defineOptions({ name: 'SeoNavigation' })
 
 const SITE_ID = 1
 const LOCALE = 'en'
 
-const pageRoutes: Record<string, string> = {
-  HOME: '首页 /',
-  PRODUCTS: '产品中心 /products',
-  ABOUT_US: '品牌介绍 /about-us',
-  WORKSHOP: '工坊 /workshop',
-  BLOG: '博客 /blog',
-  CONTACT: '联系我们 /contact'
-}
+const vanzPageTargets = [
+  { pageKey: 'HOME', title: '首页', defaultLabel: 'Home', href: '/' },
+  { pageKey: 'PRODUCTS', title: '产品中心', defaultLabel: 'Products', href: '/products' },
+  { pageKey: 'ABOUT_US', title: '品牌介绍', defaultLabel: 'About Us', href: '/about-us' },
+  { pageKey: 'WORKSHOP', title: '工坊', defaultLabel: 'Workshop', href: '/workshop' },
+  { pageKey: 'BLOG', title: '博客', defaultLabel: 'Blog', href: '/blog' },
+  { pageKey: 'CONTACT', title: '联系我们', defaultLabel: 'Contact', href: '/contact' }
+] as const
+
+const pageRoutes: Record<string, string> = Object.fromEntries(
+  vanzPageTargets.map((option) => [option.pageKey, `${option.title} ${option.href}`])
+)
 
 const message = useMessage()
 const router = useRouter()
@@ -771,6 +873,12 @@ const editedCategoryIds = ref<Set<number>>(new Set())
 const targetOptions = ref<WebsiteNavigationTargetOptionRespVO[]>([])
 const oakvedExpandedKeys = ref<string[]>([])
 const categoryToAdd = ref<number>()
+const categoryFormRef = ref<InstanceType<typeof ProductCategoryForm>>()
+const primaryCreateVisible = ref(false)
+const primaryCreateForm = ref({
+  pageKey: 'PRODUCTS',
+  label: 'Products'
+})
 const loading = ref(false)
 const saving = ref(false)
 const refreshing = ref(false)
@@ -795,10 +903,12 @@ const navigationBrandLabel = computed(() =>
 const navigationDescription = computed(() =>
   isOakvedNavigation.value
     ? '管理家具官网顶部导航及二、三级下拉目录；链接从安全目标中选择。'
-    : '两个入口都能改分类名称；确认保存后，商品中心和官网导航保持一致。'
+    : '一级导航可新增安全页面入口；二级目录可选择或新建商品分类，名称与商品中心保持一致。'
 )
-const primarySectionTag = computed(
-  () => `${primaryItems.value.length} 项固定${isOakvedNavigation.value ? '导航' : '页面'}`
+const primarySectionTag = computed(() =>
+  isOakvedNavigation.value
+    ? `${primaryItems.value.length} 项固定导航`
+    : `${primaryItems.value.length} 项一级导航`
 )
 const allDraftItems = computed(() =>
   isOakvedNavigation.value
@@ -831,22 +941,34 @@ const changeSummary = computed(() => {
   const messages: string[] = []
   const publishedMap = new Map(publishedItems.map((item) => [item.itemKey, item]))
   const draftMap = new Map(draftItems.map((item) => [item.itemKey, item]))
-  const addedItems = draftItems.filter(
+  const addedPrimaryItems = draftItems.filter(
+    (item) => !item.parentItemKey && !publishedMap.has(item.itemKey)
+  )
+  const addedChildItems = draftItems.filter(
     (item) => item.parentItemKey && !publishedMap.has(item.itemKey)
   )
-  const removedItems = publishedItems.filter(
+  const removedPrimaryItems = publishedItems.filter(
+    (item) => !item.parentItemKey && !draftMap.has(item.itemKey)
+  )
+  const removedChildItems = publishedItems.filter(
     (item) => item.parentItemKey && !draftMap.has(item.itemKey)
   )
-  if (addedItems.length) {
+  if (addedPrimaryItems.length) {
+    messages.push(`新增一级导航：${addedPrimaryItems.map((item) => item.label).join('、')}`)
+  }
+  if (addedChildItems.length) {
     messages.push(
-      `${isOakvedNavigation.value ? '新增下拉导航' : '新增二级目录'}：${addedItems
+      `${isOakvedNavigation.value ? '新增下拉导航' : '新增二级目录'}：${addedChildItems
         .map((item) => item.label)
         .join('、')}`
     )
   }
-  if (removedItems.length) {
+  if (removedPrimaryItems.length) {
+    messages.push(`移除一级导航：${removedPrimaryItems.map((item) => item.label).join('、')}`)
+  }
+  if (removedChildItems.length) {
     messages.push(
-      `${isOakvedNavigation.value ? '移除下拉导航' : '移除二级目录'}：${removedItems
+      `${isOakvedNavigation.value ? '移除下拉导航' : '移除二级目录'}：${removedChildItems
         .map((item) => item.label)
         .join('、')}`
     )
@@ -902,6 +1024,10 @@ const selectedCategoryIds = computed(
 
 const availableCategoryOptions = computed(() =>
   categoryOptions.value.filter((option) => !selectedCategoryIds.value.has(option.id))
+)
+
+const categoryPickerPlaceholder = computed(() =>
+  availableCategoryOptions.value.length ? '搜索并选择已有商品分类' : '所有已有分类均已加入'
 )
 
 const pendingCategoryRenames = computed(() =>
@@ -968,6 +1094,62 @@ const descendantCount = (item: WebsiteNavigationItemRespVO): number =>
 const createCustomItemKey = () => {
   const randomPart = globalThis.crypto?.randomUUID?.().replaceAll('-', '').slice(0, 16)
   return `CUSTOM_${String(randomPart || Date.now()).toUpperCase()}`
+}
+
+const isRemovableVanzPrimary = (item: WebsiteNavigationItemRespVO) =>
+  !isOakvedNavigation.value && item.itemType === 'PAGE' && item.itemKey.startsWith('CUSTOM_')
+
+const openPrimaryCreator = () => {
+  primaryCreateForm.value = {
+    pageKey: 'PRODUCTS',
+    label: 'Products'
+  }
+  primaryCreateVisible.value = true
+}
+
+const handlePrimaryTargetChange = (pageKey: string) => {
+  const target = vanzPageTargets.find((option) => option.pageKey === pageKey)
+  if (target) primaryCreateForm.value.label = target.defaultLabel
+}
+
+const confirmAddPrimary = () => {
+  const label = primaryCreateForm.value.label.trim()
+  const target = vanzPageTargets.find(
+    (option) => option.pageKey === primaryCreateForm.value.pageKey
+  )
+  if (!target) {
+    message.warning('请选择要跳转的官网页面')
+    return
+  }
+  if (!label) {
+    message.warning('请输入导航显示名称')
+    return
+  }
+  primaryItems.value.push({
+    itemKey: createCustomItemKey(),
+    parentItemKey: '',
+    itemType: 'PAGE',
+    pageKey: target.pageKey,
+    label,
+    sort: (primaryItems.value.length + 1) * 10,
+    visible: true,
+    openMode: '_self',
+    styleVariant: 'DEFAULT',
+    available: true
+  })
+  normalizeSort()
+  markDirty()
+  primaryCreateVisible.value = false
+  message.success('已加入一级导航草稿，保存并发布后官网显示')
+}
+
+const removePrimaryItem = async (index: number) => {
+  const item = primaryItems.value[index]
+  if (!item || !isRemovableVanzPrimary(item)) return
+  await message.confirm(`确认从一级导航移除“${item.label}”吗？对应网页不会被删除。`)
+  primaryItems.value.splice(index, 1)
+  normalizeSort()
+  markDirty()
 }
 
 const addDropdownItem = (parent: WebsiteNavigationItemRespVO) => {
@@ -1128,10 +1310,7 @@ const onOakvedSortEnd = () => {
   markDirty()
 }
 
-const addCategory = () => {
-  if (!categoryToAdd.value) return
-  const option = categoryOptions.value.find((item) => item.id === categoryToAdd.value)
-  if (!option) return
+const addCategoryOption = (option: WebsiteNavigationCategoryOptionRespVO) => {
   categoryItems.value.push({
     itemKey: `CATEGORY_${option.id}`,
     parentItemKey: 'PAGE_PRODUCTS',
@@ -1148,6 +1327,38 @@ const addCategory = () => {
   originalCategoryNames.value = new Map(originalCategoryNames.value).set(option.id, option.name)
   categoryToAdd.value = undefined
   markDirty()
+}
+
+const addCategory = () => {
+  if (!categoryToAdd.value) return
+  const option = categoryOptions.value.find((item) => item.id === categoryToAdd.value)
+  if (!option) return
+  addCategoryOption(option)
+}
+
+const openCategoryCreator = () => categoryFormRef.value?.open('create')
+
+const handleCategoryCreated = async (payload?: { id?: number; name?: string }) => {
+  refreshing.value = true
+  try {
+    categoryOptions.value = (await getWebsiteNavigationCategoryOptions(SITE_ID, LOCALE)).map(
+      (option) => ({ ...option })
+    )
+    const createdId = Number(payload?.id)
+    const createdOption = Number.isFinite(createdId)
+      ? categoryOptions.value.find((option) => option.id === createdId)
+      : undefined
+    if (!createdOption) {
+      message.warning('分类已创建，但当前不可加入导航；请确认它已启用且已选择上级分类')
+      return
+    }
+    if (!selectedCategoryIds.value.has(createdOption.id)) {
+      addCategoryOption(createdOption)
+    }
+    message.success(`“${createdOption.name}”已创建并加入二级目录草稿`)
+  } finally {
+    refreshing.value = false
+  }
 }
 
 const removeCategory = (index: number) => {
@@ -1494,6 +1705,7 @@ onActivated(() => {
   width: 100%;
   align-items: center;
   justify-content: flex-end;
+  gap: 8px;
 }
 
 .section-description {
@@ -1667,7 +1879,7 @@ onActivated(() => {
 }
 
 .category-picker {
-  display: flex;
+  display: grid;
   padding: 12px;
   margin-bottom: 12px;
   background: var(--furniture-admin-panel-soft);
@@ -1676,8 +1888,31 @@ onActivated(() => {
   gap: 8px;
 }
 
+.category-picker__controls,
+.category-picker__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .category-picker__select {
+  min-width: 0;
   flex: 1;
+}
+
+.category-picker__hint {
+  display: flex;
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--furniture-admin-muted);
+  align-items: center;
+  gap: 6px;
+}
+
+.category-picker__hint > :first-child {
+  color: var(--furniture-admin-success, #16a34a);
+  flex: 0 0 auto;
 }
 
 .category-empty {
@@ -2070,8 +2305,15 @@ onActivated(() => {
     flex-basis: 100%;
   }
 
-  .category-picker {
+  .category-picker__controls,
+  .category-picker__actions {
     flex-direction: column;
+    align-items: stretch;
+  }
+
+  .category-picker__actions > * {
+    width: 100%;
+    margin-left: 0;
   }
 
   .navigation-row,
