@@ -2,6 +2,7 @@ package cn.iocoder.yudao.module.product.service.category;
 
 import cn.iocoder.yudao.module.product.controller.admin.category.vo.ProductCategoryListReqVO;
 import cn.iocoder.yudao.module.product.controller.admin.category.vo.ProductCategorySaveReqVO;
+import cn.iocoder.yudao.module.product.controller.admin.category.vo.ProductNavigationCategoryCreateReqVO;
 import cn.iocoder.yudao.module.product.api.category.dto.ProductCategoryNavigationRespDTO;
 import cn.iocoder.yudao.module.product.dal.dataobject.category.ProductCategoryDO;
 import jakarta.validation.Valid;
@@ -23,6 +24,14 @@ public interface ProductCategoryService {
      * @return 编号
      */
     Long createCategory(@Valid ProductCategorySaveReqVO createReqVO);
+
+    /**
+     * 从官网导航快速创建商品分类
+     *
+     * @param createReqVO 导航快速创建信息
+     * @return 编号
+     */
+    Long createNavigationCategory(@Valid ProductNavigationCategoryCreateReqVO createReqVO);
 
     /**
      * 更新商品分类

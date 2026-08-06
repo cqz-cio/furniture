@@ -9,6 +9,7 @@ import cn.iocoder.yudao.module.erp.api.integration.MallErpProductApi;
 import cn.iocoder.yudao.module.product.api.category.dto.ProductCategoryNavigationRespDTO;
 import cn.iocoder.yudao.module.product.controller.admin.category.vo.ProductCategoryListReqVO;
 import cn.iocoder.yudao.module.product.controller.admin.category.vo.ProductCategorySaveReqVO;
+import cn.iocoder.yudao.module.product.controller.admin.category.vo.ProductNavigationCategoryCreateReqVO;
 import cn.iocoder.yudao.module.product.dal.dataobject.category.ProductCategoryDO;
 import cn.iocoder.yudao.module.product.dal.dataobject.sku.ProductSkuDO;
 import cn.iocoder.yudao.module.product.dal.dataobject.spu.ProductSpuDO;
@@ -67,6 +68,20 @@ public class ProductCategoryServiceImpl implements ProductCategoryService {
         ProductCategoryDO category = BeanUtils.toBean(createReqVO, ProductCategoryDO.class);
         productCategoryMapper.insert(category);
         // 返回
+        return category.getId();
+    }
+
+    @Override
+    public Long createNavigationCategory(ProductNavigationCategoryCreateReqVO createReqVO) {
+        // 导航快速创建不要求分类图片，但仍需沿用商品分类的父级校验和默认状态
+        validateParentProductCategory(createReqVO.getParentId());
+        ProductCategoryDO category = new ProductCategoryDO()
+                .setParentId(createReqVO.getParentId())
+                .setName(StrUtil.trim(createReqVO.getName()))
+                .setPicUrl("")
+                .setSort(0)
+                .setStatus(CommonStatusEnum.ENABLE.getStatus());
+        productCategoryMapper.insert(category);
         return category.getId();
     }
 

@@ -4,6 +4,8 @@ import cn.iocoder.yudao.framework.common.pojo.CommonResult;
 import cn.iocoder.yudao.framework.test.core.ut.BaseMockitoUnitTest;
 import cn.iocoder.yudao.module.erp.api.integration.MallErpProductApi;
 import cn.iocoder.yudao.module.product.api.category.dto.ProductCategoryNavigationRespDTO;
+import cn.iocoder.yudao.module.product.controller.admin.category.vo.ProductCategorySaveReqVO;
+import cn.iocoder.yudao.module.product.controller.admin.category.vo.ProductNavigationCategoryCreateReqVO;
 import cn.iocoder.yudao.module.product.dal.dataobject.category.ProductCategoryDO;
 import cn.iocoder.yudao.module.product.dal.dataobject.sku.ProductSkuDO;
 import cn.iocoder.yudao.module.product.dal.dataobject.spu.ProductSpuDO;
@@ -11,10 +13,16 @@ import cn.iocoder.yudao.module.product.dal.mysql.category.ProductCategoryMapper;
 import cn.iocoder.yudao.module.product.dal.mysql.spu.ProductSpuMapper;
 import cn.iocoder.yudao.module.product.enums.spu.ProductSpuStatusEnum;
 import cn.iocoder.yudao.module.product.service.sku.ProductSkuService;
+import jakarta.validation.ConstraintViolationException;
+import jakarta.validation.Validation;
+import jakarta.validation.Validator;
+import jakarta.validation.ValidatorFactory;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.springframework.aop.framework.ProxyFactory;
+import org.springframework.validation.beanvalidation.MethodValidationInterceptor;
 
 import java.util.Collection;
 import java.util.List;
@@ -23,8 +31,10 @@ import java.util.Set;
 import static cn.iocoder.yudao.framework.common.enums.CommonStatusEnum.ENABLE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -84,6 +94,49 @@ class ProductCategoryServiceImplNavigationTest extends BaseMockitoUnitTest {
         assertEquals("Contract Tables", captor.getValue().getName());
         assertNull(captor.getValue().getParentId());
         assertNull(captor.getValue().getStatus());
+    }
+
+    @Test
+    void createNavigationCategoryAllowsBlankImageThroughMethodValidation() {
+        when(productCategoryMapper.selectById(1L)).thenReturn(
+                category(1L, 0L, "VANZ Furniture", 0));
+        doAnswer(invocation -> {
+            ProductCategoryDO inserted = invocation.getArgument(0);
+            inserted.setId(88L);
+            return 1;
+        }).when(productCategoryMapper).insert(any(ProductCategoryDO.class));
+
+        ProductNavigationCategoryCreateReqVO request = new ProductNavigationCategoryCreateReqVO()
+                .setParentId(1L)
+                .setName("  Contract Furniture  ");
+        ProductCategorySaveReqVO genericRequest = new ProductCategorySaveReqVO()
+                .setParentId(1L)
+                .setName("Contract Furniture")
+                .setPicUrl("")
+                .setSort(0)
+                .setStatus(ENABLE.getStatus());
+
+        try (ValidatorFactory factory = Validation.buildDefaultValidatorFactory()) {
+            ProductCategoryService validatedService = validatedService(factory.getValidator());
+            assertThrows(ConstraintViolationException.class,
+                    () -> validatedService.createCategory(genericRequest));
+            assertEquals(88L, validatedService.createNavigationCategory(request));
+        }
+
+        ArgumentCaptor<ProductCategoryDO> captor = ArgumentCaptor.forClass(ProductCategoryDO.class);
+        verify(productCategoryMapper).insert(captor.capture());
+        assertEquals(1L, captor.getValue().getParentId());
+        assertEquals("Contract Furniture", captor.getValue().getName());
+        assertEquals("", captor.getValue().getPicUrl());
+        assertEquals(0, captor.getValue().getSort());
+        assertEquals(ENABLE.getStatus(), captor.getValue().getStatus());
+    }
+
+    private ProductCategoryService validatedService(Validator validator) {
+        ProxyFactory proxyFactory = new ProxyFactory(productCategoryService);
+        proxyFactory.setInterfaces(ProductCategoryService.class);
+        proxyFactory.addAdvice(new MethodValidationInterceptor(validator));
+        return (ProductCategoryService) proxyFactory.getProxy();
     }
 
     private static ProductCategoryDO category(Long id, Long parentId, String name, Integer sort) {
