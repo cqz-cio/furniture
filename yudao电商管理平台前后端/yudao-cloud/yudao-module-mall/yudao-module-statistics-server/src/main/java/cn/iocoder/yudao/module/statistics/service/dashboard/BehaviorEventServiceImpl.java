@@ -14,12 +14,17 @@ import org.springframework.transaction.annotation.Transactional;
 import jakarta.annotation.Resource;
 import java.security.GeneralSecurityException;
 import java.time.*;
+import java.util.Locale;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import cn.hutool.crypto.SecureUtil;
 
 @Service @Slf4j
 public class BehaviorEventServiceImpl implements BehaviorEventService {
     private static final ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Shanghai");
+    private static final Set<Integer> DEVICE_TYPES = Set.of(1, 2, 3, 9);
+    private static final Set<String> CONTACT_CHANNELS = Set.of(
+            "WHATSAPP", "EMAIL", "PHONE", "SOCIAL", "WECHAT");
     @Resource private BehaviorTrackingProperties properties;
     @Resource private BehaviorIdentityHasher hasher;
     @Resource private BehaviorHmacDayVersionService versionService;
@@ -35,19 +40,24 @@ public class BehaviorEventServiceImpl implements BehaviorEventService {
         if (properties.isConsentRequired() && !consentEvidenceVerifier.verify(tenantId, consentEvidence, Instant.now())) throw new IllegalArgumentException("valid analytics consent evidence is required");
         BehaviorEventTypeEnum type = BehaviorEventTypeEnum.of(request.getEventType());
         if (type == BehaviorEventTypeEnum.ADD_TO_CART) throw new IllegalArgumentException("public add-to-cart is forbidden");
+        validatePublicEvent(type, request);
         LocalDateTime receivedAt = LocalDateTime.now(BUSINESS_ZONE);
         LocalDate day = receivedAt.toLocalDate();
         int version = versionService.activeVersion(tenantId, day);
         try {
             String visitorHash = hasher.hash(tenantId, version, rawVisitorId);
             String sessionHash = hasher.hash(tenantId, version, rawSessionId);
+            String pagePath = normalizePath(request.getPagePath());
+            String channel = normalizeChannel(type, request.getChannel());
             try { enforceRateLimits(tenantId, visitorHash, clientIp); }
             catch (RuntimeException redisFailure) {
                 if (redisFailure instanceof BehaviorRateLimitException) throw redisFailure;
                 gapService.recordRejected(receivedAt, "RATE_REDIS_UNAVAILABLE");
                 throw new IllegalStateException("tracking temporarily unavailable");
             }
-            String duplicateKey = "statistics:behavior:dedupe:" + tenantId + ':' + visitorHash + ':' + type.getValue() + ':' + request.getSpuId();
+            String duplicateKey = "statistics:behavior:dedupe:" + tenantId + ':' + visitorHash + ':'
+                    + type.getValue() + ':' + request.getSpuId() + ':'
+                    + SecureUtil.sha256(pagePath + ':' + String.valueOf(channel));
             Boolean accepted;
             try { accepted = redisTemplate.opsForValue().setIfAbsent(duplicateKey, request.getEventId(), 5, TimeUnit.SECONDS); }
             catch (RuntimeException redisFailure) { gapService.recordRejected(receivedAt, "DEDUP_REDIS_UNAVAILABLE"); log.error("[behaviorIngestionGap][reason(DEDUP_REDIS_UNAVAILABLE) day({})]", day); throw new IllegalStateException("tracking temporarily unavailable"); }
@@ -55,8 +65,12 @@ public class BehaviorEventServiceImpl implements BehaviorEventService {
             BehaviorEventDO event = new BehaviorEventDO().setEventId(request.getEventId()).setEventType(type.getValue())
                     .setEventSource(BehaviorEventSourceEnum.PUBLIC_WEB.value).setVisitorHash(visitorHash).setSessionHash(sessionHash)
                     .setHashKeyVersion(version).setUserId(userId).setSpuId(request.getSpuId()).setSkuId(request.getSkuId())
-                    .setPagePath(normalizePath(request.getPagePath())).setReferrerHost(request.getReferrerHost())
-                    .setDeviceType(request.getDeviceType() == null ? 9 : request.getDeviceType())
+                    .setQuantity(type == BehaviorEventTypeEnum.ADD_TO_QUOTE ? request.getQuantity() : null)
+                    .setPagePath(pagePath).setReferrerHost(normalizeDimension(request.getReferrerHost()))
+                    .setDeviceType(request.getDeviceType() == null ? 9 : request.getDeviceType()).setChannel(channel)
+                    .setUtmSource(normalizeDimension(request.getUtmSource()))
+                    .setUtmMedium(normalizeDimension(request.getUtmMedium()))
+                    .setUtmCampaign(normalizeDimension(request.getUtmCampaign()))
                     .setTrafficQuality(TrafficQualityEnum.ACCEPTED.value).setOccurredAt(receivedAt).setEventDay(day);
             insertIdempotently(event);
         } catch (GeneralSecurityException ex) { throw new IllegalStateException("identity hashing failed", ex); }
@@ -91,6 +105,35 @@ public class BehaviorEventServiceImpl implements BehaviorEventService {
         String clean = path == null ? "/" : path.split("[?#]",2)[0];
         if (!clean.startsWith("/") || clean.contains("..")) throw new IllegalArgumentException("invalid page path");
         return clean;
+    }
+    private void validatePublicEvent(BehaviorEventTypeEnum type, AppBehaviorEventTrackReqVO request) {
+        Integer deviceType = request.getDeviceType();
+        if (deviceType != null && !DEVICE_TYPES.contains(deviceType)) {
+            throw new IllegalArgumentException("unsupported device type");
+        }
+        if ((type == BehaviorEventTypeEnum.PRODUCT_DETAIL_VIEW
+                || type == BehaviorEventTypeEnum.ADD_TO_QUOTE)
+                && request.getSpuId() == null) {
+            throw new IllegalArgumentException("spuId is required for this event type");
+        }
+        if (type == BehaviorEventTypeEnum.ADD_TO_QUOTE && request.getQuantity() == null) {
+            throw new IllegalArgumentException("quantity is required for add-to-quote");
+        }
+    }
+    private String normalizeChannel(BehaviorEventTypeEnum type, String channel) {
+        if (type == BehaviorEventTypeEnum.CATALOGUE_DOWNLOAD) return "CATALOGUE";
+        if (type != BehaviorEventTypeEnum.CONTACT_CLICK) return null;
+        String normalized = normalizeDimension(channel);
+        if (normalized == null || !CONTACT_CHANNELS.contains(normalized.toUpperCase(Locale.ROOT))) {
+            throw new IllegalArgumentException("unsupported contact channel");
+        }
+        return normalized.toUpperCase(Locale.ROOT);
+    }
+    private String normalizeDimension(String value) {
+        if (value == null) return null;
+        String normalized = value.replaceAll("[\\p{Cntrl}]+", " ")
+                .replaceAll("\\s+", " ").trim();
+        return normalized.isEmpty() ? null : normalized;
     }
     private void enforceRateLimits(Long tenantId,String visitorHash,String clientIp) {
         long minute=System.currentTimeMillis()/60000L;

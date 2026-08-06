@@ -3,7 +3,9 @@ package cn.iocoder.yudao.module.statistics.framework.config;
 import cn.iocoder.yudao.module.statistics.service.dashboard.TenantBehaviorHmacKeyProvider;
 import cn.iocoder.yudao.module.statistics.service.dashboard.ConsentEvidenceKeyProvider;
 import cn.iocoder.yudao.module.statistics.service.dashboard.ConsentEvidenceVerifier;
-import cn.iocoder.yudao.module.statistics.service.dashboard.HmacConsentEvidenceVerifier;
+import cn.iocoder.yudao.module.statistics.service.dashboard.HmacConsentEvidenceCodec;
+import cn.iocoder.yudao.module.statistics.service.dashboard.PersistedConsentEvidenceVerifier;
+import cn.iocoder.yudao.module.statistics.dal.mysql.dashboard.ConsentEvidenceMapper;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -44,8 +46,17 @@ public class BehaviorTrackingConfiguration {
         };
     }
     @Bean
-    public ConsentEvidenceVerifier consentEvidenceVerifier(ConsentEvidenceKeyProvider keyProvider) {
-        return new HmacConsentEvidenceVerifier(keyProvider, 180L * 24L * 60L * 60L);
+    public HmacConsentEvidenceCodec consentEvidenceCodec(ConsentEvidenceKeyProvider keyProvider,
+                                                          BehaviorTrackingProperties properties) {
+        return new HmacConsentEvidenceCodec(keyProvider,
+                properties.getConsentEvidenceLifetimeDays() * 24L * 60L * 60L);
+    }
+    @Bean
+    public ConsentEvidenceVerifier consentEvidenceVerifier(HmacConsentEvidenceCodec codec,
+                                                            ConsentEvidenceMapper mapper,
+                                                            BehaviorTrackingProperties properties) {
+        return new PersistedConsentEvidenceVerifier(
+                codec, mapper, properties.getConsentPolicyVersion());
     }
     private boolean versionEquals(int version, BehaviorTrackingProperties.TenantHmac tenant) {
         return tenant.getActiveVersion() != null && tenant.getActiveVersion() == version

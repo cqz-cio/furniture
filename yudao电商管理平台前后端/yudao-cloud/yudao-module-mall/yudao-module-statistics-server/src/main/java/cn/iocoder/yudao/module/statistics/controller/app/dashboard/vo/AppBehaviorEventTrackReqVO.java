@@ -7,7 +7,12 @@ public class AppBehaviorEventTrackReqVO {
     @NotNull private Integer eventType;
     private Long spuId;
     private Long skuId;
+    @Min(1) @Max(999) private Integer quantity;
     @NotBlank @Size(max=255) private String pagePath;
     @Size(max=255) private String referrerHost;
     private Integer deviceType;
+    @Size(max=32) private String channel;
+    @Size(max=100) private String utmSource;
+    @Size(max=100) private String utmMedium;
+    @Size(max=100) private String utmCampaign;
 }
