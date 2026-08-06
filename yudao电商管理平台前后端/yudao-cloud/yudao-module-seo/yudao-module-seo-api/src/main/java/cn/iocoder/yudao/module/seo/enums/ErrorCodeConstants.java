@@ -51,4 +51,16 @@ public interface ErrorCodeConstants {
     ErrorCode NAVIGATION_PREVIEW_ORIGIN_MISMATCH = new ErrorCode(1_070_005_005,
             "官网预览请求来源与站点配置不一致");
 
+    ErrorCode BLOG_ARTICLE_NOT_EXISTS = new ErrorCode(1_070_006_000, "企业日志不存在");
+    ErrorCode BLOG_ARTICLE_DUPLICATE = new ErrorCode(1_070_006_001, "当前站点和语言下的 Blog Slug 已存在");
+    ErrorCode BLOG_ARTICLE_VERSION_CONFLICT = new ErrorCode(1_070_006_002,
+            "企业日志已被其他用户修改，请刷新后重试");
+    ErrorCode BLOG_ARTICLE_INVALID = new ErrorCode(1_070_006_003, "企业日志内容不完整或格式不正确");
+    ErrorCode BLOG_ARTICLE_IDENTITY_IMMUTABLE = new ErrorCode(1_070_006_004,
+            "企业日志的站点和语言不可修改");
+    ErrorCode BLOG_PREVIEW_EXPIRED = new ErrorCode(1_070_006_005,
+            "Blog 预览凭证已过期、已使用或内容已更新，请重新生成预览");
+    ErrorCode BLOG_PREVIEW_ORIGIN_MISMATCH = new ErrorCode(1_070_006_006,
+            "Blog 预览请求来源与站点配置不一致");
+
 }

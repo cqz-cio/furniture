@@ -79,6 +79,12 @@ const pages: Record<string, PageDefinition> = {
     description: '维护官网导航结构，并在发布前查看真实官网效果。',
     recordLabel: '官网导航'
   },
+  '/seo/blog': {
+    moduleLabel: 'SEO 管理',
+    kind: 'list',
+    description: '维护 VANZ 官网 Journal 内容；发布后自动同步到 2B 网站。',
+    recordLabel: '企业日志'
+  },
   '/seo/analysis': {
     moduleLabel: 'SEO 管理',
     kind: 'analytics',

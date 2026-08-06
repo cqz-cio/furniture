@@ -30,6 +30,8 @@ class SeoMigrationContractTest {
             Path.of("sql", "mysql", "migrations", "V040__grant_navigation_to_vanz_operator.sql");
     private static final Path OAKVED_NAVIGATION_TREE_MIGRATION_RELATIVE_PATH =
             Path.of("sql", "mysql", "migrations", "V043__oakved_b2c_navigation_tree.sql");
+    private static final Path WEBSITE_BLOG_MIGRATION_RELATIVE_PATH =
+            Path.of("sql", "mysql", "migrations", "V045__website_blog_management.sql");
     private static final Path MYSQL_BASELINE_RELATIVE_PATH =
             Path.of("sql", "mysql", "oakved-baseline.sql");
     private static final String RELEASED_KEYWORD_ANALYSIS_MIGRATION_SHA256 =
@@ -133,6 +135,41 @@ class SeoMigrationContractTest {
                 "LOWER(config.`site_name`) LIKE '%oakved%'",
                 "LOWER(config.`site_url`) LIKE '%oakved%'");
         assertThat(sql).doesNotContain("tenant.`id` = 121", "tenant_id = 121", "business_mode = 'B2C'");
+    }
+
+    @Test
+    void shouldCreateTenantScopedWebsiteBlogAndSeedLegacyArticle() throws IOException {
+        String sql = migrationSql(WEBSITE_BLOG_MIGRATION_RELATIVE_PATH);
+
+        assertThat(sql).contains(
+                "CREATE TABLE IF NOT EXISTS `website_blog_article`",
+                "CREATE TABLE IF NOT EXISTS `website_blog_publish_record`",
+                "`published_payload_json` json DEFAULT NULL",
+                "UNIQUE KEY `uk_website_blog_active_slug`",
+                "UNIQUE KEY `uk_website_blog_published_slug`",
+                "'5-quick-steps-to-double-your-bedroom-space'",
+                "'/5-quick-steps-to-double-your-bedroom-space/'",
+                "'sections', JSON_EXTRACT(@vanz_blog_sections, '$')",
+                "JSON_TYPE(JSON_EXTRACT(`published_payload_json`, '$.sections')) = 'STRING'",
+                "'seo/blog/index','SeoBlog'",
+                "'seo:blog:query'",
+                "'seo:blog:create'",
+                "'seo:blog:update'",
+                "'seo:blog:delete'",
+                "'seo:blog:preview'",
+                "'seo:blog:publish'",
+                "role.`code` IN ('tenant_admin', 'mall_operator')",
+                "CREATE TEMPORARY TABLE `website_blog_menu_guard`");
+    }
+
+    @Test
+    void shouldIncludeWebsiteBlogMigrationInInstallBaseline() throws IOException {
+        String baseline = migrationSql(MYSQL_BASELINE_RELATIVE_PATH);
+
+        assertThat(baseline).contains(
+                "-- BEGIN V045__website_blog_management.sql",
+                "CREATE TABLE IF NOT EXISTS `website_blog_article`",
+                "VALUES('045','website blog management','V045__website_blog_management.sql'");
     }
 
     @Test
