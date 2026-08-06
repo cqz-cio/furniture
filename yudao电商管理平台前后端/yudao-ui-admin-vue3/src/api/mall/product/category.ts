@@ -30,9 +30,20 @@ export interface CategoryVO {
   status: number
 }
 
+/** 导航管理快速创建商品分类 */
+export interface NavigationCategoryCreateVO {
+  parentId: number
+  name: string
+}
+
 // 创建商品分类
 export const createCategory = (data: CategoryVO) => {
   return request.post({ url: '/product/category/create', data })
+}
+
+// 从官网导航快速创建商品分类：图片可稍后在商品中心补充
+export const createNavigationCategory = (data: NavigationCategoryCreateVO) => {
+  return request.post({ url: '/product/category/create-navigation', data })
 }
 
 // 更新商品分类

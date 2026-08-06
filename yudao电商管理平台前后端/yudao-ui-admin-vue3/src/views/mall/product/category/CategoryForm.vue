@@ -9,7 +9,7 @@
     >
       <el-alert
         v-if="props.navigationCreate && formType === 'create'"
-        title="创建完成后会自动加入 Products 二级目录，保存并发布后才会在官网显示。"
+        title="创建后会自动加入 Products 二级目录；分类图片可稍后在商品中心补充，保存并发布后才会在官网显示。"
         type="info"
         show-icon
         :closable="false"
@@ -37,7 +37,7 @@
           <span>如果该分类已加入官网 Products 导航，确认修改后已发布官网会立即同步。</span>
         </div>
       </el-form-item>
-      <el-form-item label="移动端分类图" prop="picUrl">
+      <el-form-item v-if="!props.navigationCreate" label="移动端分类图" prop="picUrl">
         <UploadImg v-model="formData.picUrl" :limit="1" :is-show-tip="false" />
         <div style="font-size: 10px" class="pl-10px">推荐 180x180 图片分辨率</div>
       </el-form-item>
@@ -102,7 +102,9 @@ const formData = ref<ProductCategoryApi.CategoryVO>({
 const formRules = reactive({
   parentId: [{ required: true, message: '请选择上级分类', trigger: 'blur' }],
   name: [{ required: true, message: '分类名称不能为空', trigger: 'blur' }],
-  picUrl: [{ required: true, message: '分类图片不能为空', trigger: 'blur' }],
+  picUrl: props.navigationCreate
+    ? []
+    : [{ required: true, message: '分类图片不能为空', trigger: 'blur' }],
   sort: [{ required: true, message: '分类排序不能为空', trigger: 'blur' }],
   status: [{ required: true, message: '开启状态不能为空', trigger: 'blur' }]
 })
@@ -156,7 +158,12 @@ const submitForm = async () => {
       )
     }
     if (formType.value === 'create') {
-      savedCategoryId = await ProductCategoryApi.createCategory(data)
+      savedCategoryId = props.navigationCreate
+        ? await ProductCategoryApi.createNavigationCategory({
+            parentId: data.parentId as number,
+            name: data.name
+          })
+        : await ProductCategoryApi.createCategory(data)
       if (!props.navigationCreate) {
         message.success(t('common.createSuccess'))
       }

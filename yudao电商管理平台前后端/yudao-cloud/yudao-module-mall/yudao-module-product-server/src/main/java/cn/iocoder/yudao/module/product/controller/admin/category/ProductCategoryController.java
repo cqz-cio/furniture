@@ -1,10 +1,12 @@
 package cn.iocoder.yudao.module.product.controller.admin.category;
 
+import cn.iocoder.yudao.framework.common.enums.CommonStatusEnum;
 import cn.iocoder.yudao.framework.common.pojo.CommonResult;
 import cn.iocoder.yudao.framework.common.util.object.BeanUtils;
 import cn.iocoder.yudao.module.product.controller.admin.category.vo.ProductCategoryListReqVO;
 import cn.iocoder.yudao.module.product.controller.admin.category.vo.ProductCategoryRespVO;
 import cn.iocoder.yudao.module.product.controller.admin.category.vo.ProductCategorySaveReqVO;
+import cn.iocoder.yudao.module.product.controller.admin.category.vo.ProductNavigationCategoryCreateReqVO;
 import cn.iocoder.yudao.module.product.dal.dataobject.category.ProductCategoryDO;
 import cn.iocoder.yudao.module.product.service.category.ProductCategoryService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -35,6 +37,20 @@ public class ProductCategoryController {
     @PreAuthorize("@ss.hasPermission('product:category:create')")
     public CommonResult<Long> createCategory(@Valid @RequestBody ProductCategorySaveReqVO createReqVO) {
         return success(categoryService.createCategory(createReqVO));
+    }
+
+    @PostMapping("/create-navigation")
+    @Operation(summary = "从官网导航快速创建商品分类")
+    @PreAuthorize("@ss.hasPermission('product:category:create')")
+    public CommonResult<Long> createNavigationCategory(
+            @Valid @RequestBody ProductNavigationCategoryCreateReqVO createReqVO) {
+        ProductCategorySaveReqVO category = new ProductCategorySaveReqVO()
+                .setParentId(createReqVO.getParentId())
+                .setName(createReqVO.getName().trim())
+                .setPicUrl("")
+                .setSort(0)
+                .setStatus(CommonStatusEnum.ENABLE.getStatus());
+        return success(categoryService.createCategory(category));
     }
 
     @PutMapping("/update")
