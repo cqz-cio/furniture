@@ -27,6 +27,10 @@ public class BehaviorEventDO extends TenantBaseDO {
     private String pagePath;
     private String referrerHost;
     private Integer deviceType;
+    private String channel;
+    private String utmSource;
+    private String utmMedium;
+    private String utmCampaign;
     private Integer trafficQuality;
     private String exclusionReason;
     private LocalDateTime occurredAt;

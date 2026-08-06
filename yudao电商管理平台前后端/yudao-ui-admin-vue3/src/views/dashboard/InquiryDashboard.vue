@@ -131,9 +131,42 @@ const trafficMetrics = computed(() => [
     hint: '商品详情 UV'
   },
   {
+    label: 'Quote List 用户',
+    value: canReadTraffic ? integer(trafficSummary.value?.addCartUserCount) : '—',
+    hint: '加入过报价清单的独立访客'
+  },
+  {
+    label: '开始询盘',
+    value: canReadTraffic ? integer(trafficSummary.value?.checkoutStartCount) : '—',
+    hint: '进入询盘填写阶段的会话'
+  },
+  {
     label: '访客转询盘率',
     value: canReadTraffic && canReadInquiry ? percent(visitorToInquiryRate.value) : '—',
     hint: '询盘数 / 首页访客'
+  }
+])
+
+const acquisitionFunnel = computed(() => [
+  {
+    label: '网站访客',
+    value: canReadTraffic ? integer(trafficSummary.value?.homeUv) : '—'
+  },
+  {
+    label: '查看商品',
+    value: canReadTraffic ? integer(trafficSummary.value?.productDetailUv) : '—'
+  },
+  {
+    label: '加入 Quote List',
+    value: canReadTraffic ? integer(trafficSummary.value?.addCartUserCount) : '—'
+  },
+  {
+    label: '开始询盘',
+    value: canReadTraffic ? integer(trafficSummary.value?.checkoutStartCount) : '—'
+  },
+  {
+    label: '成功提交询盘',
+    value: canReadInquiry ? integer(inquirySummary.value.total) : '—'
   }
 ])
 
@@ -288,7 +321,7 @@ onMounted(loadDashboard)
           <h1>数据看板</h1>
           <el-tag effect="plain" round>B2B 询盘型</el-tag>
         </div>
-        <p>先看询盘处理效率，再定位网站流量、商品关注度与 SEO 内容覆盖。</p>
+        <p>先看询盘处理效率，再定位网站流量、Quote List 转化、商品关注度与 SEO 内容覆盖。</p>
         <span class="inquiry-dashboard__period">{{ selectedPeriodLabel }}</span>
       </div>
       <el-space wrap>
@@ -374,18 +407,10 @@ onMounted(loadDashboard)
             <small>{{ item.hint }}</small>
           </div>
         </div>
-        <div class="inquiry-dashboard__funnel">
-          <div>
-            <span>全部询盘</span>
-            <strong>{{ integer(inquirySummary.total) }}</strong>
-          </div>
-          <div>
-            <span>有效询盘</span>
-            <strong>{{ integer(validInquiryCount) }}</strong>
-          </div>
-          <div>
-            <span>已处理</span>
-            <strong>{{ integer(inquirySummary.processed) }}</strong>
+        <div class="inquiry-dashboard__funnel" aria-label="B2B 询盘转化漏斗">
+          <div v-for="item in acquisitionFunnel" :key="item.label">
+            <span>{{ item.label }}</span>
+            <strong>{{ item.value }}</strong>
           </div>
         </div>
       </el-card>
@@ -494,6 +519,9 @@ onMounted(loadDashboard)
         </el-table-column>
         <el-table-column label="访客数" width="130">
           <template #default="{ row }">{{ integer(row.browseUserCount) }}</template>
+        </el-table-column>
+        <el-table-column label="加入 Quote List" width="150">
+          <template #default="{ row }">{{ integer(row.cartCount) }}</template>
         </el-table-column>
         <el-table-column label="数据状态" width="140">
           <template #default="{ row }">
@@ -663,7 +691,7 @@ onMounted(loadDashboard)
 
 .inquiry-dashboard__funnel {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 8px;
   margin-top: 14px;
 }
@@ -726,6 +754,10 @@ onMounted(loadDashboard)
 
   .inquiry-dashboard__metrics {
     grid-template-columns: 1fr;
+  }
+
+  .inquiry-dashboard__funnel {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .inquiry-dashboard__filters :deep(.el-date-editor) {

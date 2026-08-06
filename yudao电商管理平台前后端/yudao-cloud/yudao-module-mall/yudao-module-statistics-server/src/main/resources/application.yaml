@@ -131,6 +131,10 @@ yudao:
       enabled: ${STATISTICS_BEHAVIOR_ENABLED:false}
       consent-required: ${STATISTICS_BEHAVIOR_CONSENT_REQUIRED:true}
       enabled-tenant-ids: [121, 162]
+      consent-policy-version: ${STATISTICS_CONSENT_POLICY_VERSION:2026-08-06}
+      consent-evidence-lifetime-days: ${STATISTICS_CONSENT_EVIDENCE_LIFETIME_DAYS:180}
+      consent-record-retention-days: ${STATISTICS_CONSENT_RECORD_RETENTION_DAYS:730}
+      consent-per-ip-per-minute: ${STATISTICS_CONSENT_PER_IP_PER_MINUTE:30}
       hmac-tenants:
         "121":
           active-version: ${STATISTICS_BEHAVIOR_HMAC_TENANT_121_ACTIVE_VERSION:1}

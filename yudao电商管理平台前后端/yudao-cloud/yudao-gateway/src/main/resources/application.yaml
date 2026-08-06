@@ -296,3 +296,6 @@ yudao:
         - host: ${FURNITURE_TRACKING_HOST:shop.oakved.example}
           origin: ${FURNITURE_TRACKING_ORIGIN:https://shop.oakved.example}
           tenant-id: ${FURNITURE_TRACKING_TENANT_ID:121}
+        - host: ${VANZ_TRACKING_HOST:127.0.0.1:48080}
+          origin: ${VANZ_TRACKING_ORIGIN:http://localhost:4173}
+          tenant-id: 162

@@ -59,6 +59,36 @@ class BehaviorEventServiceImplTest {
         assertThrows(IllegalArgumentException.class,()->service.trackPublic(request(1),"v","s",null,"203.0.113.9",null));
         verifyNoInteractions(eventMapper);
     }
+    @Test void quoteAndAttributionDimensions_areValidatedAndPersisted() {
+        when(values.setIfAbsent(anyString(),eq("evt-1"),eq(5L),eq(TimeUnit.SECONDS))).thenReturn(true);
+        AppBehaviorEventTrackReqVO request = request(BehaviorEventTypeEnum.ADD_TO_QUOTE.getValue())
+                .setSpuId(20L).setSkuId(30L).setQuantity(2).setDeviceType(1)
+                .setReferrerHost(" google.example\n ")
+                .setUtmSource(" google ").setUtmMedium(" cpc ").setUtmCampaign(" trade  2026 ");
+
+        service.trackPublic(request,"visitor","session","valid-evidence","203.0.113.9",null);
+
+        org.mockito.ArgumentCaptor<BehaviorEventDO> captor=org.mockito.ArgumentCaptor.forClass(BehaviorEventDO.class);
+        verify(eventMapper).insert(captor.capture());
+        BehaviorEventDO event = captor.getValue();
+        assertEquals(BehaviorEventTypeEnum.ADD_TO_QUOTE.getValue(), event.getEventType());
+        assertEquals(20L, event.getSpuId());
+        assertEquals(30L, event.getSkuId());
+        assertEquals(2, event.getQuantity());
+        assertEquals("google.example", event.getReferrerHost());
+        assertEquals("google", event.getUtmSource());
+        assertEquals("cpc", event.getUtmMedium());
+        assertEquals("trade 2026", event.getUtmCampaign());
+    }
+    @Test void invalidPublicEventDimensions_areRejectedBeforePersistence() {
+        assertThrows(IllegalArgumentException.class, () -> service.trackPublic(
+                request(BehaviorEventTypeEnum.ADD_TO_QUOTE.getValue()).setQuantity(1),
+                "v", "s", "valid-evidence", "203.0.113.9", null));
+        assertThrows(IllegalArgumentException.class, () -> service.trackPublic(
+                request(BehaviorEventTypeEnum.CONTACT_CLICK.getValue()).setChannel("telegram"),
+                "v", "s", "valid-evidence", "203.0.113.9", null));
+        verifyNoInteractions(eventMapper);
+    }
     @Test void trustedCartEvent_requiresVerifiedConsentEvidence() {
         TrustedBehaviorEventCommand command = new TrustedBehaviorEventCommand()
                 .setEventId("cart-1").setUserId(10L).setSpuId(20L).setSkuId(30L).setQuantity(1)

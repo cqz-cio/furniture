@@ -19,9 +19,14 @@ import java.util.Set;
 public class BehaviorTrackingGatewayFilter implements GlobalFilter, Ordered {
 
     public static final String TRACK_PATH = "/app-api/statistics/behavior/track";
+    public static final String CONSENT_EVIDENCE_PATH = "/app-api/statistics/consent/evidence";
+    public static final String CONSENT_WITHDRAW_PATH = "/app-api/statistics/consent/withdraw";
+    private static final Set<String> PUBLIC_ANALYTICS_PATHS = Set.of(
+            TRACK_PATH, CONSENT_EVIDENCE_PATH, CONSENT_WITHDRAW_PATH);
     private static final Set<String> UNTRUSTED_IDENTITY_HEADERS = new HashSet<>(Arrays.asList(
             "tenant-id", "login-user", "x-user-id", "x-user-type", "x-tenant-id",
-            "x-internal-user-id", "x-internal-tenant-id"));
+            "x-internal-user-id", "x-internal-tenant-id", "authorization", "cookie",
+            "x-vanz-inquiry-secret"));
 
     private final BehaviorTrackingGatewayProperties properties;
 
@@ -31,11 +36,16 @@ public class BehaviorTrackingGatewayFilter implements GlobalFilter, Ordered {
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
-        if (!TRACK_PATH.equals(exchange.getRequest().getURI().getPath())) {
+        if (!PUBLIC_ANALYTICS_PATHS.contains(exchange.getRequest().getURI().getPath())) {
             return chain.filter(exchange);
         }
         if (!properties.isEnabled()) {
             return reject(exchange, HttpStatus.NOT_FOUND);
+        }
+        HttpMethod method = exchange.getRequest().getMethod();
+        if (method != HttpMethod.POST && method != HttpMethod.OPTIONS) {
+            exchange.getResponse().getHeaders().set(HttpHeaders.ALLOW, "POST, OPTIONS");
+            return reject(exchange, HttpStatus.METHOD_NOT_ALLOWED);
         }
         String host = exchange.getRequest().getHeaders().getFirst(HttpHeaders.HOST);
         String origin = exchange.getRequest().getHeaders().getOrigin();
@@ -51,14 +61,14 @@ public class BehaviorTrackingGatewayFilter implements GlobalFilter, Ordered {
         exchange.getResponse().getHeaders().set(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, site.getOrigin());
         exchange.getResponse().getHeaders().set(HttpHeaders.ACCESS_CONTROL_ALLOW_METHODS, "POST, OPTIONS");
         exchange.getResponse().getHeaders().set(HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS,
-                "Content-Type, Authorization, X-Analytics-Visitor-Id, X-Analytics-Session-Id, X-Analytics-Consent-Evidence");
+                "Content-Type, X-Analytics-Visitor-Id, X-Analytics-Session-Id, X-Analytics-Consent-Evidence");
         exchange.getResponse().getHeaders().set(HttpHeaders.ACCESS_CONTROL_MAX_AGE, "3600");
 
         ServerHttpRequest request = exchange.getRequest().mutate().headers(headers -> {
             UNTRUSTED_IDENTITY_HEADERS.forEach(headers::remove);
             headers.set("tenant-id", String.valueOf(site.getTenantId()));
         }).build();
-        if (request.getMethod() == HttpMethod.OPTIONS) {
+        if (method == HttpMethod.OPTIONS) {
             exchange.getResponse().setStatusCode(HttpStatus.NO_CONTENT);
             return exchange.getResponse().setComplete();
         }
