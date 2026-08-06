@@ -108,6 +108,7 @@
           filterable
           placeholder="Packing method"
         >
+          <el-option label="Carton packing" value="Carton packing" />
           <el-option label="Knock-down carton" value="Knock-down carton" />
           <el-option label="Fully assembled carton" value="Fully assembled carton" />
           <el-option label="Protective export carton" value="Protective export carton" />
