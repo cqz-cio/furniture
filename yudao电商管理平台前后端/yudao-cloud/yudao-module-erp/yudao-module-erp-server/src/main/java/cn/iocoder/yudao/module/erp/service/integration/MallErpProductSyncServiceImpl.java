@@ -121,21 +121,30 @@ public class MallErpProductSyncServiceImpl implements MallErpProductSyncService 
     }
 
     private ErpProductCategoryDO resolveErpCategory(ProductSpuRespDTO spu) {
-        ErpProductCategoryDO root = categoryMapper.selectList().stream()
+        List<ErpProductCategoryDO> categories = categoryMapper.selectList();
+        ErpProductCategoryDO root = categories.stream()
                 .filter(category -> FURNITURE_CATEGORY_CODE.equals(category.getCode()))
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("No ERP furniture category"));
         if (spu.getCategoryName() == null || spu.getCategoryName().isBlank()) {
             return root;
         }
-        ErpProductCategoryDO category = categoryMapper.selectByParentIdAndName(root.getId(), spu.getCategoryName());
+        String categoryCode = "MALL_CATEGORY_" + spu.getCategoryId();
+        ErpProductCategoryDO category = categories.stream()
+                .filter(candidate -> categoryCode.equals(candidate.getCode()))
+                .findFirst()
+                .orElse(null);
+        if (category != null) {
+            return category;
+        }
+        category = categoryMapper.selectByParentIdAndName(root.getId(), spu.getCategoryName());
         if (category != null) {
             return category;
         }
         category = new ErpProductCategoryDO();
         category.setParentId(root.getId());
         category.setName(spu.getCategoryName());
-        category.setCode("MALL_CATEGORY_" + spu.getCategoryId());
+        category.setCode(categoryCode);
         category.setSort(100);
         category.setStatus(CommonStatusEnum.ENABLE.getStatus());
         categoryMapper.insert(category);
