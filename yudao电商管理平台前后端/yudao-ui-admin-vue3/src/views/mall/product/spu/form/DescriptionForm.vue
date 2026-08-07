@@ -1,8 +1,17 @@
 <!-- 商品发布 - 商品详情 -->
 <template>
   <el-form ref="formRef" :model="formData" :rules="rules" label-width="120px" :disabled="isDetail">
+    <el-alert
+      v-if="isB2B"
+      class="mb-16px"
+      title="详情页标题下方完整描述"
+      description="B2B 网站商品标题下方优先显示这里的完整文案；可直接粘贴老网站的完整产品描述，不受商品卡片简介长度限制。"
+      type="info"
+      :closable="false"
+      show-icon
+    />
     <!--富文本编辑器组件-->
-    <el-form-item label="商品详情" prop="description">
+    <el-form-item :label="isB2B ? '完整产品描述' : '商品详情'" prop="description">
       <Editor :readonly="isDetail" v-model:modelValue="formData.description" />
     </el-form-item>
   </el-form>
@@ -24,8 +33,10 @@ const props = defineProps({
     default: () => {}
   },
   activeName: propTypes.string.def(''),
-  isDetail: propTypes.bool.def(false) // 是否作为详情组件
+  isDetail: propTypes.bool.def(false), // 是否作为详情组件
+  businessMode: propTypes.string.def('B2C')
 })
+const isB2B = computed(() => props.businessMode === 'B2B')
 const formRef = ref() // 表单Ref
 const formData = ref<Spu>({
   description: '' // 商品详情

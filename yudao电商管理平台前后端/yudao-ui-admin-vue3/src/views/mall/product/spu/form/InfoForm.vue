@@ -57,17 +57,22 @@
         ERP 内部
       </el-tag>
     </el-form-item>
-    <el-form-item label="商品简介" prop="introduction">
-      <el-input
-        v-model="formData.introduction"
-        :autosize="{ minRows: 2, maxRows: 2 }"
-        :clearable="true"
-        :show-word-limit="true"
-        class="w-80!"
-        maxlength="128"
-        placeholder="请输入商品简介"
-        type="textarea"
-      />
+    <el-form-item :label="isB2B ? '商品卡片简介' : '商品简介'" prop="introduction">
+      <div class="w-80!">
+        <el-input
+          v-model="formData.introduction"
+          :autosize="{ minRows: 2, maxRows: 4 }"
+          :clearable="true"
+          :show-word-limit="true"
+          class="w-100!"
+          maxlength="256"
+          :placeholder="isB2B ? '用于商品列表卡片的简短介绍' : '请输入商品简介'"
+          type="textarea"
+        />
+        <div v-if="isB2B" class="mt-4px text-12px text-[var(--el-text-color-secondary)]">
+          此处仅用于列表卡片；详情页标题下方的完整描述请填写在“详情页描述”标签页。
+        </div>
+      </div>
       <el-tag
         v-if="isB2B"
         class="ml-8px"

@@ -89,10 +89,11 @@
             :propFormData="formData"
           />
         </el-tab-pane>
-        <el-tab-pane label="商品详情" name="description">
+        <el-tab-pane :label="isB2B ? '详情页描述' : '商品详情'" name="description">
           <DescriptionForm
             ref="descriptionRef"
             v-model:activeName="activeName"
+            :business-mode="businessMode"
             :is-detail="isDetail"
             :propFormData="formData"
           />

@@ -9,9 +9,11 @@
     <el-alert
       class="mb-16px"
       :title="
-        isB2B
-          ? '以下字段直接对应 B2B 家具网站商品详情页；公开参数必须填写，其他可选内容留空时不会生成示例数据。'
-          : '以下配置控制家具网站商品详情页；未填写的可选内容保持为空。'
+        isSimplifiedChair
+          ? 'Chair 精简模式只保留老网页有依据的公开参数和详情折叠内容；户外模板字段不会保存。'
+          : isB2B
+            ? '以下字段直接对应 B2B 家具网站商品详情页；公开参数必须填写，其他可选内容留空时不会生成示例数据。'
+            : '以下配置控制家具网站商品详情页；未填写的可选内容保持为空。'
       "
       type="info"
       :closable="false"
@@ -153,83 +155,95 @@
       </el-select>
     </el-form-item>
 
-    <el-form-item label="Collection">
-      <el-input
-        v-model="detailConfig.collection"
-        class="w-80!"
-        placeholder="CLOUD MODULAR COLLECTION"
-      />
-    </el-form-item>
+    <el-alert
+      v-if="isSimplifiedChair"
+      class="mb-16px"
+      title="Chair 精简字段"
+      description="Material、Finish / Color、Dimension、Packing 会进入 PRODUCT INFORMATION；Feature、Application、Design Style 等老网页参数请在下方 DETAILS 中维护。"
+      type="success"
+      :closable="false"
+      show-icon
+    />
 
-    <el-form-item label="Hero note">
-      <el-input
-        v-model="detailConfig.heroNote"
-        class="w-80!"
-        type="textarea"
-        :autosize="{ minRows: 2, maxRows: 4 }"
-        placeholder="Shown in Sand Performance Linen..."
-      />
-    </el-form-item>
+    <template v-if="!isSimplifiedChair">
+      <el-form-item label="Collection">
+        <el-input
+          v-model="detailConfig.collection"
+          class="w-80!"
+          placeholder="CLOUD MODULAR COLLECTION"
+        />
+      </el-form-item>
 
-    <el-divider content-position="left">Fabric / Finish selector</el-divider>
-    <el-form-item label="Selector label">
-      <el-input v-model="detailConfig.fabricSelector.label" class="w-80!" />
-    </el-form-item>
-    <el-form-item label="Counts">
-      <div class="flex gap-12px">
-        <el-input-number v-model="detailConfig.fabricSelector.stockedCount" :min="0" />
-        <el-input-number v-model="detailConfig.fabricSelector.specialOrderCount" :min="0" />
-      </div>
-    </el-form-item>
-    <el-form-item label="Swatches">
-      <div class="admin-detail-list">
-        <div
-          v-for="(swatch, index) in detailConfig.fabricSelector.swatches"
-          :key="index"
-          class="admin-detail-row"
-        >
-          <el-input v-model="swatch.label" placeholder="Label" />
-          <el-color-picker v-model="swatch.swatch" />
-          <el-button @click="removeSwatch(index)">Remove</el-button>
+      <el-form-item label="Hero note">
+        <el-input
+          v-model="detailConfig.heroNote"
+          class="w-80!"
+          type="textarea"
+          :autosize="{ minRows: 2, maxRows: 4 }"
+          placeholder="Shown in Sand Performance Linen..."
+        />
+      </el-form-item>
+
+      <el-divider content-position="left">Fabric / Finish selector</el-divider>
+      <el-form-item label="Selector label">
+        <el-input v-model="detailConfig.fabricSelector.label" class="w-80!" />
+      </el-form-item>
+      <el-form-item label="Counts">
+        <div class="flex gap-12px">
+          <el-input-number v-model="detailConfig.fabricSelector.stockedCount" :min="0" />
+          <el-input-number v-model="detailConfig.fabricSelector.specialOrderCount" :min="0" />
         </div>
-        <el-button @click="addSwatch">Add swatch</el-button>
-      </div>
-    </el-form-item>
-
-    <el-divider content-position="left">Highlights</el-divider>
-    <el-form-item label="Highlights">
-      <div class="admin-detail-list">
-        <div v-for="(_, index) in detailConfig.highlights" :key="index" class="admin-detail-row">
-          <el-input v-model="detailConfig.highlights[index]" placeholder="Product highlight" />
-          <el-button @click="removeHighlight(index)">Remove</el-button>
+      </el-form-item>
+      <el-form-item label="Swatches">
+        <div class="admin-detail-list">
+          <div
+            v-for="(swatch, index) in detailConfig.fabricSelector.swatches"
+            :key="index"
+            class="admin-detail-row"
+          >
+            <el-input v-model="swatch.label" placeholder="Label" />
+            <el-color-picker v-model="swatch.swatch" />
+            <el-button @click="removeSwatch(index)">Remove</el-button>
+          </div>
+          <el-button @click="addSwatch">Add swatch</el-button>
         </div>
-        <el-button @click="addHighlight">Add highlight</el-button>
-      </div>
-    </el-form-item>
+      </el-form-item>
 
-    <el-divider content-position="left">Option groups</el-divider>
-    <div
-      v-for="(group, groupIndex) in detailConfig.optionGroups"
-      :key="groupIndex"
-      class="admin-detail-panel"
-    >
-      <div class="admin-detail-row">
-        <el-input v-model="group.key" placeholder="key" />
-        <el-input v-model="group.label" placeholder="Label" />
-        <el-button @click="removeOptionGroup(groupIndex)">Remove group</el-button>
+      <el-divider content-position="left">Highlights</el-divider>
+      <el-form-item label="Highlights">
+        <div class="admin-detail-list">
+          <div v-for="(_, index) in detailConfig.highlights" :key="index" class="admin-detail-row">
+            <el-input v-model="detailConfig.highlights[index]" placeholder="Product highlight" />
+            <el-button @click="removeHighlight(index)">Remove</el-button>
+          </div>
+          <el-button @click="addHighlight">Add highlight</el-button>
+        </div>
+      </el-form-item>
+
+      <el-divider content-position="left">Option groups</el-divider>
+      <div
+        v-for="(group, groupIndex) in detailConfig.optionGroups"
+        :key="groupIndex"
+        class="admin-detail-panel"
+      >
+        <div class="admin-detail-row">
+          <el-input v-model="group.key" placeholder="key" />
+          <el-input v-model="group.label" placeholder="Label" />
+          <el-button @click="removeOptionGroup(groupIndex)">Remove group</el-button>
+        </div>
+        <el-input v-model="group.helper" class="mt-8px" placeholder="Helper text" />
+        <el-input
+          class="mt-8px"
+          type="textarea"
+          :model-value="optionValuesText(group)"
+          placeholder="One option per line"
+          @update:model-value="(value) => updateOptionValues(group, value)"
+        />
       </div>
-      <el-input v-model="group.helper" class="mt-8px" placeholder="Helper text" />
-      <el-input
-        class="mt-8px"
-        type="textarea"
-        :model-value="optionValuesText(group)"
-        placeholder="One option per line"
-        @update:model-value="(value) => updateOptionValues(group, value)"
-      />
-    </div>
-    <el-form-item label=" ">
-      <el-button @click="addOptionGroup">Add option group</el-button>
-    </el-form-item>
+      <el-form-item label=" ">
+        <el-button @click="addOptionGroup">Add option group</el-button>
+      </el-form-item>
+    </template>
 
     <el-divider content-position="left">Accordion sections</el-divider>
     <div
@@ -252,21 +266,23 @@
       <el-button @click="addAccordion">Add accordion section</el-button>
     </el-form-item>
 
-    <el-divider content-position="left">Related links</el-divider>
-    <div
-      v-for="(link, linkIndex) in detailConfig.relatedLinks"
-      :key="linkIndex"
-      class="admin-detail-panel"
-    >
-      <div class="admin-detail-row">
-        <el-input v-model="link.label" placeholder="Link label" />
-        <el-input v-model="link.href" placeholder="/collection or https://..." />
-        <el-button @click="removeRelatedLink(linkIndex)">Remove</el-button>
+    <template v-if="!isSimplifiedChair">
+      <el-divider content-position="left">Related links</el-divider>
+      <div
+        v-for="(link, linkIndex) in detailConfig.relatedLinks"
+        :key="linkIndex"
+        class="admin-detail-panel"
+      >
+        <div class="admin-detail-row">
+          <el-input v-model="link.label" placeholder="Link label" />
+          <el-input v-model="link.href" placeholder="/collection or https://..." />
+          <el-button @click="removeRelatedLink(linkIndex)">Remove</el-button>
+        </div>
       </div>
-    </div>
-    <el-form-item label=" ">
-      <el-button @click="addRelatedLink">Add related link</el-button>
-    </el-form-item>
+      <el-form-item label=" ">
+        <el-button @click="addRelatedLink">Add related link</el-button>
+      </el-form-item>
+    </template>
 
     <el-alert
       v-if="isB2B"
@@ -461,40 +477,27 @@ const templates: Record<string, Partial<DetailConfig>> = {
   },
   chair: {
     productType: 'chair',
-    collection: 'OUTDOOR LOUNGE COLLECTION',
-    heroNote: 'Shown in Weathered Teak with Sand Perennials performance cushion.',
+    collection: '',
+    heroNote: '',
     fabricSelector: {
-      stockedCount: 12,
-      specialOrderCount: 48,
-      label: 'SELECT FROM 12 STOCKED AND 48 SPECIAL ORDER OUTDOOR FABRICS',
-      swatches: [
-        { label: 'Sand Perennials', swatch: '#d7c7ae' },
-        { label: 'Weathered Teak', swatch: '#9d8060' }
-      ]
+      stockedCount: 0,
+      specialOrderCount: 0,
+      label: '',
+      swatches: []
     },
-    highlights: ['Outdoor lounge chair with weather-ready frame and cushions'],
-    optionGroups: [
+    highlights: [],
+    optionGroups: [],
+    accordions: [
       {
-        key: 'frame',
-        label: 'Frame',
-        helper: 'Choose frame finish.',
-        values: ['Weathered Teak', 'Black Aluminum']
-      },
-      {
-        key: 'fabric',
-        label: 'Fabric',
-        helper: 'Choose outdoor fabric.',
-        values: ['Sand Perennials']
+        title: 'DETAILS',
+        rows: [
+          ['Feature', ''],
+          ['Application', ''],
+          ['Design Style', '']
+        ]
       }
     ],
-    accordions: [
-      { title: 'DETAILS', rows: [['Design', 'Relaxed outdoor lounge chair with angled back']] },
-      { title: 'DIMENSIONS', rows: [['Seat height', '43 cm']] },
-      { title: 'MATERIALS', rows: [['Frame', 'Weathered teak or powder-coated aluminum']] },
-      { title: 'CARE', rows: [['Outdoor care', 'Cover or store cushions during heavy weather']] },
-      { title: 'DELIVERY', rows: [['Delivery', 'Ships assembled or with minimal setup']] }
-    ],
-    relatedLinks: [{ label: 'EXPLORE THE OUTDOOR LOUNGE COLLECTION', href: '/products' }]
+    relatedLinks: []
   },
   lighting: {
     productType: 'lighting',
@@ -570,6 +573,7 @@ const createEmptyConfig = (): DetailConfig => ({
 })
 
 const detailConfig = reactive<DetailConfig>(createEmptyConfig())
+const isSimplifiedChair = computed(() => detailConfig.productType === 'chair')
 
 const positiveNumberOrNull = (value: unknown): number | null => {
   const number = Number(value)
@@ -630,7 +634,13 @@ watch(
 const applyTemplate = () => {
   const template = templates[detailConfig.productType]
   if (!template) return
-  Object.assign(detailConfig, normalizeConfig(clone(template)))
+  const productInformation = {
+    material: detailConfig.material,
+    finish: detailConfig.finish,
+    dimension: clone(detailConfig.dimension),
+    packing: clone(detailConfig.packing)
+  }
+  Object.assign(detailConfig, normalizeConfig({ ...clone(template), ...productInformation }))
 }
 
 const validateText =
@@ -710,6 +720,19 @@ const validate = async () => {
     normalized.material = normalized.material.trim()
     normalized.finish = normalized.finish.trim()
     normalized.packing.method = normalized.packing.method.trim()
+    if (normalized.productType === 'chair') {
+      normalized.collection = ''
+      normalized.heroNote = ''
+      normalized.fabricSelector = {
+        stockedCount: 0,
+        specialOrderCount: 0,
+        label: '',
+        swatches: []
+      }
+      normalized.highlights = []
+      normalized.optionGroups = []
+      normalized.relatedLinks = []
+    }
     ;(props.propFormData as any).detailConfig = clone(normalized)
   } catch (e) {
     message.error('Furniture detail configuration is incomplete')
