@@ -33,9 +33,13 @@ public class ProductWebsiteFieldPolicyService {
             Map.entry("fabricSelector", TenantProductFieldEnum.FABRIC_SELECTOR.getCode()),
             Map.entry("optionGroups", TenantProductFieldEnum.OPTION_GROUPS.getCode()),
             Map.entry("highlights", TenantProductFieldEnum.HIGHLIGHTS.getCode()),
+            Map.entry("itemNo", TenantProductFieldEnum.ITEM_NO.getCode()),
             Map.entry("material", TenantProductFieldEnum.MATERIAL.getCode()),
+            Map.entry("color", TenantProductFieldEnum.COLOR.getCode()),
             Map.entry("finish", TenantProductFieldEnum.FINISH.getCode()),
             Map.entry("dimension", TenantProductFieldEnum.DIMENSION.getCode()),
+            Map.entry("service", TenantProductFieldEnum.SERVICE.getCode()),
+            Map.entry("sample", TenantProductFieldEnum.SAMPLE.getCode()),
             Map.entry("packing", TenantProductFieldEnum.PACKING.getCode()),
             Map.entry("accordions", TenantProductFieldEnum.ACCORDIONS.getCode()),
             Map.entry("relatedLinks", TenantProductFieldEnum.RELATED_LINKS.getCode()));

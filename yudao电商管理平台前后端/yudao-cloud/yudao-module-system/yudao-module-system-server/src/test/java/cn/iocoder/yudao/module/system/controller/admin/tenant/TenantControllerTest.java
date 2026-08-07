@@ -55,6 +55,14 @@ public class TenantControllerTest extends BaseMockitoUnitTest {
         assertFalse(result.getData().getInventoryEnabled());
         assertTrue(result.getData().getWebsiteProductFields()
                 .contains(TenantProductFieldEnum.SKU_CODE.getCode()));
+        assertTrue(result.getData().getWebsiteProductFields()
+                .contains(TenantProductFieldEnum.ITEM_NO.getCode()));
+        assertTrue(result.getData().getWebsiteProductFields()
+                .contains(TenantProductFieldEnum.COLOR.getCode()));
+        assertTrue(result.getData().getWebsiteProductFields()
+                .contains(TenantProductFieldEnum.SERVICE.getCode()));
+        assertTrue(result.getData().getWebsiteProductFields()
+                .contains(TenantProductFieldEnum.SAMPLE.getCode()));
         assertFalse(result.getData().getWebsiteProductFields()
                 .contains(TenantProductFieldEnum.PRICE.getCode()));
         assertEquals(TenantAdminProductFieldPolicy.INTERNAL,

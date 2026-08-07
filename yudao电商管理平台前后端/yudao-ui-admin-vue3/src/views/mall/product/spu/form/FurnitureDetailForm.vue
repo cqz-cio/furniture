@@ -22,10 +22,17 @@
     <el-divider content-position="left">Product information</el-divider>
     <el-alert
       class="mb-16px"
-      title="网站公开参数固定为 Material、Finish、Dimension、Packing。Dimension 统一使用 cm；Packing 使用 pc 或 set，并记录 carton 数量。"
+      :title="
+        isSimplifiedChair
+          ? 'Chair 只保留老网页已有的 Item No.、Material、Size、Color、Service、Sample、Packing；不填写 Finish。'
+          : 'Item No. 是客户可见的型号，不等同于 ERP 自动 SKU。Color 表示颜色，Finish 仅表示涂装、漆面等表面处理；Size 统一使用 cm。'
+      "
       type="success"
       :closable="false"
     />
+    <el-form-item label="Item No." prop="itemNo">
+      <el-input v-model="detailConfig.itemNo" class="w-100!" maxlength="64" placeholder="VZC0099" />
+    </el-form-item>
     <el-form-item label="Material" prop="material">
       <el-input
         v-model="detailConfig.material"
@@ -34,15 +41,7 @@
         placeholder="Solid oak and oak veneer"
       />
     </el-form-item>
-    <el-form-item label="Finish" prop="finish">
-      <el-input
-        v-model="detailConfig.finish"
-        class="w-100!"
-        maxlength="255"
-        placeholder="Natural oak, clear matte lacquer"
-      />
-    </el-form-item>
-    <el-form-item label="Dimension" prop="dimension">
+    <el-form-item label="Size" prop="dimension">
       <div class="product-dimension-grid">
         <el-select v-model="detailConfig.dimension.shape" aria-label="Dimension shape">
           <el-option label="Rectangular" value="rectangular" />
@@ -102,6 +101,43 @@
         </div>
       </div>
     </el-form-item>
+    <el-form-item label="Color" prop="color">
+      <el-input
+        v-model="detailConfig.color"
+        class="w-100!"
+        maxlength="255"
+        placeholder="As shown or according to the customer's request"
+      />
+    </el-form-item>
+    <el-form-item v-if="!isSimplifiedChair" label="Finish" prop="finish">
+      <el-input
+        v-model="detailConfig.finish"
+        class="w-100!"
+        maxlength="255"
+        placeholder="Natural oak, clear matte lacquer"
+      />
+    </el-form-item>
+    <el-form-item label="Service" prop="service">
+      <el-input
+        v-model="detailConfig.service"
+        class="w-100!"
+        maxlength="255"
+        placeholder="OEM & ODM"
+      />
+    </el-form-item>
+    <el-form-item label="Sample" prop="sample">
+      <el-select
+        v-model="detailConfig.sample"
+        allow-create
+        class="w-100!"
+        filterable
+        placeholder="Available"
+      >
+        <el-option label="Available" value="Available" />
+        <el-option label="Made to order" value="Made to order" />
+        <el-option label="Unavailable" value="Unavailable" />
+      </el-select>
+    </el-form-item>
     <el-form-item label="Packing" prop="packing">
       <div class="product-packing-grid">
         <el-select
@@ -159,7 +195,7 @@
       v-if="isSimplifiedChair"
       class="mb-16px"
       title="Chair 精简字段"
-      description="Material、Finish / Color、Dimension、Packing 会进入 PRODUCT INFORMATION；Feature、Application、Design Style 等老网页参数请在下方 DETAILS 中维护。"
+      description="Item No.、Material、Size、Color、Service、Sample、Packing 会进入 PRODUCT INFORMATION；Feature、Application、Design Style 只放在 DETAILS。若原规格仅写 2 Pcs/Ctn，Packing method 可留空。"
       type="success"
       :closable="false"
       show-icon
@@ -321,9 +357,13 @@ type Packing = {
   cartonQuantity: number
 }
 type DetailConfig = {
+  itemNo: string
   material: string
+  color: string
   finish: string
   dimension: Dimension
+  service: string
+  sample: string
   packing: Packing
   productType: string
   collection: string
@@ -541,7 +581,9 @@ const templates: Record<string, Partial<DetailConfig>> = {
 const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value))
 
 const createEmptyConfig = (): DetailConfig => ({
+  itemNo: '',
   material: '',
+  color: '',
   finish: '',
   dimension: {
     shape: 'rectangular',
@@ -551,6 +593,8 @@ const createEmptyConfig = (): DetailConfig => ({
     height: null,
     unit: 'cm'
   },
+  service: '',
+  sample: '',
   packing: {
     method: '',
     itemQuantity: 1,
@@ -596,7 +640,9 @@ const normalizeConfig = (config?: Partial<DetailConfig>): DetailConfig => {
   return {
     ...empty,
     ...(config || {}),
+    itemNo: typeof config?.itemNo === 'string' ? config.itemNo : '',
     material: typeof config?.material === 'string' ? config.material : '',
+    color: typeof config?.color === 'string' ? config.color : '',
     finish: typeof config?.finish === 'string' ? config.finish : '',
     dimension: {
       shape: dimension.shape === 'round' ? 'round' : 'rectangular',
@@ -606,6 +652,8 @@ const normalizeConfig = (config?: Partial<DetailConfig>): DetailConfig => {
       height: positiveNumberOrNull(dimension.height),
       unit: 'cm'
     },
+    service: typeof config?.service === 'string' ? config.service : '',
+    sample: typeof config?.sample === 'string' ? config.sample : '',
     packing: {
       method: typeof packing.method === 'string' ? packing.method : '',
       itemQuantity: positiveInteger(packing.itemQuantity),
@@ -635,9 +683,13 @@ const applyTemplate = () => {
   const template = templates[detailConfig.productType]
   if (!template) return
   const productInformation = {
+    itemNo: detailConfig.itemNo,
     material: detailConfig.material,
+    color: detailConfig.color,
     finish: detailConfig.finish,
     dimension: clone(detailConfig.dimension),
+    service: detailConfig.service,
+    sample: detailConfig.sample,
     packing: clone(detailConfig.packing)
   }
   Object.assign(detailConfig, normalizeConfig({ ...clone(template), ...productInformation }))
@@ -663,7 +715,7 @@ const validateDimension = (_rule: unknown, value: Dimension, callback: (error?: 
 
 const validatePacking = (_rule: unknown, value: Packing, callback: (error?: Error) => void) => {
   const valid =
-    Boolean(value?.method?.trim()) &&
+    (isSimplifiedChair.value || Boolean(value?.method?.trim())) &&
     positiveInteger(value?.itemQuantity, 0) > 0 &&
     ['pc', 'set'].includes(value?.itemUnit) &&
     positiveInteger(value?.cartonQuantity, 0) > 0
@@ -673,8 +725,17 @@ const validatePacking = (_rule: unknown, value: Packing, callback: (error?: Erro
 const detailRules = computed(() =>
   isB2B.value
     ? {
+        ...(isSimplifiedChair.value
+          ? {
+              itemNo: [{ validator: validateText('Item No.'), trigger: 'blur' }],
+              color: [{ validator: validateText('Color'), trigger: 'blur' }],
+              service: [{ validator: validateText('Service'), trigger: 'blur' }],
+              sample: [{ validator: validateText('Sample'), trigger: 'change' }]
+            }
+          : {
+              finish: [{ validator: validateText('Finish'), trigger: 'blur' }]
+            }),
         material: [{ validator: validateText('Material'), trigger: 'blur' }],
-        finish: [{ validator: validateText('Finish'), trigger: 'blur' }],
         dimension: [{ validator: validateDimension, trigger: 'change' }],
         packing: [{ validator: validatePacking, trigger: 'change' }]
       }
@@ -717,10 +778,15 @@ const validate = async () => {
   try {
     await unref(formRef)?.validate()
     const normalized = normalizeConfig(detailConfig)
+    normalized.itemNo = normalized.itemNo.trim()
     normalized.material = normalized.material.trim()
+    normalized.color = normalized.color.trim()
     normalized.finish = normalized.finish.trim()
+    normalized.service = normalized.service.trim()
+    normalized.sample = normalized.sample.trim()
     normalized.packing.method = normalized.packing.method.trim()
     if (normalized.productType === 'chair') {
+      normalized.finish = ''
       normalized.collection = ''
       normalized.heroNote = ''
       normalized.fabricSelector = {

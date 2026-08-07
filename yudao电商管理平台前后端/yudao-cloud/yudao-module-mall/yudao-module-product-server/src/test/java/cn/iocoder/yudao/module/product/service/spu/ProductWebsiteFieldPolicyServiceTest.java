@@ -37,20 +37,25 @@ class ProductWebsiteFieldPolicyServiceTest {
                 .setId(tenantId)
                 .setBusinessMode(TenantBusinessModeEnum.B2B.getCode())
                 .setWebsiteProductFields(List.of(
-                        "category", "skuCode", "description", "material", "dimension"));
+                        "category", "skuCode", "description", "itemNo", "material",
+                        "color", "dimension", "service", "sample"));
         when(tenantApi.getTenant(tenantId)).thenReturn(CommonResult.success(tenant));
 
         ProductWebsiteFieldPolicy policy = service.getCurrentPolicy();
         Map<String, Object> detailConfig = new LinkedHashMap<>();
         detailConfig.put("collection", "LUXE");
         detailConfig.put("heroNote", "Shown in ivory linen");
+        detailConfig.put("itemNo", "VZC0099");
         detailConfig.put("material", "Solid oak");
+        detailConfig.put("color", "As shown or according to the customer's request");
         detailConfig.put("finish", "Natural matte lacquer");
         detailConfig.put("dimension", Map.of(
                 "shape", "rectangular", "width", 180, "depth", 90, "height", 75, "unit", "cm"));
         detailConfig.put("packing", Map.of(
                 "method", "Knock-down carton", "itemQuantity", 1,
                 "itemUnit", "pc", "cartonQuantity", 2));
+        detailConfig.put("service", "OEM & ODM");
+        detailConfig.put("sample", "Available");
         detailConfig.put("fieldVisibility", Map.of("price", true));
         AppProductSpuDetailRespVO.Sku sku = new AppProductSpuDetailRespVO.Sku()
                 .setId(78L)
@@ -85,8 +90,13 @@ class ProductWebsiteFieldPolicyServiceTest {
         assertNull(product.getSkus().get(0).getVipPrice());
         assertNull(product.getSkus().get(0).getWeight());
         assertFalse(product.getDetailConfig().containsKey("collection"));
+        assertEquals("VZC0099", product.getDetailConfig().get("itemNo"));
         assertEquals("Solid oak", product.getDetailConfig().get("material"));
+        assertEquals("As shown or according to the customer's request",
+                product.getDetailConfig().get("color"));
         assertTrue(product.getDetailConfig().containsKey("dimension"));
+        assertEquals("OEM & ODM", product.getDetailConfig().get("service"));
+        assertEquals("Available", product.getDetailConfig().get("sample"));
         assertFalse(product.getDetailConfig().containsKey("finish"));
         assertFalse(product.getDetailConfig().containsKey("packing"));
         assertFalse(product.getDetailConfig().containsKey("fieldVisibility"));
@@ -109,9 +119,13 @@ class ProductWebsiteFieldPolicyServiceTest {
 
         assertTrue(policy.allows("skuCode"));
         assertTrue(policy.allows("description"));
+        assertTrue(policy.allows("itemNo"));
         assertTrue(policy.allows("material"));
+        assertTrue(policy.allows("color"));
         assertTrue(policy.allows("finish"));
         assertTrue(policy.allows("dimension"));
+        assertTrue(policy.allows("service"));
+        assertTrue(policy.allows("sample"));
         assertTrue(policy.allows("packing"));
         assertFalse(policy.allows("price"));
         assertFalse(policy.allows("inventory"));
