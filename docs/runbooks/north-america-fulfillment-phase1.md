@@ -115,9 +115,7 @@ cd 'D:\code\furniture web'
 npm.cmd run verify:db-migrations
 ```
 
-The command must report a contiguous V001-V023 catalog and deterministic baseline. Resolve any gap or checksum mismatch before touching a database.
-
-The local migration script is `yudao电商管理平台前后端/yudao-cloud/script/docker/invoke-local-migrations.ps1`. It has no `-DryRun` option. Do not advertise or invoke a nonexistent dry-run parameter.
+The command must report the repository's complete contiguous catalog and deterministic latest baseline. Resolve any gap or checksum mismatch before touching a database. The former `invoke-local-migrations.ps1` writer is retired; the candidate `yudao-server.jar` and its packaged Flyway resources are the only migration executor.
 
 ## 6. Disposable MySQL rehearsal
 
@@ -127,13 +125,23 @@ Use a named temporary database, never a shared development or production databas
 $rehearsalDatabase = 'oakved_fulfillment_phase1_rehearsal'
 $compose = 'D:\code\yudao电商管理平台前后端\yudao-cloud\script\docker\docker-compose-local-infra.yml'
 docker compose -f $compose exec -T mysql mysql -uroot "-p$env:MYSQL_ROOT_PASSWORD" -e "CREATE DATABASE $rehearsalDatabase CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File 'D:\code\yudao电商管理平台前后端\yudao-cloud\script\docker\invoke-local-migrations.ps1' -Database $rehearsalDatabase -RootPassword $env:MYSQL_ROOT_PASSWORD
+$jdbc = "jdbc:mysql://127.0.0.1:3306/$rehearsalDatabase?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true"
+java.exe -jar 'D:\code\yudao电商管理平台前后端\yudao-cloud\yudao-server\target\yudao-server.jar' `
+  --spring.profiles.active=local --server.port=48081 `
+  "--spring.datasource.dynamic.datasource.master.url=$jdbc" `
+  --spring.datasource.dynamic.datasource.master.username=root `
+  "--spring.datasource.dynamic.datasource.master.password=$env:MYSQL_ROOT_PASSWORD" `
+  "--spring.datasource.dynamic.datasource.slave.url=$jdbc" `
+  --spring.datasource.dynamic.datasource.slave.username=root `
+  "--spring.datasource.dynamic.datasource.slave.password=$env:MYSQL_ROOT_PASSWORD"
 ```
+
+Wait for the Flyway success and application-ready messages, then stop this rehearsal process before querying the database.
 
 Verify the ledger and critical objects without selecting customer-facing columns:
 
 ```sql
-SELECT version, script_name FROM schema_migrations ORDER BY version;
+SELECT installed_rank, version, script, success FROM flyway_schema_history ORDER BY installed_rank;
 SELECT COUNT(*) AS fact_table_present
 FROM information_schema.tables
 WHERE table_schema = DATABASE()

@@ -226,6 +226,56 @@ Describe 'Start-OakvedRuntime orchestration' {
         $adminStartIndex | Should BeGreaterThan $backendHealthIndex
     }
 
+    It 'waits for packaged Flyway to reach the selected catalog before starting frontends' {
+        $fixture = New-RuntimeFixture -Root (Join-Path $TestDrive 'flyway-order')
+        $fixture.Database.Version = '019'
+        $fixture.Database | Add-Member -NotePropertyName Engine -NotePropertyValue 'flyway' -Force
+        $fixture.Database | Add-Member -NotePropertyName RequiresMigration -NotePropertyValue $true -Force
+        $capture = [pscustomobject]@{ Specs = @(); NextPid = 100; Events = @() }
+        $providers = New-HealthyRuntimeProviders -Capture $capture
+
+        Start-OakvedRuntime -Target $fixture.Target -Layout $fixture.Layout -RuntimeRoot (Join-Path $TestDrive 'flyway-order-state') -MySqlRootPassword 'secret' `
+            -DatabaseGateProvider ({ $capture.Events += 'database'; $fixture.Database }.GetNewClosure()) `
+            -DatabaseVersionProvider ({ param($database) $capture.Events += "flyway:$database"; '020' }.GetNewClosure()) `
+            -BuildProvider { param($spec) } `
+            -ProcessStarter ({ param($spec) $capture.Events += "start:$($spec.Role)"; & $providers.ProcessStarter $spec }.GetNewClosure()) `
+            -ProcessProvider $providers.ProcessProvider -ProcessTreeProvider $providers.ProcessTreeProvider `
+            -ListenerProvider $providers.ListenerProvider `
+            -HttpProvider ({ param($url) $capture.Events += "health:$url"; & $providers.HttpProvider $url }.GetNewClosure()) | Out-Null
+
+        $flywayIndex = [array]::IndexOf($capture.Events, "flyway:$($fixture.Database.Name)")
+        $backendHealthIndex = [array]::IndexOf($capture.Events, @($capture.Events | Where-Object { $_ -like 'health:*48080*' })[0])
+        $adminStartIndex = [array]::IndexOf($capture.Events, 'start:admin')
+        $flywayIndex | Should BeGreaterThan $backendHealthIndex
+        $adminStartIndex | Should BeGreaterThan $flywayIndex
+        $fixture.Database.Version | Should Be '020'
+        $fixture.Database.Engine | Should Be 'flyway'
+        $fixture.Database.RequiresMigration | Should Be $false
+    }
+
+    It 'stops the backend and refuses frontends when Flyway does not reach the selected catalog' {
+        $fixture = New-RuntimeFixture -Root (Join-Path $TestDrive 'flyway-mismatch')
+        $fixture.Database.Version = '019'
+        $fixture.Database | Add-Member -NotePropertyName RequiresMigration -NotePropertyValue $true -Force
+        $capture = [pscustomobject]@{ Specs = @(); NextPid = 100; Events = @(); Stopped = @() }
+        $providers = New-HealthyRuntimeProviders -Capture $capture
+        $databaseGate = { $fixture.Database }.GetNewClosure()
+        $processStarter = { param($spec) $capture.Events += "start:$($spec.Role)"; & $providers.ProcessStarter $spec }.GetNewClosure()
+        $stopper = { param($id) $capture.Stopped += $id }.GetNewClosure()
+
+        { Start-OakvedRuntime -Target $fixture.Target -Layout $fixture.Layout -RuntimeRoot (Join-Path $TestDrive 'flyway-mismatch-state') -MySqlRootPassword 'secret' `
+                -DatabaseGateProvider $databaseGate `
+                -DatabaseVersionProvider { param($database) '019' } -BuildProvider { param($spec) } `
+                -ProcessStarter $processStarter `
+                -ProcessProvider $providers.ProcessProvider -ProcessTreeProvider $providers.ProcessTreeProvider `
+                -ListenerProvider $providers.ListenerProvider -HttpProvider $providers.HttpProvider `
+                -Stopper $stopper } |
+            Should Throw 'Flyway finished at V019 instead of selected catalog V020.'
+
+        ($capture.Events -join ',') | Should Be 'start:backend'
+        $capture.Stopped.Count | Should Be 1
+    }
+
     It 'prepares a replacement completely before stopping the active runtime' {
         $fixture = New-RuntimeFixture -Root (Join-Path $TestDrive 'prepared-cutover')
         $runtimeRoot = Join-Path $TestDrive 'prepared-cutover-state'

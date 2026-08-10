@@ -59,10 +59,6 @@ for ($attempt = 1; $attempt -le 60; $attempt++) {
   Start-Sleep -Seconds 2
 }
 
-$migrationScript = Join-Path $PSScriptRoot "invoke-local-migrations.ps1"
-& powershell -ExecutionPolicy Bypass -File $migrationScript -ComposeFile $composeFile -Database $mysqlDatabase -RootPassword $mysqlRootPassword
-if ($LASTEXITCODE -ne 0) { throw "Database migration failed." }
-
 Write-Host ""
 Write-Host "Yudao local infrastructure:"
 Write-Host "  MySQL: 127.0.0.1:3306"
@@ -71,4 +67,4 @@ Write-Host "  User: root"
 Write-Host "  Password: 123456"
 Write-Host "  Redis: 127.0.0.1:6379"
 Write-Host ""
-Write-Host "Run YudaoServerApplication after both containers are healthy."
+Write-Host "Infrastructure is ready. Start yudao-server; packaged Flyway migrations will initialize or upgrade MySQL."

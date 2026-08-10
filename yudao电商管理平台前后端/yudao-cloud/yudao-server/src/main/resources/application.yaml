@@ -30,6 +30,18 @@ spring:
     redis:
       time-to-live: 1h # 设置过期时间为 1 小时
 
+  # Database versions are packaged in yudao-server.jar and applied before the
+  # application starts serving traffic. Legacy schema_migrations databases are
+  # verified in Java before they are adopted by Flyway.
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    encoding: UTF-8
+    validate-on-migrate: true
+    validate-migration-naming: true
+    out-of-order: false
+    clean-disabled: true
+
 server:
   servlet:
     encoding:

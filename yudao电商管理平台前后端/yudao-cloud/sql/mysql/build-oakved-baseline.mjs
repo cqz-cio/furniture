@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -222,13 +222,31 @@ export const adaptMigrationForBaseline = (migration) => {
   return migration.source;
 };
 
-export const buildBaseline = ({ baseFiles, migrations, seedFile }) => {
+export const extractBootstrapSections = (baselinePath) => {
+  if (!existsSync(baselinePath)) {
+    throw new Error(`Cannot recover sanitized bootstrap sections; baseline does not exist: ${baselinePath}`);
+  }
+  const source = normalize(readFileSync(baselinePath, "utf8"));
+  const bootstrapStart = source.indexOf("\n-- BEGIN ruoyi-vue-pro.sql\n");
+  const firstMigration = source.indexOf("\n-- BEGIN V001__", bootstrapStart);
+  if (bootstrapStart < 0 || firstMigration < 0) {
+    throw new Error(`Cannot recover sanitized bootstrap sections from: ${baselinePath}`);
+  }
+  return source.slice(bootstrapStart, firstMigration);
+};
+
+export const buildBaseline = ({ baseFiles = [], bootstrapSections, migrations, seedFile }) => {
   const missing = [...baseFiles, seedFile].filter((path) => !existsSync(path));
   if (missing.length) throw new Error(`Missing baseline source file(s): ${missing.join(", ")}`);
+  if (!bootstrapSections && baseFiles.length === 0) {
+    throw new Error("Either baseFiles or sanitized bootstrapSections must be provided.");
+  }
   const sections = [
     "-- GENERATED FILE. DO NOT EDIT. Run build-oakved-baseline.mjs.\n",
     "SET NAMES utf8mb4;\nSET FOREIGN_KEY_CHECKS = 0;\n",
-    ...baseFiles.map((path) => `\n-- BEGIN ${path.split(/[\\/]/).at(-1)}\n${sanitizeBootstrapSql(readFileSync(path, "utf8"))}`),
+    ...(bootstrapSections
+      ? [bootstrapSections]
+      : baseFiles.map((path) => `\n-- BEGIN ${path.split(/[\\/]/).at(-1)}\n${sanitizeBootstrapSql(readFileSync(path, "utf8"))}`)),
     ...migrations.map((migration) =>
       `\n-- BEGIN ${migration.scriptName}\n${adaptMigrationForBaseline(migration)}`,
     ),
@@ -252,14 +270,38 @@ export const buildBaseline = ({ baseFiles, migrations, seedFile }) => {
 
 const isCli = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (isCli) {
+  const supportedArguments = new Set(["--create-flyway-baseline"]);
+  const argumentsToValidate = process.argv.slice(2);
+  const unknownArguments = argumentsToValidate.filter((argument) => !supportedArguments.has(argument));
+  if (unknownArguments.length) {
+    throw new Error(`Unknown argument(s): ${unknownArguments.join(", ")}`);
+  }
   const root = dirname(fileURLToPath(import.meta.url));
   const migrations = discoverMigrations(join(root, "migrations"));
+  const outputPath = join(root, "oakved-baseline.sql");
+  const baseFiles = [join(root, "ruoyi-vue-pro.sql"), join(root, "quartz.sql")];
+  const hasBaseFiles = baseFiles.every((path) => existsSync(path));
   const output = buildBaseline({
-    baseFiles: [join(root, "ruoyi-vue-pro.sql"), join(root, "quartz.sql")],
+    baseFiles: hasBaseFiles ? baseFiles : [],
+    bootstrapSections: hasBaseFiles ? undefined : extractBootstrapSections(outputPath),
     migrations,
     seedFile: join(root, "oakved-demo-data.sql"),
   });
-  const outputPath = join(root, "oakved-baseline.sql");
   writeFileSync(outputPath, output, "utf8");
-  console.log(`Generated ${outputPath} with ${migrations.length} migrations.`);
+  const flywayRoot = join(root, "flyway");
+  mkdirSync(flywayRoot, { recursive: true });
+  const flywayBaselineName = `B${migrations.at(-1).version}__oakved_baseline.sql`;
+  const flywayOutputPath = join(flywayRoot, flywayBaselineName);
+  const existingFlywayBaselines = readdirSync(flywayRoot)
+    .filter((name) => /^B\d{3}__oakved_baseline\.sql$/.test(name))
+    .sort();
+  const shouldWriteFlywayBaseline = existingFlywayBaselines.length === 0
+    || existsSync(flywayOutputPath)
+    || argumentsToValidate.includes("--create-flyway-baseline");
+  if (shouldWriteFlywayBaseline) {
+    writeFileSync(flywayOutputPath, output, "utf8");
+    console.log(`Generated ${outputPath} and checkpoint ${flywayOutputPath} with ${migrations.length} migrations.`);
+  } else {
+    console.log(`Generated ${outputPath} with ${migrations.length} migrations; retained Flyway checkpoint ${existingFlywayBaselines.at(-1)}.`);
+  }
 }

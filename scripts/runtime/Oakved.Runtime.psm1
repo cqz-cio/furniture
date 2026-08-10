@@ -1602,6 +1602,7 @@ function Invoke-OakvedDatabaseGate {
         [IO.File]::ReadAllText($path, [Text.Encoding]::UTF8)
     })
     $database = Get-OakvedDatabaseName -RuntimeId ([string]$Target.RuntimeId)
+    $catalogVersion = if ($catalog.Count -gt 0) { [string]$catalog[-1].Version } else { $null }
 
     $invokeMySql = {
         param($selectedDatabase, $sql)
@@ -1626,6 +1627,48 @@ function Invoke-OakvedDatabaseGate {
     }
 
     $null = & $invokeMySql $null "CREATE DATABASE IF NOT EXISTS ``$database`` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+    $tableCountOutput = @(& $invokeMySql $database "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='$database';")
+    $tableCountText = (($tableCountOutput | ForEach-Object { [string]$_ }) -join "`n").Trim()
+    if ($tableCountText -notmatch '^\d+$') {
+        throw "Could not determine database table count for $database."
+    }
+    $tableCount = [int]$tableCountText
+    $flywayOutput = @(& $invokeMySql $database "SHOW TABLES LIKE 'flyway_schema_history';")
+    $flywayHistoryExists = -not [string]::IsNullOrWhiteSpace((($flywayOutput | ForEach-Object { [string]$_ }) -join "`n").Trim())
+    $legacyOutput = @(& $invokeMySql $database "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='$database' AND table_name='schema_migrations';")
+    $legacyText = (($legacyOutput | ForEach-Object { [string]$_ }) -join "`n").Trim()
+    if ($legacyText -notmatch '^[01]$') {
+        throw "Could not determine legacy migration state for $database."
+    }
+    $legacyHistoryExists = [int]$legacyText -eq 1
+
+    if ($flywayHistoryExists) {
+        $versionSql = "SELECT COALESCE(LPAD(MAX(CAST(version AS UNSIGNED)),3,'0'),'') FROM flyway_schema_history WHERE success=1 AND version REGEXP '^[0-9]+$';"
+        $versionOutput = @(& $invokeMySql $database $versionSql)
+        $versionText = (($versionOutput | ForEach-Object { [string]$_ }) -join "`n").Trim()
+        $version = if ([string]::IsNullOrWhiteSpace($versionText)) { $null } else { $versionText }
+        if ($null -ne $version -and $null -ne $catalogVersion -and [int]$version -gt [int]$catalogVersion) {
+            throw "Database $database is at Flyway V$version, ahead of selected catalog V$catalogVersion."
+        }
+        return [pscustomobject]@{
+            Name = $database; Version = $version; CatalogVersion = $catalogVersion
+            BackupPath = $null; AppliedCount = 0; Engine = 'flyway'
+            RequiresMigration = [string]$version -cne [string]$catalogVersion
+        }
+    }
+
+    if ($tableCount -eq 0) {
+        return [pscustomobject]@{
+            Name = $database; Version = $null; CatalogVersion = $catalogVersion
+            BackupPath = $null; AppliedCount = 0; Engine = 'flyway'
+            RequiresMigration = $true
+        }
+    }
+
+    if (-not $legacyHistoryExists) {
+        throw "Database $database is non-empty but is not managed by Flyway or the verified legacy migration ledger."
+    }
+
     $lockName = "oakved_schema_$database"
     if ($null -ne $LockLeaseProvider) {
         $lockLease = & $LockLeaseProvider $database $lockName
@@ -1648,18 +1691,6 @@ function Invoke-OakvedDatabaseGate {
     $failure = $null
     $result = $null
     try {
-        & $assertLockAlive
-        $existsOutput = @(& $invokeMySql $database "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='$database' AND table_name='schema_migrations';")
-        $existsText = (($existsOutput | ForEach-Object { [string]$_ }) -join "`n").Trim()
-        if ([int]$existsText -eq 0) {
-            try {
-                $null = & $invokeSqlFile $database ([string]$Layout.Baseline)
-            }
-            catch {
-                throw "Baseline import failed for $database. MySQL DDL may have auto-committed; operator inspection is required. $($_.Exception.Message)"
-            }
-        }
-
         & $assertLockAlive
         $ledgerSql = 'SELECT version, script_name, description, checksum_sha256 FROM schema_migrations ORDER BY version;'
         $ledger = @(ConvertFrom-OakvedMigrationLedgerOutput -Output @(& $invokeMySql $database $ledgerSql))
@@ -1732,12 +1763,8 @@ function Invoke-OakvedDatabaseGate {
         }
 
         $version = $null
-        $catalogVersion = $null
         if ($finalLedger.Count -gt 0) {
             $version = [string]$finalLedger[-1].Version
-        }
-        if ($catalog.Count -gt 0) {
-            $catalogVersion = [string]$catalog[-1].Version
         }
         $result = [pscustomobject]@{
             Name = $database
@@ -1745,6 +1772,8 @@ function Invoke-OakvedDatabaseGate {
             CatalogVersion = $catalogVersion
             BackupPath = $backupPath
             AppliedCount = $appliedCount
+            Engine = 'legacy-adoption'
+            RequiresMigration = $true
         }
     }
     catch {
@@ -2180,6 +2209,7 @@ function Start-OakvedRuntime {
         [Parameter(Mandatory = $true)][string]$RuntimeRoot,
         [Parameter(Mandatory = $true)][AllowEmptyString()][string]$MySqlRootPassword,
         [scriptblock]$DatabaseGateProvider,
+        [scriptblock]$DatabaseVersionProvider,
         [scriptblock]$BuildFingerprintProvider,
         [scriptblock]$BuildProvider,
         [scriptblock]$ProcessStarter,
@@ -2230,10 +2260,8 @@ function Start-OakvedRuntime {
     else {
         $database = Invoke-OakvedDatabaseGate -Target $Target -Layout $Layout -RuntimeRoot $runtimeRootPath -MySqlRootPassword $MySqlRootPassword
     }
-    if ([string]$database.Version -cne [string]$database.CatalogVersion) {
-        throw 'Database ledger version does not match selected catalog version.'
-    }
-    if ($VisibleProcesses) { Write-Host "[1/5] Database ready: $($database.Name) (V$($database.Version))" -ForegroundColor Green }
+    $preparedVersion = if ([string]::IsNullOrWhiteSpace([string]$database.Version)) { 'empty' } else { "V$($database.Version)" }
+    if ($VisibleProcesses) { Write-Host "[1/5] Database prepared: $($database.Name) ($preparedVersion -> V$($database.CatalogVersion) by JAR Flyway)" -ForegroundColor Green }
     if ($null -ne $BuildFingerprintProvider) {
         $fingerprint = & $BuildFingerprintProvider $Target $Layout $database
     }
@@ -2264,7 +2292,7 @@ function Start-OakvedRuntime {
         $null = Archive-OakvedLogFiles -Paths @($buildSpec.StdOutLog, $buildSpec.StdErrLog) -LogRoot $logRoot -UtcNowProvider $UtcNowProvider
         if ($null -ne $BuildProvider) { & $BuildProvider $buildSpec }
         else {
-            $result = Invoke-OakvedNativeProcess -Spec ([pscustomobject]@{ FileName = $buildSpec.FilePath; Arguments = $buildSpec.Arguments; WorkingDirectory = $buildSpec.WorkingDirectory; Environment = @{} }) -TimeoutMilliseconds 1200000
+            $result = Invoke-OakvedNativeProcess -Spec ([pscustomobject]@{ FileName = $buildSpec.FilePath; Arguments = $buildSpec.Arguments; WorkingDirectory = $buildSpec.WorkingDirectory; Environment = @{} }) -TimeoutMilliseconds 300000
             [IO.File]::WriteAllBytes($buildSpec.StdOutLog, [byte[]]$result.StdOut)
             [IO.File]::WriteAllBytes($buildSpec.StdErrLog, [byte[]]$result.StdErr)
             if ($result.ExitCode -ne 0) { throw 'Backend build failed.' }
@@ -2316,7 +2344,7 @@ function Start-OakvedRuntime {
                 $result = Invoke-OakvedNativeProcess -Spec ([pscustomobject]@{
                         FileName = $dependencySpec.FilePath; Arguments = $dependencySpec.Arguments
                         WorkingDirectory = $dependencySpec.WorkingDirectory; Environment = @{}
-                    }) -TimeoutMilliseconds 1200000
+                    }) -TimeoutMilliseconds 300000
                 [IO.File]::WriteAllBytes($dependencySpec.StdOutLog, [byte[]]$result.StdOut)
                 [IO.File]::WriteAllBytes($dependencySpec.StdErrLog, [byte[]]$result.StdErr)
                 if ($result.ExitCode -ne 0) {
@@ -2392,6 +2420,30 @@ function Start-OakvedRuntime {
             }
             & $SleepProvider 250
         } while ($true)
+        $requiresMigrationProperty = $database.PSObject.Properties['RequiresMigration']
+        $requiresMigration = if ($null -ne $requiresMigrationProperty) {
+            [bool]$requiresMigrationProperty.Value
+        }
+        else {
+            [string]$database.Version -cne [string]$database.CatalogVersion
+        }
+        if ($requiresMigration) {
+            if ($null -ne $DatabaseVersionProvider) {
+                $databaseVersion = [string](& $DatabaseVersionProvider ([string]$database.Name))
+            }
+            else {
+                $databaseOutput = @(Invoke-OakvedDockerMySql -Database ([string]$database.Name) `
+                    -Sql "SELECT COALESCE(LPAD(MAX(CAST(version AS UNSIGNED)),3,'0'),'') FROM flyway_schema_history WHERE success=1 AND version REGEXP '^[0-9]+$';" `
+                    -RootPassword $MySqlRootPassword)
+                $databaseVersion = (($databaseOutput | ForEach-Object { [string]$_ }) -join "`n").Trim()
+            }
+            if ($databaseVersion -cne [string]$database.CatalogVersion) {
+                throw "Flyway finished at V$databaseVersion instead of selected catalog V$($database.CatalogVersion)."
+            }
+            $database | Add-Member -NotePropertyName Version -NotePropertyValue $databaseVersion -Force
+            $database | Add-Member -NotePropertyName Engine -NotePropertyValue 'flyway' -Force
+            $database | Add-Member -NotePropertyName RequiresMigration -NotePropertyValue $false -Force
+        }
         if ($VisibleProcesses) { Write-Host '[4/5] Backend is ready; opening frontends.' -ForegroundColor Green }
 
         foreach ($spec in @($specs | Select-Object -Skip 1)) {
@@ -2531,7 +2583,8 @@ function Get-OakvedRuntimeStatus {
     elseif ($PSBoundParameters.ContainsKey('MySqlRootPassword')) {
         try {
             $databaseOutput = @(Invoke-OakvedDockerMySql -Database ([string]$Manifest.Database.Name) `
-                -Sql "SELECT COALESCE(MAX(version),'') FROM schema_migrations;" -RootPassword $MySqlRootPassword)
+                -Sql "SELECT COALESCE(LPAD(MAX(CAST(version AS UNSIGNED)),3,'0'),'') FROM flyway_schema_history WHERE success=1 AND version REGEXP '^[0-9]+$';" `
+                -RootPassword $MySqlRootPassword)
             $databaseVersion = (($databaseOutput | ForEach-Object { [string]$_ }) -join "`n").Trim()
         }
         catch { $mismatches.Add('database ledger query failed') }

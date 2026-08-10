@@ -12,7 +12,8 @@ describe("safe database deployment workflow", () => {
 
     expect(rootStart).not.toMatch(/ReimportSql|Recreate|down\s+-v/i);
     expect(localStart).not.toMatch(/Recreate|down\s+-v/i);
-    expect(localStart).toContain("invoke-local-migrations.ps1");
+    expect(localStart).not.toContain("invoke-local-migrations.ps1");
+    expect(localStart).toContain("packaged Flyway migrations");
   });
 
   it("has a strictly numbered immutable migration catalog", () => {
@@ -22,22 +23,10 @@ describe("safe database deployment workflow", () => {
     );
     expect(existsSync(directory)).toBe(true);
     const files = readdirSync(directory).filter((name) => name.endsWith(".sql")).sort();
-    const expectedVersions = Array.from({ length: 38 }, (_, index) => index + 1);
+    const expectedVersions = Array.from({ length: files.length }, (_, index) => index + 1);
     expect(files).toHaveLength(expectedVersions.length);
     expect(files[0]).toMatch(/^V001__/);
-    expect(files.slice(-10)).toEqual([
-      "V029__website_inquiry_notify.sql",
-      "V030__align_furniture_navigation_permissions.sql",
-      "V031__enable_full_crm.sql",
-      "V032__crm_inquiry_center.sql",
-      "V033__tenant_sku_code.sql",
-      "V034__tenant_b2b_product_fields.sql",
-      "V035__single_tenant_single_role_accounts.sql",
-      "V036__enable_role_aware_registration.sql",
-      "V037__website_inquiry_mail_relay.sql",
-      "V038__vanz_b2b_navigation_permissions.sql",
-    ]);
-    expect(files.at(-1)).toBe("V038__vanz_b2b_navigation_permissions.sql");
+    expect(files.at(-1)).toMatch(/^V\d{3}__[a-z0-9_]+\.sql$/);
     expect(files.map((name) => Number(name.slice(1, 4)))).toEqual(
       expectedVersions,
     );
@@ -63,6 +52,15 @@ describe("safe database deployment workflow", () => {
     const baseline = read(
       "../../yudao电商管理平台前后端/yudao-cloud/sql/mysql/oakved-baseline.sql",
     );
+    const flywayDirectory = new URL(
+      "../../yudao电商管理平台前后端/yudao-cloud/sql/mysql/flyway/",
+      import.meta.url,
+    );
+    const flywayBaselines = readdirSync(flywayDirectory)
+      .filter((name) => /^B\d{3}__oakved_baseline\.sql$/.test(name))
+      .sort();
+    expect(flywayBaselines.length).toBeGreaterThan(0);
+    const flywayBaseline = readFileSync(new URL(flywayBaselines.at(-1), flywayDirectory), "utf8");
     const seed = read(
       "../../yudao电商管理平台前后端/yudao-cloud/sql/mysql/oakved-demo-data.sql",
     );
@@ -81,16 +79,22 @@ describe("safe database deployment workflow", () => {
     expect(baseline).not.toContain("INSERT INTO `system_sms_channel`");
     expect(baseline).not.toContain("INSERT INTO `system_mail_account`");
     expect(baseline).toContain("Sensitive external-service seed omitted");
+    const latestMigration = readdirSync(new URL(
+      "../../yudao电商管理平台前后端/yudao-cloud/sql/mysql/migrations/",
+      import.meta.url,
+    )).filter((name) => /^V\d{3}__/.test(name)).sort().at(-1);
+    if (flywayBaselines.at(-1).slice(1, 4) === latestMigration.slice(1, 4)) {
+      expect(flywayBaseline).toBe(baseline);
+    }
   });
 
-  it("tracks migration checksums under an advisory lock", () => {
+  it("retires the standalone migration writer", () => {
     const runner = read(
       "../../yudao电商管理平台前后端/yudao-cloud/script/docker/invoke-local-migrations.ps1",
     );
-    expect(runner).toContain("GET_LOCK('oakved_schema_migrations'");
-    expect(runner).toContain("RELEASE_LOCK('oakved_schema_migrations')");
-    expect(runner).toContain("Get-FileHash");
-    expect(runner).toContain("checksum_sha256");
+    expect(runner).toContain("standalone SQL migration runner has been retired");
+    expect(runner).not.toContain("GET_LOCK");
+    expect(runner).not.toContain("INSERT INTO schema_migrations");
     expect(runner).not.toContain("down -v");
   });
 
@@ -104,12 +108,23 @@ describe("safe database deployment workflow", () => {
     expect(reset.indexOf("mysqldump")).toBeLessThan(reset.indexOf("down -v"));
   });
 
-  it("mounts only the generated baseline for first initialization", () => {
+  it("does not bind a branch or worktree SQL file into MySQL", () => {
     const compose = read(
       "../../yudao电商管理平台前后端/yudao-cloud/script/docker/docker-compose-local-infra.yml",
     );
-    const initMounts = compose.match(/docker-entrypoint-initdb\.d/g) ?? [];
-    expect(initMounts).toHaveLength(1);
-    expect(compose).toContain("oakved-baseline.sql:/docker-entrypoint-initdb.d/01-oakved-baseline.sql:ro");
+    expect(compose).not.toContain("docker-entrypoint-initdb.d");
+    expect(compose).not.toContain("oakved-baseline.sql");
+    expect(compose).toContain("yudao_mysql_data:/var/lib/mysql");
+  });
+
+  it("keeps historical Flyway baselines available for validation", () => {
+    const generator = read(
+      "../../yudao电商管理平台前后端/yudao-cloud/sql/mysql/build-oakved-baseline.mjs",
+    );
+    const workflow = read("../../.github/workflows/database-and-backend-ci.yml");
+    expect(generator).not.toContain("rmSync");
+    expect(generator).toContain("--create-flyway-baseline");
+    expect(workflow).toContain("Protect immutable migration history");
+    expect(workflow).toContain("Committed V/B migrations are immutable");
   });
 });

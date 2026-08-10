@@ -187,31 +187,45 @@ Describe 'Invoke-OakvedDatabaseGate orchestration' {
         $result.Version | Should Be '002'
     }
 
-    It 'imports the baseline only when the ledger table is absent' {
-        $fixture = New-MigrationGateFixture -Root (Join-Path $TestDrive 'baseline')
-        $catalog = @(Get-OakvedMigrationCatalog -Files @($fixture.MigrationOne, $fixture.MigrationTwo) -ContentProvider { param($path) Get-Content -LiteralPath $path -Raw })
-        $ledger = New-Object 'System.Collections.Generic.List[object]'
-        $baselineCalls = New-Object 'System.Collections.Generic.List[string]'
-        $exists = 0
+    It 'leaves an empty database for the packaged Flyway baseline' {
+        $fixture = New-MigrationGateFixture -Root (Join-Path $TestDrive 'empty')
+        $sqlFileCalls = 0
         $mysql = {
             param($Database, $Sql)
-            if ($Sql -like 'SELECT COUNT(*) FROM information_schema.tables*') { return [string]$exists }
-            if ($Sql -like 'SELECT version,*') { return @($ledger.ToArray()) }
+            if ($Sql -like 'SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=*' -and $Sql -notlike '*table_name=*') { return '0' }
+            if ($Sql -like 'SELECT COUNT(*) FROM information_schema.tables*table_name=*') { return '0' }
             return ''
         }
-        $sqlFile = {
-            param($Database, $Path)
-            if (-not $fixture.LockState.Alive) { throw 'baseline ran without a live lock lease' }
-            $baselineCalls.Add($Path)
-            foreach ($row in $catalog) { $ledger.Add($row) }
+
+        $result = Invoke-OakvedDatabaseGate -Target $fixture.Target -Layout $fixture.Layout -RuntimeRoot $fixture.RuntimeRoot -MySqlRootPassword 'fixture' `
+            -MySqlCommandProvider $mysql -SqlFileProvider { param($Database, $Path) $sqlFileCalls++ } -LockLeaseProvider $fixture.LockProvider
+
+        $result.Engine | Should Be 'flyway'
+        $result.Version | Should Be $null
+        $result.CatalogVersion | Should Be '002'
+        $result.RequiresMigration | Should Be $true
+        $sqlFileCalls | Should Be 0
+        $fixture.LockState.Events.Count | Should Be 0
+    }
+
+    It 'reports Flyway history without invoking the legacy runner' {
+        $fixture = New-MigrationGateFixture -Root (Join-Path $TestDrive 'flyway')
+        $mysql = {
+            param($Database, $Sql)
+            if ($Sql -like 'SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=*' -and $Sql -notlike '*table_name=*') { return '12' }
+            if ($Sql -like "SHOW TABLES LIKE 'flyway_schema_history'*") { return 'flyway_schema_history' }
+            if ($Sql -like 'SELECT COUNT(*) FROM information_schema.tables*table_name=*') { return '1' }
+            if ($Sql -like 'SELECT COALESCE(LPAD(MAX(CAST(version AS UNSIGNED))*') { return '002' }
+            return ''
         }
 
-        $null = Invoke-OakvedDatabaseGate -Target $fixture.Target -Layout $fixture.Layout -RuntimeRoot $fixture.RuntimeRoot -MySqlRootPassword 'fixture' -MySqlCommandProvider $mysql -SqlFileProvider $sqlFile -LockLeaseProvider $fixture.LockProvider
-        $exists = 1
-        $null = Invoke-OakvedDatabaseGate -Target $fixture.Target -Layout $fixture.Layout -RuntimeRoot $fixture.RuntimeRoot -MySqlRootPassword 'fixture' -MySqlCommandProvider $mysql -SqlFileProvider $sqlFile -LockLeaseProvider $fixture.LockProvider
+        $result = Invoke-OakvedDatabaseGate -Target $fixture.Target -Layout $fixture.Layout -RuntimeRoot $fixture.RuntimeRoot -MySqlRootPassword 'fixture' `
+            -MySqlCommandProvider $mysql -LockLeaseProvider $fixture.LockProvider
 
-        $baselineCalls.Count | Should Be 1
-        $baselineCalls[0] | Should Be $fixture.Baseline
+        $result.Engine | Should Be 'flyway'
+        $result.Version | Should Be '002'
+        $result.RequiresMigration | Should Be $false
+        $fixture.LockState.Events.Count | Should Be 0
     }
 
     It 'always releases an acquired lock when validation fails' {
@@ -219,8 +233,9 @@ Describe 'Invoke-OakvedDatabaseGate orchestration' {
         $mysql = {
             param($Database, $Sql)
             if ($Sql -like 'CREATE DATABASE*') { return '' }
-            if (-not $fixture.LockState.Alive) { throw 'gate command ran without a live lock lease' }
             if ($Sql -like 'SELECT COUNT(*) FROM information_schema.tables*') { return '1' }
+            if ($Sql -like "SHOW TABLES LIKE 'flyway_schema_history'*") { return '' }
+            if (-not $fixture.LockState.Alive) { throw 'gate command ran without a live lock lease' }
             if ($Sql -like 'SELECT version,*') { throw 'ledger read failed' }
             return ''
         }
@@ -262,8 +277,9 @@ Describe 'Invoke-OakvedDatabaseGate orchestration' {
         $mysql = {
             param($Database, $Sql)
             if ($Sql -like 'CREATE DATABASE*') { return '' }
-            if (-not $fixture.LockState.Alive) { throw 'gate command ran without a live lock lease' }
             if ($Sql -like 'SELECT COUNT(*) FROM information_schema.tables*') { return '1' }
+            if ($Sql -like "SHOW TABLES LIKE 'flyway_schema_history'*") { return '' }
+            if (-not $fixture.LockState.Alive) { throw 'gate command ran without a live lock lease' }
             if ($Sql -like 'SELECT version,*') { return $catalog }
             return ''
         }

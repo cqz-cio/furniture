@@ -61,6 +61,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File "D:\code\.runtime\bin\oa
 
 - `D:\code\.runtime\runtime.json` 记录实际运行的模式、commit、快照路径、数据库和进程 PID；`status` 与 `stop` 以它为准，不猜测当前 checkout。
 - 数据库名称仍按逻辑分支生成。例如 `main` 始终使用 `oakved_main_0d6e4079`，更换 commit 快照不会新建或丢失商品数据。
+- 启动器只创建/检查目标数据库并保留旧库升级备份；真正的版本升级由目标提交构建出的 `yudao-server.jar` 内 Flyway 完成，状态读取 `flyway_schema_history`。
 - 快照只隔离代码和构建产物；MySQL 数据、日志、缓存和启动器都保存在 `D:\code\.runtime` 的受管目录中。
 - 每次切换前，已有的 stdout/stderr 会归档到 `D:\code\.runtime\logs\archive\<UTC 时间戳>`，新进程使用新的当前日志文件，不再覆盖上一次故障现场。
 - 启动器读取已登记工作树时，只对当前 Git 命令信任该工作树路径，不会写入全局 `safe.directory` 配置；因此管理员终端与 Codex 沙箱可以共用运行快照。

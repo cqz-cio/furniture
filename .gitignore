@@ -19,6 +19,7 @@ tools/
 /furniture web/captures/local/
 /furniture web/captures/
 /furniture web/debug.log
+/work/codex-logs/
 /furniture web/vite*.log
 /furniture web/vite*.err.log
 /furniture web/vite*.out.log
@@ -29,6 +30,8 @@ tools/
 !/yudao电商管理平台前后端/yudao-cloud/sql/mysql/trade-order-address-verification.sql
 !/yudao电商管理平台前后端/yudao-cloud/sql/mysql/member-address-address-verification.sql
 !/yudao电商管理平台前后端/yudao-cloud/sql/mysql/migrations/V045__website_blog_management.sql
+!/yudao电商管理平台前后端/yudao-cloud/sql/mysql/flyway/
+!/yudao电商管理平台前后端/yudao-cloud/sql/mysql/flyway/B*__oakved_baseline.sql
 
 # package files
 *.tar

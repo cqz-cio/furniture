@@ -1,0 +1,112 @@
+name: Database and backend CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: database-backend-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify-database-and-jar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=30
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Protect immutable migration history
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if [[ -z "$BASE_SHA" || "$BASE_SHA" =~ ^0+$ ]]; then
+            exit 0
+          fi
+          violations="$(git diff --name-status "$BASE_SHA" "$GITHUB_SHA" -- \
+            "yudao电商管理平台前后端/yudao-cloud/sql/mysql/migrations" \
+            "yudao电商管理平台前后端/yudao-cloud/sql/mysql/flyway" \
+            | awk '$1 != "A"')"
+          if [[ -n "$violations" ]]; then
+            echo "Committed V/B migrations are immutable; only new files may be added:"
+            echo "$violations"
+            exit 1
+          fi
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: furniture web/package-lock.json
+
+      - name: Install database verification dependencies
+        working-directory: furniture web
+        run: npm ci
+
+      - name: Regenerate and verify migration artifacts
+        working-directory: furniture web
+        run: |
+          npm run build:db-baseline
+          npm run verify:db-migrations
+          npm test -- tests/dbMigrations.test.js tests/databaseSafetyWorkflow.test.js
+
+      - name: Require committed generated baselines
+        run: git diff --exit-code -- "yudao电商管理平台前后端/yudao-cloud/sql/mysql/oakved-baseline.sql" "yudao电商管理平台前后端/yudao-cloud/sql/mysql/flyway"
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: maven
+
+      - name: Test Flyway on disposable MySQL and build backend JAR
+        working-directory: yudao电商管理平台前后端/yudao-cloud
+        env:
+          OAKVED_FLYWAY_TEST_ADMIN_URL: jdbc:mysql://127.0.0.1:3306/?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+          OAKVED_FLYWAY_TEST_USER: root
+          OAKVED_FLYWAY_TEST_PASSWORD: root
+        run: mvn -B -ntp -pl yudao-server -am -Dtest=OakvedFlywayIntegrationTest -Dsurefire.failIfNoSpecifiedTests=false package
+
+      - name: Verify migrations are packaged in the JAR
+        working-directory: yudao电商管理平台前后端/yudao-cloud
+        run: |
+          jar tf yudao-server/target/yudao-server.jar > yudao-server/target/jar-contents.txt
+          baseline_count=$(grep -c 'BOOT-INF/classes/db/migration/B[0-9][0-9][0-9]__oakved_baseline.sql' yudao-server/target/jar-contents.txt)
+          versioned_count=$(grep -c 'BOOT-INF/classes/db/migration/V[0-9][0-9][0-9]__.*.sql' yudao-server/target/jar-contents.txt)
+          expected_count=$(find sql/mysql/migrations -maxdepth 1 -type f -name 'V*.sql' | wc -l)
+          latest_baseline=$(find sql/mysql/flyway -maxdepth 1 -type f -name 'B*.sql' -printf '%f\n' | sort | tail -n1)
+          test "$baseline_count" -ge 1
+          grep -q "BOOT-INF/classes/db/migration/${latest_baseline}" yudao-server/target/jar-contents.txt
+          test "$versioned_count" -eq "$expected_count"
+
+      - name: Upload verified backend JAR
+        uses: actions/upload-artifact@v7
+        with:
+          name: yudao-server-${{ github.sha }}
+          path: yudao电商管理平台前后端/yudao-cloud/yudao-server/target/yudao-server.jar
+          if-no-files-found: error
+          retention-days: 14

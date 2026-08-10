@@ -18,6 +18,8 @@
 
 ## 🐶 新手必读
 
+Oakved 数据库由 `yudao-server.jar` 内的 Flyway 迁移管理。MySQL 容器不再挂载分支 SQL；新增版本、生成累计基线、CI 验证和旧库接管流程见 [`docs/database-flyway-workflow.md`](../../docs/database-flyway-workflow.md)。
+
 * 演示地址【Vue3 + element-plus】：<http://dashboard-vue3.yudao.iocoder.cn>
 * 演示地址【Vue3 + vben(ant-design-vue)】：<http://dashboard-vben.yudao.iocoder.cn>
 * 演示地址【Vue2 + element-ui】：<http://dashboard.yudao.iocoder.cn>

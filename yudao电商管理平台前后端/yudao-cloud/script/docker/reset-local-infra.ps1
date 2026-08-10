@@ -21,4 +21,4 @@ docker compose -f $composeFile down -v
 if ($LASTEXITCODE -ne 0) { throw "Failed to remove local volumes." }
 & powershell -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "start-local-infra.ps1")
 if ($LASTEXITCODE -ne 0) { throw "Local infrastructure rebuild failed. Restore from $backupPath." }
-Write-Host "Local database rebuilt. Pre-reset backup: $backupPath"
+Write-Host "Local volumes recreated. Start yudao-server to initialize the empty database with Flyway. Pre-reset backup: $backupPath"
