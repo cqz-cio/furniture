@@ -27,6 +27,8 @@ const props = defineProps({
     default: () => undefined
   },
   readonly: propTypes.bool.def(false),
+  // 覆盖粘贴内容中的 nowrap/固定宽度，避免长文案撑开编辑器
+  forceWrap: propTypes.bool.def(false),
   modelValue: propTypes.string.def(''),
   directory: propTypes.string.def('editor-default')
 })
@@ -205,7 +207,10 @@ defineExpose({
 </script>
 
 <template>
-  <div class="border-1 border-solid border-[var(--tags-view-border-color)] z-10">
+  <div
+    class="rich-text-editor border-1 border-solid border-[var(--tags-view-border-color)] z-10"
+    :class="{ 'rich-text-editor--force-wrap': forceWrap }"
+  >
     <!-- 工具栏 -->
     <Toolbar
       :editor="editorRef"
@@ -225,3 +230,56 @@ defineExpose({
 </template>
 
 <style src="@wangeditor-next/editor/dist/css/style.css"></style>
+
+<style scoped>
+.rich-text-editor {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.rich-text-editor :deep(.w-e-toolbar),
+.rich-text-editor :deep(.w-e-text-container),
+.rich-text-editor :deep([data-w-e-textarea]) {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.rich-text-editor :deep(.w-e-scroll) {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.rich-text-editor :deep([data-slate-editor]) {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  word-break: normal;
+  white-space: pre-wrap;
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
+}
+
+.rich-text-editor--force-wrap :deep([data-slate-editor] > *),
+.rich-text-editor--force-wrap
+  :deep(
+    [data-slate-editor]
+      :where(p, div, span, a, li, blockquote, h1, h2, h3, h4, h5, h6, strong, b, em, i, u, s)
+  ) {
+  max-width: 100% !important;
+  min-width: 0 !important;
+  word-break: normal !important;
+  white-space: pre-wrap !important;
+  overflow-wrap: anywhere !important;
+}
+
+/* 代码块保留自身的横向滚动，避免强制断词破坏代码可读性。 */
+.rich-text-editor--force-wrap :deep([data-slate-editor] pre),
+.rich-text-editor--force-wrap :deep([data-slate-editor] pre *) {
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+  white-space: pre !important;
+}
+</style>

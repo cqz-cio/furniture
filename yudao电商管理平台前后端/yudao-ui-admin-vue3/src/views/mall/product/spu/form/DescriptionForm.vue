@@ -12,7 +12,7 @@
     />
     <!--富文本编辑器组件-->
     <el-form-item :label="isB2B ? '完整产品描述' : '商品详情'" prop="description">
-      <Editor :readonly="isDetail" v-model:modelValue="formData.description" />
+      <Editor force-wrap :readonly="isDetail" v-model:modelValue="formData.description" />
     </el-form-item>
   </el-form>
 </template>
