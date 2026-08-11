@@ -8,6 +8,7 @@ import { ElMessage } from 'element-plus'
 import { useLocaleStore } from '@/store/modules/locale'
 import { useUpload } from '@/components/UploadFile/src/useUpload'
 import merge from 'lodash-es/merge'
+import { normalizeWrappingSpaces } from './normalizeWrappingSpaces'
 
 defineOptions({ name: 'Editor' })
 
@@ -44,14 +45,15 @@ const editorRef = shallowRef<IDomEditor>()
 
 const valueHtml = ref('')
 
+const normalizeModelValue = (value: string) =>
+  props.forceWrap ? normalizeWrappingSpaces(value) : value
+
 watch(
-  () => props.modelValue,
-  (val: string) => {
-    if (!val) {
-      val = ''
-    }
-    if (val === unref(valueHtml)) return
-    valueHtml.value = val
+  [() => props.modelValue, () => props.forceWrap],
+  ([modelValue]) => {
+    const nextValue = normalizeModelValue(modelValue || '')
+    if (nextValue === unref(valueHtml)) return
+    valueHtml.value = nextValue
   },
   {
     immediate: true
