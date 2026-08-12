@@ -12,7 +12,7 @@
         isSimplifiedSeating
           ? '座椅类精简模式只保留老网页有依据的公开参数和详情折叠内容；户外模板字段不会保存。'
           : isB2B
-            ? '以下字段直接对应 B2B 家具网站商品详情页；Product type 自动跟随“基础设置 → 商品分类”，不会自动带入示例内容。公开参数必须填写，其他可选内容可保持为空。'
+            ? '以下字段直接对应 B2B 家具网站商品详情页；Product type 自动跟随“基础设置 → 商品分类”，不会自动带入示例内容。公开参数按原始资料填写，没有依据的可选内容保持为空。'
             : '以下配置控制家具网站商品详情页；未填写的可选内容保持为空。'
       "
       type="info"
@@ -138,42 +138,18 @@
         <el-option label="Unavailable" value="Unavailable" />
       </el-select>
     </el-form-item>
-    <el-form-item label="Packing" prop="packing">
-      <div class="product-packing-grid">
-        <el-select
-          v-model="detailConfig.packing.method"
-          allow-create
-          filterable
-          placeholder="Packing method"
-        >
-          <el-option label="Carton packing" value="Carton packing" />
-          <el-option label="Knock-down carton" value="Knock-down carton" />
-          <el-option label="Fully assembled carton" value="Fully assembled carton" />
-          <el-option label="Protective export carton" value="Protective export carton" />
-          <el-option label="Mail-order carton" value="Mail-order carton" />
-        </el-select>
-        <el-input-number
-          v-model="detailConfig.packing.itemQuantity"
-          :min="1"
-          :max="999"
-          :precision="0"
-          controls-position="right"
-          aria-label="Item quantity"
+    <el-form-item label="Packing" prop="packingDisplay">
+      <div class="w-100!">
+        <el-input
+          v-model="detailConfig.packingDisplay"
+          class="w-100!"
+          maxlength="120"
+          placeholder="Ships in 2 cartons / 1 pc/ctn / 2 packs"
         />
-        <el-select v-model="detailConfig.packing.itemUnit" aria-label="Item unit">
-          <el-option label="pc" value="pc" />
-          <el-option label="set" value="set" />
-        </el-select>
-        <span>/</span>
-        <el-input-number
-          v-model="detailConfig.packing.cartonQuantity"
-          :min="1"
-          :max="999"
-          :precision="0"
-          controls-position="right"
-          aria-label="Carton quantity"
-        />
-        <span>carton(s)</span>
+        <div class="mt-4px text-12px text-[var(--el-text-color-secondary)]">
+          按原产品资料填写，例如 Ships in 2 cartons、1 pc/ctn 或 2 packs；资料未提供时可留空，不推测
+          KD、整装或出口包装方式。
+        </div>
       </div>
     </el-form-item>
 
@@ -195,7 +171,7 @@
       v-if="isSimplifiedSeating"
       class="mb-16px"
       title="座椅类精简字段"
-      description="Chair、Dining Chair、Bar Stool 等座椅商品的 Item No.、Material、Size、Color、Service、Sample、Packing 会进入 PRODUCT INFORMATION；Feature、Application、Design Style 只放在 DETAILS。若原规格仅写 2 Pcs/Ctn，Packing method 可留空。"
+      description="Chair、Dining Chair、Bar Stool 等座椅商品的 Item No.、Material、Size、Color、Service、Sample、Packing 会进入 PRODUCT INFORMATION；Feature、Application、Design Style 只放在 DETAILS。Packing 按原规格文本填写，例如 2 pcs/ctn。"
       type="success"
       :closable="false"
       show-icon
@@ -344,6 +320,7 @@ import type { CategoryVO } from '@/api/mall/product/category'
 import type { Spu } from '@/api/mall/product/spu'
 import { useMessage } from '@/hooks/web/useMessage'
 import { propTypes } from '@/utils/propTypes'
+import { formatLegacyPacking, type LegacyPacking } from './packingDisplay'
 
 defineOptions({ name: 'ProductFurnitureDetailForm' })
 
@@ -358,12 +335,6 @@ type Dimension = {
   height: number | null
   unit: 'cm'
 }
-type Packing = {
-  method: string
-  itemQuantity: number
-  itemUnit: 'pc' | 'set'
-  cartonQuantity: number
-}
 type DetailConfig = {
   itemNo: string
   material: string
@@ -372,7 +343,7 @@ type DetailConfig = {
   dimension: Dimension
   service: string
   sample: string
-  packing: Packing
+  packingDisplay: string
   productType: string
   collection: string
   heroNote: string
@@ -419,12 +390,7 @@ const createEmptyConfig = (): DetailConfig => ({
   },
   service: '',
   sample: '',
-  packing: {
-    method: '',
-    itemQuantity: 1,
-    itemUnit: 'pc',
-    cartonQuantity: 1
-  },
+  packingDisplay: '',
   productType: '',
   collection: '',
   heroNote: '',
@@ -507,22 +473,19 @@ const positiveNumberOrNull = (value: unknown): number | null => {
   return Number.isFinite(number) && number > 0 ? number : null
 }
 
-const positiveInteger = (value: unknown, fallback = 1): number => {
-  const number = Number(value)
-  return Number.isInteger(number) && number > 0 ? number : fallback
-}
+type DetailConfigInput = Partial<DetailConfig> & { packing?: LegacyPacking | string }
 
-const normalizeConfig = (config?: Partial<DetailConfig>): DetailConfig => {
+const normalizeConfig = (config?: DetailConfigInput): DetailConfig => {
   const empty = createEmptyConfig()
   const dimension = config?.dimension || empty.dimension
-  const rawPacking = config?.packing as Packing | string | undefined
-  const packing =
-    typeof rawPacking === 'string'
-      ? { ...empty.packing, method: rawPacking }
-      : rawPacking || empty.packing
+  const { packing: legacyPacking, ...configWithoutLegacyPacking } = config || {}
+  const packingDisplay =
+    typeof config?.packingDisplay === 'string'
+      ? config.packingDisplay
+      : formatLegacyPacking(legacyPacking)
   return {
     ...empty,
-    ...(config || {}),
+    ...configWithoutLegacyPacking,
     itemNo: typeof config?.itemNo === 'string' ? config.itemNo : '',
     material: typeof config?.material === 'string' ? config.material : '',
     color: typeof config?.color === 'string' ? config.color : '',
@@ -537,12 +500,7 @@ const normalizeConfig = (config?: Partial<DetailConfig>): DetailConfig => {
     },
     service: typeof config?.service === 'string' ? config.service : '',
     sample: typeof config?.sample === 'string' ? config.sample : '',
-    packing: {
-      method: typeof packing.method === 'string' ? packing.method : '',
-      itemQuantity: positiveInteger(packing.itemQuantity),
-      itemUnit: packing.itemUnit === 'set' ? 'set' : 'pc',
-      cartonQuantity: positiveInteger(packing.cartonQuantity)
-    },
+    packingDisplay,
     fabricSelector: {
       ...empty.fabricSelector,
       ...(config?.fabricSelector || {})
@@ -557,7 +515,7 @@ const normalizeConfig = (config?: Partial<DetailConfig>): DetailConfig => {
 watch(
   () => (props.propFormData as any)?.detailConfig,
   (config) => {
-    Object.assign(detailConfig, normalizeConfig(config as Partial<DetailConfig>))
+    Object.assign(detailConfig, normalizeConfig(config as DetailConfigInput))
   },
   { immediate: true }
 )
@@ -580,15 +538,6 @@ const validateDimension = (_rule: unknown, value: Dimension, callback: (error?: 
   callback(commonValid && footprintValid ? undefined : new Error('Enter complete dimensions in cm'))
 }
 
-const validatePacking = (_rule: unknown, value: Packing, callback: (error?: Error) => void) => {
-  const valid =
-    (isSimplifiedSeating.value || Boolean(value?.method?.trim())) &&
-    positiveInteger(value?.itemQuantity, 0) > 0 &&
-    ['pc', 'set'].includes(value?.itemUnit) &&
-    positiveInteger(value?.cartonQuantity, 0) > 0
-  callback(valid ? undefined : new Error('Enter the packing method, item quantity and cartons'))
-}
-
 const detailRules = computed(() =>
   isB2B.value
     ? {
@@ -603,8 +552,7 @@ const detailRules = computed(() =>
               finish: [{ validator: validateText('Finish'), trigger: 'blur' }]
             }),
         material: [{ validator: validateText('Material'), trigger: 'blur' }],
-        dimension: [{ validator: validateDimension, trigger: 'change' }],
-        packing: [{ validator: validatePacking, trigger: 'change' }]
+        dimension: [{ validator: validateDimension, trigger: 'change' }]
       }
     : {}
 )
@@ -658,7 +606,7 @@ const validate = async () => {
     normalized.finish = normalized.finish.trim()
     normalized.service = normalized.service.trim()
     normalized.sample = normalized.sample.trim()
-    normalized.packing.method = normalized.packing.method.trim()
+    normalized.packingDisplay = normalized.packingDisplay.trim()
     if (simplifiedSeatingTypes.has(normalized.productType)) {
       normalized.finish = ''
       normalized.collection = ''
@@ -707,8 +655,7 @@ defineExpose({ validate })
   padding: 12px;
 }
 
-.product-dimension-grid,
-.product-packing-grid {
+.product-dimension-grid {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -716,13 +663,8 @@ defineExpose({ validate })
   width: min(980px, 100%);
 }
 
-.product-dimension-grid > .el-select,
-.product-packing-grid > .el-select:first-child {
+.product-dimension-grid > .el-select {
   width: 220px;
-}
-
-.product-packing-grid > .el-select:not(:first-child) {
-  width: 90px;
 }
 
 .product-number-field {
