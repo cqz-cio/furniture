@@ -25,6 +25,7 @@
         clearable
         filterable
         placeholder="请选择商品分类"
+        @change="syncCategorySelection"
       />
       <el-button :icon="RefreshRight" @click="refreshCategoryList" class="ml-1" size="small" />
       <el-tag
@@ -98,8 +99,11 @@
   </el-form>
 </template>
 <script lang="ts" setup>
-import { PropType } from 'vue'
+import { computed, onMounted, reactive, ref, unref, watch } from 'vue'
+import type { PropType } from 'vue'
+import { useMessage } from '@/hooks/web/useMessage'
 import { copyValueToTarget } from '@/utils'
+import { required } from '@/utils/formRules'
 import { propTypes } from '@/utils/propTypes'
 import { defaultProps, handleTree } from '@/utils/tree'
 import type { Spu } from '@/api/mall/product/spu'
@@ -150,6 +154,17 @@ const rules = reactive({
   sliderPicUrls: [required],
   brandId: [required]
 })
+
+const syncCategorySelection = (categoryId: unknown) => {
+  if (categoryId === null || categoryId === undefined || categoryId === '') {
+    props.propFormData.categoryId = undefined
+    return
+  }
+  const normalizedCategoryId = Number(categoryId)
+  props.propFormData.categoryId = Number.isFinite(normalizedCategoryId)
+    ? normalizedCategoryId
+    : undefined
+}
 
 /** 将传进来的值赋值给 formData */
 watch(

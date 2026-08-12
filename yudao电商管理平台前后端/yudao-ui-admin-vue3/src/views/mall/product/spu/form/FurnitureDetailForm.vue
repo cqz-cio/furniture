@@ -9,10 +9,10 @@
     <el-alert
       class="mb-16px"
       :title="
-        isSimplifiedChair
-          ? 'Chair 精简模式只保留老网页有依据的公开参数和详情折叠内容；户外模板字段不会保存。'
+        isSimplifiedSeating
+          ? '座椅类精简模式只保留老网页有依据的公开参数和详情折叠内容；户外模板字段不会保存。'
           : isB2B
-            ? '以下字段直接对应 B2B 家具网站商品详情页；选择 Product type 只设置商品细类，不会自动带入示例内容。公开参数必须填写，其他可选内容可保持为空。'
+            ? '以下字段直接对应 B2B 家具网站商品详情页；Product type 自动跟随“基础设置 → 商品分类”，不会自动带入示例内容。公开参数必须填写，其他可选内容可保持为空。'
             : '以下配置控制家具网站商品详情页；未填写的可选内容保持为空。'
       "
       type="info"
@@ -23,8 +23,8 @@
     <el-alert
       class="mb-16px"
       :title="
-        isSimplifiedChair
-          ? 'Chair 只保留老网页已有的 Item No.、Material、Size、Color、Service、Sample、Packing；不填写 Finish。'
+        isSimplifiedSeating
+          ? '座椅类商品只保留老网页已有的 Item No.、Material、Size、Color、Service、Sample、Packing；不填写 Finish。'
           : 'Item No. 是客户可见的型号，不等同于 ERP 自动 SKU。Color 表示颜色，Finish 仅表示涂装、漆面等表面处理；Size 统一使用 cm。'
       "
       type="success"
@@ -109,7 +109,7 @@
         placeholder="As shown or according to the customer's request"
       />
     </el-form-item>
-    <el-form-item v-if="!isSimplifiedChair" label="Finish" prop="finish">
+    <el-form-item v-if="!isSimplifiedSeating" label="Finish" prop="finish">
       <el-input
         v-model="detailConfig.finish"
         class="w-100!"
@@ -179,34 +179,29 @@
 
     <el-form-item label="Product type">
       <div class="w-80!">
-        <el-select v-model="detailConfig.productType" class="w-100!">
-          <el-option label="Bed" value="bed" />
-          <el-option label="Sofa" value="sofa" />
-          <el-option label="Dining table" value="dining-table" />
-          <el-option label="Coffee table" value="coffee-table" />
-          <el-option label="Media console" value="media-console" />
-          <el-option label="Nightstand" value="nightstand" />
-          <el-option label="Dresser" value="dresser" />
-          <el-option label="Chair" value="chair" />
-          <el-option label="Lighting" value="lighting" />
-        </el-select>
+        <el-input
+          :model-value="selectedCategoryName"
+          class="w-100!"
+          placeholder="请先在基础设置中选择商品分类"
+          readonly
+        />
         <div class="mt-4px text-12px text-[var(--el-text-color-secondary)]">
-          仅设置网站商品细类，不会自动填充或修改 Collection、Hero note、选项和详情分区。
+          自动跟随“基础设置 → 商品分类”；如需调整，请回到基础设置修改。不会自动填充或修改其他内容。
         </div>
       </div>
     </el-form-item>
 
     <el-alert
-      v-if="isSimplifiedChair"
+      v-if="isSimplifiedSeating"
       class="mb-16px"
-      title="Chair 精简字段"
-      description="Item No.、Material、Size、Color、Service、Sample、Packing 会进入 PRODUCT INFORMATION；Feature、Application、Design Style 只放在 DETAILS。若原规格仅写 2 Pcs/Ctn，Packing method 可留空。"
+      title="座椅类精简字段"
+      description="Chair、Dining Chair、Bar Stool 等座椅商品的 Item No.、Material、Size、Color、Service、Sample、Packing 会进入 PRODUCT INFORMATION；Feature、Application、Design Style 只放在 DETAILS。若原规格仅写 2 Pcs/Ctn，Packing method 可留空。"
       type="success"
       :closable="false"
       show-icon
     />
 
-    <template v-if="!isSimplifiedChair">
+    <template v-if="!isSimplifiedSeating">
       <el-form-item label="Collection">
         <el-input
           v-model="detailConfig.collection"
@@ -311,7 +306,7 @@
       <el-button @click="addAccordion">Add accordion section</el-button>
     </el-form-item>
 
-    <template v-if="!isSimplifiedChair">
+    <template v-if="!isSimplifiedSeating">
       <el-divider content-position="left">Related links</el-divider>
       <div
         v-for="(link, linkIndex) in detailConfig.relatedLinks"
@@ -342,8 +337,10 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, reactive, ref, unref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, unref, watch } from 'vue'
 import type { PropType } from 'vue'
+import * as ProductCategoryApi from '@/api/mall/product/category'
+import type { CategoryVO } from '@/api/mall/product/category'
 import type { Spu } from '@/api/mall/product/spu'
 import { useMessage } from '@/hooks/web/useMessage'
 import { propTypes } from '@/utils/propTypes'
@@ -444,7 +441,66 @@ const createEmptyConfig = (): DetailConfig => ({
 })
 
 const detailConfig = reactive<DetailConfig>(createEmptyConfig())
-const isSimplifiedChair = computed(() => detailConfig.productType === 'chair')
+const categoryList = ref<CategoryVO[]>([])
+
+const categoryProductTypeAliases: Record<string, string> = {
+  sofas: 'sofa',
+  'single-sofas': 'single-sofa',
+  'lounge-chairs': 'lounge-chair',
+  chairs: 'chair',
+  'dining-chairs': 'dining-chair',
+  'bar-stools': 'bar-stool',
+  'bar-counter-stools': 'bar-stool',
+  'bar-and-counter-stools': 'bar-stool',
+  ottomans: 'ottoman',
+  beds: 'bed',
+  benches: 'bed-bench',
+  nightstands: 'nightstand',
+  dressers: 'dresser',
+  wardrobes: 'wardrobe',
+  vanities: 'vanity',
+  desks: 'desk',
+  'dining-tables': 'dining-table',
+  'round-tables': 'round-table',
+  'coffee-tables': 'coffee-table',
+  'side-tables': 'side-table',
+  'media-consoles': 'media-console',
+  sideboards: 'sideboard',
+  lighting: 'lighting',
+  rugs: 'rug'
+}
+
+const normalizeCategorySlug = (name: string) =>
+  name
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+
+const categoryToProductType = (name: string) => {
+  const slug = normalizeCategorySlug(name)
+  return categoryProductTypeAliases[slug] || slug
+}
+
+const selectedCategory = computed(() => {
+  const categoryId = Number(props.propFormData?.categoryId)
+  return categoryList.value.find((category) => Number(category.id) === categoryId)
+})
+const selectedCategoryName = computed(() => selectedCategory.value?.name || '')
+const selectedProductType = computed(
+  () =>
+    (selectedCategory.value ? categoryToProductType(selectedCategory.value.name) : '') ||
+    detailConfig.productType
+)
+const simplifiedSeatingTypes = new Set(['chair', 'dining-chair', 'bar-stool', 'lounge-chair'])
+const isSimplifiedSeating = computed(() => simplifiedSeatingTypes.has(selectedProductType.value))
+
+const refreshCategoryList = async () => {
+  categoryList.value = await ProductCategoryApi.getCategoryList({})
+}
+
+onMounted(refreshCategoryList)
 
 const positiveNumberOrNull = (value: unknown): number | null => {
   const number = Number(value)
@@ -526,7 +582,7 @@ const validateDimension = (_rule: unknown, value: Dimension, callback: (error?: 
 
 const validatePacking = (_rule: unknown, value: Packing, callback: (error?: Error) => void) => {
   const valid =
-    (isSimplifiedChair.value || Boolean(value?.method?.trim())) &&
+    (isSimplifiedSeating.value || Boolean(value?.method?.trim())) &&
     positiveInteger(value?.itemQuantity, 0) > 0 &&
     ['pc', 'set'].includes(value?.itemUnit) &&
     positiveInteger(value?.cartonQuantity, 0) > 0
@@ -536,7 +592,7 @@ const validatePacking = (_rule: unknown, value: Packing, callback: (error?: Erro
 const detailRules = computed(() =>
   isB2B.value
     ? {
-        ...(isSimplifiedChair.value
+        ...(isSimplifiedSeating.value
           ? {
               itemNo: [{ validator: validateText('Item No.'), trigger: 'blur' }],
               color: [{ validator: validateText('Color'), trigger: 'blur' }],
@@ -587,8 +643,15 @@ const removeRelatedLink = (index: number) => detailConfig.relatedLinks.splice(in
 
 const validate = async () => {
   try {
+    if (categoryList.value.length === 0) {
+      await refreshCategoryList()
+    }
     await unref(formRef)?.validate()
     const normalized = normalizeConfig(detailConfig)
+    normalized.productType = selectedProductType.value
+    if (!normalized.productType) {
+      throw new Error('Product category is required')
+    }
     normalized.itemNo = normalized.itemNo.trim()
     normalized.material = normalized.material.trim()
     normalized.color = normalized.color.trim()
@@ -596,7 +659,7 @@ const validate = async () => {
     normalized.service = normalized.service.trim()
     normalized.sample = normalized.sample.trim()
     normalized.packing.method = normalized.packing.method.trim()
-    if (normalized.productType === 'chair') {
+    if (simplifiedSeatingTypes.has(normalized.productType)) {
       normalized.finish = ''
       normalized.collection = ''
       normalized.heroNote = ''
