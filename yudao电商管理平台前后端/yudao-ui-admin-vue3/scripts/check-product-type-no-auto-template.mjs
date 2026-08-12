@@ -1,0 +1,38 @@
+import assert from 'node:assert/strict'
+import { readFile } from 'node:fs/promises'
+
+const furnitureDetail = await readFile(
+  new URL('../src/views/mall/product/spu/form/FurnitureDetailForm.vue', import.meta.url),
+  'utf8'
+)
+
+assert.match(furnitureDetail, /v-model="detailConfig\.productType"/)
+assert.doesNotMatch(furnitureDetail, /@change="applyTemplate"/)
+assert.doesNotMatch(furnitureDetail, /\bconst templates\b/)
+assert.doesNotMatch(furnitureDetail, /\bapplyTemplate\b/)
+assert.match(
+  furnitureDetail,
+  /仅设置网站商品细类，不会自动填充或修改 Collection、Hero note、选项和详情分区。/
+)
+
+for (const exampleContent of [
+  'MARBLE DINING COLLECTION',
+  'White Carrara',
+  'CLOUD MODULAR COLLECTION',
+  'Sand Performance Linen',
+  'LUXE BED COLLECTION',
+  'ARCHITECTURAL LIGHTING COLLECTION'
+]) {
+  assert.doesNotMatch(furnitureDetail, new RegExp(exampleContent, 'i'))
+}
+
+assert.match(furnitureDetail, /collection: ''/)
+assert.match(furnitureDetail, /heroNote: ''/)
+assert.match(furnitureDetail, /stockedCount: 0/)
+assert.match(furnitureDetail, /specialOrderCount: 0/)
+assert.match(furnitureDetail, /highlights: \[\]/)
+assert.match(furnitureDetail, /optionGroups: \[\]/)
+assert.match(furnitureDetail, /accordions: \[\]/)
+assert.match(furnitureDetail, /relatedLinks: \[\]/)
+
+console.log('Product type no-auto-template contract passed.')

@@ -24,6 +24,7 @@
     "check:ai-music-player": "node scripts/check-ai-music-player.mjs",
     "check:mall-warnings": "node scripts/check-mall-warning-contract.mjs",
     "check:description-editor-wrap": "node scripts/check-description-editor-wrap.mjs",
+    "check:product-type-no-auto-template": "node scripts/check-product-type-no-auto-template.mjs",
     "check:dashboard": "node scripts/check-dashboard-contract.mjs",
     "check:seo-foundation": "node scripts/check-seo-foundation-contract.mjs",
     "check:seo-analysis": "node scripts/check-seo-keyword-analysis-contract.mjs",

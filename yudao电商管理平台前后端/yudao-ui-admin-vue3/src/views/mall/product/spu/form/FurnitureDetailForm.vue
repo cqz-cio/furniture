@@ -12,7 +12,7 @@
         isSimplifiedChair
           ? 'Chair 精简模式只保留老网页有依据的公开参数和详情折叠内容；户外模板字段不会保存。'
           : isB2B
-            ? '以下字段直接对应 B2B 家具网站商品详情页；公开参数必须填写，其他可选内容留空时不会生成示例数据。'
+            ? '以下字段直接对应 B2B 家具网站商品详情页；选择 Product type 只设置商品细类，不会自动带入示例内容。公开参数必须填写，其他可选内容可保持为空。'
             : '以下配置控制家具网站商品详情页；未填写的可选内容保持为空。'
       "
       type="info"
@@ -178,17 +178,22 @@
     </el-form-item>
 
     <el-form-item label="Product type">
-      <el-select v-model="detailConfig.productType" class="w-80!" @change="applyTemplate">
-        <el-option label="Bed" value="bed" />
-        <el-option label="Sofa" value="sofa" />
-        <el-option label="Dining table" value="dining-table" />
-        <el-option label="Coffee table" value="coffee-table" />
-        <el-option label="Media console" value="media-console" />
-        <el-option label="Nightstand" value="nightstand" />
-        <el-option label="Dresser" value="dresser" />
-        <el-option label="Chair" value="chair" />
-        <el-option label="Lighting" value="lighting" />
-      </el-select>
+      <div class="w-80!">
+        <el-select v-model="detailConfig.productType" class="w-100!">
+          <el-option label="Bed" value="bed" />
+          <el-option label="Sofa" value="sofa" />
+          <el-option label="Dining table" value="dining-table" />
+          <el-option label="Coffee table" value="coffee-table" />
+          <el-option label="Media console" value="media-console" />
+          <el-option label="Nightstand" value="nightstand" />
+          <el-option label="Dresser" value="dresser" />
+          <el-option label="Chair" value="chair" />
+          <el-option label="Lighting" value="lighting" />
+        </el-select>
+        <div class="mt-4px text-12px text-[var(--el-text-color-secondary)]">
+          仅设置网站商品细类，不会自动填充或修改 Collection、Hero note、选项和详情分区。
+        </div>
+      </div>
     </el-form-item>
 
     <el-alert
@@ -206,7 +211,7 @@
         <el-input
           v-model="detailConfig.collection"
           class="w-80!"
-          placeholder="CLOUD MODULAR COLLECTION"
+          placeholder="Optional collection name"
         />
       </el-form-item>
 
@@ -216,13 +221,17 @@
           class="w-80!"
           type="textarea"
           :autosize="{ minRows: 2, maxRows: 4 }"
-          placeholder="Shown in Sand Performance Linen..."
+          placeholder="Optional product note shown below the gallery"
         />
       </el-form-item>
 
       <el-divider content-position="left">Fabric / Finish selector</el-divider>
       <el-form-item label="Selector label">
-        <el-input v-model="detailConfig.fabricSelector.label" class="w-80!" />
+        <el-input
+          v-model="detailConfig.fabricSelector.label"
+          class="w-80!"
+          placeholder="Optional selector heading"
+        />
       </el-form-item>
       <el-form-item label="Counts">
         <div class="flex gap-12px">
@@ -333,8 +342,10 @@
 </template>
 
 <script lang="ts" setup>
+import { computed, reactive, ref, unref, watch } from 'vue'
 import type { PropType } from 'vue'
 import type { Spu } from '@/api/mall/product/spu'
+import { useMessage } from '@/hooks/web/useMessage'
 import { propTypes } from '@/utils/propTypes'
 
 defineOptions({ name: 'ProductFurnitureDetailForm' })
@@ -393,190 +404,6 @@ const isB2B = computed(() => props.businessMode === 'B2B')
 const emit = defineEmits(['update:activeName'])
 const formRef = ref()
 const message = useMessage()
-
-const templates: Record<string, Partial<DetailConfig>> = {
-  bed: {
-    productType: 'bed',
-    collection: 'LUXE BED COLLECTION',
-    heroNote: 'Shown in Ivory Performance Linen with standard platform base.',
-    fabricSelector: {
-      stockedCount: 26,
-      specialOrderCount: 191,
-      label: 'SELECT FROM 26 STOCKED AND 191 SPECIAL ORDER FABRICS',
-      swatches: [
-        { label: 'Ivory Performance Linen', swatch: '#ebe5db' },
-        { label: 'Warm Grey Basketweave', swatch: '#a29b91' }
-      ]
-    },
-    highlights: ['Hand upholstered in premium performance fabric'],
-    optionGroups: [
-      {
-        key: 'size',
-        label: 'Size',
-        helper: 'Choose the bed frame size.',
-        values: ['Queen 1.5m', 'King 1.8m']
-      },
-      {
-        key: 'fabric',
-        label: 'Fabric',
-        helper: 'Choose stocked or special order fabric.',
-        values: ['Ivory Performance Linen']
-      }
-    ],
-    accordions: [
-      {
-        title: 'DETAILS',
-        rows: [['Design', 'Low, tailored upholstered bed with soft proportions']]
-      },
-      { title: 'DIMENSIONS', rows: [['King 1.8m', '198W x 214D x 112H cm']] },
-      { title: 'MATERIALS', rows: [['Frame', 'Kiln-dried hardwood and engineered support']] },
-      { title: 'CARE', rows: [['Fabric care', 'Vacuum with a soft brush attachment']] },
-      { title: 'DELIVERY', rows: [['Lead time', 'Stocked options ship first']] }
-    ],
-    relatedLinks: [{ label: 'EXPLORE THE LUXE BED COLLECTION', href: '/products' }]
-  },
-  sofa: {
-    productType: 'sofa',
-    collection: 'CLOUD MODULAR COLLECTION',
-    heroNote: 'Shown in Sand Performance Linen with classic depth and down-blend cushions.',
-    fabricSelector: {
-      stockedCount: 26,
-      specialOrderCount: 191,
-      label: 'SELECT FROM 26 STOCKED AND 191 SPECIAL ORDER FABRICS',
-      swatches: [
-        { label: 'Sand Performance Linen', swatch: '#c9b99d' },
-        { label: 'Graphite Weave', swatch: '#2c2b29' }
-      ]
-    },
-    highlights: ['Low, deep modular profile for relaxed living rooms'],
-    optionGroups: [
-      {
-        key: 'configuration',
-        label: 'Configuration',
-        helper: 'Choose the seating layout.',
-        values: ['Sofa', 'Sofa with chaise']
-      },
-      {
-        key: 'fabric',
-        label: 'Fabric',
-        helper: 'Choose upholstery.',
-        values: ['Sand Performance Linen']
-      }
-    ],
-    accordions: [
-      {
-        title: 'DETAILS',
-        rows: [['Design', 'Low modular frame with broad arms and loose back cushions']]
-      },
-      { title: 'DIMENSIONS', rows: [['Overall width', '220 / 260 / 300 cm']] },
-      {
-        title: 'MATERIALS',
-        rows: [['Upholstery', 'Performance linen, velvet, leather or custom textile']]
-      },
-      { title: 'CARE', rows: [['Cushions', 'Rotate and fluff cushions to maintain shape']] },
-      { title: 'DELIVERY', rows: [['Stocked fabric', 'Ready to ship in 3-7 days']] }
-    ],
-    relatedLinks: [{ label: 'EXPLORE THE CLOUD MODULAR COLLECTION', href: '/products' }]
-  },
-  'dining-table': {
-    productType: 'dining-table',
-    collection: 'MARBLE DINING COLLECTION',
-    heroNote: 'Shown in White Carrara marble top with smoked oak pedestal base.',
-    fabricSelector: {
-      stockedCount: 8,
-      specialOrderCount: 6,
-      label: 'SELECT FROM 8 STONE TOPS AND 6 WOOD FINISHES',
-      swatches: [
-        { label: 'White Carrara Marble', swatch: '#eeeae2' },
-        { label: 'Smoked Oak', swatch: '#5a3e2c' }
-      ]
-    },
-    highlights: ['Statement dining table with stone or wood top options'],
-    optionGroups: [
-      {
-        key: 'shape',
-        label: 'Shape',
-        helper: 'Select the dining room footprint.',
-        values: ['Rectangular', 'Round']
-      },
-      {
-        key: 'size',
-        label: 'Size',
-        helper: 'Controls seating capacity.',
-        values: ['220 cm', '260 cm']
-      }
-    ],
-    accordions: [
-      { title: 'DETAILS', rows: [['Design', 'Sculptural pedestal dining table']] },
-      { title: 'DIMENSIONS', rows: [['Seating capacity', '6 / 8 / 10 seats']] },
-      { title: 'MATERIALS', rows: [['Stone', 'Marble, travertine or quartz-style finish']] },
-      { title: 'CARE', rows: [['Stone care', 'Use coasters and wipe spills immediately']] },
-      { title: 'DELIVERY', rows: [['Assembly', 'Base and top require on-site placement']] }
-    ],
-    relatedLinks: [{ label: 'EXPLORE THE MARBLE DINING COLLECTION', href: '/products' }]
-  },
-  chair: {
-    productType: 'chair',
-    collection: '',
-    heroNote: '',
-    fabricSelector: {
-      stockedCount: 0,
-      specialOrderCount: 0,
-      label: '',
-      swatches: []
-    },
-    highlights: [],
-    optionGroups: [],
-    accordions: [
-      {
-        title: 'DETAILS',
-        rows: [
-          ['Feature', ''],
-          ['Application', ''],
-          ['Design Style', '']
-        ]
-      }
-    ],
-    relatedLinks: []
-  },
-  lighting: {
-    productType: 'lighting',
-    collection: 'ARCHITECTURAL LIGHTING COLLECTION',
-    heroNote: 'Shown in Lacquered Brass with linen shade and warm dimmable bulb.',
-    fabricSelector: {
-      stockedCount: 6,
-      specialOrderCount: 4,
-      label: 'SELECT FROM 6 METAL FINISHES AND 4 SHADE OPTIONS',
-      swatches: [
-        { label: 'Lacquered Brass', swatch: '#b99a58' },
-        { label: 'Matte Black', swatch: '#191919' }
-      ]
-    },
-    highlights: ['Finish, shade, bulb and canopy are fixed lighting parameters'],
-    optionGroups: [
-      {
-        key: 'size',
-        label: 'Size',
-        helper: 'Choose fixture size.',
-        values: ['Small', 'Medium', 'Large']
-      },
-      {
-        key: 'finish',
-        label: 'Finish',
-        helper: 'Choose metal finish.',
-        values: ['Lacquered Brass', 'Matte Black']
-      }
-    ],
-    accordions: [
-      { title: 'DETAILS', rows: [['Design', 'Clean architectural lighting fixture']] },
-      { title: 'DIMENSIONS', rows: [['Canopy', '13 cm diameter']] },
-      { title: 'MATERIALS', rows: [['Body', 'Steel or brass with plated finish']] },
-      { title: 'CARE', rows: [['Cleaning', 'Dust with a soft dry cloth']] },
-      { title: 'DELIVERY', rows: [['Installation', 'Professional installation recommended']] }
-    ],
-    relatedLinks: [{ label: 'EXPLORE THE ARCHITECTURAL LIGHTING COLLECTION', href: '/products' }]
-  }
-}
 
 const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value))
 
@@ -678,22 +505,6 @@ watch(
   },
   { immediate: true }
 )
-
-const applyTemplate = () => {
-  const template = templates[detailConfig.productType]
-  if (!template) return
-  const productInformation = {
-    itemNo: detailConfig.itemNo,
-    material: detailConfig.material,
-    color: detailConfig.color,
-    finish: detailConfig.finish,
-    dimension: clone(detailConfig.dimension),
-    service: detailConfig.service,
-    sample: detailConfig.sample,
-    packing: clone(detailConfig.packing)
-  }
-  Object.assign(detailConfig, normalizeConfig({ ...clone(template), ...productInformation }))
-}
 
 const validateText =
   (label: string) => (_rule: unknown, value: unknown, callback: (error?: Error) => void) => {
