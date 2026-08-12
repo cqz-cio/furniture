@@ -12,7 +12,7 @@
         isSimplifiedSeating
           ? '座椅类精简模式只保留老网页有依据的公开参数和详情折叠内容；户外模板字段不会保存。'
           : isB2B
-            ? '以下字段直接对应 B2B 家具网站商品详情页；Product type 自动跟随“基础设置 → 商品分类”，不会自动带入示例内容。公开参数按原始资料填写，没有依据的可选内容保持为空。'
+            ? '以下字段直接对应 B2B 家具网站商品详情页；Product type 从当前 Room 对应的 P1 子分类中选择（不含 All），不会自动带入示例内容。公开参数按原始资料填写，没有依据的可选内容保持为空。'
             : '以下配置控制家具网站商品详情页；未填写的可选内容保持为空。'
       "
       type="info"
@@ -153,16 +153,27 @@
       </div>
     </el-form-item>
 
-    <el-form-item label="Product type">
+    <el-form-item label="Product type" prop="productType">
       <div class="w-80!">
-        <el-input
-          :model-value="selectedCategoryName"
+        <el-select
+          v-model="detailConfig.productType"
           class="w-100!"
-          placeholder="请先在基础设置中选择商品分类"
-          readonly
-        />
+          :disabled="!selectedRoom"
+          :placeholder="
+            selectedRoom
+              ? '请选择 P1 对应的 Product type'
+              : '请先在基础设置中选择 Dining、Living 或 Bedroom Room'
+          "
+        >
+          <el-option
+            v-for="option in productTypeOptions"
+            :key="option.value"
+            :label="option.label"
+            :value="option.value"
+          />
+        </el-select>
         <div class="mt-4px text-12px text-[var(--el-text-color-secondary)]">
-          自动跟随“基础设置 → 商品分类”；如需调整，请回到基础设置修改。不会自动填充或修改其他内容。
+          选项与 P1 当前 Room 的框内子分类逐项一致（不含 All）；不会自动填充或修改其他内容。
         </div>
       </div>
     </el-form-item>
@@ -321,6 +332,12 @@ import type { Spu } from '@/api/mall/product/spu'
 import { useMessage } from '@/hooks/web/useMessage'
 import { propTypes } from '@/utils/propTypes'
 import { formatLegacyPacking, type LegacyPacking } from './packingDisplay'
+import {
+  getProductTypeOptions,
+  isProductTypeValid,
+  migrateProductType,
+  resolveProductRoom
+} from './productTypeOptions'
 
 defineOptions({ name: 'ProductFurnitureDetailForm' })
 
@@ -408,59 +425,12 @@ const createEmptyConfig = (): DetailConfig => ({
 
 const detailConfig = reactive<DetailConfig>(createEmptyConfig())
 const categoryList = ref<CategoryVO[]>([])
-
-const categoryProductTypeAliases: Record<string, string> = {
-  sofas: 'sofa',
-  'single-sofas': 'single-sofa',
-  'lounge-chairs': 'lounge-chair',
-  chairs: 'chair',
-  'dining-chairs': 'dining-chair',
-  'bar-stools': 'bar-stool',
-  'bar-counter-stools': 'bar-stool',
-  'bar-and-counter-stools': 'bar-stool',
-  ottomans: 'ottoman',
-  beds: 'bed',
-  benches: 'bed-bench',
-  nightstands: 'nightstand',
-  dressers: 'dresser',
-  wardrobes: 'wardrobe',
-  vanities: 'vanity',
-  desks: 'desk',
-  'dining-tables': 'dining-table',
-  'round-tables': 'round-table',
-  'coffee-tables': 'coffee-table',
-  'side-tables': 'side-table',
-  'media-consoles': 'media-console',
-  sideboards: 'sideboard',
-  lighting: 'lighting',
-  rugs: 'rug'
-}
-
-const normalizeCategorySlug = (name: string) =>
-  name
-    .trim()
-    .toLowerCase()
-    .replace(/&/g, ' and ')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-
-const categoryToProductType = (name: string) => {
-  const slug = normalizeCategorySlug(name)
-  return categoryProductTypeAliases[slug] || slug
-}
-
-const selectedCategory = computed(() => {
-  const categoryId = Number(props.propFormData?.categoryId)
-  return categoryList.value.find((category) => Number(category.id) === categoryId)
-})
-const selectedCategoryName = computed(() => selectedCategory.value?.name || '')
-const selectedProductType = computed(
-  () =>
-    (selectedCategory.value ? categoryToProductType(selectedCategory.value.name) : '') ||
-    detailConfig.productType
+const selectedRoom = computed(() =>
+  resolveProductRoom(categoryList.value, props.propFormData?.categoryId)
 )
-const simplifiedSeatingTypes = new Set(['chair', 'dining-chair', 'bar-stool', 'lounge-chair'])
-const isSimplifiedSeating = computed(() => simplifiedSeatingTypes.has(selectedProductType.value))
+const productTypeOptions = computed(() => getProductTypeOptions(selectedRoom.value))
+const simplifiedSeatingTypes = new Set(['dining-chair', 'bar-stool'])
+const isSimplifiedSeating = computed(() => simplifiedSeatingTypes.has(detailConfig.productType))
 
 const refreshCategoryList = async () => {
   categoryList.value = await ProductCategoryApi.getCategoryList({})
@@ -520,6 +490,15 @@ watch(
   { immediate: true }
 )
 
+watch(
+  [selectedRoom, () => detailConfig.productType] as const,
+  ([room, productType]) => {
+    if (!room || !productType || isProductTypeValid(room, productType)) return
+    detailConfig.productType = migrateProductType(room, productType)
+  },
+  { immediate: true }
+)
+
 const validateText =
   (label: string) => (_rule: unknown, value: unknown, callback: (error?: Error) => void) => {
     if (typeof value === 'string' && value.trim()) {
@@ -538,6 +517,22 @@ const validateDimension = (_rule: unknown, value: Dimension, callback: (error?: 
   callback(commonValid && footprintValid ? undefined : new Error('Enter complete dimensions in cm'))
 }
 
+const validateProductType = (
+  _rule: unknown,
+  value: unknown,
+  callback: (error?: Error) => void
+) => {
+  if (!selectedRoom.value) {
+    callback(new Error('Select Dining Room, Living Room or Bedroom in Basic settings first'))
+    return
+  }
+  callback(
+    typeof value === 'string' && isProductTypeValid(selectedRoom.value, value)
+      ? undefined
+      : new Error('Select a Product type from the current P1 Room options')
+  )
+}
+
 const detailRules = computed(() =>
   isB2B.value
     ? {
@@ -552,7 +547,8 @@ const detailRules = computed(() =>
               finish: [{ validator: validateText('Finish'), trigger: 'blur' }]
             }),
         material: [{ validator: validateText('Material'), trigger: 'blur' }],
-        dimension: [{ validator: validateDimension, trigger: 'change' }]
+        dimension: [{ validator: validateDimension, trigger: 'change' }],
+        productType: [{ validator: validateProductType, trigger: 'change' }]
       }
     : {}
 )
@@ -596,9 +592,9 @@ const validate = async () => {
     }
     await unref(formRef)?.validate()
     const normalized = normalizeConfig(detailConfig)
-    normalized.productType = selectedProductType.value
-    if (!normalized.productType) {
-      throw new Error('Product category is required')
+    normalized.productType = normalized.productType.trim()
+    if (isB2B.value && !isProductTypeValid(selectedRoom.value, normalized.productType)) {
+      throw new Error('Product type must match the selected P1 Room option')
     }
     normalized.itemNo = normalized.itemNo.trim()
     normalized.material = normalized.material.trim()
