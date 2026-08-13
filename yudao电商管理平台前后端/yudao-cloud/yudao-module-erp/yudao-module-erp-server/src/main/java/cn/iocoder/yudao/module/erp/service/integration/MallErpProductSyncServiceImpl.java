@@ -27,9 +27,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
-import java.util.List;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -74,6 +75,12 @@ public class MallErpProductSyncServiceImpl implements MallErpProductSyncService 
     public MallErpProductDTO syncMallSku(Long mallSpuId, Long mallSkuId) {
         ProductSkuRespDTO sku = productSkuApi.getSku(mallSkuId).getCheckedData();
         ProductSpuRespDTO spu = productSpuApi.getSpu(mallSpuId).getCheckedData();
+        if (sku == null) {
+            throw new IllegalStateException("Mall SKU does not exist: " + mallSkuId);
+        }
+        if (spu == null) {
+            throw new IllegalStateException("Mall SPU does not exist: " + mallSpuId);
+        }
         if (!mallSpuId.equals(sku.getSpuId())) {
             throw new IllegalArgumentException("SKU does not belong to the requested SPU");
         }
@@ -152,10 +159,79 @@ public class MallErpProductSyncServiceImpl implements MallErpProductSyncService 
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public List<MallErpProductDTO> syncAll() {
-        return mappingMapper.selectList().stream()
-                .map(mapping -> syncMallSku(mapping.getMallSpuId(), mapping.getMallSkuId()))
-                .collect(Collectors.toList());
+        List<MallErpProductMappingDO> mappings = mappingMapper.selectList();
+        if (mappings.isEmpty()) {
+            return Collections.emptyList();
+        }
+        Set<Long> mappedSkuIds = mappings.stream().map(MallErpProductMappingDO::getMallSkuId)
+                .collect(Collectors.toSet());
+        Set<Long> mappedSpuIds = mappings.stream().map(MallErpProductMappingDO::getMallSpuId)
+                .collect(Collectors.toSet());
+        Set<Long> mappedErpProductIds = mappings.stream().map(MallErpProductMappingDO::getErpProductId)
+                .collect(Collectors.toSet());
+        Map<Long, ProductSkuRespDTO> skus = convertMap(
+                productSkuApi.getSkuList(mappedSkuIds).getCheckedData(), ProductSkuRespDTO::getId);
+        Map<Long, ProductSpuRespDTO> spus = convertMap(
+                productSpuApi.getSpuList(mappedSpuIds).getCheckedData(), ProductSpuRespDTO::getId);
+        Map<Long, ErpProductDO> erpProducts = convertMap(
+                erpProductMapper.selectBatchIds(mappedErpProductIds), ErpProductDO::getId);
+        Set<Long> orphanSkuIds = mappings.stream()
+                .filter(mapping -> isOrphanMapping(mapping, skus, spus, erpProducts))
+                .map(MallErpProductMappingDO::getMallSkuId)
+                .collect(Collectors.toSet());
+        unlinkMallSkus(orphanSkuIds);
+
+        List<MallErpProductDTO> syncedProducts = new ArrayList<>();
+        for (MallErpProductMappingDO mapping : mappings) {
+            if (orphanSkuIds.contains(mapping.getMallSkuId())) {
+                continue;
+            }
+            syncedProducts.add(syncMallSku(mapping.getMallSpuId(), mapping.getMallSkuId()));
+        }
+        return syncedProducts;
+    }
+
+    private static boolean isOrphanMapping(MallErpProductMappingDO mapping,
+                                           Map<Long, ProductSkuRespDTO> skus,
+                                           Map<Long, ProductSpuRespDTO> spus,
+                                           Map<Long, ErpProductDO> erpProducts) {
+        ProductSkuRespDTO sku = skus.get(mapping.getMallSkuId());
+        return sku == null || spus.get(mapping.getMallSpuId()) == null
+                || !mapping.getMallSpuId().equals(sku.getSpuId())
+                || erpProducts.get(mapping.getErpProductId()) == null;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void unlinkMallSkus(Collection<Long> mallSkuIds) {
+        if (mallSkuIds == null || mallSkuIds.isEmpty()) {
+            return;
+        }
+        List<MallErpProductMappingDO> mappings = mappingMapper.selectListByMallSkuIds(mallSkuIds);
+        if (mappings.isEmpty()) {
+            return;
+        }
+        Map<Long, ErpProductDO> products = convertMap(
+                erpProductMapper.selectBatchIds(mappings.stream()
+                        .map(MallErpProductMappingDO::getErpProductId).collect(Collectors.toSet())),
+                ErpProductDO::getId);
+        for (MallErpProductMappingDO mapping : mappings) {
+            ErpProductDO product = products.get(mapping.getErpProductId());
+            if (product != null && !CommonStatusEnum.DISABLE.getStatus().equals(product.getStatus())) {
+                erpProductMapper.updateById(new ErpProductDO()
+                        .setId(product.getId())
+                        .setStatus(CommonStatusEnum.DISABLE.getStatus()));
+            }
+            mapping.setSyncStatus("UNLINKED");
+            mapping.setLastSyncedAt(LocalDateTime.now());
+            mapping.setLastError("");
+            mappingMapper.updateById(mapping);
+            insertUnlinkLog(mapping);
+        }
+        mappingMapper.deleteByMallSkuIds(mappings.stream()
+                .map(MallErpProductMappingDO::getMallSkuId).collect(Collectors.toSet()));
     }
 
     @Override
@@ -211,6 +287,21 @@ public class MallErpProductSyncServiceImpl implements MallErpProductSyncService 
         log.setEventType("UPSERT");
         log.setIdempotencyKey(productCode + "-" + System.currentTimeMillis());
         log.setRequestSummary("mallSkuId=" + mallSkuId);
+        log.setSyncStatus("SUCCESS");
+        log.setLastError("");
+        log.setRetryCount(0);
+        syncLogMapper.insert(log);
+    }
+
+    private void insertUnlinkLog(MallErpProductMappingDO mapping) {
+        MallErpSyncLogDO log = new MallErpSyncLogDO();
+        log.setEntityType("PRODUCT_SKU");
+        log.setEntityId(mapping.getMallSkuId());
+        log.setDirection("MALL_TO_ERP");
+        log.setEventType("UNLINK");
+        log.setIdempotencyKey(mapping.getErpProductCode() + "-unlink-" + System.currentTimeMillis());
+        log.setRequestSummary("mallSkuId=" + mapping.getMallSkuId()
+                + ",erpProductId=" + mapping.getErpProductId());
         log.setSyncStatus("SUCCESS");
         log.setLastError("");
         log.setRetryCount(0);

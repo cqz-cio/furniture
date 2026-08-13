@@ -16,4 +16,8 @@ public interface MallErpProductMappingMapper extends BaseMapperX<MallErpProductM
     default List<MallErpProductMappingDO> selectListByMallSkuIds(Collection<Long> mallSkuIds) {
         return selectList(MallErpProductMappingDO::getMallSkuId, mallSkuIds);
     }
+
+    default int deleteByMallSkuIds(Collection<Long> mallSkuIds) {
+        return deleteBatch(MallErpProductMappingDO::getMallSkuId, mallSkuIds);
+    }
 }

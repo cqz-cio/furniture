@@ -27,6 +27,9 @@ public interface MallErpProductApi {
     @PostMapping(PREFIX + "/sync-all")
     CommonResult<List<MallErpProductDTO>> syncAllMallSkus();
 
+    @PostMapping(PREFIX + "/unlink-skus")
+    CommonResult<Boolean> unlinkMallSkus(@RequestBody Collection<Long> mallSkuIds);
+
     @GetMapping(PREFIX + "/get-by-mall-sku")
     CommonResult<MallErpProductDTO> getByMallSkuId(@RequestParam("mallSkuId") Long mallSkuId);
 
