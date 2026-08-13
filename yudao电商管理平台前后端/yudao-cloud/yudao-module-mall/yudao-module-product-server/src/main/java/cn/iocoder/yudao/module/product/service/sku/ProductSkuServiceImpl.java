@@ -50,6 +50,7 @@ public class ProductSkuServiceImpl implements ProductSkuService {
     @Resource
     private ProductPropertyValueService productPropertyValueService;
     @Resource
+    @Lazy // ERP 同步服务会反向调用商品 API，延迟注入避免单体部署时形成循环依赖
     private MallErpProductApi mallErpProductApi;
 
     @Override
