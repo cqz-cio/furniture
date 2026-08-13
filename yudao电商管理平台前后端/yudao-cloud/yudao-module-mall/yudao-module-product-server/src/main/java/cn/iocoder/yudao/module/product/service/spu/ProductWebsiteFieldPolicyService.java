@@ -152,6 +152,10 @@ public class ProductWebsiteFieldPolicyService {
     private Map<String, Object> filterDetailConfig(
             Map<String, Object> detailConfig, ProductWebsiteFieldPolicy policy) {
         if (detailConfig == null) {
+            if (policy.isB2b() && policy.allows(TenantProductFieldEnum.FINISH)) {
+                return new LinkedHashMap<>(Map.of(
+                        "finish", ProductAdminFieldPolicyService.DEFAULT_FINISH));
+            }
             return null;
         }
         Map<String, Object> filtered = new LinkedHashMap<>(detailConfig);
@@ -163,6 +167,12 @@ public class ProductWebsiteFieldPolicyService {
                 filtered.remove(configField);
             }
         });
+        if (policy.isB2b() && policy.allows(TenantProductFieldEnum.FINISH)) {
+            Object rawFinish = filtered.get("finish");
+            String finish = rawFinish instanceof String ? ((String) rawFinish).trim() : "";
+            filtered.put("finish", finish.isEmpty()
+                    ? ProductAdminFieldPolicyService.DEFAULT_FINISH : finish);
+        }
         return filtered;
     }
 

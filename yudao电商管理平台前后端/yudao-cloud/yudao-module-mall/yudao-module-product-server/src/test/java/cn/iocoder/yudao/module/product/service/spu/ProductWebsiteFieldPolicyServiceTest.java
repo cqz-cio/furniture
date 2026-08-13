@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
@@ -130,6 +131,32 @@ class ProductWebsiteFieldPolicyServiceTest {
         assertFalse(policy.allows("price"));
         assertFalse(policy.allows("inventory"));
         assertFalse(policy.allows("productId"));
+    }
+
+    @Test
+    void shouldDefaultBlankFinishInB2BWebsiteResponse() {
+        ProductWebsiteFieldPolicy policy = new ProductWebsiteFieldPolicy(true, Set.of("finish"));
+        AppProductSpuDetailRespVO product = new AppProductSpuDetailRespVO()
+                .setDetailConfig(new LinkedHashMap<>(Map.of("finish", "   ")))
+                .setSkus(List.of());
+
+        service.applyPolicy(product, policy);
+
+        assertEquals(ProductAdminFieldPolicyService.DEFAULT_FINISH,
+                product.getDetailConfig().get("finish"));
+    }
+
+    @Test
+    void shouldPreserveExplicitFinishInB2BWebsiteResponse() {
+        ProductWebsiteFieldPolicy policy = new ProductWebsiteFieldPolicy(true, Set.of("finish"));
+        AppProductSpuDetailRespVO product = new AppProductSpuDetailRespVO()
+                .setDetailConfig(new LinkedHashMap<>(Map.of(
+                        "finish", "  Two-tone weathered finish  ")))
+                .setSkus(List.of());
+
+        service.applyPolicy(product, policy);
+
+        assertEquals("Two-tone weathered finish", product.getDetailConfig().get("finish"));
     }
 
     @Test

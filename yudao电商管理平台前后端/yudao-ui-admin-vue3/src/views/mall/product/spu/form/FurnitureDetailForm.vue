@@ -12,7 +12,7 @@
         isSimplifiedSeating
           ? '座椅类精简模式只保留老网页有依据的公开参数和详情折叠内容；户外模板字段不会保存。'
           : isB2B
-            ? '以下字段直接对应 B2B 家具网站商品详情页；Product type 从当前 Room 对应的 P1 子分类中选择（不含 All），不会自动带入示例内容。公开参数按原始资料填写，没有依据的可选内容保持为空。'
+            ? '以下字段直接对应 B2B 家具网站商品详情页；Product type 从当前 Room 对应的 P1 子分类中选择（不含 All），不会自动带入示例内容。公开参数按原始资料填写；Finish 未明确提供时默认为 Natural Oak，其他没有依据的可选内容保持为空。'
             : '以下配置控制家具网站商品详情页；未填写的可选内容保持为空。'
       "
       type="info"
@@ -22,11 +22,7 @@
     <el-divider content-position="left">Product information</el-divider>
     <el-alert
       class="mb-16px"
-      :title="
-        isSimplifiedSeating
-          ? '座椅类商品只保留老网页已有的 Item No.、Material、Size、Color、Service、Sample、Packing；不填写 Finish。'
-          : 'Item No. 是客户可见的型号，不等同于 ERP 自动 SKU。Color 表示颜色，Finish 仅表示涂装、漆面等表面处理；Size 统一使用 cm。'
-      "
+      title="Item No. 是客户可见的型号，不等同于 ERP 自动 SKU。Color 表示颜色；Finish 是固定字段，明确提供时按原文填写，未提供时使用 Natural Oak；Size 统一使用 cm。"
       type="success"
       :closable="false"
     />
@@ -109,12 +105,12 @@
         placeholder="As shown or according to the customer's request"
       />
     </el-form-item>
-    <el-form-item v-if="!isSimplifiedSeating" label="Finish" prop="finish">
+    <el-form-item label="Finish" prop="finish">
       <el-input
         v-model="detailConfig.finish"
         class="w-100!"
         maxlength="255"
-        placeholder="Natural oak, clear matte lacquer"
+        placeholder="Natural Oak"
       />
     </el-form-item>
     <el-form-item label="Service" prop="service">
@@ -391,12 +387,18 @@ const formRef = ref()
 const message = useMessage()
 
 const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value))
+const DEFAULT_FINISH = 'Natural Oak'
+
+const normalizeFinish = (value: unknown): string => {
+  const finish = typeof value === 'string' ? value.trim() : ''
+  return finish || DEFAULT_FINISH
+}
 
 const createEmptyConfig = (): DetailConfig => ({
   itemNo: '',
   material: '',
   color: '',
-  finish: '',
+  finish: DEFAULT_FINISH,
   dimension: {
     shape: 'rectangular',
     width: null,
@@ -459,7 +461,7 @@ const normalizeConfig = (config?: DetailConfigInput): DetailConfig => {
     itemNo: typeof config?.itemNo === 'string' ? config.itemNo : '',
     material: typeof config?.material === 'string' ? config.material : '',
     color: typeof config?.color === 'string' ? config.color : '',
-    finish: typeof config?.finish === 'string' ? config.finish : '',
+    finish: normalizeFinish(config?.finish),
     dimension: {
       shape: dimension.shape === 'round' ? 'round' : 'rectangular',
       width: positiveNumberOrNull(dimension.width),
@@ -543,9 +545,8 @@ const detailRules = computed(() =>
               service: [{ validator: validateText('Service'), trigger: 'blur' }],
               sample: [{ validator: validateText('Sample'), trigger: 'change' }]
             }
-          : {
-              finish: [{ validator: validateText('Finish'), trigger: 'blur' }]
-            }),
+          : {}),
+        finish: [{ validator: validateText('Finish'), trigger: 'blur' }],
         material: [{ validator: validateText('Material'), trigger: 'blur' }],
         dimension: [{ validator: validateDimension, trigger: 'change' }],
         productType: [{ validator: validateProductType, trigger: 'change' }]
@@ -599,12 +600,11 @@ const validate = async () => {
     normalized.itemNo = normalized.itemNo.trim()
     normalized.material = normalized.material.trim()
     normalized.color = normalized.color.trim()
-    normalized.finish = normalized.finish.trim()
+    normalized.finish = normalized.finish.trim() || DEFAULT_FINISH
     normalized.service = normalized.service.trim()
     normalized.sample = normalized.sample.trim()
     normalized.packingDisplay = normalized.packingDisplay.trim()
     if (simplifiedSeatingTypes.has(normalized.productType)) {
-      normalized.finish = ''
       normalized.collection = ''
       normalized.heroNote = ''
       normalized.fabricSelector = {

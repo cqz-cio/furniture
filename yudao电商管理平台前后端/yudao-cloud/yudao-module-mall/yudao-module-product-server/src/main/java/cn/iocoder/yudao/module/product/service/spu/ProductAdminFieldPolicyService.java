@@ -6,6 +6,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import static cn.iocoder.yudao.framework.common.exception.util.ServiceExceptionUtil.exception;
 import static cn.iocoder.yudao.module.product.enums.ErrorCodeConstants.SPU_SAVE_FAIL_DELIVERY_TYPES_EMPTY;
@@ -20,6 +22,8 @@ import static cn.iocoder.yudao.module.product.enums.ErrorCodeConstants.SPU_SAVE_
 @RequiredArgsConstructor
 public class ProductAdminFieldPolicyService {
 
+    public static final String DEFAULT_FINISH = "Natural Oak";
+
     private final ProductWebsiteFieldPolicyService productWebsiteFieldPolicyService;
 
     public void prepareForSave(ProductSpuSaveReqVO saveReqVO) {
@@ -30,6 +34,19 @@ public class ProductAdminFieldPolicyService {
         if (b2b && saveReqVO.getDeliveryTypes() == null) {
             saveReqVO.setDeliveryTypes(Collections.emptyList());
         }
+        if (b2b) {
+            normalizeFinish(saveReqVO);
+        }
+    }
+
+    private void normalizeFinish(ProductSpuSaveReqVO saveReqVO) {
+        Map<String, Object> detailConfig = saveReqVO.getDetailConfig() == null
+                ? new LinkedHashMap<>()
+                : new LinkedHashMap<>(saveReqVO.getDetailConfig());
+        Object rawFinish = detailConfig.get("finish");
+        String finish = rawFinish instanceof String ? ((String) rawFinish).trim() : "";
+        detailConfig.put("finish", finish.isEmpty() ? DEFAULT_FINISH : finish);
+        saveReqVO.setDetailConfig(detailConfig);
     }
 
 }

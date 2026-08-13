@@ -24,6 +24,7 @@
     "check:ai-music-player": "node scripts/check-ai-music-player.mjs",
     "check:mall-warnings": "node scripts/check-mall-warning-contract.mjs",
     "check:description-editor-wrap": "node scripts/check-description-editor-wrap.mjs",
+    "check:finish-default": "node scripts/check-finish-default.mjs",
     "check:packing-text": "node scripts/check-packing-text-field.mjs",
     "check:product-type-no-auto-template": "node scripts/check-product-type-no-auto-template.mjs",
     "check:product-type-options": "node scripts/check-product-type-options.mjs",

@@ -6,6 +6,7 @@ import cn.iocoder.yudao.module.product.service.spu.ProductWebsiteFieldPolicyServ
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static cn.iocoder.yudao.module.product.enums.ErrorCodeConstants.SPU_SAVE_FAIL_DELIVERY_TYPES_EMPTY;
@@ -44,6 +45,31 @@ class ProductAdminFieldPolicyServiceTest {
     }
 
     @Test
+    void shouldDefaultMissingFinishForB2B() {
+        when(websiteFieldPolicyService.getCurrentPolicy())
+                .thenReturn(new ProductWebsiteFieldPolicy(true, Set.of()));
+        ProductSpuSaveReqVO saveReqVO = new ProductSpuSaveReqVO()
+                .setDetailConfig(Map.of("finish", "   "));
+
+        service.prepareForSave(saveReqVO);
+
+        assertEquals(ProductAdminFieldPolicyService.DEFAULT_FINISH,
+                saveReqVO.getDetailConfig().get("finish"));
+    }
+
+    @Test
+    void shouldPreserveExplicitFinishForB2B() {
+        when(websiteFieldPolicyService.getCurrentPolicy())
+                .thenReturn(new ProductWebsiteFieldPolicy(true, Set.of()));
+        ProductSpuSaveReqVO saveReqVO = new ProductSpuSaveReqVO()
+                .setDetailConfig(Map.of("finish", "  Whitewashed finishing  "));
+
+        service.prepareForSave(saveReqVO);
+
+        assertEquals("Whitewashed finishing", saveReqVO.getDetailConfig().get("finish"));
+    }
+
+    @Test
     void shouldRequireDeliveryTypesForB2C() {
         when(websiteFieldPolicyService.getCurrentPolicy())
                 .thenReturn(new ProductWebsiteFieldPolicy(false, Set.of()));
@@ -53,6 +79,17 @@ class ProductAdminFieldPolicyServiceTest {
                 assertThrows(ServiceException.class, () -> service.prepareForSave(saveReqVO));
 
         assertEquals(SPU_SAVE_FAIL_DELIVERY_TYPES_EMPTY.getCode(), exception.getCode());
+    }
+
+    @Test
+    void shouldNotAddFinishForB2C() {
+        when(websiteFieldPolicyService.getCurrentPolicy())
+                .thenReturn(new ProductWebsiteFieldPolicy(false, Set.of()));
+        ProductSpuSaveReqVO saveReqVO = new ProductSpuSaveReqVO().setDeliveryTypes(List.of(1));
+
+        service.prepareForSave(saveReqVO);
+
+        assertEquals(null, saveReqVO.getDetailConfig());
     }
 
 }
