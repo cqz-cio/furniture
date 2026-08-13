@@ -4,6 +4,7 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.collection.ListUtil;
 import cn.hutool.core.util.ObjectUtil;
 import cn.iocoder.yudao.framework.common.util.object.BeanUtils;
+import cn.iocoder.yudao.module.erp.api.integration.MallErpProductApi;
 import cn.iocoder.yudao.module.product.api.sku.dto.ProductSkuUpdateStockReqDTO;
 import cn.iocoder.yudao.module.product.controller.admin.spu.vo.ProductSkuSaveReqVO;
 import cn.iocoder.yudao.module.product.convert.sku.ProductSkuConvert;
@@ -48,11 +49,15 @@ public class ProductSkuServiceImpl implements ProductSkuService {
     private ProductPropertyService productPropertyService;
     @Resource
     private ProductPropertyValueService productPropertyValueService;
+    @Resource
+    private MallErpProductApi mallErpProductApi;
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void deleteSku(Long id) {
         // 校验存在
         validateSkuExists(id);
+        unlinkErpMappings(Collections.singleton(id));
         // 删除
         productSkuMapper.deleteById(id);
     }
@@ -162,7 +167,9 @@ public class ProductSkuServiceImpl implements ProductSkuService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void deleteSkuBySpuId(Long spuId) {
+        unlinkErpMappings(convertSet(productSkuMapper.selectListBySpuId(spuId), ProductSkuDO::getId));
         productSkuMapper.deleteBySpuId(spuId);
     }
 
@@ -248,8 +255,16 @@ public class ProductSkuServiceImpl implements ProductSkuService {
             updateSkus.forEach(sku -> productSkuMapper.updateById(sku));
         }
         if (CollUtil.isNotEmpty(existsSkuMap)) {
+            unlinkErpMappings(existsSkuMap.values());
             productSkuMapper.deleteByIds(existsSkuMap.values());
         }
+    }
+
+    private void unlinkErpMappings(Collection<Long> skuIds) {
+        if (CollUtil.isEmpty(skuIds)) {
+            return;
+        }
+        mallErpProductApi.unlinkMallSkus(skuIds).getCheckedData();
     }
 
     @Override

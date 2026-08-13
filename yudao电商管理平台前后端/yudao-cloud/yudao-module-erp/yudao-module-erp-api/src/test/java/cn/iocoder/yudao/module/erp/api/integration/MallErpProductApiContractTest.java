@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
+import java.util.Collection;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -18,12 +19,14 @@ class MallErpProductApiContractTest {
     void exposesMallProductAndStockContract() throws Exception {
         Method syncOne = MallErpProductApi.class.getMethod("syncMallSku", Long.class, Long.class);
         Method syncAll = MallErpProductApi.class.getMethod("syncAllMallSkus");
+        Method unlink = MallErpProductApi.class.getMethod("unlinkMallSkus", Collection.class);
         Method getOne = MallErpProductApi.class.getMethod("getByMallSkuId", Long.class);
         Method getStock = MallErpProductApi.class.getMethod("getSellableStock", Long.class);
         Method validate = MallErpProductApi.class.getMethod("validateSellableStock", List.class);
 
         assertEquals(CommonResult.class, syncOne.getReturnType());
         assertEquals(CommonResult.class, syncAll.getReturnType());
+        assertEquals(CommonResult.class, unlink.getReturnType());
         assertEquals(CommonResult.class, getOne.getReturnType());
         assertEquals(CommonResult.class, getStock.getReturnType());
         assertEquals(CommonResult.class, validate.getReturnType());

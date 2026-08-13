@@ -27,6 +27,11 @@ public class MallErpProductApiImpl implements MallErpProductApi {
         return success(syncService.syncAll());
     }
 
+    public CommonResult<Boolean> unlinkMallSkus(Collection<Long> mallSkuIds) {
+        syncService.unlinkMallSkus(mallSkuIds);
+        return success(true);
+    }
+
     public CommonResult<MallErpProductDTO> getByMallSkuId(Long mallSkuId) {
         return success(syncService.getByMallSkuId(mallSkuId));
     }

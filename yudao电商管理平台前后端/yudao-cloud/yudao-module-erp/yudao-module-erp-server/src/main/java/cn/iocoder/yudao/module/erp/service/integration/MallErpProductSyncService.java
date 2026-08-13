@@ -11,6 +11,7 @@ import java.util.Set;
 public interface MallErpProductSyncService {
     MallErpProductDTO syncMallSku(Long mallSpuId, Long mallSkuId);
     List<MallErpProductDTO> syncAll();
+    void unlinkMallSkus(Collection<Long> mallSkuIds);
     MallErpProductDTO getByMallSkuId(Long mallSkuId);
     MallErpStockDTO getSellableStock(Long mallSkuId);
     MallErpStockDTO validateStock(MallErpStockRequestDTO request);
