@@ -6,6 +6,7 @@ import cn.iocoder.yudao.module.erp.api.integration.MallErpProductApi;
 import cn.iocoder.yudao.module.product.controller.admin.spu.vo.ProductSkuSaveReqVO;
 import cn.iocoder.yudao.module.product.dal.dataobject.sku.ProductSkuDO;
 import cn.iocoder.yudao.module.product.dal.mysql.sku.ProductSkuMapper;
+import cn.iocoder.yudao.module.product.service.furniture.catalog.FurnitureSkuSearchService;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 import org.mockito.InjectMocks;
@@ -29,6 +30,8 @@ class ProductSkuServiceImplErpCleanupTest extends BaseMockitoUnitTest {
     private ProductSkuMapper productSkuMapper;
     @Mock
     private MallErpProductApi mallErpProductApi;
+    @Mock
+    private FurnitureSkuSearchService furnitureSkuSearchService;
 
     @Test
     void deleteSkuUnlinksErpMappingBeforeDeletingSku() {
@@ -40,6 +43,7 @@ class ProductSkuServiceImplErpCleanupTest extends BaseMockitoUnitTest {
         service.deleteSku(101L);
 
         InOrder ordered = inOrder(mallErpProductApi, productSkuMapper);
+        verify(furnitureSkuSearchService).deleteBySkuIds(Collections.singleton(101L));
         ordered.verify(mallErpProductApi).unlinkMallSkus(Collections.singleton(101L));
         ordered.verify(productSkuMapper).deleteById(101L);
     }
@@ -56,6 +60,7 @@ class ProductSkuServiceImplErpCleanupTest extends BaseMockitoUnitTest {
         service.deleteSkuBySpuId(91L);
 
         verify(mallErpProductApi).unlinkMallSkus(eq(java.util.Set.of(101L, 102L)));
+        verify(furnitureSkuSearchService).deleteBySkuIds(eq(java.util.Set.of(101L, 102L)));
         verify(productSkuMapper).deleteBySpuId(91L);
     }
 
@@ -70,6 +75,7 @@ class ProductSkuServiceImplErpCleanupTest extends BaseMockitoUnitTest {
         service.updateSkuList(91L, Collections.<ProductSkuSaveReqVO>emptyList());
 
         verify(mallErpProductApi).unlinkMallSkus(anyCollection());
+        verify(furnitureSkuSearchService).deleteBySkuIds(anyCollection());
         verify(productSkuMapper).deleteByIds(anyCollection());
     }
 }

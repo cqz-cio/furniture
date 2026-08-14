@@ -46,4 +46,6 @@ public interface MemberGiftRegistryService {
 
     void recordPurchasedItems(List<MemberGiftRegistryPurchaseRecordReqDTO.Item> items);
 
+    void deleteItemsBySpuId(Long spuId);
+
 }

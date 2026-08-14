@@ -132,6 +132,14 @@ public interface ProductSpuService {
      */
     Long getSpuCountByCategoryId(Long categoryId);
 
+    /**
+     * 通过品牌编号查询 SPU 个数
+     *
+     * @param brandId 品牌编号
+     * @return SPU 数量
+     */
+    Long getSpuCountByBrandId(Long brandId);
+
 
     /**
      * 校验商品是否有效。如下情况，视为无效：

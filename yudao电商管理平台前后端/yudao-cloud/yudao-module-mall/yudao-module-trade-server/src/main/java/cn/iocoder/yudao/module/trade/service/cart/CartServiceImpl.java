@@ -150,6 +150,11 @@ public class CartServiceImpl implements CartService {
     }
 
     @Override
+    public void deleteCartBySpuId(Long spuId) {
+        cartMapper.deleteBySpuId(spuId);
+    }
+
+    @Override
     public Integer getCartCount(Long userId) {
         // TODO 芋艿：需要算上 selected
         return cartMapper.selectSumByUserId(userId);

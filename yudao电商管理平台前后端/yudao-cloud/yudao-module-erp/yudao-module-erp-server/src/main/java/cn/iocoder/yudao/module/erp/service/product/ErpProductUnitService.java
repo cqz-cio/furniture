@@ -42,6 +42,13 @@ public interface ErpProductUnitService {
     void deleteProductUnit(Long id);
 
     /**
+     * 校验产品单位存在且已启用
+     *
+     * @param id 单位编号
+     */
+    void validateProductUnit(Long id);
+
+    /**
      * 获得产品单位
      *
      * @param id 编号

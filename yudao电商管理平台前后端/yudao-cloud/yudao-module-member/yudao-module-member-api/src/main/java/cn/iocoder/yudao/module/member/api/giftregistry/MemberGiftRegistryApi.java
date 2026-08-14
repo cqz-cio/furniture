@@ -8,6 +8,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import jakarta.validation.Valid;
 
@@ -20,5 +22,9 @@ public interface MemberGiftRegistryApi {
     @PostMapping(PREFIX + "/record-purchase")
     @Operation(summary = "记录 Gift Registry 商品购买数量")
     CommonResult<Boolean> recordPurchase(@Valid @RequestBody MemberGiftRegistryPurchaseRecordReqDTO reqDTO);
+
+    @DeleteMapping(PREFIX + "/items/by-spu-id")
+    @Operation(summary = "清理指定商品的 Gift Registry 条目")
+    CommonResult<Boolean> deleteItemsBySpuId(@RequestParam("spuId") Long spuId);
 
 }

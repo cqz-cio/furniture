@@ -50,4 +50,12 @@ public class FurnitureSkuSearchServiceImpl implements FurnitureSkuSearchService 
         return mapper.selectBySkuIds(skuIds);
     }
 
+    @Override
+    public void deleteBySkuIds(Collection<Long> skuIds) {
+        if (skuIds == null || skuIds.isEmpty()) {
+            return;
+        }
+        mapper.deleteBySkuIds(skuIds);
+    }
+
 }

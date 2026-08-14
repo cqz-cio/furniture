@@ -76,4 +76,11 @@ public class MemberGiftRegistryServiceImplTest extends BaseMockitoUnitTest {
         assertServiceException(() -> giftRegistryService.getPublicGiftRegistry("hidden-code"),
                 GIFT_REGISTRY_NOT_EXISTS);
     }
+
+    @Test
+    public void testDeleteItemsBySpuId() {
+        giftRegistryService.deleteItemsBySpuId(1001L);
+
+        verify(giftRegistryItemMapper).deleteBySpuId(1001L);
+    }
 }

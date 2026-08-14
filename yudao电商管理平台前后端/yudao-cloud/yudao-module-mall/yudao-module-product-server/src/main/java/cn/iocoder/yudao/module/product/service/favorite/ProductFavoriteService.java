@@ -67,4 +67,11 @@ public interface ProductFavoriteService {
      */
     Long getFavoriteCount(Long userId);
 
+    /**
+     * 清理已删除商品对应的收藏记录
+     *
+     * @param spuId 商品 SPU 编号
+     */
+    void deleteFavoriteBySpuId(Long spuId);
+
 }

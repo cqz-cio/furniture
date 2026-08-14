@@ -9,7 +9,9 @@ import cn.iocoder.yudao.module.product.controller.admin.brand.vo.ProductBrandUpd
 import cn.iocoder.yudao.module.product.convert.brand.ProductBrandConvert;
 import cn.iocoder.yudao.module.product.dal.dataobject.brand.ProductBrandDO;
 import cn.iocoder.yudao.module.product.dal.mysql.brand.ProductBrandMapper;
+import cn.iocoder.yudao.module.product.service.spu.ProductSpuService;
 import com.google.common.annotations.VisibleForTesting;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
@@ -31,6 +33,9 @@ public class ProductBrandServiceImpl implements ProductBrandService {
 
     @Resource
     private ProductBrandMapper brandMapper;
+    @Resource
+    @Lazy // ProductSpuService 保存商品时会反向校验品牌
+    private ProductSpuService productSpuService;
 
     @Override
     public Long createBrand(ProductBrandCreateReqVO createReqVO) {
@@ -58,6 +63,9 @@ public class ProductBrandServiceImpl implements ProductBrandService {
     public void deleteBrand(Long id) {
         // 校验存在
         validateBrandExists(id);
+        if (productSpuService.getSpuCountByBrandId(id) > 0) {
+            throw exception(BRAND_HAVE_BIND_SPU);
+        }
         // 删除
         brandMapper.deleteById(id);
     }

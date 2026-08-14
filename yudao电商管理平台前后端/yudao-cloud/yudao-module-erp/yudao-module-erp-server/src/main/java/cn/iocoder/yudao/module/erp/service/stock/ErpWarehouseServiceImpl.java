@@ -8,6 +8,7 @@ import cn.iocoder.yudao.module.erp.controller.admin.stock.vo.warehouse.ErpWareho
 import cn.iocoder.yudao.module.erp.controller.admin.stock.vo.warehouse.ErpWarehousePageReqVO;
 import cn.iocoder.yudao.module.erp.dal.dataobject.stock.ErpWarehouseDO;
 import cn.iocoder.yudao.module.erp.dal.mysql.stock.ErpWarehouseMapper;
+import cn.iocoder.yudao.module.erp.service.common.ErpReferenceValidationService;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,6 +34,8 @@ public class ErpWarehouseServiceImpl implements ErpWarehouseService {
 
     @Resource
     private ErpWarehouseMapper warehouseMapper;
+    @Resource
+    private ErpReferenceValidationService referenceValidationService;
 
     @Override
     public Long createWarehouse(ErpWarehouseSaveReqVO createReqVO) {
@@ -73,6 +76,8 @@ public class ErpWarehouseServiceImpl implements ErpWarehouseService {
     public void deleteWarehouse(Long id) {
         // 校验存在
         validateWarehouseExists(id);
+        // 已进入库存或业务单据的仓库只能停用，不能删除主数据
+        referenceValidationService.validateWarehouseDeletable(id);
         // 删除
         warehouseMapper.deleteById(id);
     }

@@ -1,5 +1,6 @@
 package cn.iocoder.yudao.module.erp.service.product;
 
+import cn.iocoder.yudao.framework.common.enums.CommonStatusEnum;
 import cn.iocoder.yudao.framework.common.pojo.PageResult;
 import cn.iocoder.yudao.framework.common.util.object.BeanUtils;
 import cn.iocoder.yudao.module.erp.controller.admin.product.vo.unit.ErpProductUnitPageReqVO;
@@ -85,6 +86,17 @@ public class ErpProductUnitServiceImpl implements ErpProductUnitService {
     private void validateProductUnitExists(Long id) {
         if (productUnitMapper.selectById(id) == null) {
             throw exception(PRODUCT_UNIT_NOT_EXISTS);
+        }
+    }
+
+    @Override
+    public void validateProductUnit(Long id) {
+        ErpProductUnitDO unit = productUnitMapper.selectById(id);
+        if (unit == null) {
+            throw exception(PRODUCT_UNIT_NOT_EXISTS);
+        }
+        if (CommonStatusEnum.isDisable(unit.getStatus())) {
+            throw exception(PRODUCT_UNIT_NOT_ENABLE, unit.getName());
         }
     }
 

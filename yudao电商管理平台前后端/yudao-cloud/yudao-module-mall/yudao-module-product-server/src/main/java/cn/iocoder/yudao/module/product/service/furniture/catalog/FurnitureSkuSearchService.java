@@ -13,4 +13,6 @@ public interface FurnitureSkuSearchService {
 
     List<FurnitureSkuSearchDO> getBySkuIds(Collection<Long> skuIds);
 
+    void deleteBySkuIds(Collection<Long> skuIds);
+
 }

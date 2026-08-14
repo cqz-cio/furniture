@@ -97,4 +97,9 @@ public class ProductFavoriteServiceImpl implements ProductFavoriteService {
         return productFavoriteMapper.selectCountByUserId(userId);
     }
 
+    @Override
+    public void deleteFavoriteBySpuId(Long spuId) {
+        productFavoriteMapper.deleteBySpuId(spuId);
+    }
+
 }

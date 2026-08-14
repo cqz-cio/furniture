@@ -22,4 +22,8 @@ public interface FurnitureSkuSearchMapper extends BaseMapperX<FurnitureSkuSearch
         return selectList(FurnitureSkuSearchDO::getSkuId, skuIds);
     }
 
+    default int deleteBySkuIds(Collection<Long> skuIds) {
+        return deleteBatch(FurnitureSkuSearchDO::getSkuId, skuIds);
+    }
+
 }

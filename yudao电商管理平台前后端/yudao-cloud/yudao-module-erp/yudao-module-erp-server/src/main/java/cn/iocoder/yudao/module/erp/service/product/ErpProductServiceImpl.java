@@ -12,6 +12,7 @@ import cn.iocoder.yudao.module.erp.dal.dataobject.product.ErpProductCategoryDO;
 import cn.iocoder.yudao.module.erp.dal.dataobject.product.ErpProductDO;
 import cn.iocoder.yudao.module.erp.dal.dataobject.product.ErpProductUnitDO;
 import cn.iocoder.yudao.module.erp.dal.mysql.product.ErpProductMapper;
+import cn.iocoder.yudao.module.erp.service.common.ErpReferenceValidationService;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
@@ -38,10 +39,12 @@ public class ErpProductServiceImpl implements ErpProductService {
     private ErpProductCategoryService productCategoryService;
     @Resource
     private ErpProductUnitService productUnitService;
+    @Resource
+    private ErpReferenceValidationService referenceValidationService;
 
     @Override
     public Long createProduct(ProductSaveReqVO createReqVO) {
-        // TODO 芋艿：校验分类
+        validateProductMasterData(createReqVO);
         // 插入
         ErpProductDO product = BeanUtils.toBean(createReqVO, ErpProductDO.class);
         productMapper.insert(product);
@@ -51,9 +54,9 @@ public class ErpProductServiceImpl implements ErpProductService {
 
     @Override
     public void updateProduct(ProductSaveReqVO updateReqVO) {
-        // TODO 芋艿：校验分类
         // 校验存在
         validateProductExists(updateReqVO.getId());
+        validateProductMasterData(updateReqVO);
         // 更新
         ErpProductDO updateObj = BeanUtils.toBean(updateReqVO, ErpProductDO.class);
         productMapper.updateById(updateObj);
@@ -63,8 +66,15 @@ public class ErpProductServiceImpl implements ErpProductService {
     public void deleteProduct(Long id) {
         // 校验存在
         validateProductExists(id);
+        // 已进入网站映射、库存或业务单据的产品只能停用，不能删除主数据
+        referenceValidationService.validateProductDeletable(id);
         // 删除
         productMapper.deleteById(id);
+    }
+
+    private void validateProductMasterData(ProductSaveReqVO reqVO) {
+        productCategoryService.validateProductCategory(reqVO.getCategoryId());
+        productUnitService.validateProductUnit(reqVO.getUnitId());
     }
 
     @Override

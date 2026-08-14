@@ -4,6 +4,7 @@ import cn.iocoder.yudao.framework.common.enums.CommonStatusEnum;
 import cn.iocoder.yudao.framework.common.pojo.CommonResult;
 import cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder;
 import cn.iocoder.yudao.module.erp.api.integration.dto.MallErpProductDTO;
+import cn.iocoder.yudao.module.erp.api.integration.dto.MallErpStockDTO;
 import cn.iocoder.yudao.module.erp.api.integration.dto.MallErpSyncSummaryDTO;
 import cn.iocoder.yudao.module.erp.dal.dataobject.integration.MallErpProductMappingDO;
 import cn.iocoder.yudao.module.erp.dal.dataobject.integration.MallErpSyncLogDO;
@@ -226,6 +227,33 @@ class MallErpProductSyncServiceImplTest {
 
         assertEquals("FAILED", result.getSyncStatus());
         assertFalse(result.getEnabled());
+    }
+
+    @Test
+    void getSellableStockReturnsZeroWhenMappedErpProductWasRemoved() {
+        MallErpProductMappingDO existing = mapping(101L, 201L).setSyncStatus("SUCCESS");
+        when(mappingMapper.selectByMallSkuId(101L)).thenReturn(existing);
+        when(productMapper.selectById(201L)).thenReturn(null);
+
+        MallErpStockDTO result = service.getSellableStock(101L);
+
+        assertEquals(BigDecimal.ZERO, result.getSellableStock());
+        assertFalse(result.getAvailable());
+        verify(stockMapper, never()).selectSumByProductId(201L);
+    }
+
+    @Test
+    void getSellableStockReturnsZeroWhenMappedErpProductIsDisabled() {
+        MallErpProductMappingDO existing = mapping(101L, 201L).setSyncStatus("SUCCESS");
+        when(mappingMapper.selectByMallSkuId(101L)).thenReturn(existing);
+        when(productMapper.selectById(201L)).thenReturn(
+                ErpProductDO.builder().id(201L).status(CommonStatusEnum.DISABLE.getStatus()).build());
+
+        MallErpStockDTO result = service.getSellableStock(101L);
+
+        assertEquals(BigDecimal.ZERO, result.getSellableStock());
+        assertFalse(result.getAvailable());
+        verify(stockMapper, never()).selectSumByProductId(201L);
     }
 
     @Test

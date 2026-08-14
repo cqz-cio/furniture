@@ -70,4 +70,8 @@ public interface CartMapper extends BaseMapperX<CartDO> {
                 .eq(CartDO::getUserId, userId));
     }
 
+    default int deleteBySpuId(Long spuId) {
+        return delete(CartDO::getSpuId, spuId);
+    }
+
 }
