@@ -6,6 +6,8 @@ import cn.iocoder.yudao.framework.common.enums.CommonStatusEnum;
 import cn.iocoder.yudao.framework.common.pojo.PageResult;
 import cn.iocoder.yudao.framework.common.util.collection.CollectionUtils;
 import cn.iocoder.yudao.framework.common.util.object.BeanUtils;
+import cn.iocoder.yudao.module.member.api.giftregistry.MemberGiftRegistryApi;
+import cn.iocoder.yudao.module.promotion.api.product.PromotionProductApi;
 import cn.iocoder.yudao.module.product.controller.admin.category.vo.ProductCategoryListReqVO;
 import cn.iocoder.yudao.module.product.controller.admin.spu.vo.ProductSkuSaveReqVO;
 import cn.iocoder.yudao.module.product.controller.admin.spu.vo.ProductSpuPageReqVO;
@@ -18,7 +20,9 @@ import cn.iocoder.yudao.module.product.dal.mysql.spu.ProductSpuMapper;
 import cn.iocoder.yudao.module.product.enums.spu.ProductSpuStatusEnum;
 import cn.iocoder.yudao.module.product.service.brand.ProductBrandService;
 import cn.iocoder.yudao.module.product.service.category.ProductCategoryService;
+import cn.iocoder.yudao.module.product.service.favorite.ProductFavoriteService;
 import cn.iocoder.yudao.module.product.service.sku.ProductSkuService;
+import cn.iocoder.yudao.module.trade.api.cart.CartApi;
 import com.google.common.collect.Maps;
 import jakarta.annotation.Resource;
 import org.springframework.context.annotation.Lazy;
@@ -54,6 +58,17 @@ public class ProductSpuServiceImpl implements ProductSpuService {
     private ProductCategoryService categoryService;
     @Resource
     private ProductAdminFieldPolicyService productAdminFieldPolicyService;
+    @Resource
+    private ProductFavoriteService productFavoriteService;
+    @Resource
+    @Lazy
+    private PromotionProductApi promotionProductApi;
+    @Resource
+    @Lazy
+    private CartApi cartApi;
+    @Resource
+    @Lazy
+    private MemberGiftRegistryApi memberGiftRegistryApi;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -165,19 +180,23 @@ public class ProductSpuServiceImpl implements ProductSpuService {
     @Transactional(rollbackFor = Exception.class)
     public void deleteSpu(Long id) {
         // 校验存在
-        validateSpuExists(id);
+        ProductSpuDO spuDO = validateSpuExists(id);
         // 校验商品状态不是回收站不能删除
-        ProductSpuDO spuDO = productSpuMapper.selectById(id);
         // 判断 SPU 状态是否为回收站
         if (ObjectUtil.notEqual(spuDO.getStatus(), ProductSpuStatusEnum.RECYCLE.getStatus())) {
             throw exception(SPU_NOT_RECYCLE);
         }
-        // TODO 芋艿：【可选】参与活动中的商品，不允许删除？？？
 
-        // 删除 SPU
-        productSpuMapper.deleteById(id);
-        // 删除关联的 SKU
+        // 先阻止删除仍参加有效营销活动的商品
+        promotionProductApi.validateSpuDeletable(id).getCheckedData();
+        // 清理当前态业务数据；订单、售后、统计等历史快照继续保留
+        cartApi.deleteCartBySpuId(id).getCheckedData();
+        memberGiftRegistryApi.deleteItemsBySpuId(id).getCheckedData();
+        productFavoriteService.deleteFavoriteBySpuId(id);
+        // SKU 删除链路会同时清理 ERP 映射和家具搜索投影
         productSkuService.deleteSkuBySpuId(id);
+        // 最后删除 SPU 主记录
+        productSpuMapper.deleteById(id);
     }
 
     private ProductSpuDO validateSpuExists(Long id) {
@@ -283,6 +302,11 @@ public class ProductSpuServiceImpl implements ProductSpuService {
     @Override
     public Long getSpuCountByCategoryId(Long categoryId) {
         return productSpuMapper.selectCount(ProductSpuDO::getCategoryId, categoryId);
+    }
+
+    @Override
+    public Long getSpuCountByBrandId(Long brandId) {
+        return productSpuMapper.selectCount(ProductSpuDO::getBrandId, brandId);
     }
 
 }

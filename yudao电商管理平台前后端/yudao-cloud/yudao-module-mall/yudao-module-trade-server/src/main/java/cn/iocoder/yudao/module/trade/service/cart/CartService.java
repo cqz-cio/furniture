@@ -59,6 +59,13 @@ public interface CartService {
     void deleteCart(Long userId, Collection<Long> ids);
 
     /**
+     * 清理已删除商品对应的购物车记录
+     *
+     * @param spuId 商品 SPU 编号
+     */
+    void deleteCartBySpuId(Long spuId);
+
+    /**
      * 查询用户在购物车中的商品数量
      *
      * @param userId 用户编号

@@ -1,5 +1,6 @@
 package cn.iocoder.yudao.module.erp.service.product;
 
+import cn.iocoder.yudao.framework.common.enums.CommonStatusEnum;
 import cn.iocoder.yudao.framework.common.util.object.BeanUtils;
 import cn.iocoder.yudao.module.erp.controller.admin.product.vo.category.ErpProductCategoryListReqVO;
 import cn.iocoder.yudao.module.erp.controller.admin.product.vo.category.ErpProductCategorySaveReqVO;
@@ -80,6 +81,17 @@ public class ErpProductCategoryServiceImpl implements ErpProductCategoryService 
     private void validateProductCategoryExists(Long id) {
         if (erpProductCategoryMapper.selectById(id) == null) {
             throw exception(PRODUCT_CATEGORY_NOT_EXISTS);
+        }
+    }
+
+    @Override
+    public void validateProductCategory(Long id) {
+        ErpProductCategoryDO category = erpProductCategoryMapper.selectById(id);
+        if (category == null) {
+            throw exception(PRODUCT_CATEGORY_NOT_EXISTS);
+        }
+        if (CommonStatusEnum.isDisable(category.getStatus())) {
+            throw exception(PRODUCT_CATEGORY_NOT_ENABLE, category.getName());
         }
     }
 

@@ -23,4 +23,10 @@ public class MemberGiftRegistryApiImpl implements MemberGiftRegistryApi {
         return success(true);
     }
 
+    @Override
+    public CommonResult<Boolean> deleteItemsBySpuId(Long spuId) {
+        memberGiftRegistryService.deleteItemsBySpuId(spuId);
+        return success(true);
+    }
+
 }

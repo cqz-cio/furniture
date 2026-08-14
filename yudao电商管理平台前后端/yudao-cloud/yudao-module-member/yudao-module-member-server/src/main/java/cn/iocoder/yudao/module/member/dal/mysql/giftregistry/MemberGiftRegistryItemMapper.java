@@ -23,4 +23,8 @@ public interface MemberGiftRegistryItemMapper extends BaseMapperX<MemberGiftRegi
                 .last("LIMIT 1"));
     }
 
+    default int deleteBySpuId(Long spuId) {
+        return delete(MemberGiftRegistryItemDO::getSpuId, spuId);
+    }
+
 }

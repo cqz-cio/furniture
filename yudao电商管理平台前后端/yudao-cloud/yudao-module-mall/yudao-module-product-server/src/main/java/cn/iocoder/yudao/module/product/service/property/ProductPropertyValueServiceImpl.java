@@ -17,6 +17,7 @@ import java.util.List;
 
 import static cn.iocoder.yudao.framework.common.exception.util.ServiceExceptionUtil.exception;
 import static cn.iocoder.yudao.module.product.enums.ErrorCodeConstants.PROPERTY_VALUE_EXISTS;
+import static cn.iocoder.yudao.module.product.enums.ErrorCodeConstants.PROPERTY_VALUE_DELETE_FAIL_SKU_EXISTS;
 import static cn.iocoder.yudao.module.product.enums.ErrorCodeConstants.PROPERTY_VALUE_NOT_EXISTS;
 
 /**
@@ -70,6 +71,9 @@ public class ProductPropertyValueServiceImpl implements ProductPropertyValueServ
     @Override
     public void deletePropertyValue(Long id) {
         validatePropertyValueExists(id);
+        if (productSkuService.getSkuCountByPropertyValueId(id) > 0) {
+            throw exception(PROPERTY_VALUE_DELETE_FAIL_SKU_EXISTS);
+        }
         productPropertyValueMapper.deleteById(id);
     }
 

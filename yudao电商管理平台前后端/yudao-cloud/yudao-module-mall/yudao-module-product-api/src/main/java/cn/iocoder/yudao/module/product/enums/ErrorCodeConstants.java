@@ -21,6 +21,7 @@ public interface ErrorCodeConstants {
     ErrorCode BRAND_NOT_EXISTS = new ErrorCode(1_008_002_000, "品牌不存在");
     ErrorCode BRAND_DISABLED = new ErrorCode(1_008_002_001, "品牌已禁用");
     ErrorCode BRAND_NAME_EXISTS = new ErrorCode(1_008_002_002, "品牌名称已存在");
+    ErrorCode BRAND_HAVE_BIND_SPU = new ErrorCode(1_008_002_003, "品牌已被商品使用，无法删除，请先调整关联商品");
 
     // ========== 商品属性项 1-008-003-000 ==========
     ErrorCode PROPERTY_NOT_EXISTS = new ErrorCode(1_008_003_000, "属性项不存在");
@@ -30,6 +31,8 @@ public interface ErrorCodeConstants {
     // ========== 商品属性值 1-008-004-000 ==========
     ErrorCode PROPERTY_VALUE_NOT_EXISTS = new ErrorCode(1_008_004_000, "属性值不存在");
     ErrorCode PROPERTY_VALUE_EXISTS = new ErrorCode(1_008_004_001, "属性值的名称已存在");
+    ErrorCode PROPERTY_VALUE_DELETE_FAIL_SKU_EXISTS = new ErrorCode(1_008_004_002,
+            "属性值已被商品 SKU 使用，无法删除，请先调整关联规格");
 
     // ========== 商品 SPU 1-008-005-000 ==========
     ErrorCode SPU_NOT_EXISTS = new ErrorCode(1_008_005_000, "商品 SPU 不存在");

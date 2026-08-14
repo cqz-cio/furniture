@@ -12,6 +12,7 @@ import cn.iocoder.yudao.module.product.dal.dataobject.property.ProductPropertyDO
 import cn.iocoder.yudao.module.product.dal.dataobject.property.ProductPropertyValueDO;
 import cn.iocoder.yudao.module.product.dal.dataobject.sku.ProductSkuDO;
 import cn.iocoder.yudao.module.product.dal.mysql.sku.ProductSkuMapper;
+import cn.iocoder.yudao.module.product.service.furniture.catalog.FurnitureSkuSearchService;
 import cn.iocoder.yudao.module.product.service.property.ProductPropertyService;
 import cn.iocoder.yudao.module.product.service.property.ProductPropertyValueService;
 import cn.iocoder.yudao.module.product.service.spu.ProductSpuService;
@@ -50,6 +51,9 @@ public class ProductSkuServiceImpl implements ProductSkuService {
     @Resource
     private ProductPropertyValueService productPropertyValueService;
     @Resource
+    @Lazy // 家具搜索投影保存时会反向校验 SKU
+    private FurnitureSkuSearchService furnitureSkuSearchService;
+    @Resource
     @Lazy // ERP 同步服务会反向调用商品 API，延迟注入避免单体部署时形成循环依赖
     private MallErpProductApi mallErpProductApi;
 
@@ -58,6 +62,7 @@ public class ProductSkuServiceImpl implements ProductSkuService {
     public void deleteSku(Long id) {
         // 校验存在
         validateSkuExists(id);
+        cleanupSkuProjections(Collections.singleton(id));
         unlinkErpMappings(Collections.singleton(id));
         // 删除
         productSkuMapper.deleteById(id);
@@ -170,7 +175,9 @@ public class ProductSkuServiceImpl implements ProductSkuService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void deleteSkuBySpuId(Long spuId) {
-        unlinkErpMappings(convertSet(productSkuMapper.selectListBySpuId(spuId), ProductSkuDO::getId));
+        Set<Long> skuIds = convertSet(productSkuMapper.selectListBySpuId(spuId), ProductSkuDO::getId);
+        cleanupSkuProjections(skuIds);
+        unlinkErpMappings(skuIds);
         productSkuMapper.deleteBySpuId(spuId);
     }
 
@@ -224,6 +231,15 @@ public class ProductSkuServiceImpl implements ProductSkuService {
     }
 
     @Override
+    public long getSkuCountByPropertyValueId(Long propertyValueId) {
+        return productSkuMapper.selectList().stream()
+                .filter(sku -> CollUtil.isNotEmpty(sku.getProperties()))
+                .filter(sku -> sku.getProperties().stream()
+                        .anyMatch(property -> Objects.equals(property.getValueId(), propertyValueId)))
+                .count();
+    }
+
+    @Override
     @Transactional(rollbackFor = Exception.class)
     public void updateSkuList(Long spuId, List<ProductSkuSaveReqVO> skus) {
         // 构建属性与 SKU 的映射关系;
@@ -256,9 +272,17 @@ public class ProductSkuServiceImpl implements ProductSkuService {
             updateSkus.forEach(sku -> productSkuMapper.updateById(sku));
         }
         if (CollUtil.isNotEmpty(existsSkuMap)) {
+            cleanupSkuProjections(existsSkuMap.values());
             unlinkErpMappings(existsSkuMap.values());
             productSkuMapper.deleteByIds(existsSkuMap.values());
         }
+    }
+
+    private void cleanupSkuProjections(Collection<Long> skuIds) {
+        if (CollUtil.isEmpty(skuIds)) {
+            return;
+        }
+        furnitureSkuSearchService.deleteBySkuIds(skuIds);
     }
 
     private void unlinkErpMappings(Collection<Long> skuIds) {

@@ -119,4 +119,12 @@ public interface ProductSkuService {
      */
     int updateSkuPropertyValue(Long propertyValueId, String propertyValueName);
 
+    /**
+     * 统计引用指定属性值的 SKU 数量
+     *
+     * @param propertyValueId 属性值编号
+     * @return SKU 数量
+     */
+    long getSkuCountByPropertyValueId(Long propertyValueId);
+
 }

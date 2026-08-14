@@ -41,4 +41,8 @@ public interface ProductFavoriteMapper extends BaseMapperX<ProductFavoriteDO> {
         return selectCount(ProductFavoriteDO::getUserId, userId);
     }
 
+    default int deleteBySpuId(Long spuId) {
+        return delete(ProductFavoriteDO::getSpuId, spuId);
+    }
+
 }

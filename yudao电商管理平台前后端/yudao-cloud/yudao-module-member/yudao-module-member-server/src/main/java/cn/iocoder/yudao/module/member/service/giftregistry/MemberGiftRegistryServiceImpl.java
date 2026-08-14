@@ -157,6 +157,11 @@ public class MemberGiftRegistryServiceImpl implements MemberGiftRegistryService 
         }
     }
 
+    @Override
+    public void deleteItemsBySpuId(Long spuId) {
+        giftRegistryItemMapper.deleteBySpuId(spuId);
+    }
+
     private void recordPurchasedItem(MemberGiftRegistryPurchaseRecordReqDTO.Item purchaseItem) {
         if (purchaseItem == null || purchaseItem.getRegistryItemId() == null
                 || purchaseItem.getCount() == null || purchaseItem.getCount() <= 0) {

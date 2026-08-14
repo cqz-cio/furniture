@@ -41,6 +41,13 @@ public interface ErpProductCategoryService {
     void deleteProductCategory(Long id);
 
     /**
+     * 校验产品分类存在且已启用
+     *
+     * @param id 分类编号
+     */
+    void validateProductCategory(Long id);
+
+    /**
      * 获得产品分类
      *
      * @param id 编号

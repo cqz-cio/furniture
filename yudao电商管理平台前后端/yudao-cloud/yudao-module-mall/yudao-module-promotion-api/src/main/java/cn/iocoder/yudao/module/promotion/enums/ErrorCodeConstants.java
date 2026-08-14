@@ -138,4 +138,8 @@ public interface ErrorCodeConstants {
     // ========== 客服消息 1-013-020-000 ==========
     ErrorCode KEFU_MESSAGE_NOT_EXISTS = new ErrorCode(1_013_020_000, "客服消息不存在");
 
+    // ========== 商品生命周期 1-013-021-000 ==========
+    ErrorCode PRODUCT_DELETE_FAIL_ACTIVE_PROMOTION = new ErrorCode(1_013_021_000,
+            "商品仍参加有效营销活动（{}），请先关闭或移除活动商品后再删除");
+
 }

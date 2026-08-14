@@ -270,6 +270,10 @@ public class MallErpProductSyncServiceImpl implements MallErpProductSyncService 
     @Override
     public MallErpStockDTO getSellableStock(Long mallSkuId) {
         MallErpProductMappingDO mapping = requireMapping(mallSkuId);
+        ErpProductDO product = erpProductMapper.selectById(mapping.getErpProductId());
+        if (product == null || !CommonStatusEnum.ENABLE.getStatus().equals(product.getStatus())) {
+            return unavailableStock(mallSkuId, mapping.getErpProductId());
+        }
         BigDecimal stock = normalizeStock(erpStockMapper.selectSumByProductId(mapping.getErpProductId()));
         return new MallErpStockDTO().setMallSkuId(mallSkuId).setErpProductId(mapping.getErpProductId())
                 .setSellableStock(stock).setAvailable(stock.compareTo(BigDecimal.ZERO) > 0);
@@ -291,6 +295,11 @@ public class MallErpProductSyncServiceImpl implements MallErpProductSyncService 
             throw new IllegalStateException("Mall SKU is not mapped to ERP: " + mallSkuId);
         }
         return mapping;
+    }
+
+    private static MallErpStockDTO unavailableStock(Long mallSkuId, Long erpProductId) {
+        return new MallErpStockDTO().setMallSkuId(mallSkuId).setErpProductId(erpProductId)
+                .setSellableStock(BigDecimal.ZERO).setAvailable(false);
     }
 
     private MallErpProductDTO toDTO(MallErpProductMappingDO mapping, ErpProductDO product) {
