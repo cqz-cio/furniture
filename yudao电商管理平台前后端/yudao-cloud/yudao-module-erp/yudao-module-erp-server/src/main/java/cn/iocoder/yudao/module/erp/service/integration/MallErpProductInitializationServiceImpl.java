@@ -1,6 +1,7 @@
 package cn.iocoder.yudao.module.erp.service.integration;
 
 import cn.iocoder.yudao.framework.common.enums.CommonStatusEnum;
+import cn.iocoder.yudao.framework.mybatis.core.dataobject.BaseDO;
 import cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder;
 import cn.iocoder.yudao.module.erp.api.integration.dto.MallErpProductDTO;
 import cn.iocoder.yudao.module.erp.dal.dataobject.integration.MallErpProductMappingDO;
@@ -44,6 +45,7 @@ public class MallErpProductInitializationServiceImpl implements MallErpProductIn
     private static final String ROOT_CATEGORY_CODE = "FURNITURE";
     private static final String MALL_CATEGORY_CODE_PREFIX = "MALL_CATEGORY_";
     private static final String DEFAULT_UNIT_NAME = "Piece";
+    private static final String INITIALIZER_ACTOR = "mall-erp-initializer";
 
     private final ProductSkuApi productSkuApi;
     private final ProductSpuApi productSpuApi;
@@ -100,6 +102,7 @@ public class MallErpProductInitializationServiceImpl implements MallErpProductIn
                         "No enabled ERP product unit is configured");
             }
             erpProduct = buildInitialProduct(spu, sku, productCode, category.getId(), unit.getId());
+            prepareInternalInsert(erpProduct);
             erpProductMapper.insert(erpProduct);
             createdProduct = true;
         }
@@ -119,6 +122,7 @@ public class MallErpProductInitializationServiceImpl implements MallErpProductIn
                 .setLastSyncedAt(LocalDateTime.now())
                 .setLastError("")
                 .setVersion(0);
+        prepareInternalInsert(mapping);
         mappingMapper.insert(mapping);
         insertSuccessLog(mapping, createdProduct);
         return toDTO(mapping, erpProduct);
@@ -234,6 +238,7 @@ public class MallErpProductInitializationServiceImpl implements MallErpProductIn
         log.setSyncStatus(STATUS_SUCCESS);
         log.setLastError("");
         log.setRetryCount(0);
+        prepareInternalInsert(log);
         syncLogMapper.insert(log);
     }
 
@@ -249,7 +254,14 @@ public class MallErpProductInitializationServiceImpl implements MallErpProductIn
         log.setSyncStatus(STATUS_FAILED);
         log.setLastError(error);
         log.setRetryCount(0);
+        prepareInternalInsert(log);
         syncLogMapper.insert(log);
+    }
+
+    private static void prepareInternalInsert(BaseDO record) {
+        // 内部 RPC 和事务提交后的事件可能没有登录用户，审计字段必须使用明确的系统身份。
+        record.setCreator(INITIALIZER_ACTOR);
+        record.setUpdater(INITIALIZER_ACTOR);
     }
 
     private static BigDecimal toYuan(Integer cents) {

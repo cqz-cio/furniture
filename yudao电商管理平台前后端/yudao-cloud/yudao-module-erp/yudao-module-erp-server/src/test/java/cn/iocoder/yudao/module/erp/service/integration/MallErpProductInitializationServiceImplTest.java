@@ -99,6 +99,8 @@ class MallErpProductInitializationServiceImplTest {
         assertEquals(new BigDecimal("123.45"), product.getPurchasePrice());
         assertEquals(new BigDecimal("199.99"), product.getSalePrice());
         assertEquals(new BigDecimal("12.500"), product.getWeight());
+        assertEquals("mall-erp-initializer", product.getCreator());
+        assertEquals("mall-erp-initializer", product.getUpdater());
 
         ArgumentCaptor<MallErpProductMappingDO> mappingCaptor =
                 ArgumentCaptor.forClass(MallErpProductMappingDO.class);
@@ -106,12 +108,16 @@ class MallErpProductInitializationServiceImplTest {
         assertEquals(91L, mappingCaptor.getValue().getMallSpuId());
         assertEquals(101L, mappingCaptor.getValue().getMallSkuId());
         assertEquals(201L, mappingCaptor.getValue().getErpProductId());
+        assertEquals("mall-erp-initializer", mappingCaptor.getValue().getCreator());
+        assertEquals("mall-erp-initializer", mappingCaptor.getValue().getUpdater());
 
         ArgumentCaptor<MallErpSyncLogDO> logCaptor = ArgumentCaptor.forClass(MallErpSyncLogDO.class);
         verify(syncLogMapper).insert(logCaptor.capture());
         assertEquals("MALL_TO_ERP", logCaptor.getValue().getDirection());
         assertEquals("INITIALIZE", logCaptor.getValue().getEventType());
         assertTrue(logCaptor.getValue().getRequestSummary().contains("createdProduct=true"));
+        assertEquals("mall-erp-initializer", logCaptor.getValue().getCreator());
+        assertEquals("mall-erp-initializer", logCaptor.getValue().getUpdater());
     }
 
     @Test
