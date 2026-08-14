@@ -22,9 +22,11 @@ import cn.iocoder.yudao.module.product.service.brand.ProductBrandService;
 import cn.iocoder.yudao.module.product.service.category.ProductCategoryService;
 import cn.iocoder.yudao.module.product.service.favorite.ProductFavoriteService;
 import cn.iocoder.yudao.module.product.service.sku.ProductSkuService;
+import cn.iocoder.yudao.module.product.service.spu.event.ProductSpuCreatedEvent;
 import cn.iocoder.yudao.module.trade.api.cart.CartApi;
 import com.google.common.collect.Maps;
 import jakarta.annotation.Resource;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -69,6 +71,8 @@ public class ProductSpuServiceImpl implements ProductSpuService {
     @Resource
     @Lazy
     private MemberGiftRegistryApi memberGiftRegistryApi;
+    @Resource
+    private ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -88,6 +92,8 @@ public class ProductSpuServiceImpl implements ProductSpuService {
         productSpuMapper.insert(spu);
         // 插入 SKU
         productSkuService.createSkuList(spu.getId(), skuSaveReqList);
+        // 事务提交后才读取 SKU 并初始化 ERP，避免 ERP 反查到尚未提交的数据
+        eventPublisher.publishEvent(new ProductSpuCreatedEvent(spu.getId()));
         // 返回
         return spu.getId();
     }

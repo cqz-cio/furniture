@@ -27,6 +27,10 @@ public interface ErpProductCategoryMapper extends BaseMapperX<ErpProductCategory
 	    return selectOne(ErpProductCategoryDO::getParentId, parentId, ErpProductCategoryDO::getName, name);
 	}
 
+    default ErpProductCategoryDO selectByCode(String code) {
+        return selectOne(ErpProductCategoryDO::getCode, code);
+    }
+
     default Long selectCountByParentId(Long parentId) {
         return selectCount(ErpProductCategoryDO::getParentId, parentId);
     }

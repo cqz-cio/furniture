@@ -17,6 +17,7 @@ class MallErpProductApiContractTest {
 
     @Test
     void exposesMallProductAndStockContract() throws Exception {
+        Method initialize = MallErpProductApi.class.getMethod("initializeMallSku", Long.class, Long.class);
         Method syncOne = MallErpProductApi.class.getMethod("syncMallSku", Long.class, Long.class);
         Method syncAll = MallErpProductApi.class.getMethod("syncAllMallSkus", Collection.class);
         Method unlink = MallErpProductApi.class.getMethod("unlinkMallSkus", Collection.class);
@@ -24,6 +25,7 @@ class MallErpProductApiContractTest {
         Method getStock = MallErpProductApi.class.getMethod("getSellableStock", Long.class);
         Method validate = MallErpProductApi.class.getMethod("validateSellableStock", List.class);
 
+        assertEquals(CommonResult.class, initialize.getReturnType());
         assertEquals(CommonResult.class, syncOne.getReturnType());
         assertEquals(CommonResult.class, syncAll.getReturnType());
         assertEquals(CommonResult.class, unlink.getReturnType());

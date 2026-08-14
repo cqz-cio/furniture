@@ -21,6 +21,15 @@ public interface MallErpProductApi {
 
     String PREFIX = ApiConstants.PREFIX + "/mall-integration";
 
+    /**
+     * 首次创建 Web SKU 时初始化 ERP 基础商品和一对一映射。
+     *
+     * 该接口是幂等的：已有映射或已有 ERP 商品时不会覆盖 ERP 商品资料。
+     */
+    @PostMapping(PREFIX + "/initialize-sku")
+    CommonResult<MallErpProductDTO> initializeMallSku(@RequestParam("mallSpuId") Long mallSpuId,
+                                                      @RequestParam("mallSkuId") Long mallSkuId);
+
     @PostMapping(PREFIX + "/sync-sku")
     CommonResult<MallErpProductDTO> syncMallSku(@RequestParam("mallSpuId") Long mallSpuId,
                                                 @RequestParam("mallSkuId") Long mallSkuId);
