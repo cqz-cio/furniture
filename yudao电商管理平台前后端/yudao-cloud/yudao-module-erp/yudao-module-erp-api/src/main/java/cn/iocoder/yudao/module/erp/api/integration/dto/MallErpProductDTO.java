@@ -20,5 +20,6 @@ public class MallErpProductDTO {
     private BigDecimal sellableStock;
     private String syncStatus;
     private LocalDateTime lastSyncedAt;
+    private String lastError;
 
 }

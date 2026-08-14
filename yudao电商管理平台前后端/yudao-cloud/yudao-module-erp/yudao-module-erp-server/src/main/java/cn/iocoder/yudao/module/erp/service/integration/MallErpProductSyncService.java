@@ -1,16 +1,16 @@
 package cn.iocoder.yudao.module.erp.service.integration;
 
 import cn.iocoder.yudao.module.erp.api.integration.dto.MallErpProductDTO;
+import cn.iocoder.yudao.module.erp.api.integration.dto.MallErpSyncSummaryDTO;
 import cn.iocoder.yudao.module.erp.api.integration.dto.MallErpStockDTO;
 import cn.iocoder.yudao.module.erp.api.integration.dto.MallErpStockRequestDTO;
 
 import java.util.Collection;
-import java.util.List;
 import java.util.Set;
 
 public interface MallErpProductSyncService {
     MallErpProductDTO syncMallSku(Long mallSpuId, Long mallSkuId);
-    List<MallErpProductDTO> syncAll();
+    MallErpSyncSummaryDTO syncAll(Collection<Long> mallSkuIds);
     void unlinkMallSkus(Collection<Long> mallSkuIds);
     MallErpProductDTO getByMallSkuId(Long mallSkuId);
     MallErpStockDTO getSellableStock(Long mallSkuId);

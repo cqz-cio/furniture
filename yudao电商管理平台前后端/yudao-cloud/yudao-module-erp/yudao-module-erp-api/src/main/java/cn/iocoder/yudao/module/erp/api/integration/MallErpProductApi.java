@@ -2,6 +2,7 @@ package cn.iocoder.yudao.module.erp.api.integration;
 
 import cn.iocoder.yudao.framework.common.pojo.CommonResult;
 import cn.iocoder.yudao.module.erp.api.integration.dto.MallErpProductDTO;
+import cn.iocoder.yudao.module.erp.api.integration.dto.MallErpSyncSummaryDTO;
 import cn.iocoder.yudao.module.erp.api.integration.dto.MallErpStockDTO;
 import cn.iocoder.yudao.module.erp.api.integration.dto.MallErpStockRequestDTO;
 import cn.iocoder.yudao.module.erp.enums.ApiConstants;
@@ -25,7 +26,7 @@ public interface MallErpProductApi {
                                                 @RequestParam("mallSkuId") Long mallSkuId);
 
     @PostMapping(PREFIX + "/sync-all")
-    CommonResult<List<MallErpProductDTO>> syncAllMallSkus();
+    CommonResult<MallErpSyncSummaryDTO> syncAllMallSkus(@RequestBody Collection<Long> mallSkuIds);
 
     @PostMapping(PREFIX + "/unlink-skus")
     CommonResult<Boolean> unlinkMallSkus(@RequestBody Collection<Long> mallSkuIds);

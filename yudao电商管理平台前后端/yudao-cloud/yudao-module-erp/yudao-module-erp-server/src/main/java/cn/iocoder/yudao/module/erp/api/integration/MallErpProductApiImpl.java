@@ -2,6 +2,7 @@ package cn.iocoder.yudao.module.erp.api.integration;
 
 import cn.iocoder.yudao.framework.common.pojo.CommonResult;
 import cn.iocoder.yudao.module.erp.api.integration.dto.MallErpProductDTO;
+import cn.iocoder.yudao.module.erp.api.integration.dto.MallErpSyncSummaryDTO;
 import cn.iocoder.yudao.module.erp.api.integration.dto.MallErpStockDTO;
 import cn.iocoder.yudao.module.erp.api.integration.dto.MallErpStockRequestDTO;
 import cn.iocoder.yudao.module.erp.service.integration.MallErpProductSyncService;
@@ -23,8 +24,8 @@ public class MallErpProductApiImpl implements MallErpProductApi {
         return success(syncService.syncMallSku(mallSpuId, mallSkuId));
     }
 
-    public CommonResult<List<MallErpProductDTO>> syncAllMallSkus() {
-        return success(syncService.syncAll());
+    public CommonResult<MallErpSyncSummaryDTO> syncAllMallSkus(Collection<Long> mallSkuIds) {
+        return success(syncService.syncAll(mallSkuIds));
     }
 
     public CommonResult<Boolean> unlinkMallSkus(Collection<Long> mallSkuIds) {

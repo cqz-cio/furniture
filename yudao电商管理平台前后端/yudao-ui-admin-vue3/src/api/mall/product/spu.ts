@@ -63,19 +63,33 @@ export interface Spu {
 export interface ErpIntegration {
   mallSpuId: number
   mallSkuId: number
-  erpProductCode: string
-  sellableStock: number
+  erpProductCode?: string
+  sellableStock?: number
+  enabled?: boolean
   syncStatus: string
   lastSyncedAt?: string
+  lastError?: string
+}
+
+export interface ErpSyncSummary {
+  totalSpus: number
+  totalSkus: number
+  mappedSkus: number
+  newMappings: number
+  refreshedMappings: number
+  unmappedSkus: number
+  failedSkus: number
+  noSkuSpus: number
+  items: ErpIntegration[]
 }
 
 export const getErpIntegration = (spuId: number): Promise<ErpIntegration[]> =>
   request.get({ url: '/product/spu/erp-integration', params: { spuId } })
 
-export const syncErpIntegration = (spuId: number) =>
+export const syncErpIntegration = (spuId: number): Promise<ErpIntegration[]> =>
   request.post({ url: '/product/spu/erp-integration/sync', params: { spuId } })
 
-export const syncAllErpIntegrations = () =>
+export const syncAllErpIntegrations = (): Promise<ErpSyncSummary> =>
   request.post({ url: '/product/spu/erp-integration/sync-all' })
 
 // 获得 Spu 列表

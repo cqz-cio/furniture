@@ -13,6 +13,10 @@ public interface MallErpProductMappingMapper extends BaseMapperX<MallErpProductM
         return selectOne(MallErpProductMappingDO::getMallSkuId, mallSkuId);
     }
 
+    default MallErpProductMappingDO selectByErpProductId(Long erpProductId) {
+        return selectOne(MallErpProductMappingDO::getErpProductId, erpProductId);
+    }
+
     default List<MallErpProductMappingDO> selectListByMallSkuIds(Collection<Long> mallSkuIds) {
         return selectList(MallErpProductMappingDO::getMallSkuId, mallSkuIds);
     }

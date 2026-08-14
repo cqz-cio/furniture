@@ -256,7 +256,7 @@
           min-width="90"
           prop="stock"
         />
-        <el-table-column align="center" :label="isB2B ? '商品 SKU' : 'ERP 编码'" min-width="145">
+        <el-table-column align="center" label="ERP 商品编码" min-width="145">
           <template #default="{ row }">{{ erpBySpuId[row.id]?.erpProductCode || '-' }}</template>
         </el-table-column>
         <el-table-column align="center" label="ERP 状态" min-width="135">
@@ -483,7 +483,13 @@ const getList = async () => {
     listLoadState.value = 'ready'
     const integrations = await Promise.allSettled(
       list.value.map(
-        async (spu) => [spu.id, (await ProductSpuApi.getErpIntegration(spu.id!))[0]] as const
+        async (spu) => {
+          const skuIntegrations = await ProductSpuApi.getErpIntegration(spu.id!)
+          // SPU 下任一 SKU 未映射或失败时，商品行不能误显示为“已映射”。
+          const aggregate =
+            skuIntegrations.find((item) => item.syncStatus !== 'SUCCESS') || skuIntegrations[0]
+          return [spu.id, aggregate] as const
+        }
       )
     )
     erpIntegrationError.value = integrations.some((result) => result.status === 'rejected')
@@ -534,10 +540,11 @@ const handleTabSelect = (tabType: number) => {
 
 const erpStatusLabel = (status?: string) => {
   const labels: Record<string, string> = {
-    SUCCESS: 'ERP 同步成功',
+    SUCCESS: '已映射',
     PENDING: '等待同步',
     PROCESSING: '同步中',
-    FAILED: '同步失败'
+    FAILED: '同步失败',
+    UNMAPPED: '未映射'
   }
   return status ? labels[status] || status : '未映射'
 }
@@ -582,20 +589,34 @@ const seoStatusMeta = (spuId?: number) => {
 }
 
 const handleErpSync = async (spuId: number) => {
-  await ProductSpuApi.syncErpIntegration(spuId)
-  message.success('ERP 同步成功')
+  const results = await ProductSpuApi.syncErpIntegration(spuId)
   await getList()
+  const mapped = results.filter((item) => item.syncStatus === 'SUCCESS').length
+  const unmapped = results.filter((item) => item.syncStatus === 'UNMAPPED').length
+  const failed = results.length - mapped - unmapped
+  if (results.length > 0 && mapped === results.length) {
+    message.success(`ERP 映射已刷新：${mapped} 个 SKU 已映射`)
+  } else {
+    message.warning(`ERP 映射已刷新：已映射 ${mapped}，未匹配 ${unmapped}，失败 ${failed}`)
+  }
 }
 
 const handleErpSyncAll = async () => {
   await message.confirm(
-    '全量同步会重新读取全部商品的 ERP 编码、库存和同步状态，执行期间列表数据可能短暂变化。确认继续吗？'
+    '全量同步只读取 ERP 商品编码、启用状态和库存，用于刷新 Web 端映射；不会修改 ERP 商品资料。确认继续吗？'
   )
   fullSyncLoading.value = true
   try {
-    await ProductSpuApi.syncAllErpIntegrations()
-    message.success('ERP 全量同步成功')
+    const result = await ProductSpuApi.syncAllErpIntegrations()
     await getList()
+    const summary = `已映射 ${result.mappedSkus}/${result.totalSkus} 个 SKU（新增 ${result.newMappings}，刷新 ${result.refreshedMappings}）`
+    if (result.unmappedSkus > 0 || result.failedSkus > 0 || result.noSkuSpus > 0) {
+      message.warning(
+        `ERP 全量同步完成：${summary}，未匹配 ${result.unmappedSkus}，失败 ${result.failedSkus}，无 SKU 商品 ${result.noSkuSpus}`
+      )
+    } else {
+      message.success(`ERP 全量同步完成：${summary}`)
+    }
   } finally {
     fullSyncLoading.value = false
   }

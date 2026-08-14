@@ -7,6 +7,7 @@ import cn.iocoder.yudao.framework.common.util.object.BeanUtils;
 import cn.iocoder.yudao.framework.excel.core.util.ExcelUtils;
 import cn.iocoder.yudao.module.erp.api.integration.MallErpProductApi;
 import cn.iocoder.yudao.module.erp.api.integration.dto.MallErpProductDTO;
+import cn.iocoder.yudao.module.erp.api.integration.dto.MallErpSyncSummaryDTO;
 import cn.iocoder.yudao.module.product.controller.admin.spu.vo.*;
 import cn.iocoder.yudao.module.product.convert.spu.ProductSpuConvert;
 import cn.iocoder.yudao.module.product.dal.dataobject.sku.ProductSkuDO;
@@ -29,6 +30,8 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static cn.iocoder.yudao.framework.apilog.core.enums.OperateTypeEnum.EXPORT;
 import static cn.iocoder.yudao.framework.common.pojo.CommonResult.success;
@@ -51,7 +54,13 @@ public class ProductSpuController {
     @PreAuthorize("@ss.hasPermission('product:spu:query')")
     public CommonResult<List<MallErpProductDTO>> getErpIntegration(@RequestParam("spuId") Long spuId) {
         return success(productSkuService.getSkuListBySpuId(spuId).stream()
-                .map(sku -> mallErpProductApi.getByMallSkuId(sku.getId()).getCheckedData())
+                .map(sku -> {
+                    MallErpProductDTO integration = mallErpProductApi.getByMallSkuId(sku.getId()).getCheckedData();
+                    return integration != null ? integration : new MallErpProductDTO()
+                            .setMallSpuId(spuId).setMallSkuId(sku.getId())
+                            .setEnabled(false).setSyncStatus("UNMAPPED")
+                            .setLastError("No ERP mapping has been established");
+                })
                 .collect(java.util.stream.Collectors.toList()));
     }
 
@@ -65,8 +74,24 @@ public class ProductSpuController {
 
     @PostMapping("/erp-integration/sync-all")
     @PreAuthorize("@ss.hasPermission('product:spu:sync-all')")
-    public CommonResult<List<MallErpProductDTO>> syncAllErpIntegrations() {
-        return mallErpProductApi.syncAllMallSkus();
+    public CommonResult<MallErpSyncSummaryDTO> syncAllErpIntegrations() {
+        ProductSpuPageReqVO pageReqVO = new ProductSpuPageReqVO();
+        pageReqVO.setPageNo(1);
+        pageReqVO.setPageSize(PAGE_SIZE_NONE);
+        List<ProductSpuDO> spus = productSpuService.getSpuPage(pageReqVO).getList();
+        Set<Long> spuIds = spus.stream().map(ProductSpuDO::getId).collect(Collectors.toSet());
+        List<ProductSkuDO> skus = spuIds.isEmpty() ? java.util.Collections.emptyList()
+                : productSkuService.getSkuListBySpuId(spuIds);
+        Set<Long> spusWithSku = skus.stream().map(ProductSkuDO::getSpuId).collect(Collectors.toSet());
+
+        MallErpSyncSummaryDTO summary = mallErpProductApi.syncAllMallSkus(
+                skus.stream().map(ProductSkuDO::getId).collect(Collectors.toList())).getCheckedData();
+        if (summary == null) {
+            summary = new MallErpSyncSummaryDTO();
+        }
+        summary.setTotalSpus(spus.size());
+        summary.setNoSkuSpus((int) spus.stream().filter(spu -> !spusWithSku.contains(spu.getId())).count());
+        return success(summary);
     }
 
     @PostMapping("/create")

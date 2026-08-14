@@ -18,7 +18,7 @@ class MallErpProductApiContractTest {
     @Test
     void exposesMallProductAndStockContract() throws Exception {
         Method syncOne = MallErpProductApi.class.getMethod("syncMallSku", Long.class, Long.class);
-        Method syncAll = MallErpProductApi.class.getMethod("syncAllMallSkus");
+        Method syncAll = MallErpProductApi.class.getMethod("syncAllMallSkus", Collection.class);
         Method unlink = MallErpProductApi.class.getMethod("unlinkMallSkus", Collection.class);
         Method getOne = MallErpProductApi.class.getMethod("getByMallSkuId", Long.class);
         Method getStock = MallErpProductApi.class.getMethod("getSellableStock", Long.class);

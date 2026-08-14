@@ -5,16 +5,13 @@ import cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder;
 import cn.iocoder.yudao.module.erp.api.integration.dto.MallErpProductDTO;
 import cn.iocoder.yudao.module.erp.api.integration.dto.MallErpStockDTO;
 import cn.iocoder.yudao.module.erp.api.integration.dto.MallErpStockRequestDTO;
+import cn.iocoder.yudao.module.erp.api.integration.dto.MallErpSyncSummaryDTO;
 import cn.iocoder.yudao.module.erp.dal.dataobject.integration.MallErpProductMappingDO;
 import cn.iocoder.yudao.module.erp.dal.dataobject.integration.MallErpSyncLogDO;
-import cn.iocoder.yudao.module.erp.dal.dataobject.product.ErpProductCategoryDO;
 import cn.iocoder.yudao.module.erp.dal.dataobject.product.ErpProductDO;
-import cn.iocoder.yudao.module.erp.dal.dataobject.product.ErpProductUnitDO;
 import cn.iocoder.yudao.module.erp.dal.mysql.integration.MallErpProductMappingMapper;
 import cn.iocoder.yudao.module.erp.dal.mysql.integration.MallErpSyncLogMapper;
-import cn.iocoder.yudao.module.erp.dal.mysql.product.ErpProductCategoryMapper;
 import cn.iocoder.yudao.module.erp.dal.mysql.product.ErpProductMapper;
-import cn.iocoder.yudao.module.erp.dal.mysql.product.ErpProductUnitMapper;
 import cn.iocoder.yudao.module.erp.dal.mysql.stock.ErpStockMapper;
 import cn.iocoder.yudao.module.product.api.sku.ProductSkuApi;
 import cn.iocoder.yudao.module.product.api.sku.dto.ProductSkuRespDTO;
@@ -25,11 +22,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -37,17 +33,24 @@ import java.util.stream.Collectors;
 
 import static cn.iocoder.yudao.framework.common.util.collection.CollectionUtils.convertMap;
 
+/**
+ * ERP 商品与 Web SKU 的映射同步。
+ *
+ * ERP 是商品编码、启用状态和实际库存的权威数据源。同步只读取 ERP 数据并维护
+ * Web 侧映射及同步状态，不得创建或修改 ERP 商品资料。
+ */
 @Service
 @RequiredArgsConstructor
 public class MallErpProductSyncServiceImpl implements MallErpProductSyncService {
-    private static final String FURNITURE_CATEGORY_CODE = "FURNITURE";
+
+    private static final String STATUS_SUCCESS = "SUCCESS";
+    private static final String STATUS_FAILED = "FAILED";
+    private static final String STATUS_UNMAPPED = "UNMAPPED";
 
     private final ProductSkuApi productSkuApi;
     private final ProductSpuApi productSpuApi;
     private final MallErpProductCodeGenerator productCodeGenerator;
     private final ErpProductMapper erpProductMapper;
-    private final ErpProductUnitMapper unitMapper;
-    private final ErpProductCategoryMapper categoryMapper;
     private final ErpStockMapper erpStockMapper;
     private final MallErpProductMappingMapper mappingMapper;
     private final MallErpSyncLogMapper syncLogMapper;
@@ -66,7 +69,8 @@ public class MallErpProductSyncServiceImpl implements MallErpProductSyncService 
                         .collect(Collectors.toSet())), ErpProductDO::getId);
         return mappings.stream().filter(mapping -> {
                     ErpProductDO product = products.get(mapping.getErpProductId());
-                    return product != null && CommonStatusEnum.ENABLE.getStatus().equals(product.getStatus());
+                    return STATUS_SUCCESS.equals(mapping.getSyncStatus()) && product != null
+                            && CommonStatusEnum.ENABLE.getStatus().equals(product.getStatus());
                 }).map(MallErpProductMappingDO::getMallSkuId).collect(Collectors.toSet());
     }
 
@@ -76,131 +80,150 @@ public class MallErpProductSyncServiceImpl implements MallErpProductSyncService 
         ProductSkuRespDTO sku = productSkuApi.getSku(mallSkuId).getCheckedData();
         ProductSpuRespDTO spu = productSpuApi.getSpu(mallSpuId).getCheckedData();
         if (sku == null) {
-            throw new IllegalStateException("Mall SKU does not exist: " + mallSkuId);
+            return failedResult(mallSpuId, mallSkuId, "Web SKU does not exist: " + mallSkuId);
         }
         if (spu == null) {
-            throw new IllegalStateException("Mall SPU does not exist: " + mallSpuId);
+            return failedResult(mallSpuId, mallSkuId, "Web SPU does not exist: " + mallSpuId);
         }
         if (!mallSpuId.equals(sku.getSpuId())) {
-            throw new IllegalArgumentException("SKU does not belong to the requested SPU");
+            return failedResult(mallSpuId, mallSkuId, "SKU does not belong to the requested SPU");
         }
-        String productCode = productCodeGenerator.generate(
-                TenantContextHolder.getRequiredTenantId(), mallSkuId);
-        MallErpProductMappingDO mapping = mappingMapper.selectByMallSkuId(mallSkuId);
-        ErpProductDO product = mapping == null ? new ErpProductDO() : erpProductMapper.selectById(mapping.getErpProductId());
-        if (product == null) {
-            throw new IllegalStateException("Mapped ERP product does not exist: " + mapping.getErpProductId());
-        }
-        if (mapping == null) {
-            ErpProductUnitDO unit = unitMapper.selectListByStatus(CommonStatusEnum.ENABLE.getStatus()).stream().findFirst()
-                    .orElseThrow(() -> new IllegalStateException("No enabled ERP product unit"));
-            product.setUnitId(unit.getId());
-        }
-        product.setCategoryId(resolveErpCategory(spu).getId());
-        product.setName(spu.getName());
-        product.setBarCode(productCode);
-        product.setStatus(CommonStatusEnum.ENABLE.getStatus());
-        product.setStandard("Mall SKU " + mallSkuId);
-        product.setRemark("Synchronized from mall product service");
-        product.setWeight(sku.getWeight() == null ? BigDecimal.ZERO : BigDecimal.valueOf(sku.getWeight()));
-        product.setPurchasePrice(toYuan(sku.getCostPrice()));
-        product.setSalePrice(toYuan(sku.getPrice()));
-        product.setMinPrice(toYuan(sku.getPrice()));
-        if (mapping == null) {
-            erpProductMapper.insert(product);
-            mapping = new MallErpProductMappingDO();
-            mapping.setMallSpuId(mallSpuId);
-            mapping.setMallSkuId(mallSkuId);
-            mapping.setErpProductId(product.getId());
-            mapping.setErpProductCode(productCode);
-            mapping.setVersion(0);
-            mappingMapper.insert(mapping);
-        } else {
-            mapping.setErpProductCode(productCode);
-            erpProductMapper.updateById(product);
-        }
-        mapping.setSyncStatus("SUCCESS");
-        mapping.setLastSyncedAt(LocalDateTime.now());
-        mapping.setLastError("");
-        mappingMapper.updateById(mapping);
-        insertSuccessLog(mallSkuId, productCode);
-        return toDTO(mapping, product);
-    }
-
-    private ErpProductCategoryDO resolveErpCategory(ProductSpuRespDTO spu) {
-        List<ErpProductCategoryDO> categories = categoryMapper.selectList();
-        ErpProductCategoryDO root = categories.stream()
-                .filter(category -> FURNITURE_CATEGORY_CODE.equals(category.getCode()))
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException("No ERP furniture category"));
-        if (spu.getCategoryName() == null || spu.getCategoryName().isBlank()) {
-            return root;
-        }
-        String categoryCode = "MALL_CATEGORY_" + spu.getCategoryId();
-        ErpProductCategoryDO category = categories.stream()
-                .filter(candidate -> categoryCode.equals(candidate.getCode()))
-                .findFirst()
-                .orElse(null);
-        if (category != null) {
-            return category;
-        }
-        category = categoryMapper.selectByParentIdAndName(root.getId(), spu.getCategoryName());
-        if (category != null) {
-            return category;
-        }
-        category = new ErpProductCategoryDO();
-        category.setParentId(root.getId());
-        category.setName(spu.getCategoryName());
-        category.setCode(categoryCode);
-        category.setSort(100);
-        category.setStatus(CommonStatusEnum.ENABLE.getStatus());
-        categoryMapper.insert(category);
-        return category;
+        return synchronizeResolved(spu, sku).product;
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public List<MallErpProductDTO> syncAll() {
-        List<MallErpProductMappingDO> mappings = mappingMapper.selectList();
-        if (mappings.isEmpty()) {
-            return Collections.emptyList();
+    public MallErpSyncSummaryDTO syncAll(Collection<Long> mallSkuIds) {
+        LinkedHashSet<Long> requestedSkuIds = mallSkuIds == null ? new LinkedHashSet<>()
+                : mallSkuIds.stream().filter(java.util.Objects::nonNull)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        MallErpSyncSummaryDTO summary = new MallErpSyncSummaryDTO().setTotalSkus(requestedSkuIds.size());
+        if (requestedSkuIds.isEmpty()) {
+            return summary;
         }
-        Set<Long> mappedSkuIds = mappings.stream().map(MallErpProductMappingDO::getMallSkuId)
-                .collect(Collectors.toSet());
-        Set<Long> mappedSpuIds = mappings.stream().map(MallErpProductMappingDO::getMallSpuId)
-                .collect(Collectors.toSet());
-        Set<Long> mappedErpProductIds = mappings.stream().map(MallErpProductMappingDO::getErpProductId)
-                .collect(Collectors.toSet());
-        Map<Long, ProductSkuRespDTO> skus = convertMap(
-                productSkuApi.getSkuList(mappedSkuIds).getCheckedData(), ProductSkuRespDTO::getId);
-        Map<Long, ProductSpuRespDTO> spus = convertMap(
-                productSpuApi.getSpuList(mappedSpuIds).getCheckedData(), ProductSpuRespDTO::getId);
-        Map<Long, ErpProductDO> erpProducts = convertMap(
-                erpProductMapper.selectBatchIds(mappedErpProductIds), ErpProductDO::getId);
-        Set<Long> orphanSkuIds = mappings.stream()
-                .filter(mapping -> isOrphanMapping(mapping, skus, spus, erpProducts))
-                .map(MallErpProductMappingDO::getMallSkuId)
-                .collect(Collectors.toSet());
-        unlinkMallSkus(orphanSkuIds);
 
-        List<MallErpProductDTO> syncedProducts = new ArrayList<>();
-        for (MallErpProductMappingDO mapping : mappings) {
-            if (orphanSkuIds.contains(mapping.getMallSkuId())) {
+        List<ProductSkuRespDTO> skuList = productSkuApi.getSkuList(requestedSkuIds).getCheckedData();
+        Map<Long, ProductSkuRespDTO> skus = convertMap(
+                skuList == null ? Collections.emptyList() : skuList, ProductSkuRespDTO::getId);
+        Set<Long> spuIds = skus.values().stream().map(ProductSkuRespDTO::getSpuId)
+                .filter(java.util.Objects::nonNull).collect(Collectors.toSet());
+        List<ProductSpuRespDTO> spuList = spuIds.isEmpty() ? Collections.emptyList()
+                : productSpuApi.getSpuList(spuIds).getCheckedData();
+        Map<Long, ProductSpuRespDTO> spus = convertMap(
+                spuList == null ? Collections.emptyList() : spuList, ProductSpuRespDTO::getId);
+
+        for (Long mallSkuId : requestedSkuIds) {
+            ProductSkuRespDTO sku = skus.get(mallSkuId);
+            if (sku == null) {
+                recordOutcome(summary, new SyncOutcome(
+                        failedResult(null, mallSkuId, "Web SKU does not exist: " + mallSkuId), false));
                 continue;
             }
-            syncedProducts.add(syncMallSku(mapping.getMallSpuId(), mapping.getMallSkuId()));
+            ProductSpuRespDTO spu = spus.get(sku.getSpuId());
+            if (spu == null) {
+                recordOutcome(summary, new SyncOutcome(
+                        failedResult(sku.getSpuId(), mallSkuId,
+                                "Web SPU does not exist: " + sku.getSpuId()), false));
+                continue;
+            }
+            recordOutcome(summary, synchronizeResolved(spu, sku));
         }
-        return syncedProducts;
+        return summary;
     }
 
-    private static boolean isOrphanMapping(MallErpProductMappingDO mapping,
-                                           Map<Long, ProductSkuRespDTO> skus,
-                                           Map<Long, ProductSpuRespDTO> spus,
-                                           Map<Long, ErpProductDO> erpProducts) {
-        ProductSkuRespDTO sku = skus.get(mapping.getMallSkuId());
-        return sku == null || spus.get(mapping.getMallSpuId()) == null
-                || !mapping.getMallSpuId().equals(sku.getSpuId())
-                || erpProducts.get(mapping.getErpProductId()) == null;
+    private SyncOutcome synchronizeResolved(ProductSpuRespDTO spu, ProductSkuRespDTO sku) {
+        MallErpProductMappingDO mapping = mappingMapper.selectByMallSkuId(sku.getId());
+        if (mapping != null) {
+            ErpProductDO product = erpProductMapper.selectById(mapping.getErpProductId());
+            if (product == null) {
+                String error = "Mapped ERP product does not exist: " + mapping.getErpProductId();
+                mapping.setSyncStatus(STATUS_FAILED);
+                mapping.setLastSyncedAt(LocalDateTime.now());
+                mapping.setLastError(error);
+                mappingMapper.updateById(mapping);
+                insertFailureLog(sku.getId(), mapping.getErpProductCode(), error);
+                return new SyncOutcome(toDTOWithoutProduct(mapping), false);
+            }
+            mapping.setMallSpuId(spu.getId());
+            mapping.setErpProductCode(product.getBarCode());
+            mapping.setSyncStatus(STATUS_SUCCESS);
+            mapping.setLastSyncedAt(LocalDateTime.now());
+            mapping.setLastError("");
+            mappingMapper.updateById(mapping);
+            insertSuccessLog(mapping, "REFRESH");
+            return new SyncOutcome(toDTO(mapping, product), false);
+        }
+
+        MatchResult match = findErpProduct(sku);
+        if (match.product == null) {
+            String error = "ERP product not found for code: " + match.requestedCode;
+            insertFailureLog(sku.getId(), match.requestedCode, error);
+            return new SyncOutcome(new MallErpProductDTO()
+                    .setMallSpuId(spu.getId()).setMallSkuId(sku.getId())
+                    .setErpProductCode(match.requestedCode).setSyncStatus(STATUS_UNMAPPED)
+                    .setLastSyncedAt(LocalDateTime.now()).setLastError(error), false);
+        }
+
+        MallErpProductMappingDO occupiedMapping = mappingMapper.selectByErpProductId(match.product.getId());
+        if (occupiedMapping != null && !sku.getId().equals(occupiedMapping.getMallSkuId())) {
+            String error = "ERP product is already mapped to Web SKU: " + occupiedMapping.getMallSkuId();
+            insertFailureLog(sku.getId(), match.product.getBarCode(), error);
+            return new SyncOutcome(new MallErpProductDTO()
+                    .setMallSpuId(spu.getId()).setMallSkuId(sku.getId())
+                    .setErpProductId(match.product.getId()).setErpProductCode(match.product.getBarCode())
+                    .setSyncStatus(STATUS_FAILED).setLastSyncedAt(LocalDateTime.now()).setLastError(error), false);
+        }
+
+        mapping = new MallErpProductMappingDO();
+        mapping.setMallSpuId(spu.getId());
+        mapping.setMallSkuId(sku.getId());
+        mapping.setErpProductId(match.product.getId());
+        mapping.setErpProductCode(match.product.getBarCode());
+        mapping.setSyncStatus(STATUS_SUCCESS);
+        mapping.setLastSyncedAt(LocalDateTime.now());
+        mapping.setLastError("");
+        mapping.setVersion(0);
+        mappingMapper.insert(mapping);
+        insertSuccessLog(mapping, "MAP");
+        return new SyncOutcome(toDTO(mapping, match.product), true);
+    }
+
+    private MatchResult findErpProduct(ProductSkuRespDTO sku) {
+        LinkedHashSet<String> candidateCodes = new LinkedHashSet<>();
+        if (sku.getBarCode() != null && !sku.getBarCode().isBlank()) {
+            candidateCodes.add(sku.getBarCode().trim());
+        }
+        candidateCodes.add(productCodeGenerator.generate(
+                TenantContextHolder.getRequiredTenantId(), sku.getId()));
+        for (String candidateCode : candidateCodes) {
+            ErpProductDO product = erpProductMapper.selectByBarCode(candidateCode);
+            if (product != null) {
+                return new MatchResult(candidateCode, product);
+            }
+        }
+        return new MatchResult(String.join(" / ", candidateCodes), null);
+    }
+
+    private void recordOutcome(MallErpSyncSummaryDTO summary, SyncOutcome outcome) {
+        summary.getItems().add(outcome.product);
+        if (STATUS_SUCCESS.equals(outcome.product.getSyncStatus())) {
+            summary.setMappedSkus(summary.getMappedSkus() + 1);
+            if (outcome.created) {
+                summary.setNewMappings(summary.getNewMappings() + 1);
+            } else {
+                summary.setRefreshedMappings(summary.getRefreshedMappings() + 1);
+            }
+        } else if (STATUS_UNMAPPED.equals(outcome.product.getSyncStatus())) {
+            summary.setUnmappedSkus(summary.getUnmappedSkus() + 1);
+        } else {
+            summary.setFailedSkus(summary.getFailedSkus() + 1);
+        }
+    }
+
+    private MallErpProductDTO failedResult(Long mallSpuId, Long mallSkuId, String error) {
+        insertFailureLog(mallSkuId, null, error);
+        return new MallErpProductDTO().setMallSpuId(mallSpuId).setMallSkuId(mallSkuId)
+                .setSyncStatus(STATUS_FAILED).setLastSyncedAt(LocalDateTime.now()).setLastError(error);
     }
 
     @Override
@@ -240,13 +263,14 @@ public class MallErpProductSyncServiceImpl implements MallErpProductSyncService 
         if (mapping == null) {
             return null;
         }
-        return toDTO(mapping, erpProductMapper.selectById(mapping.getErpProductId()));
+        ErpProductDO product = erpProductMapper.selectById(mapping.getErpProductId());
+        return product == null ? toDTOWithoutProduct(mapping) : toDTO(mapping, product);
     }
 
     @Override
     public MallErpStockDTO getSellableStock(Long mallSkuId) {
         MallErpProductMappingDO mapping = requireMapping(mallSkuId);
-        BigDecimal stock = erpStockMapper.selectSumByProductId(mapping.getErpProductId());
+        BigDecimal stock = normalizeStock(erpStockMapper.selectSumByProductId(mapping.getErpProductId()));
         return new MallErpStockDTO().setMallSkuId(mallSkuId).setErpProductId(mapping.getErpProductId())
                 .setSellableStock(stock).setAvailable(stock.compareTo(BigDecimal.ZERO) > 0);
     }
@@ -263,32 +287,60 @@ public class MallErpProductSyncServiceImpl implements MallErpProductSyncService 
 
     private MallErpProductMappingDO requireMapping(Long mallSkuId) {
         MallErpProductMappingDO mapping = mappingMapper.selectByMallSkuId(mallSkuId);
-        if (mapping == null) {
+        if (mapping == null || !STATUS_SUCCESS.equals(mapping.getSyncStatus())) {
             throw new IllegalStateException("Mall SKU is not mapped to ERP: " + mallSkuId);
         }
         return mapping;
     }
 
     private MallErpProductDTO toDTO(MallErpProductMappingDO mapping, ErpProductDO product) {
-        BigDecimal stock = erpStockMapper.selectSumByProductId(mapping.getErpProductId());
+        BigDecimal stock = normalizeStock(erpStockMapper.selectSumByProductId(mapping.getErpProductId()));
         return new MallErpProductDTO().setMallSpuId(mapping.getMallSpuId()).setMallSkuId(mapping.getMallSkuId())
                 .setErpProductId(mapping.getErpProductId()).setErpProductCode(mapping.getErpProductCode())
                 .setBaseName(product.getName()).setCostPrice(product.getPurchasePrice())
                 .setEnabled(CommonStatusEnum.ENABLE.getStatus().equals(product.getStatus()))
                 .setSellableStock(stock).setSyncStatus(mapping.getSyncStatus())
-                .setLastSyncedAt(mapping.getLastSyncedAt());
+                .setLastSyncedAt(mapping.getLastSyncedAt()).setLastError(mapping.getLastError());
     }
 
-    private void insertSuccessLog(Long mallSkuId, String productCode) {
+    private MallErpProductDTO toDTOWithoutProduct(MallErpProductMappingDO mapping) {
+        return new MallErpProductDTO().setMallSpuId(mapping.getMallSpuId()).setMallSkuId(mapping.getMallSkuId())
+                .setErpProductId(mapping.getErpProductId()).setErpProductCode(mapping.getErpProductCode())
+                .setEnabled(false).setSellableStock(BigDecimal.ZERO).setSyncStatus(STATUS_FAILED)
+                .setLastSyncedAt(mapping.getLastSyncedAt()).setLastError(mapping.getLastError());
+    }
+
+    private static BigDecimal normalizeStock(BigDecimal stock) {
+        return stock == null ? BigDecimal.ZERO : stock;
+    }
+
+    private void insertSuccessLog(MallErpProductMappingDO mapping, String eventType) {
+        MallErpSyncLogDO log = new MallErpSyncLogDO();
+        log.setEntityType("PRODUCT_SKU");
+        log.setEntityId(mapping.getMallSkuId());
+        log.setDirection("ERP_TO_MALL");
+        log.setEventType(eventType);
+        log.setIdempotencyKey(mapping.getErpProductCode() + "-" + eventType.toLowerCase()
+                + "-" + System.currentTimeMillis());
+        log.setRequestSummary("mallSkuId=" + mapping.getMallSkuId()
+                + ",erpProductId=" + mapping.getErpProductId());
+        log.setSyncStatus(STATUS_SUCCESS);
+        log.setLastError("");
+        log.setRetryCount(0);
+        syncLogMapper.insert(log);
+    }
+
+    private void insertFailureLog(Long mallSkuId, String productCode, String error) {
         MallErpSyncLogDO log = new MallErpSyncLogDO();
         log.setEntityType("PRODUCT_SKU");
         log.setEntityId(mallSkuId);
-        log.setDirection("MALL_TO_ERP");
-        log.setEventType("UPSERT");
-        log.setIdempotencyKey(productCode + "-" + System.currentTimeMillis());
+        log.setDirection("ERP_TO_MALL");
+        log.setEventType("MATCH");
+        log.setIdempotencyKey((productCode == null ? "unmatched" : productCode)
+                + "-match-" + System.currentTimeMillis());
         log.setRequestSummary("mallSkuId=" + mallSkuId);
-        log.setSyncStatus("SUCCESS");
-        log.setLastError("");
+        log.setSyncStatus(STATUS_FAILED);
+        log.setLastError(error);
         log.setRetryCount(0);
         syncLogMapper.insert(log);
     }
@@ -302,13 +354,30 @@ public class MallErpProductSyncServiceImpl implements MallErpProductSyncService 
         log.setIdempotencyKey(mapping.getErpProductCode() + "-unlink-" + System.currentTimeMillis());
         log.setRequestSummary("mallSkuId=" + mapping.getMallSkuId()
                 + ",erpProductId=" + mapping.getErpProductId());
-        log.setSyncStatus("SUCCESS");
+        log.setSyncStatus(STATUS_SUCCESS);
         log.setLastError("");
         log.setRetryCount(0);
         syncLogMapper.insert(log);
     }
 
-    private static BigDecimal toYuan(Integer cents) {
-        return cents == null ? BigDecimal.ZERO : BigDecimal.valueOf(cents).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+    private static class SyncOutcome {
+        private final MallErpProductDTO product;
+        private final boolean created;
+
+        private SyncOutcome(MallErpProductDTO product, boolean created) {
+            this.product = product;
+            this.created = created;
+        }
     }
+
+    private static class MatchResult {
+        private final String requestedCode;
+        private final ErpProductDO product;
+
+        private MatchResult(String requestedCode, ErpProductDO product) {
+            this.requestedCode = requestedCode;
+            this.product = product;
+        }
+    }
+
 }
