@@ -14,6 +14,7 @@ public class ProductCategoryNavigationRespDTO {
 
     private Long id;
     private Long parentId;
+    private String code;
     private String name;
     private Integer sort;
     private Integer status;

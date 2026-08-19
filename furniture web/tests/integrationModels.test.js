@@ -45,9 +45,8 @@ describe("yudao integration models", () => {
       price: 259900,
       marketPrice: 329900,
       stock: 8,
-      productType: "sofa",
+      categoryCode: "sofa",
       detailConfig: {
-        productType: "sofa",
         collection: "ADMIN CLOUD COLLECTION",
         heroNote: "Configured in admin",
       },
@@ -65,7 +64,6 @@ describe("yudao integration models", () => {
       stock: 8,
       productType: "sofa",
       detailConfig: {
-        productType: "sofa",
         collection: "ADMIN CLOUD COLLECTION",
         heroNote: "Configured in admin",
       },

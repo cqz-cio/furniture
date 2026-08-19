@@ -1,6 +1,7 @@
 package cn.iocoder.yudao.module.product.service.category;
 
 import cn.iocoder.yudao.framework.common.pojo.CommonResult;
+import cn.iocoder.yudao.framework.common.exception.ServiceException;
 import cn.iocoder.yudao.framework.test.core.ut.BaseMockitoUnitTest;
 import cn.iocoder.yudao.module.erp.api.integration.MallErpProductApi;
 import cn.iocoder.yudao.module.product.api.category.dto.ProductCategoryNavigationRespDTO;
@@ -108,9 +109,11 @@ class ProductCategoryServiceImplNavigationTest extends BaseMockitoUnitTest {
 
         ProductNavigationCategoryCreateReqVO request = new ProductNavigationCategoryCreateReqVO()
                 .setParentId(1L)
+                .setCode("contract-furniture")
                 .setName("  Contract Furniture  ");
         ProductCategorySaveReqVO genericRequest = new ProductCategorySaveReqVO()
                 .setParentId(1L)
+                .setCode("contract-furniture")
                 .setName("Contract Furniture")
                 .setPicUrl("")
                 .setSort(0)
@@ -126,10 +129,64 @@ class ProductCategoryServiceImplNavigationTest extends BaseMockitoUnitTest {
         ArgumentCaptor<ProductCategoryDO> captor = ArgumentCaptor.forClass(ProductCategoryDO.class);
         verify(productCategoryMapper).insert(captor.capture());
         assertEquals(1L, captor.getValue().getParentId());
+        assertEquals("contract-furniture", captor.getValue().getCode());
         assertEquals("Contract Furniture", captor.getValue().getName());
         assertEquals("", captor.getValue().getPicUrl());
         assertEquals(0, captor.getValue().getSort());
         assertEquals(ENABLE.getStatus(), captor.getValue().getStatus());
+    }
+
+    @Test
+    void validatesProductTypeBelongsToTheSelectedRoom() {
+        when(productCategoryMapper.selectById(301L)).thenReturn(
+                category(301L, 30L, "bed", "BED & HEADBOARD", 10));
+        when(productCategoryMapper.selectById(30L)).thenReturn(
+                category(30L, 0L, "bedroom", "Bedroom Furniture", 30));
+
+        productCategoryService.validateProductTypeSelection(301L, 30L);
+
+        assertThrows(ServiceException.class,
+                () -> productCategoryService.validateProductTypeSelection(301L, 20L));
+    }
+
+    @Test
+    void rejectsDuplicateActiveCodeWithinTheSameParent() {
+        when(productCategoryMapper.selectById(1L)).thenReturn(
+                category(1L, 0L, "dining-room", "Dining Room Furniture", 10));
+        when(productCategoryMapper.selectByParentIdAndCode(1L, "dining-table")).thenReturn(
+                category(103L, 1L, "dining-table", "DINING TABLES", 30));
+        ProductCategorySaveReqVO request = new ProductCategorySaveReqVO()
+                .setParentId(1L)
+                .setCode("dining-table")
+                .setName("A duplicate label")
+                .setPicUrl("category.png")
+                .setSort(99)
+                .setStatus(ENABLE.getStatus());
+
+        assertThrows(ServiceException.class, () -> productCategoryService.createCategory(request));
+    }
+
+    @Test
+    void updatingDisplayNameKeepsTheExistingStableCode() {
+        when(productCategoryMapper.selectById(103L)).thenReturn(
+                category(103L, 10L, "dining-table", "DINING TABLES", 30));
+        when(productCategoryMapper.selectById(10L)).thenReturn(
+                category(10L, 0L, "dining-room", "Dining Room Furniture", 10));
+        ProductCategorySaveReqVO request = new ProductCategorySaveReqVO()
+                .setId(103L)
+                .setParentId(10L)
+                .setCode("should-not-replace-stable-code")
+                .setName("CONTRACT DINING TABLES")
+                .setPicUrl("category.png")
+                .setSort(30)
+                .setStatus(ENABLE.getStatus());
+
+        productCategoryService.updateCategory(request);
+
+        ArgumentCaptor<ProductCategoryDO> captor = ArgumentCaptor.forClass(ProductCategoryDO.class);
+        verify(productCategoryMapper).updateById(captor.capture());
+        assertEquals("dining-table", captor.getValue().getCode());
+        assertEquals("CONTRACT DINING TABLES", captor.getValue().getName());
     }
 
     private ProductCategoryService validatedService(Validator validator) {
@@ -140,7 +197,12 @@ class ProductCategoryServiceImplNavigationTest extends BaseMockitoUnitTest {
     }
 
     private static ProductCategoryDO category(Long id, Long parentId, String name, Integer sort) {
-        return new ProductCategoryDO().setId(id).setParentId(parentId).setName(name)
+        return category(id, parentId, name.toLowerCase().replace(' ', '-'), name, sort);
+    }
+
+    private static ProductCategoryDO category(
+            Long id, Long parentId, String code, String name, Integer sort) {
+        return new ProductCategoryDO().setId(id).setParentId(parentId).setCode(code).setName(name)
                 .setSort(sort).setStatus(ENABLE.getStatus());
     }
 

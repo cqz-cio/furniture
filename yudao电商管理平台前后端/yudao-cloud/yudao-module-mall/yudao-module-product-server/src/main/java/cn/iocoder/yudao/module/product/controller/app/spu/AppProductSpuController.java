@@ -79,7 +79,7 @@ public class AppProductSpuController {
         // 拼接返回
         list.forEach(spu -> spu.setSalesCount(spu.getSalesCount() + spu.getVirtualSalesCount()));
         List<AppProductSpuRespVO> voList = BeanUtils.toBean(list, AppProductSpuRespVO.class);
-        overlayCategoryNames(voList);
+        overlayCategoryDetails(voList);
         ProductWebsiteFieldPolicy policy = productWebsiteFieldPolicyService.getCurrentPolicy();
         voList.forEach(spu -> productWebsiteFieldPolicyService.applyPolicy(spu, policy));
         return success(voList);
@@ -109,7 +109,7 @@ public class AppProductSpuController {
         // 拼接返回
         pageResult.getList().forEach(spu -> spu.setSalesCount(spu.getSalesCount() + spu.getVirtualSalesCount()));
         PageResult<AppProductSpuRespVO> voPageResult = BeanUtils.toBean(pageResult, AppProductSpuRespVO.class);
-        overlayCategoryNames(voPageResult.getList());
+        overlayCategoryDetails(voPageResult.getList());
         ProductWebsiteFieldPolicy policy = productWebsiteFieldPolicyService.getCurrentPolicy();
         voPageResult.getList().forEach(spu -> productWebsiteFieldPolicyService.applyPolicy(spu, policy));
         return success(voPageResult);
@@ -146,6 +146,8 @@ public class AppProductSpuController {
                 .setSkus(toPublicSkuVOs(skus));
         ProductCategoryDO category = productCategoryService.getCategory(spu.getCategoryId());
         spuVO.setCategoryName(category == null ? null : category.getName());
+        spuVO.setCategoryCode(category == null ? null : category.getCode());
+        spuVO.setCategoryParentId(category == null ? null : category.getParentId());
         productWebsiteFieldPolicyService.applyPolicy(
                 spuVO, productWebsiteFieldPolicyService.getCurrentPolicy());
         return success(spuVO);
@@ -163,14 +165,19 @@ public class AppProductSpuController {
         return skuVOs;
     }
 
-    private void overlayCategoryNames(List<AppProductSpuRespVO> spus) {
+    private void overlayCategoryDetails(List<AppProductSpuRespVO> spus) {
         if (CollUtil.isEmpty(spus)) {
             return;
         }
-        Map<Long, String> categoryNames = productCategoryService.getEnableCategoryList(
+        Map<Long, ProductCategoryDO> categories = productCategoryService.getEnableCategoryList(
                         spus.stream().map(AppProductSpuRespVO::getCategoryId).distinct().collect(Collectors.toList()))
-                .stream().collect(Collectors.toMap(ProductCategoryDO::getId, ProductCategoryDO::getName));
-        spus.forEach(spu -> spu.setCategoryName(categoryNames.get(spu.getCategoryId())));
+                .stream().collect(Collectors.toMap(ProductCategoryDO::getId, category -> category));
+        spus.forEach(spu -> {
+            ProductCategoryDO category = categories.get(spu.getCategoryId());
+            spu.setCategoryName(category == null ? null : category.getName());
+            spu.setCategoryCode(category == null ? null : category.getCode());
+            spu.setCategoryParentId(category == null ? null : category.getParentId());
+        });
     }
 
     private void overlayErpStock(List<ProductSpuDO> spus) {

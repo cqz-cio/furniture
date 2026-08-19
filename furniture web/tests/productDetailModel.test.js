@@ -3,7 +3,7 @@ import { demoProducts } from "../src/data/demoProducts.js";
 import { buildProductDetailModel } from "../src/services/productDetailModel.js";
 
 describe("product detail model", () => {
-  it("adds Oakved fixed furniture sections around a yudao product", () => {
+  it("adds Oakved fixed furniture sections around an explicit Demo product", () => {
     const model = buildProductDetailModel({
       id: 88,
       skuId: 188,
@@ -15,7 +15,7 @@ describe("product detail model", () => {
       price: 888,
       marketPrice: 999,
       stock: 20,
-      source: "yudao",
+      source: "demo",
       productType: "bed",
     });
 

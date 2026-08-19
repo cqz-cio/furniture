@@ -37,6 +37,17 @@
           <span>如果该分类已加入官网 Products 导航，确认修改后已发布官网会立即同步。</span>
         </div>
       </el-form-item>
+      <el-form-item label="稳定编码" prop="code">
+        <div class="category-name-field">
+          <el-input
+            v-model="formData.code"
+            :disabled="formType === 'update'"
+            maxlength="64"
+            placeholder="例如 dining-table"
+          />
+          <span>仅允许小写字母、数字和连字符；创建后不随显示名称修改。</span>
+        </div>
+      </el-form-item>
       <el-form-item v-if="!props.navigationCreate" label="移动端分类图" prop="picUrl">
         <UploadImg v-model="formData.picUrl" :limit="1" :is-show-tip="false" />
         <div style="font-size: 10px" class="pl-10px">推荐 180x180 图片分辨率</div>
@@ -94,6 +105,7 @@ const originalCategoryName = ref('')
 const formData = ref<ProductCategoryApi.CategoryVO>({
   id: undefined,
   parentId: props.navigationCreate ? undefined : 0,
+  code: '',
   name: '',
   picUrl: '',
   sort: 0,
@@ -101,6 +113,14 @@ const formData = ref<ProductCategoryApi.CategoryVO>({
 })
 const formRules = reactive({
   parentId: [{ required: true, message: '请选择上级分类', trigger: 'blur' }],
+  code: [
+    { required: true, message: '分类编码不能为空', trigger: 'blur' },
+    {
+      pattern: /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
+      message: '分类编码只能包含小写字母、数字和连字符',
+      trigger: 'blur'
+    }
+  ],
   name: [{ required: true, message: '分类名称不能为空', trigger: 'blur' }],
   picUrl: props.navigationCreate
     ? []
@@ -140,6 +160,7 @@ defineExpose({ open }) // 提供 open 方法，用于打开弹窗
 const emit = defineEmits(['success']) // 定义 success 事件，用于操作成功后的回调
 const submitForm = async () => {
   formData.value.name = formData.value.name.trim()
+  formData.value.code = formData.value.code.trim().toLowerCase()
   // 校验表单
   if (!formRef) return
   const valid = await formRef.value.validate()
@@ -159,8 +180,9 @@ const submitForm = async () => {
     }
     if (formType.value === 'create') {
       savedCategoryId = props.navigationCreate
-        ? await ProductCategoryApi.createNavigationCategory({
+          ? await ProductCategoryApi.createNavigationCategory({
             parentId: data.parentId as number,
+            code: data.code,
             name: data.name
           })
         : await ProductCategoryApi.createCategory(data)
@@ -187,6 +209,7 @@ const resetForm = () => {
   formData.value = {
     id: undefined,
     parentId: props.navigationCreate ? undefined : 0,
+    code: '',
     name: '',
     picUrl: '',
     sort: 0,

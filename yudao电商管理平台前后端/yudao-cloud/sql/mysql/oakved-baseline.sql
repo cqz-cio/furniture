@@ -12665,6 +12665,281 @@ WHERE mapping.`deleted` = b'0'
   AND (sku.`id` IS NULL OR spu.`id` IS NULL OR sku.`spu_id` <> mapping.`mall_spu_id`
        OR product.`id` IS NULL);
 
+-- BEGIN V048__product_category_and_detail_contract.sql
+-- Phase 1: make product category codes and detail_config the shared ERP/admin/storefront contract.
+-- The read-only Phase 0 audit is a required precondition. This migration never infers a
+-- product type from product_spu.name: unresolved records keep their current category and
+-- remain visible to the lifecycle audit for manual classification.
+
+ALTER TABLE `product_category`
+  ADD COLUMN `code` varchar(64) NULL AFTER `parent_id`;
+
+-- Every historical row receives a deterministic, valid code before the NOT NULL and
+-- active-record uniqueness constraints are enabled. Canonical records are inserted below.
+UPDATE `product_category`
+SET `code` = CONCAT('legacy-', `id`),
+    `updater` = 'V048',
+    `update_time` = CURRENT_TIMESTAMP
+WHERE `code` IS NULL OR TRIM(`code`) = '';
+
+ALTER TABLE `product_category`
+  MODIFY COLUMN `code` varchar(64) NOT NULL COMMENT '稳定分类编码，显示名称修改时保持不变',
+  ADD COLUMN `active_record` tinyint GENERATED ALWAYS AS
+      (CASE WHEN `deleted` = b'0' THEN 1 ELSE NULL END) STORED,
+  ADD CONSTRAINT `chk_product_category_code_format`
+      CHECK (`code` REGEXP '^[a-z0-9]+(-[a-z0-9]+)*$'),
+  ADD UNIQUE KEY `uk_product_category_tenant_parent_code_active`
+      (`tenant_id`, `parent_id`, `code`, `active_record`);
+
+-- Canonical P1 rooms. Codes, not display names, are the durable identity.
+INSERT INTO `product_category`
+  (`parent_id`, `code`, `name`, `pic_url`, `big_pic_url`, `sort`, `status`,
+   `creator`, `create_time`, `updater`, `update_time`, `deleted`, `tenant_id`)
+SELECT 0, room_catalog.`code`, room_catalog.`name`, '', NULL, room_catalog.`sort`, 0,
+       'V048', CURRENT_TIMESTAMP, 'V048', CURRENT_TIMESTAMP, b'0', tenant.`id`
+FROM `system_tenant` AS tenant
+JOIN (
+  SELECT 'dining-room' AS `code`, 'Dining Room Furniture' AS `name`, 10 AS `sort`
+  UNION ALL SELECT 'living-room', 'Living Room Furniture', 20
+  UNION ALL SELECT 'bedroom', 'Bedroom Furniture', 30
+) AS room_catalog
+-- Oakved tenant 121 is the storefront default even though it retains B2C pricing mode.
+-- B2B tenants use the same taxonomy for the admin Room/Product-type selectors.
+WHERE (tenant.`business_mode` = 'B2B' OR tenant.`code` = 'OAKVED')
+  AND tenant.`deleted` = b'0'
+ON DUPLICATE KEY UPDATE
+  `name` = VALUES(`name`),
+  `sort` = VALUES(`sort`),
+  `status` = 0,
+  `updater` = 'V048',
+  `update_time` = CURRENT_TIMESTAMP;
+
+-- Canonical P2 matrix. Correct spellings are intentionally asserted by the guard below.
+INSERT INTO `product_category`
+  (`parent_id`, `code`, `name`, `pic_url`, `big_pic_url`, `sort`, `status`,
+   `creator`, `create_time`, `updater`, `update_time`, `deleted`, `tenant_id`)
+SELECT room.`id`, product_type.`code`, product_type.`name`, '', NULL,
+       product_type.`sort`, 0, 'V048', CURRENT_TIMESTAMP, 'V048', CURRENT_TIMESTAMP,
+       b'0', room.`tenant_id`
+FROM `product_category` AS room
+JOIN (
+  SELECT 'dining-room' AS `room_code`, 'dining-chair' AS `code`,
+         'DINING CHAIRS' AS `name`, 10 AS `sort`
+  UNION ALL SELECT 'dining-room', 'bar-stool', 'BAR STOOLS', 20
+  UNION ALL SELECT 'dining-room', 'dining-table', 'DINING TABLES', 30
+  UNION ALL SELECT 'living-room', 'sofa', 'SOFA & OCCASIONAL CHAIR', 10
+  UNION ALL SELECT 'living-room', 'coffee-table', 'SIDE TABLE & COFFEE TABLE', 20
+  UNION ALL SELECT 'living-room', 'bookcase', 'BOOKCASE & DISPLAY CABINET', 30
+  UNION ALL SELECT 'living-room', 'media-console', 'CONSOLE TABLE & BUFFET', 40
+  UNION ALL SELECT 'bedroom', 'bed', 'BED & HEADBOARD', 10
+  UNION ALL SELECT 'bedroom', 'nightstand', 'BEDSIDE TABLE', 20
+  UNION ALL SELECT 'bedroom', 'dresser', 'CHEST OF DRAWERS', 30
+  UNION ALL SELECT 'bedroom', 'bench', 'BENCH', 40
+  UNION ALL SELECT 'bedroom', 'dressing-table', 'DRESSING TABLE', 50
+  UNION ALL SELECT 'bedroom', 'wardrobe', 'WARDROBE', 60
+) AS product_type ON product_type.`room_code` = room.`code`
+WHERE room.`parent_id` = 0
+  AND room.`deleted` = b'0'
+ON DUPLICATE KEY UPDATE
+  `name` = VALUES(`name`),
+  `sort` = VALUES(`sort`),
+  `status` = 0,
+  `updater` = 'V048',
+  `update_time` = CURRENT_TIMESTAMP;
+
+-- Build a deterministic SPU mapping from the old explicit JSON value or the old
+-- category itself. Ambiguous values are only mapped when their current P1 room resolves
+-- the ambiguity. No product title, keyword or description participates in this mapping.
+DROP TEMPORARY TABLE IF EXISTS `phase1_product_type_map`;
+CREATE TEMPORARY TABLE `phase1_product_type_map` (
+  `tenant_id` bigint NOT NULL,
+  `spu_id` bigint NOT NULL,
+  `target_code` varchar(64) NULL,
+  PRIMARY KEY (`tenant_id`, `spu_id`)
+) ENGINE=InnoDB;
+
+INSERT INTO `phase1_product_type_map` (`tenant_id`, `spu_id`, `target_code`)
+SELECT product.`tenant_id`, product.`id`,
+       CASE
+         WHEN LOWER(TRIM(JSON_UNQUOTE(JSON_EXTRACT(product.`detail_config`, '$.productType'))))
+              IN ('dining-chair', 'bar-stool', 'dining-table', 'sofa', 'coffee-table',
+                  'bookcase', 'media-console', 'bed', 'nightstand', 'dresser', 'bench',
+                  'dressing-table', 'wardrobe')
+           THEN LOWER(TRIM(JSON_UNQUOTE(JSON_EXTRACT(product.`detail_config`, '$.productType'))))
+         WHEN LOWER(TRIM(JSON_UNQUOTE(JSON_EXTRACT(product.`detail_config`, '$.productType')))) = 'bed-bench'
+           THEN 'bench'
+         WHEN LOWER(TRIM(JSON_UNQUOTE(JSON_EXTRACT(product.`detail_config`, '$.productType')))) = 'vanity'
+           THEN 'dressing-table'
+         WHEN LOWER(TRIM(JSON_UNQUOTE(JSON_EXTRACT(product.`detail_config`, '$.productType')))) = 'round-table'
+           THEN 'dining-table'
+         WHEN LOWER(TRIM(JSON_UNQUOTE(JSON_EXTRACT(product.`detail_config`, '$.productType')))) = 'single-sofa'
+           THEN 'sofa'
+         WHEN LOWER(TRIM(JSON_UNQUOTE(JSON_EXTRACT(product.`detail_config`, '$.productType')))) = 'chair'
+              AND parent_category.`code` = 'dining-room'
+           THEN 'dining-chair'
+         WHEN LOWER(TRIM(JSON_UNQUOTE(JSON_EXTRACT(product.`detail_config`, '$.productType')))) = 'chair'
+              AND parent_category.`code` = 'living-room'
+           THEN 'sofa'
+         WHEN LOWER(TRIM(JSON_UNQUOTE(JSON_EXTRACT(product.`detail_config`, '$.productType')))) = 'sideboard'
+              AND parent_category.`code` = 'living-room'
+           THEN 'media-console'
+         -- Ambiguous legacy values must never fall through to old display-name aliases.
+         -- Without a canonical P1 room they remain on the manual-review list.
+         WHEN LOWER(TRIM(JSON_UNQUOTE(JSON_EXTRACT(product.`detail_config`, '$.productType'))))
+              IN ('chair', 'sideboard')
+           THEN NULL
+         WHEN LOWER(TRIM(current_category.`name`)) = 'sofas' THEN 'sofa'
+         WHEN LOWER(TRIM(current_category.`name`)) = 'dining tables' THEN 'dining-table'
+         WHEN LOWER(TRIM(current_category.`name`)) = 'dining chairs' THEN 'dining-chair'
+         WHEN LOWER(TRIM(current_category.`name`)) = 'coffee tables' THEN 'coffee-table'
+         WHEN LOWER(TRIM(current_category.`name`)) = 'beds' THEN 'bed'
+         WHEN LOWER(TRIM(current_category.`name`)) = 'wardrobes' THEN 'wardrobe'
+         WHEN LOWER(TRIM(current_category.`name`)) IN ('media storage', 'media consoles')
+           THEN 'media-console'
+         ELSE NULL
+       END
+FROM `product_spu` AS product
+JOIN `product_category` AS current_category
+  ON current_category.`id` = product.`category_id`
+ AND current_category.`tenant_id` = product.`tenant_id`
+ AND current_category.`deleted` = b'0'
+LEFT JOIN `product_category` AS parent_category
+  ON parent_category.`id` = current_category.`parent_id`
+ AND parent_category.`tenant_id` = current_category.`tenant_id`
+ AND parent_category.`deleted` = b'0'
+WHERE product.`deleted` = b'0';
+
+UPDATE `product_spu` AS product
+JOIN `phase1_product_type_map` AS mapping
+  ON mapping.`tenant_id` = product.`tenant_id`
+ AND mapping.`spu_id` = product.`id`
+JOIN `product_category` AS target_category
+  ON target_category.`tenant_id` = product.`tenant_id`
+ AND target_category.`code` = mapping.`target_code`
+ AND target_category.`deleted` = b'0'
+JOIN `product_category` AS target_room
+  ON target_room.`id` = target_category.`parent_id`
+ AND target_room.`tenant_id` = target_category.`tenant_id`
+ AND target_room.`parent_id` = 0
+ AND target_room.`code` IN ('dining-room', 'living-room', 'bedroom')
+ AND target_room.`deleted` = b'0'
+SET product.`category_id` = target_category.`id`,
+    product.`updater` = 'V048',
+    product.`update_time` = CURRENT_TIMESTAMP
+WHERE mapping.`target_code` IS NOT NULL
+  AND product.`category_id` <> target_category.`id`;
+
+DROP TEMPORARY TABLE `phase1_product_type_map`;
+
+-- Canonical Packing is a free-text string. A non-blank packingDisplay wins; otherwise
+-- retain an existing string or format the historical object with the established rules.
+UPDATE `product_spu`
+SET `detail_config` = JSON_REMOVE(
+      JSON_SET(
+        COALESCE(`detail_config`, JSON_OBJECT()),
+        '$.packing',
+        CASE
+          WHEN NULLIF(TRIM(JSON_UNQUOTE(JSON_EXTRACT(`detail_config`, '$.packingDisplay'))), '')
+               IS NOT NULL
+            THEN TRIM(JSON_UNQUOTE(JSON_EXTRACT(`detail_config`, '$.packingDisplay')))
+          WHEN JSON_TYPE(JSON_EXTRACT(`detail_config`, '$.packing')) = 'STRING'
+            THEN TRIM(JSON_UNQUOTE(JSON_EXTRACT(`detail_config`, '$.packing')))
+          WHEN JSON_TYPE(JSON_EXTRACT(`detail_config`, '$.packing')) = 'OBJECT'
+            THEN CASE
+              WHEN CAST(JSON_UNQUOTE(JSON_EXTRACT(`detail_config`, '$.packing.itemQuantity')) AS UNSIGNED) > 0
+                   AND CAST(JSON_UNQUOTE(JSON_EXTRACT(`detail_config`, '$.packing.cartonQuantity')) AS UNSIGNED) > 0
+                THEN CASE
+                  WHEN COALESCE(JSON_UNQUOTE(JSON_EXTRACT(`detail_config`, '$.packing.itemUnit')), 'pc') = 'pc'
+                       AND CAST(JSON_UNQUOTE(JSON_EXTRACT(`detail_config`, '$.packing.itemQuantity')) AS UNSIGNED) = 1
+                       AND CAST(JSON_UNQUOTE(JSON_EXTRACT(`detail_config`, '$.packing.cartonQuantity')) AS UNSIGNED) > 1
+                    THEN CONCAT('Ships in ',
+                      CAST(JSON_UNQUOTE(JSON_EXTRACT(`detail_config`, '$.packing.cartonQuantity')) AS UNSIGNED),
+                      ' cartons')
+                  WHEN CAST(JSON_UNQUOTE(JSON_EXTRACT(`detail_config`, '$.packing.cartonQuantity')) AS UNSIGNED) = 1
+                    THEN CONCAT(
+                      CAST(JSON_UNQUOTE(JSON_EXTRACT(`detail_config`, '$.packing.itemQuantity')) AS UNSIGNED),
+                      ' ',
+                      CASE
+                        WHEN COALESCE(JSON_UNQUOTE(JSON_EXTRACT(`detail_config`, '$.packing.itemUnit')), 'pc') = 'set'
+                          THEN IF(CAST(JSON_UNQUOTE(JSON_EXTRACT(`detail_config`, '$.packing.itemQuantity')) AS UNSIGNED) = 1, 'set', 'sets')
+                        ELSE IF(CAST(JSON_UNQUOTE(JSON_EXTRACT(`detail_config`, '$.packing.itemQuantity')) AS UNSIGNED) = 1, 'pc', 'pcs')
+                      END,
+                      '/ctn')
+                  ELSE CONCAT(
+                    CAST(JSON_UNQUOTE(JSON_EXTRACT(`detail_config`, '$.packing.itemQuantity')) AS UNSIGNED),
+                    ' ',
+                    CASE
+                      WHEN COALESCE(JSON_UNQUOTE(JSON_EXTRACT(`detail_config`, '$.packing.itemUnit')), 'pc') = 'set'
+                        THEN IF(CAST(JSON_UNQUOTE(JSON_EXTRACT(`detail_config`, '$.packing.itemQuantity')) AS UNSIGNED) = 1, 'set', 'sets')
+                      ELSE IF(CAST(JSON_UNQUOTE(JSON_EXTRACT(`detail_config`, '$.packing.itemQuantity')) AS UNSIGNED) = 1, 'pc', 'pcs')
+                    END,
+                    ' / ',
+                    CAST(JSON_UNQUOTE(JSON_EXTRACT(`detail_config`, '$.packing.cartonQuantity')) AS UNSIGNED),
+                    ' cartons')
+                END
+              ELSE COALESCE(TRIM(JSON_UNQUOTE(JSON_EXTRACT(`detail_config`, '$.packing.method'))), '')
+            END
+          ELSE ''
+        END
+      ),
+      '$.packingDisplay'
+    ),
+    `updater` = 'V048',
+    `update_time` = CURRENT_TIMESTAMP
+WHERE JSON_CONTAINS_PATH(`detail_config`, 'one', '$.packingDisplay') = 1
+   OR JSON_TYPE(JSON_EXTRACT(`detail_config`, '$.packing')) = 'OBJECT';
+
+-- Migration guards: fail forward if the stable code matrix or packing contract is incomplete.
+DROP TEMPORARY TABLE IF EXISTS `product_phase1_contract_guard`;
+CREATE TEMPORARY TABLE `product_phase1_contract_guard` (
+  `valid` tinyint NOT NULL,
+  CONSTRAINT `chk_product_phase1_contract_guard` CHECK (`valid` = 1)
+) ENGINE=InnoDB;
+
+INSERT INTO `product_phase1_contract_guard` (`valid`)
+SELECT 0
+WHERE EXISTS (
+  SELECT 1
+  FROM `product_category`
+  WHERE `deleted` = b'0'
+    AND (`code` = '' OR `code` NOT REGEXP '^[a-z0-9]+(-[a-z0-9]+)*$')
+);
+
+INSERT INTO `product_phase1_contract_guard` (`valid`)
+SELECT 0
+WHERE EXISTS (
+  SELECT tenant.`id`
+  FROM `system_tenant` AS tenant
+  LEFT JOIN `product_category` AS room
+    ON room.`tenant_id` = tenant.`id`
+   AND room.`parent_id` = 0
+   AND room.`code` IN ('dining-room', 'living-room', 'bedroom')
+   AND room.`deleted` = b'0'
+  LEFT JOIN `product_category` AS product_type
+    ON product_type.`tenant_id` = tenant.`id`
+   AND product_type.`parent_id` = room.`id`
+   AND product_type.`deleted` = b'0'
+  WHERE (tenant.`business_mode` = 'B2B' OR tenant.`code` = 'OAKVED')
+    AND tenant.`deleted` = b'0'
+  GROUP BY tenant.`id`
+  HAVING COUNT(DISTINCT room.`code`) <> 3
+      OR COUNT(DISTINCT product_type.`code`) <> 13
+);
+
+INSERT INTO `product_phase1_contract_guard` (`valid`)
+SELECT 0
+WHERE EXISTS (
+  SELECT 1
+  FROM `product_spu`
+  WHERE `deleted` = b'0'
+    AND (
+      JSON_CONTAINS_PATH(`detail_config`, 'one', '$.packingDisplay') = 1
+      OR JSON_TYPE(JSON_EXTRACT(`detail_config`, '$.packing')) = 'OBJECT'
+    )
+);
+
+DROP TEMPORARY TABLE `product_phase1_contract_guard`;
+
 -- BEGIN Oakved demo catalog
 -- Oakved demo catalog: tenant 121, 26 mall products, ERP products, stock and mappings.
 SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -12680,33 +12955,33 @@ SELECT 'Trendz Demo',@default_image,10,'Demo brand for furniture catalog',0,@see
 WHERE NOT EXISTS (SELECT 1 FROM product_brand WHERE tenant_id=@tenant_id AND name='Trendz Demo' AND deleted=b'0');
 SET @brand_id = (SELECT id FROM product_brand WHERE tenant_id=@tenant_id AND name='Trendz Demo' AND deleted=b'0' ORDER BY id LIMIT 1);
 
-INSERT INTO product_category(parent_id,name,pic_url,big_pic_url,sort,status,creator,updater,tenant_id)
-SELECT 0,'Furniture Agent Demo',@default_image,@default_image,10,0,@seed_user,@seed_user,@tenant_id
-WHERE NOT EXISTS (SELECT 1 FROM product_category WHERE tenant_id=@tenant_id AND parent_id=0 AND name='Furniture Agent Demo' AND deleted=b'0');
-SET @root_category_id = (SELECT id FROM product_category WHERE tenant_id=@tenant_id AND parent_id=0 AND name='Furniture Agent Demo' AND deleted=b'0' ORDER BY id LIMIT 1);
+INSERT INTO product_category(parent_id,code,name,pic_url,big_pic_url,sort,status,creator,updater,tenant_id)
+SELECT 0,'furniture-agent-demo','Furniture Agent Demo',@default_image,@default_image,10,0,@seed_user,@seed_user,@tenant_id
+WHERE NOT EXISTS (SELECT 1 FROM product_category WHERE tenant_id=@tenant_id AND parent_id=0 AND code='furniture-agent-demo' AND deleted=b'0');
+SET @root_category_id = (SELECT id FROM product_category WHERE tenant_id=@tenant_id AND parent_id=0 AND code='furniture-agent-demo' AND deleted=b'0' ORDER BY id LIMIT 1);
 
 DROP PROCEDURE IF EXISTS ensure_oakved_category;
 DELIMITER $$
-CREATE PROCEDURE ensure_oakved_category(IN category_name varchar(128), IN category_sort int)
+CREATE PROCEDURE ensure_oakved_category(IN category_code varchar(64), IN category_name varchar(128), IN category_sort int)
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM product_category WHERE tenant_id=@tenant_id AND parent_id=@root_category_id AND name=category_name AND deleted=b'0') THEN
-    INSERT INTO product_category(parent_id,name,pic_url,big_pic_url,sort,status,creator,updater,tenant_id)
-    VALUES(@root_category_id,category_name,@default_image,@default_image,category_sort,0,@seed_user,@seed_user,@tenant_id);
+  IF NOT EXISTS (SELECT 1 FROM product_category WHERE tenant_id=@tenant_id AND parent_id=@root_category_id AND code=category_code AND deleted=b'0') THEN
+    INSERT INTO product_category(parent_id,code,name,pic_url,big_pic_url,sort,status,creator,updater,tenant_id)
+    VALUES(@root_category_id,category_code,category_name,@default_image,@default_image,category_sort,0,@seed_user,@seed_user,@tenant_id);
   END IF;
 END$$
 DELIMITER ;
-CALL ensure_oakved_category('Sofas',20);
-CALL ensure_oakved_category('Dining Tables',30);
-CALL ensure_oakved_category('Dining Chairs',35);
-CALL ensure_oakved_category('Coffee Tables',36);
-CALL ensure_oakved_category('Beds',40);
-CALL ensure_oakved_category('Desks',45);
-CALL ensure_oakved_category('Rugs',46);
-CALL ensure_oakved_category('Bedroom Storage',47);
-CALL ensure_oakved_category('Wardrobes',48);
-CALL ensure_oakved_category('Side Tables',49);
-CALL ensure_oakved_category('Lighting',50);
-CALL ensure_oakved_category('Media Storage',60);
+CALL ensure_oakved_category('demo-sofas','Sofas',20);
+CALL ensure_oakved_category('demo-dining-tables','Dining Tables',30);
+CALL ensure_oakved_category('demo-dining-chairs','Dining Chairs',35);
+CALL ensure_oakved_category('demo-coffee-tables','Coffee Tables',36);
+CALL ensure_oakved_category('demo-beds','Beds',40);
+CALL ensure_oakved_category('demo-desks','Desks',45);
+CALL ensure_oakved_category('demo-rugs','Rugs',46);
+CALL ensure_oakved_category('demo-bedroom-storage','Bedroom Storage',47);
+CALL ensure_oakved_category('demo-wardrobes','Wardrobes',48);
+CALL ensure_oakved_category('demo-side-tables','Side Tables',49);
+CALL ensure_oakved_category('demo-lighting','Lighting',50);
+CALL ensure_oakved_category('demo-media-storage','Media Storage',60);
 DROP PROCEDURE ensure_oakved_category;
 
 DROP PROCEDURE IF EXISTS seed_oakved_product;
@@ -12717,10 +12992,32 @@ CREATE PROCEDURE seed_oakved_product(
   IN product_cost_price int, IN product_stock int)
 BEGIN
   DECLARE v_category_id bigint;
+  DECLARE v_canonical_code varchar(64);
   DECLARE v_spu_id bigint;
   DECLARE v_sku_id bigint;
-  SELECT id INTO v_category_id FROM product_category
-    WHERE tenant_id=@tenant_id AND parent_id=@root_category_id AND name=category_name AND deleted=b'0' ORDER BY id LIMIT 1;
+  SET v_canonical_code = CASE category_name
+    WHEN 'Sofas' THEN 'sofa'
+    WHEN 'Dining Tables' THEN 'dining-table'
+    WHEN 'Dining Chairs' THEN 'dining-chair'
+    WHEN 'Coffee Tables' THEN 'coffee-table'
+    WHEN 'Beds' THEN 'bed'
+    WHEN 'Wardrobes' THEN 'wardrobe'
+    WHEN 'Media Storage' THEN 'media-console'
+    ELSE NULL
+  END;
+  IF v_canonical_code IS NOT NULL THEN
+    SELECT category.id INTO v_category_id
+    FROM product_category category
+    JOIN product_category room ON room.id=category.parent_id
+      AND room.tenant_id=category.tenant_id AND room.deleted=b'0'
+    WHERE category.tenant_id=@tenant_id AND category.code=v_canonical_code
+      AND category.deleted=b'0'
+      AND room.code IN ('dining-room','living-room','bedroom')
+    ORDER BY category.id LIMIT 1;
+  ELSE
+    SELECT id INTO v_category_id FROM product_category
+      WHERE tenant_id=@tenant_id AND parent_id=@root_category_id AND name=category_name AND deleted=b'0' ORDER BY id LIMIT 1;
+  END IF;
   SELECT id INTO v_spu_id FROM product_spu
     WHERE tenant_id=@tenant_id AND keyword=product_keyword AND deleted=b'0' ORDER BY id LIMIT 1;
   IF v_spu_id IS NULL THEN
@@ -12789,9 +13086,12 @@ INSERT INTO erp_product_category(parent_id,name,code,sort,status,creator,updater
 SET @erp_root_category_id = (SELECT id FROM erp_product_category
   WHERE tenant_id=@tenant_id AND code='FURNITURE' AND deleted=b'0' ORDER BY id LIMIT 1);
 INSERT INTO erp_product_category(parent_id,name,code,sort,status,creator,updater,tenant_id)
-SELECT @erp_root_category_id,c.name,CONCAT('MALL_CATEGORY_',c.id),c.sort,0,@erp_user,@erp_user,@tenant_id
-FROM product_category c
-WHERE c.tenant_id=@tenant_id AND c.parent_id=@root_category_id AND c.deleted=b'0'
+SELECT DISTINCT @erp_root_category_id,c.name,CONCAT('MALL_CATEGORY_',c.id),c.sort,0,@erp_user,@erp_user,@tenant_id
+FROM product_spu seeded_product
+JOIN product_category c ON c.id=seeded_product.category_id
+  AND c.tenant_id=seeded_product.tenant_id AND c.deleted=b'0'
+WHERE seeded_product.tenant_id=@tenant_id AND seeded_product.creator=@seed_user
+  AND seeded_product.deleted=b'0'
 ON DUPLICATE KEY UPDATE parent_id=VALUES(parent_id),name=VALUES(name),sort=VALUES(sort),status=VALUES(status),
   updater=VALUES(updater),update_time=CURRENT_TIMESTAMP;
 INSERT INTO erp_warehouse(name,address,sort,remark,principal,warehouse_price,truckage_price,status,default_status,creator,updater,tenant_id)
@@ -12891,4 +13191,5 @@ INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256)
 INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('045','website blog management','V045__website_blog_management.sql','07d532206db09ddc493b615918d648c5ddaff217dadc94a32e6459343a7625c7') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
 INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('046','customer specification fields','V046__customer_specification_fields.sql','15aa996c2a4387996571c18b50bb4cef1c83d7bfa9cbe61e8ba6794d4d15aa81') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
 INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('047','clean orphan mall erp mappings','V047__clean_orphan_mall_erp_mappings.sql','c667f440136ca27324e550887442e91035ff8e4161cded079eac51fd5f9469cf') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
+INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('048','product category and detail contract','V048__product_category_and_detail_contract.sql','f1d22c76bf946d047528871bc3512d2b3894ae672aafb879592950498a903fca') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
 SET FOREIGN_KEY_CHECKS = 1;

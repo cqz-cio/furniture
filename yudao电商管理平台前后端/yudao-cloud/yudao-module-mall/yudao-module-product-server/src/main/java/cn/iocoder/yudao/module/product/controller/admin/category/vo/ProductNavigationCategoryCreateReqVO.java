@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
@@ -15,6 +16,14 @@ public class ProductNavigationCategoryCreateReqVO {
     @NotNull(message = "父分类编号不能为空")
     @Positive(message = "请选择有效的上级分类")
     private Long parentId;
+
+    @Schema(description = "稳定分类编码", requiredMode = Schema.RequiredMode.REQUIRED,
+            example = "contract-furniture")
+    @NotBlank(message = "分类编码不能为空")
+    @Size(max = 64, message = "分类编码不能超过 64 个字符")
+    @Pattern(regexp = "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            message = "分类编码只能包含小写字母、数字和连字符")
+    private String code;
 
     @Schema(description = "分类名称", requiredMode = Schema.RequiredMode.REQUIRED, example = "Contract Furniture")
     @NotBlank(message = "分类名称不能为空")

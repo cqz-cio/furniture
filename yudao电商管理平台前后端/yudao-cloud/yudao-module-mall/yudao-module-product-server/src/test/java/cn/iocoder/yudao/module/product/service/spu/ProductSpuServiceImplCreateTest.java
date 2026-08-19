@@ -49,9 +49,9 @@ class ProductSpuServiceImplCreateTest extends BaseMockitoUnitTest {
                 .setName("Default").setPrice(19999).setMarketPrice(22999).setCostPrice(12345)
                 .setPicUrl("https://example.test/table.png").setStock(0);
         ProductSpuSaveReqVO request = new ProductSpuSaveReqVO()
-                .setName("Rustic Dining Table").setCategoryId(301L).setBrandId(1L)
+                .setName("Rustic Dining Table").setRoomCategoryId(30L)
+                .setCategoryId(301L).setBrandId(1L)
                 .setSpecType(false).setSkus(Collections.singletonList(sku));
-        when(categoryService.getCategoryLevel(301L)).thenReturn(ProductCategoryDO.CATEGORY_LEVEL);
         doAnswer(invocation -> {
             ((ProductSpuDO) invocation.getArgument(0)).setId(91L);
             return 1;
@@ -67,6 +67,7 @@ class ProductSpuServiceImplCreateTest extends BaseMockitoUnitTest {
         ordered.verify(eventPublisher).publishEvent(eventCaptor.capture());
         ProductSpuCreatedEvent event = (ProductSpuCreatedEvent) eventCaptor.getValue();
         assertEquals(91L, event.spuId());
+        verify(categoryService).validateProductTypeSelection(301L, 30L);
         verify(productSkuService).validateSkuList(request.getSkus(), false);
     }
 

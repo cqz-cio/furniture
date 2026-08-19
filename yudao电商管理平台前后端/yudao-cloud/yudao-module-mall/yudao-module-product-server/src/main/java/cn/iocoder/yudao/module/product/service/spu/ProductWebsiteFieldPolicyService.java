@@ -62,6 +62,9 @@ public class ProductWebsiteFieldPolicyService {
     public void applyPolicy(AppProductSpuRespVO spu, ProductWebsiteFieldPolicy policy) {
         spu.setDisplayPolicy(toRespVO(policy));
         if (!policy.allows(TenantProductFieldEnum.CATEGORY)) {
+            spu.setCategoryId(null);
+            spu.setCategoryCode(null);
+            spu.setCategoryParentId(null);
             spu.setCategoryName(null);
         }
         if (!policy.allows(TenantProductFieldEnum.BADGES)) {
@@ -92,6 +95,9 @@ public class ProductWebsiteFieldPolicyService {
     public void applyPolicy(AppProductSpuDetailRespVO spu, ProductWebsiteFieldPolicy policy) {
         spu.setDisplayPolicy(toRespVO(policy));
         if (!policy.allows(TenantProductFieldEnum.CATEGORY)) {
+            spu.setCategoryId(null);
+            spu.setCategoryCode(null);
+            spu.setCategoryParentId(null);
             spu.setCategoryName(null);
         }
         if (!policy.allows(TenantProductFieldEnum.BADGES)) {
@@ -152,28 +158,75 @@ public class ProductWebsiteFieldPolicyService {
     private Map<String, Object> filterDetailConfig(
             Map<String, Object> detailConfig, ProductWebsiteFieldPolicy policy) {
         if (detailConfig == null) {
-            if (policy.isB2b() && policy.allows(TenantProductFieldEnum.FINISH)) {
-                return new LinkedHashMap<>(Map.of(
-                        "finish", ProductAdminFieldPolicyService.DEFAULT_FINISH));
-            }
             return null;
         }
         Map<String, Object> filtered = new LinkedHashMap<>(detailConfig);
+        normalizePacking(filtered);
         // 商品级配置不能覆盖租户级公开策略。
         filtered.remove("fieldVisibility");
         filtered.remove("displayPolicy");
+        filtered.remove("productType");
         DETAIL_CONFIG_POLICY_FIELDS.forEach((configField, policyField) -> {
             if (!policy.allows(policyField)) {
                 filtered.remove(configField);
             }
         });
-        if (policy.isB2b() && policy.allows(TenantProductFieldEnum.FINISH)) {
+        if (policy.allows(TenantProductFieldEnum.FINISH) && filtered.containsKey("finish")) {
             Object rawFinish = filtered.get("finish");
             String finish = rawFinish instanceof String ? ((String) rawFinish).trim() : "";
-            filtered.put("finish", finish.isEmpty()
-                    ? ProductAdminFieldPolicyService.DEFAULT_FINISH : finish);
+            filtered.put("finish", finish);
         }
         return filtered;
+    }
+
+    private void normalizePacking(Map<String, Object> detailConfig) {
+        Object packing = detailConfig.get("packing");
+        String canonical = packing instanceof String ? ((String) packing).trim() : "";
+        Object legacyDisplay = detailConfig.get("packingDisplay");
+        String display = legacyDisplay instanceof String ? ((String) legacyDisplay).trim() : "";
+        String normalized = !canonical.isEmpty()
+                ? canonical
+                : !display.isEmpty() ? display : formatLegacyPacking(packing);
+        if (detailConfig.containsKey("packing") || detailConfig.containsKey("packingDisplay")) {
+            detailConfig.put("packing", normalized);
+        }
+        detailConfig.remove("packingDisplay");
+    }
+
+    private String formatLegacyPacking(Object value) {
+        if (!(value instanceof Map<?, ?> packing)) {
+            return "";
+        }
+        String method = packing.get("method") instanceof String
+                ? ((String) packing.get("method")).trim() : "";
+        Integer itemQuantity = positiveInteger(packing.get("itemQuantity"));
+        Integer cartonQuantity = positiveInteger(packing.get("cartonQuantity"));
+        if (itemQuantity == null || cartonQuantity == null) {
+            return method;
+        }
+        String singularUnit = "set".equals(packing.get("itemUnit")) ? "set" : "pc";
+        String unit = itemQuantity == 1 ? singularUnit
+                : "set".equals(singularUnit) ? "sets" : "pcs";
+        if ("pc".equals(singularUnit) && itemQuantity == 1 && cartonQuantity > 1) {
+            return "Ships in " + cartonQuantity + " cartons";
+        }
+        if (cartonQuantity == 1) {
+            return itemQuantity + " " + unit + "/ctn";
+        }
+        return itemQuantity + " " + unit + " / " + cartonQuantity + " cartons";
+    }
+
+    private Integer positiveInteger(Object value) {
+        if (value instanceof Number number) {
+            int integer = number.intValue();
+            return integer > 0 && number.doubleValue() == integer ? integer : null;
+        }
+        try {
+            int integer = Integer.parseInt(String.valueOf(value));
+            return integer > 0 ? integer : null;
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
     }
 
     private AppProductFieldPolicyRespVO toRespVO(ProductWebsiteFieldPolicy policy) {

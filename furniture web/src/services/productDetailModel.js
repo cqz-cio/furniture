@@ -423,6 +423,8 @@ const productTypeTemplateAliases = {
   dresser: "bed",
   vanity: "bed",
   desk: "bed",
+  bench: "bed",
+  "dressing-table": "bed",
   "bed-bench": "bed",
   "round-table": "dining-table",
   "single-sofa": "sofa",
@@ -452,9 +454,21 @@ const companyHeroNotes = {
 
 const inferProductType = (productInput = {}) => {
   const product = productInput || {};
-  const rawType = String(product.detailConfig?.productType || product.productType || product.type || product.category || "").toLowerCase();
+  const rawType = String(product.productType || product.categoryCode || product.detailConfig?.productType || product.type || product.category || "")
+    .trim()
+    .toLowerCase();
+  if (product.source && product.source !== "demo") return rawType || "uncategorized";
   const knownCompanyTypes = new Set([
+    "dining-chair",
+    "bar-stool",
+    "dining-table",
+    "sofa",
+    "coffee-table",
+    "bookcase",
+    "media-console",
     "nightstand",
+    "bench",
+    "dressing-table",
     "bed-bench",
     "dresser",
     "vanity",
@@ -484,9 +498,139 @@ const inferProductType = (productInput = {}) => {
   return "furniture";
 };
 
+const visibleByPolicy = (displayPolicy, field) => displayPolicy?.fields?.[field] !== false;
+
+const trimmedString = (value) => (typeof value === "string" ? value.trim() : "");
+
+const finiteNumber = (value) => {
+  if (value === null || value === undefined || value === "") return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+};
+
+export const formatProductDimension = (dimension) => {
+  if (!dimension || typeof dimension !== "object" || dimension.unit !== "cm") return "";
+  const height = finiteNumber(dimension.height);
+  if (dimension.shape === "round") {
+    const diameter = finiteNumber(dimension.diameter);
+    return diameter !== null && height !== null ? `Dia ${diameter} x H ${height} cm` : "";
+  }
+  if (dimension.shape === "rectangular") {
+    const width = finiteNumber(dimension.width);
+    const depth = finiteNumber(dimension.depth);
+    return width !== null && depth !== null && height !== null
+      ? `W ${width} x D ${depth} x H ${height} cm`
+      : "";
+  }
+  return "";
+};
+
+const PRODUCT_INFORMATION_FIELDS = [
+  ["itemNo", "Item No."],
+  ["material", "Material"],
+  ["dimension", "Size"],
+  ["color", "Color"],
+  ["finish", "Finish"],
+  ["service", "Service"],
+  ["sample", "Sample"],
+  ["packing", "Packing"],
+];
+
+export const buildProductInformation = (detailConfig = {}, displayPolicy) =>
+  PRODUCT_INFORMATION_FIELDS.flatMap(([key, label]) => {
+    if (!visibleByPolicy(displayPolicy, key)) return [];
+    const value = key === "dimension"
+      ? formatProductDimension(detailConfig.dimension)
+      : trimmedString(detailConfig[key]);
+    return value ? [{ key, label, value }] : [];
+  });
+
+const validArray = (value) => (Array.isArray(value) ? value.filter(Boolean) : []);
+
+const validFabricSelector = (value) => {
+  if (!value || typeof value !== "object") return null;
+  const swatchList = validArray(value.swatches).filter((item) => item?.label && item?.swatch);
+  if (swatchList.length === 0) return null;
+  return { ...value, swatches: swatchList };
+};
+
+const apiDetailValue = (detailConfig, displayPolicy, field, fallback) =>
+  visibleByPolicy(displayPolicy, field) ? detailConfig[field] ?? fallback : fallback;
+
+const buildApiPrice = (product, displayPolicy) => {
+  if (!visibleByPolicy(displayPolicy, "price")) return null;
+  const member = finiteNumber(product.price);
+  const sale = finiteNumber(product.salePrice);
+  const regular = visibleByPolicy(displayPolicy, "marketPrice") ? finiteNumber(product.marketPrice) : null;
+  if (member === null && sale === null && regular === null) return null;
+  return {
+    prefix: "",
+    member,
+    sale,
+    regular,
+    memberLabel: "",
+    saleLabel: "",
+    regularLabel: "",
+    savingsLabel: "",
+    context: "",
+  };
+};
+
+const buildApiDetailModel = (product, productType) => {
+  const detailConfig = product.detailConfig && typeof product.detailConfig === "object" ? product.detailConfig : {};
+  const displayPolicy = product.displayPolicy || null;
+  const informationConfig = {
+    itemNo: detailConfig.itemNo,
+    material: detailConfig.material ?? product.material,
+    dimension: detailConfig.dimension,
+    color: detailConfig.color ?? product.color,
+    finish: detailConfig.finish,
+    service: detailConfig.service,
+    sample: detailConfig.sample,
+    packing: detailConfig.packing,
+  };
+
+  return {
+    id: product.id,
+    skuId: product.skuId,
+    source: product.source || "api",
+    productType,
+    collection: trimmedString(apiDetailValue(detailConfig, displayPolicy, "collection", "")),
+    name: trimmedString(product.name) || "Product",
+    description: visibleByPolicy(displayPolicy, "description")
+      ? stripHtml(product.description || product.subtitle)
+      : "",
+    heroNote: trimmedString(apiDetailValue(detailConfig, displayPolicy, "heroNote", "")),
+    gallery: normalizeGallery(product),
+    price: buildApiPrice(product, displayPolicy),
+    stock: visibleByPolicy(displayPolicy, "inventory") && product.stock !== null && product.stock !== undefined
+      ? {
+          label: "Inventory",
+          value: Number(product.stock) || 0,
+          status: Number(product.stock) > 0 ? "In stock" : "Made to order",
+        }
+      : null,
+    fabricSelector: validFabricSelector(apiDetailValue(detailConfig, displayPolicy, "fabricSelector", null)),
+    availability: product.availability || null,
+    highlights: validArray(apiDetailValue(detailConfig, displayPolicy, "highlights", [])),
+    relatedLinks: validArray(apiDetailValue(detailConfig, displayPolicy, "relatedLinks", [])),
+    membershipPrompt: product.membershipPrompt || null,
+    roomInspiration: validArray(product.roomInspiration),
+    purchaseAssurance: validArray(product.purchaseAssurance),
+    companionProducts: validArray(product.companionProducts),
+    optionGroups: validArray(apiDetailValue(detailConfig, displayPolicy, "optionGroups", [])),
+    accordions: validArray(apiDetailValue(detailConfig, displayPolicy, "accordions", [])),
+    productInformation: buildProductInformation(informationConfig, displayPolicy),
+    displayPolicy,
+  };
+};
+
 export const buildProductDetailModel = (productInput = {}) => {
   const product = productInput || {};
   const productType = inferProductType(product);
+  if (product.source && product.source !== "demo") {
+    return buildApiDetailModel(product, productType);
+  }
   const templateKey = productTypeTemplateAliases[productType] || productType;
   const template = productTypeTemplates[templateKey] || productTypeTemplates.furniture;
   const detailConfig = product.detailConfig || {};
@@ -530,5 +674,7 @@ export const buildProductDetailModel = (productInput = {}) => {
     companionProducts: detailConfig.companionProducts || product.companionProducts || companionProducts[productType] || companionProducts[templateKey],
     optionGroups: detailConfig.optionGroups || product.optionGroups || template.optionGroups,
     accordions: detailConfig.accordions || product.accordions || template.accordions,
+    productInformation: buildProductInformation({ ...product, ...detailConfig }, product.displayPolicy),
+    displayPolicy: product.displayPolicy || null,
   };
 };

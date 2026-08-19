@@ -15,6 +15,10 @@ public class ProductCategoryRespVO {
     @Schema(description = "父分类编号", requiredMode = Schema.RequiredMode.REQUIRED, example = "1")
     private Long parentId;
 
+    @Schema(description = "稳定分类编码", requiredMode = Schema.RequiredMode.REQUIRED,
+            example = "dining-table")
+    private String code;
+
     @Schema(description = "分类名称", requiredMode = Schema.RequiredMode.REQUIRED, example = "办公文具")
     private String name;
 

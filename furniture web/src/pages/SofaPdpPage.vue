@@ -363,7 +363,7 @@ onMounted(async () => {
       <p>{{ t("productUnavailable") }}</p>
     </div>
 
-    <div v-else class="product-detail-grid">
+    <div v-if="!loading && product" class="product-detail-grid">
       <div class="product-detail-media">
         <figure
           class="product-gallery-main"
@@ -407,25 +407,27 @@ onMounted(async () => {
             <span v-else>{{ item.label }}</span>
           </button>
         </div>
-        <p class="product-hero-note">{{ detail.heroNote }}</p>
+        <p v-if="detail.heroNote" class="product-hero-note">{{ detail.heroNote }}</p>
       </div>
 
       <article class="product-detail-panel">
-        <p class="eyebrow">{{ sourceLabel }} / {{ detail.collection }}</p>
+        <p class="eyebrow">
+          {{ sourceLabel }}<template v-if="detail.collection"> / {{ detail.collection }}</template>
+        </p>
         <h1>{{ detail.name }}</h1>
-        <p class="product-detail-copy">{{ detail.description }}</p>
-        <div class="product-detail-price">
-          <small>{{ priceLabel(detail.price.prefix) }}</small>
-          <strong>{{ money(detail.price.member) }}</strong>
-          <em>{{ priceLabel(detail.price.memberLabel) }}</em>
+        <p v-if="detail.description" class="product-detail-copy">{{ detail.description }}</p>
+        <div v-if="detail.price" class="product-detail-price">
+          <small v-if="detail.price.prefix">{{ priceLabel(detail.price.prefix) }}</small>
+          <strong v-if="detail.price.member !== null">{{ money(detail.price.member) }}</strong>
+          <em v-if="detail.price.memberLabel">{{ priceLabel(detail.price.memberLabel) }}</em>
           <b v-if="detail.price.sale">{{ money(detail.price.sale) }} {{ priceLabel(detail.price.saleLabel) }}</b>
-          <span>{{ money(detail.price.regular) }} {{ priceLabel(detail.price.regularLabel) }}</span>
+          <span v-if="detail.price.regular !== null">{{ money(detail.price.regular) }} {{ priceLabel(detail.price.regularLabel) }}</span>
         </div>
-        <p class="product-savings-label">{{ priceLabel(detail.price.savingsLabel) }}</p>
-        <p class="product-price-context">{{ priceLabel(detail.price.context) }}</p>
+        <p v-if="detail.price?.savingsLabel" class="product-savings-label">{{ priceLabel(detail.price.savingsLabel) }}</p>
+        <p v-if="detail.price?.context" class="product-price-context">{{ priceLabel(detail.price.context) }}</p>
 
-        <section class="product-membership-callout" aria-label="Membership pricing details">
-          <div>
+        <section v-if="detail.membershipPrompt" class="product-membership-callout" aria-label="Membership pricing details">
+          <div v-if="detail.price?.member !== null && detail.price?.member !== undefined">
             <strong>{{ membershipPromptText(detail.membershipPrompt.title) }}</strong>
             <p>{{ membershipPromptText(detail.membershipPrompt.copy) }}</p>
           </div>
@@ -433,7 +435,7 @@ onMounted(async () => {
         </section>
 
         <div class="product-mobile-purchase-bar" aria-label="Mobile purchase actions">
-          <div>
+          <div v-if="detail.price">
             <small>{{ priceLabel(detail.price.memberLabel) }}</small>
             <strong>{{ money(detail.price.member) }}</strong>
           </div>
@@ -458,17 +460,17 @@ onMounted(async () => {
             {{ registryBusy ? t("common.working") : t("productDetail.registry.add") }}
           </button>
         </div>
-        <nav class="product-related-links" aria-label="Related product options">
+        <nav v-if="detail.relatedLinks.length" class="product-related-links" aria-label="Related product options">
           <a v-for="link in detail.relatedLinks" :key="link.label" :href="link.href">{{ relatedLinkLabel(link.label) }}</a>
         </nav>
 
-        <section class="product-highlights" aria-label="Product highlights">
+        <section v-if="detail.highlights.length" class="product-highlights" aria-label="Product highlights">
           <ul>
             <li v-for="item in detail.highlights" :key="item">{{ item }}</li>
           </ul>
         </section>
 
-        <section class="product-fabric-selector" aria-label="Fabric selector">
+        <section v-if="detail.fabricSelector" class="product-fabric-selector" aria-label="Fabric selector">
           <div class="product-fabric-head">
             <h2>{{ fabricSelectorLabel(detail.fabricSelector) }}</h2>
             <span>{{ t("productDetail.fabricSelector.count", { stocked: detail.fabricSelector.stockedCount, special: detail.fabricSelector.specialOrderCount }) }}</span>
@@ -480,7 +482,7 @@ onMounted(async () => {
           </div>
         </section>
 
-        <section class="product-option-stack" aria-label="Product options">
+        <section v-if="detail.optionGroups.length" class="product-option-stack" aria-label="Product options">
           <div v-for="group in detail.optionGroups" :key="group.key" class="product-option-group">
             <div class="product-option-head">
               <h2>{{ optionGroupLabel(group.key) }}</h2>
@@ -495,20 +497,20 @@ onMounted(async () => {
           </div>
         </section>
 
-        <section class="product-availability-card" aria-label="Availability">
+        <section v-if="detail.availability" class="product-availability-card" aria-label="Availability">
           <button type="button" class="product-stock-link">{{ availabilityText(detail.availability.title) }}</button>
           <p>{{ availabilityText(detail.availability.readyToShip) }}</p>
           <small>{{ availabilityText(detail.availability.specialOrder) }}</small>
         </section>
 
-        <section class="product-assurance-grid" aria-label="Delivery and returns">
+        <section v-if="detail.purchaseAssurance.length" class="product-assurance-grid" aria-label="Delivery and returns">
           <article v-for="item in detail.purchaseAssurance" :key="item.title">
             <h2>{{ purchaseAssuranceTitle(item.title) }}</h2>
             <p>{{ purchaseAssuranceCopy(item.copy) }}</p>
           </article>
         </section>
 
-        <p class="product-stock">{{ stockLabel(detail.stock.label) }} {{ detail.stock.value }} / {{ stockStatus(detail.stock.status) }}</p>
+        <p v-if="detail.stock" class="product-stock">{{ stockLabel(detail.stock.label) }} {{ detail.stock.value }} / {{ stockStatus(detail.stock.status) }}</p>
         <div class="product-purchase-row">
           <label>
             {{ t("quantity") }}
@@ -534,7 +536,19 @@ onMounted(async () => {
         <p v-if="wishlistStatusMessage" class="product-registry-status" role="status">{{ wishlistStatusMessage }}</p>
         <p v-if="registryStatusMessage" class="product-registry-status" role="status">{{ registryStatusMessage }}</p>
 
-        <section class="product-accordion-list" aria-label="Product details">
+        <section v-if="detail.productInformation.length" class="product-accordion-list" aria-label="Product information">
+          <details open>
+            <summary>PRODUCT INFORMATION</summary>
+            <dl>
+              <template v-for="item in detail.productInformation" :key="item.key">
+                <dt>{{ item.label }}</dt>
+                <dd>{{ item.value }}</dd>
+              </template>
+            </dl>
+          </details>
+        </section>
+
+        <section v-if="detail.accordions.length" class="product-accordion-list" aria-label="Product details">
           <details v-for="(item, index) in detail.accordions" :key="item.title" :open="index === 0">
             <summary>{{ accordionTitle(item.title) }}</summary>
             <dl>
@@ -548,7 +562,7 @@ onMounted(async () => {
       </article>
     </div>
 
-    <section class="product-inspiration-section" aria-label="Room inspiration">
+    <section v-if="!loading && product && detail.roomInspiration.length" class="product-inspiration-section" aria-label="Room inspiration">
       <header>
         <p class="eyebrow">{{ t("productDetail.inspiration.eyebrow") }}</p>
         <h2>{{ t("productDetail.inspiration.title") }}</h2>
@@ -565,7 +579,11 @@ onMounted(async () => {
       </div>
     </section>
 
-    <section class="shop-room-section" aria-label="Shop the room">
+    <section
+      v-if="!loading && product && detail.companionProducts.length && (detail.roomInspiration?.[0]?.image || activeGalleryItem.src)"
+      class="shop-room-section"
+      aria-label="Shop the room"
+    >
       <figure class="shop-room-figure">
         <img :src="detail.roomInspiration?.[0]?.image || activeGalleryItem.src" alt="Styled room with shoppable Oakved furniture" loading="lazy" />
         <a
@@ -586,7 +604,7 @@ onMounted(async () => {
       </div>
     </section>
 
-    <section class="product-companion-section" aria-label="Complete the room">
+    <section v-if="!loading && product && detail.companionProducts.length" class="product-companion-section" aria-label="Complete the room">
       <header>
         <p class="eyebrow">{{ t("productDetail.completeRoom.eyebrow") }}</p>
         <h2>{{ t("productDetail.completeRoom.title") }}</h2>

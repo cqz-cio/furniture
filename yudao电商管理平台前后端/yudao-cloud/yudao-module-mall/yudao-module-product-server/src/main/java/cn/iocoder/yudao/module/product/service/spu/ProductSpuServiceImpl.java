@@ -79,13 +79,14 @@ public class ProductSpuServiceImpl implements ProductSpuService {
     public Long createSpu(ProductSpuSaveReqVO createReqVO) {
         productAdminFieldPolicyService.prepareForSave(createReqVO);
         // 校验分类、品牌
-        validateCategory(createReqVO.getCategoryId());
+        validateCategory(createReqVO.getCategoryId(), createReqVO.getRoomCategoryId());
         brandService.validateProductBrand(createReqVO.getBrandId());
         // 校验 SKU
         List<ProductSkuSaveReqVO> skuSaveReqList = createReqVO.getSkus();
         productSkuService.validateSkuList(skuSaveReqList, createReqVO.getSpecType());
 
         ProductSpuDO spu = BeanUtils.toBean(createReqVO, ProductSpuDO.class);
+        spu.setDetailConfig(toStorageDetailConfig(createReqVO));
         // 初始化 SPU 中 SKU 相关属性
         initSpuFromSkus(spu, skuSaveReqList);
         // 插入 SPU
@@ -105,14 +106,16 @@ public class ProductSpuServiceImpl implements ProductSpuService {
         // 校验 SPU 是否存在
         ProductSpuDO spu = validateSpuExists(updateReqVO.getId());
         // 校验分类、品牌
-        validateCategory(updateReqVO.getCategoryId());
+        validateCategory(updateReqVO.getCategoryId(), updateReqVO.getRoomCategoryId());
         brandService.validateProductBrand(updateReqVO.getBrandId());
         // 校验SKU
         List<ProductSkuSaveReqVO> skuSaveReqList = updateReqVO.getSkus();
         productSkuService.validateSkuList(skuSaveReqList, updateReqVO.getSpecType());
 
         // 更新 SPU
-        ProductSpuDO updateObj = BeanUtils.toBean(updateReqVO, ProductSpuDO.class).setStatus(spu.getStatus());
+        ProductSpuDO updateObj = BeanUtils.toBean(updateReqVO, ProductSpuDO.class)
+                .setStatus(spu.getStatus())
+                .setDetailConfig(toStorageDetailConfig(updateReqVO));
         initSpuFromSkus(updateObj, skuSaveReqList);
         productSpuMapper.updateById(updateObj);
         // 批量更新 SKU
@@ -148,12 +151,19 @@ public class ProductSpuServiceImpl implements ProductSpuService {
      *
      * @param id 商品分类编号
      */
-    private void validateCategory(Long id) {
+    private void validateCategory(Long id, Long roomCategoryId) {
+        if (roomCategoryId != null) {
+            categoryService.validateProductTypeSelection(id, roomCategoryId);
+            return;
+        }
         categoryService.validateCategory(id);
-        // 校验层级
-        if (categoryService.getCategoryLevel(id) < CATEGORY_LEVEL) {
+        if (categoryService.getCategoryLevel(id) != CATEGORY_LEVEL) {
             throw exception(SPU_SAVE_FAIL_CATEGORY_LEVEL_ERROR);
         }
+    }
+
+    private Map<String, Object> toStorageDetailConfig(ProductSpuSaveReqVO request) {
+        return request.getDetailConfig() == null ? null : request.getDetailConfig().toStorageMap();
     }
 
     @Override

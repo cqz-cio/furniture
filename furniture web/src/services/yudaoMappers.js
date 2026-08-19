@@ -5,6 +5,18 @@ const fenToYuan = (value) => {
   return Number.isFinite(amount) ? amount / 100 : 0;
 };
 
+const nullableFenToYuan = (value) => {
+  if (value === null || value === undefined || value === "") return null;
+  const amount = Number(value);
+  return Number.isFinite(amount) ? amount / 100 : null;
+};
+
+const nullableNumber = (value) => {
+  if (value === null || value === undefined || value === "") return null;
+  const amount = Number(value);
+  return Number.isFinite(amount) ? amount : null;
+};
+
 const firstSku = (spu) => (Array.isArray(spu.skus) && spu.skus.length > 0 ? spu.skus[0] : {});
 
 const uniqueImageUrls = (urls = []) => [
@@ -15,31 +27,14 @@ const uniqueImageUrls = (urls = []) => [
   ),
 ];
 
-const inferMaterial = (text) => {
-  if (/leather|皮革|真皮/i.test(text)) return "leather";
-  if (/wool|linen|fabric|boucl[eé]|upholster|织物|布艺|羊毛/i.test(text)) return "fabric";
-  if (/glass|玻璃/i.test(text)) return "glass";
-  if (/brass|steel|iron|metal|黄铜|金属|钢|铁/i.test(text)) return "metal";
-  if (/oak|walnut|ash|wood|reclaimed|橡木|胡桃木|白蜡木|木/i.test(text)) return "wood";
-  return "";
-};
-
-const inferColor = (text) => {
-  if (/black|charcoal|黑|炭灰/i.test(text)) return "black";
-  if (/ivory|cream|opal|white|象牙|奶油|白/i.test(text)) return "light";
-  if (/natural|beige|sand|taupe|pebble|原木|米色|沙色/i.test(text)) return "natural";
-  if (/brown|walnut|terracotta|棕|胡桃|陶土/i.test(text)) return "brown";
-  if (/grey|gray|silver|stone|灰|银/i.test(text)) return "grey";
-  return "";
-};
-
 export const mapSpuToProduct = (spu) => {
   const sku = firstSku(spu);
   const sliderImages = uniqueImageUrls(Array.isArray(spu.sliderPicUrls) ? spu.sliderPicUrls : []);
   const cover = uniqueImageUrls([spu.picUrl, sku.picUrl, sliderImages[0]])[0] || "";
   const gallery = sliderImages.filter((url) => url !== cover);
   const categoryName = spu.categoryName || "";
-  const searchableText = `${spu.name || ""} ${spu.keyword || ""} ${spu.introduction || ""} ${categoryName}`;
+  const categoryCode = String(spu.categoryCode || "").trim().toLowerCase();
+  const detailConfig = spu.detailConfig && typeof spu.detailConfig === "object" ? spu.detailConfig : null;
 
   return {
     id: spu.id,
@@ -50,18 +45,21 @@ export const mapSpuToProduct = (spu) => {
     description: spu.description || spu.introduction || "",
     cover,
     gallery,
-    price: fenToYuan(sku.price ?? spu.price),
-    marketPrice: fenToYuan(sku.marketPrice ?? spu.marketPrice),
-    stock: Number(sku.stock ?? spu.stock ?? 0),
-    salesCount: Number(spu.salesCount ?? 0),
+    price: nullableFenToYuan(sku.price ?? spu.price),
+    marketPrice: nullableFenToYuan(sku.marketPrice ?? spu.marketPrice),
+    stock: nullableNumber(sku.stock ?? spu.stock),
+    salesCount: nullableNumber(spu.salesCount),
     categoryId: spu.categoryId,
+    categoryCode,
+    categoryParentId: spu.categoryParentId,
     categoryName,
-    productType: spu.productType || spu.type || spu.categoryCode || categoryName,
-    material: spu.material || inferMaterial(searchableText),
-    color: spu.color || inferColor(searchableText),
+    productType: categoryCode || "uncategorized",
+    material: spu.material || detailConfig?.material || "",
+    color: spu.color || detailConfig?.color || "",
     isNew: spu.recommendNew === true,
     isBestSeller: spu.recommendBest === true,
-    detailConfig: spu.detailConfig || null,
+    detailConfig,
+    displayPolicy: spu.displayPolicy || null,
     source: "yudao",
     raw: spu,
   };

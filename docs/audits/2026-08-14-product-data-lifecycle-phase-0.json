@@ -1,0 +1,475 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-14T06:31:58.681Z",
+  "tenantId": 121,
+  "source": {
+    "database": "ruoyi-vue-pro",
+    "repositoryMigration": "V047__clean_orphan_mall_erp_mappings.sql",
+    "databaseMigration": "V046__customer_specification_fields.sql"
+  },
+  "sections": [
+    {
+      "key": "missing_p2_product_type",
+      "title": "SPUs missing a P2 Product type",
+      "requirement": "PRD 9.1: list SPUs whose category is missing or is not an active child category.",
+      "totalCount": 0,
+      "breakdown": {
+        "missing_category": 0,
+        "category_is_p1": 0,
+        "missing_p1_parent": 0
+      },
+      "records": [],
+      "truncated": false
+    },
+    {
+      "key": "unknown_product_type",
+      "title": "Legacy, ambiguous, or unknown detailConfig.productType values",
+      "requirement": "PRD 9.1/A-03: classify every non-canonical legacy Product type without guessing from names.",
+      "totalCount": 0,
+      "breakdown": {
+        "deterministic_legacy": 0,
+        "ambiguous_manual_review": 0,
+        "unknown_manual_review": 0
+      },
+      "records": [],
+      "truncated": false
+    },
+    {
+      "key": "legacy_packing_shapes",
+      "title": "Legacy Packing JSON shapes",
+      "requirement": "PRD 9.1/B-01: list packingDisplay, object-shaped packing, and records containing both.",
+      "totalCount": 0,
+      "breakdown": {
+        "packing_display": 0,
+        "packing_object": 0,
+        "both_legacy_shapes": 0
+      },
+      "records": [],
+      "truncated": false
+    },
+    {
+      "key": "unverified_default_finish",
+      "title": "Unverified Natural Oak Finish values",
+      "requirement": "PRD 9.1/B-02: list Finish values matching the former automatic default when provenance is unavailable.",
+      "totalCount": 0,
+      "breakdown": {
+        "unverified_default_finish": 0
+      },
+      "records": [],
+      "truncated": false
+    },
+    {
+      "key": "erp_mapping_integrity",
+      "title": "ERP mapping integrity risks",
+      "requirement": "PRD 9.1/C: list unmapped SKUs, duplicate mappings, orphan mappings, and mappings to deleted ERP products.",
+      "totalCount": 26,
+      "breakdown": {
+        "unmapped_sku": 26,
+        "duplicate_mall_sku_mapping": 0,
+        "duplicate_erp_product_mapping": 0,
+        "orphan_mapping_missing_sku": 0,
+        "orphan_mapping_deleted_sku": 0,
+        "orphan_mapping_missing_spu": 0,
+        "orphan_mapping_deleted_spu": 0,
+        "orphan_mapping_spu_mismatch": 0,
+        "orphan_mapping_unknown": 0,
+        "mapping_missing_erp_product": 0,
+        "mapping_deleted_erp_product": 0
+      },
+      "records": [
+        {
+          "skuId": 1,
+          "spuId": 1,
+          "spuName": "Cream Fabric Sofa",
+          "issueType": "unmapped_sku"
+        },
+        {
+          "skuId": 2,
+          "spuId": 2,
+          "spuName": "Cloud Modular Sofa",
+          "issueType": "unmapped_sku"
+        },
+        {
+          "skuId": 3,
+          "spuId": 3,
+          "spuName": "Leather Lounge Sofa",
+          "issueType": "unmapped_sku"
+        },
+        {
+          "skuId": 4,
+          "spuId": 4,
+          "spuName": "米白布艺沙发 Sofa",
+          "issueType": "unmapped_sku"
+        },
+        {
+          "skuId": 5,
+          "spuId": 5,
+          "spuName": "小户型沙发 Sofa",
+          "issueType": "unmapped_sku"
+        },
+        {
+          "skuId": 6,
+          "spuId": 6,
+          "spuName": "皮沙发 Sofa",
+          "issueType": "unmapped_sku"
+        },
+        {
+          "skuId": 7,
+          "spuId": 7,
+          "spuName": "餐桌 Dining Table",
+          "issueType": "unmapped_sku"
+        },
+        {
+          "skuId": 8,
+          "spuId": 8,
+          "spuName": "床 Bed",
+          "issueType": "unmapped_sku"
+        },
+        {
+          "skuId": 9,
+          "spuId": 9,
+          "spuName": "吊灯 Lighting",
+          "issueType": "unmapped_sku"
+        },
+        {
+          "skuId": 10,
+          "spuId": 10,
+          "spuName": "电视柜 Cabinet",
+          "issueType": "unmapped_sku"
+        },
+        {
+          "skuId": 11,
+          "spuId": 11,
+          "spuName": "黑色圆形餐桌 Dining Table",
+          "issueType": "unmapped_sku"
+        },
+        {
+          "skuId": 12,
+          "spuId": 12,
+          "spuName": "原木长餐桌 Dining Table",
+          "issueType": "unmapped_sku"
+        },
+        {
+          "skuId": 13,
+          "spuId": 13,
+          "spuName": "灰色软包餐椅 Chair",
+          "issueType": "unmapped_sku"
+        },
+        {
+          "skuId": 14,
+          "spuId": 14,
+          "spuName": "黑色现代餐椅 Chair",
+          "issueType": "unmapped_sku"
+        },
+        {
+          "skuId": 15,
+          "spuId": 15,
+          "spuName": "黑色玻璃茶几 Coffee Table",
+          "issueType": "unmapped_sku"
+        },
+        {
+          "skuId": 16,
+          "spuId": 16,
+          "spuName": "原木茶几 Coffee Table",
+          "issueType": "unmapped_sku"
+        },
+        {
+          "skuId": 17,
+          "spuId": 17,
+          "spuName": "棕色木质边几 Side Table",
+          "issueType": "unmapped_sku"
+        },
+        {
+          "skuId": 18,
+          "spuId": 18,
+          "spuName": "胡桃木书桌 Desk",
+          "issueType": "unmapped_sku"
+        },
+        {
+          "skuId": 19,
+          "spuId": 19,
+          "spuName": "米色羊毛地毯 Rug",
+          "issueType": "unmapped_sku"
+        },
+        {
+          "skuId": 20,
+          "spuId": 20,
+          "spuName": "灰色纹理地毯 Rug",
+          "issueType": "unmapped_sku"
+        },
+        {
+          "skuId": 21,
+          "spuId": 21,
+          "spuName": "木质床头柜 Nightstand",
+          "issueType": "unmapped_sku"
+        },
+        {
+          "skuId": 22,
+          "spuId": 22,
+          "spuName": "胡桃木斗柜 Dresser",
+          "issueType": "unmapped_sku"
+        },
+        {
+          "skuId": 23,
+          "spuId": 23,
+          "spuName": "原木衣柜 Wardrobe",
+          "issueType": "unmapped_sku"
+        },
+        {
+          "skuId": 24,
+          "spuId": 24,
+          "spuName": "白色球形台灯 Table Lamp",
+          "issueType": "unmapped_sku"
+        },
+        {
+          "skuId": 25,
+          "spuId": 25,
+          "spuName": "黑色落地灯 Floor Lamp",
+          "issueType": "unmapped_sku"
+        },
+        {
+          "skuId": 26,
+          "spuId": 26,
+          "spuName": "胡桃木餐边柜 Cabinet",
+          "issueType": "unmapped_sku"
+        }
+      ],
+      "truncated": false
+    },
+    {
+      "key": "furniture_projection_integrity",
+      "title": "Furniture search projection integrity risks",
+      "requirement": "PRD 9.1/E: list missing SKU projections and orphan active projections.",
+      "totalCount": 26,
+      "breakdown": {
+        "missing_projection": 26,
+        "orphan_projection_missing_sku": 0,
+        "orphan_projection_deleted_sku": 0,
+        "orphan_projection_missing_spu": 0,
+        "orphan_projection_deleted_spu": 0,
+        "orphan_projection_spu_mismatch": 0,
+        "orphan_projection_unknown": 0
+      },
+      "records": [
+        {
+          "skuId": 1,
+          "spuId": 1,
+          "spuName": "Cream Fabric Sofa",
+          "issueType": "missing_projection"
+        },
+        {
+          "skuId": 2,
+          "spuId": 2,
+          "spuName": "Cloud Modular Sofa",
+          "issueType": "missing_projection"
+        },
+        {
+          "skuId": 3,
+          "spuId": 3,
+          "spuName": "Leather Lounge Sofa",
+          "issueType": "missing_projection"
+        },
+        {
+          "skuId": 4,
+          "spuId": 4,
+          "spuName": "米白布艺沙发 Sofa",
+          "issueType": "missing_projection"
+        },
+        {
+          "skuId": 5,
+          "spuId": 5,
+          "spuName": "小户型沙发 Sofa",
+          "issueType": "missing_projection"
+        },
+        {
+          "skuId": 6,
+          "spuId": 6,
+          "spuName": "皮沙发 Sofa",
+          "issueType": "missing_projection"
+        },
+        {
+          "skuId": 7,
+          "spuId": 7,
+          "spuName": "餐桌 Dining Table",
+          "issueType": "missing_projection"
+        },
+        {
+          "skuId": 8,
+          "spuId": 8,
+          "spuName": "床 Bed",
+          "issueType": "missing_projection"
+        },
+        {
+          "skuId": 9,
+          "spuId": 9,
+          "spuName": "吊灯 Lighting",
+          "issueType": "missing_projection"
+        },
+        {
+          "skuId": 10,
+          "spuId": 10,
+          "spuName": "电视柜 Cabinet",
+          "issueType": "missing_projection"
+        },
+        {
+          "skuId": 11,
+          "spuId": 11,
+          "spuName": "黑色圆形餐桌 Dining Table",
+          "issueType": "missing_projection"
+        },
+        {
+          "skuId": 12,
+          "spuId": 12,
+          "spuName": "原木长餐桌 Dining Table",
+          "issueType": "missing_projection"
+        },
+        {
+          "skuId": 13,
+          "spuId": 13,
+          "spuName": "灰色软包餐椅 Chair",
+          "issueType": "missing_projection"
+        },
+        {
+          "skuId": 14,
+          "spuId": 14,
+          "spuName": "黑色现代餐椅 Chair",
+          "issueType": "missing_projection"
+        },
+        {
+          "skuId": 15,
+          "spuId": 15,
+          "spuName": "黑色玻璃茶几 Coffee Table",
+          "issueType": "missing_projection"
+        },
+        {
+          "skuId": 16,
+          "spuId": 16,
+          "spuName": "原木茶几 Coffee Table",
+          "issueType": "missing_projection"
+        },
+        {
+          "skuId": 17,
+          "spuId": 17,
+          "spuName": "棕色木质边几 Side Table",
+          "issueType": "missing_projection"
+        },
+        {
+          "skuId": 18,
+          "spuId": 18,
+          "spuName": "胡桃木书桌 Desk",
+          "issueType": "missing_projection"
+        },
+        {
+          "skuId": 19,
+          "spuId": 19,
+          "spuName": "米色羊毛地毯 Rug",
+          "issueType": "missing_projection"
+        },
+        {
+          "skuId": 20,
+          "spuId": 20,
+          "spuName": "灰色纹理地毯 Rug",
+          "issueType": "missing_projection"
+        },
+        {
+          "skuId": 21,
+          "spuId": 21,
+          "spuName": "木质床头柜 Nightstand",
+          "issueType": "missing_projection"
+        },
+        {
+          "skuId": 22,
+          "spuId": 22,
+          "spuName": "胡桃木斗柜 Dresser",
+          "issueType": "missing_projection"
+        },
+        {
+          "skuId": 23,
+          "spuId": 23,
+          "spuName": "原木衣柜 Wardrobe",
+          "issueType": "missing_projection"
+        },
+        {
+          "skuId": 24,
+          "spuId": 24,
+          "spuName": "白色球形台灯 Table Lamp",
+          "issueType": "missing_projection"
+        },
+        {
+          "skuId": 25,
+          "spuId": 25,
+          "spuName": "黑色落地灯 Floor Lamp",
+          "issueType": "missing_projection"
+        },
+        {
+          "skuId": 26,
+          "spuId": 26,
+          "spuName": "胡桃木餐边柜 Cabinet",
+          "issueType": "missing_projection"
+        }
+      ],
+      "truncated": false
+    },
+    {
+      "key": "orphan_seo_records",
+      "title": "SEO records referencing missing products or categories",
+      "requirement": "PRD 9.1/F: list active SEO metadata whose PRODUCT or CATEGORY source entity does not exist.",
+      "totalCount": 0,
+      "breakdown": {
+        "missing_product": 0,
+        "missing_category": 0
+      },
+      "records": [],
+      "truncated": false
+    },
+    {
+      "key": "erp_soft_delete_unique_key_risks",
+      "title": "ERP soft-delete unique-key lifecycle risks",
+      "requirement": "PRD 9.1/G-03: expose legacy (business key, deleted) indexes and data that can collide on another delete/recreate cycle.",
+      "totalCount": 5,
+      "breakdown": {
+        "legacy_unique_index": 5,
+        "active_and_deleted_history": 0,
+        "deleted_history": 0
+      },
+      "records": [
+        {
+          "issueType": "legacy_unique_index",
+          "tableName": "erp_product",
+          "activeCount": null,
+          "businessKey": "uk_erp_product_tenant_bar_code_deleted",
+          "deletedCount": null
+        },
+        {
+          "issueType": "legacy_unique_index",
+          "tableName": "erp_product_category",
+          "activeCount": null,
+          "businessKey": "uk_erp_product_category_tenant_code_deleted",
+          "deletedCount": null
+        },
+        {
+          "issueType": "legacy_unique_index",
+          "tableName": "erp_product_unit",
+          "activeCount": null,
+          "businessKey": "uk_erp_product_unit_tenant_name_deleted",
+          "deletedCount": null
+        },
+        {
+          "issueType": "legacy_unique_index",
+          "tableName": "erp_stock",
+          "activeCount": null,
+          "businessKey": "uk_erp_stock_tenant_product_warehouse_deleted",
+          "deletedCount": null
+        },
+        {
+          "issueType": "legacy_unique_index",
+          "tableName": "erp_warehouse",
+          "activeCount": null,
+          "businessKey": "uk_erp_warehouse_tenant_name_deleted",
+          "deletedCount": null
+        }
+      ],
+      "truncated": false
+    }
+  ]
+}

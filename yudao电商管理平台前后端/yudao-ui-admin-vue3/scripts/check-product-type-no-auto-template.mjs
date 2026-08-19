@@ -14,50 +14,19 @@ const productTypeOptions = await readFile(
   'utf8'
 )
 
-assert.match(furnitureDetail, /<el-select[\s\S]*?v-model="detailConfig\.productType"/)
-assert.match(furnitureDetail, /v-for="option in productTypeOptions"/)
-assert.match(furnitureDetail, /:label="option\.label"/)
-assert.match(furnitureDetail, /:value="option\.value"/)
-assert.doesNotMatch(furnitureDetail, /:model-value="selectedCategoryName"/)
-
-const roomOptions = {
-  diningRoom: [
-    ['DING CHAIRS', 'dining-chair'],
-    ['BAR STOOLS', 'bar-stool'],
-    ['DING TABLES', 'dining-table']
-  ],
-  livingRoom: [
-    ['Sofa & Occasional Chair', 'sofa'],
-    ['Side Table & Coffee Table', 'coffee-table'],
-    ['Bookcase & Display Cabinet', 'bookcase'],
-    ['Console Table & Buffet', 'media-console']
-  ],
-  bedroom: [
-    ['Bed & Headboard', 'bed'],
-    ['Bedside Table', 'nightstand'],
-    ['Chest of Drawer', 'dresser'],
-    ['Bench', 'bench'],
-    ['Dressing Table', 'dressing-table'],
-    ['Wadrobe', 'wardrobe']
-  ]
-}
-for (const [room, options] of Object.entries(roomOptions)) {
-  assert.match(productTypeOptions, new RegExp(`${room}: \\[`))
-  for (const [label, value] of options) {
-    const option = `{ label: '${label}', value: '${value}' }`
-    assert.ok(productTypeOptions.includes(option), `Missing P1 Product type option: ${option}`)
-  }
-}
-assert.match(productTypeOptions, /resolveProductRoom/)
-assert.match(productTypeOptions, /isProductTypeValid/)
-assert.match(productTypeOptions, /migrateProductType/)
-assert.match(furnitureDetail, /detailConfig\.productType = migrateProductType\(room, productType\)/)
-assert.match(furnitureDetail, /normalized\.productType = normalized\.productType\.trim\(\)/)
-assert.match(infoForm, /@change="syncCategorySelection"/)
+assert.match(infoForm, /v-model="formData\.roomCategoryId"/)
+assert.match(infoForm, /v-for="room in productRoomOptions"/)
+assert.match(infoForm, /v-model="formData\.categoryId"/)
+assert.match(infoForm, /v-for="option in productTypeOptions"/)
+assert.match(infoForm, /getProductRoomOptions\(categoryList\.value\)/)
+assert.match(infoForm, /getProductTypeOptions\(categoryList\.value, formData\.roomCategoryId\)/)
+assert.match(infoForm, /isProductTypeSelectionValid/)
+assert.doesNotMatch(productTypeOptions, /ROOM_PRODUCT_TYPE_OPTIONS/)
+assert.doesNotMatch(furnitureDetail, /detailConfig\.productType/)
+assert.doesNotMatch(furnitureDetail, /normalized\.productType/)
 assert.doesNotMatch(furnitureDetail, /@change="applyTemplate"/)
 assert.doesNotMatch(furnitureDetail, /\bconst templates\b/)
 assert.doesNotMatch(furnitureDetail, /\bapplyTemplate\b/)
-assert.match(furnitureDetail, /不会自动填充或修改其他内容。/)
 
 for (const exampleContent of [
   'MARBLE DINING COLLECTION',

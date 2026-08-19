@@ -12,33 +12,33 @@ SELECT 'Trendz Demo',@default_image,10,'Demo brand for furniture catalog',0,@see
 WHERE NOT EXISTS (SELECT 1 FROM product_brand WHERE tenant_id=@tenant_id AND name='Trendz Demo' AND deleted=b'0');
 SET @brand_id = (SELECT id FROM product_brand WHERE tenant_id=@tenant_id AND name='Trendz Demo' AND deleted=b'0' ORDER BY id LIMIT 1);
 
-INSERT INTO product_category(parent_id,name,pic_url,big_pic_url,sort,status,creator,updater,tenant_id)
-SELECT 0,'Furniture Agent Demo',@default_image,@default_image,10,0,@seed_user,@seed_user,@tenant_id
-WHERE NOT EXISTS (SELECT 1 FROM product_category WHERE tenant_id=@tenant_id AND parent_id=0 AND name='Furniture Agent Demo' AND deleted=b'0');
-SET @root_category_id = (SELECT id FROM product_category WHERE tenant_id=@tenant_id AND parent_id=0 AND name='Furniture Agent Demo' AND deleted=b'0' ORDER BY id LIMIT 1);
+INSERT INTO product_category(parent_id,code,name,pic_url,big_pic_url,sort,status,creator,updater,tenant_id)
+SELECT 0,'furniture-agent-demo','Furniture Agent Demo',@default_image,@default_image,10,0,@seed_user,@seed_user,@tenant_id
+WHERE NOT EXISTS (SELECT 1 FROM product_category WHERE tenant_id=@tenant_id AND parent_id=0 AND code='furniture-agent-demo' AND deleted=b'0');
+SET @root_category_id = (SELECT id FROM product_category WHERE tenant_id=@tenant_id AND parent_id=0 AND code='furniture-agent-demo' AND deleted=b'0' ORDER BY id LIMIT 1);
 
 DROP PROCEDURE IF EXISTS ensure_oakved_category;
 DELIMITER $$
-CREATE PROCEDURE ensure_oakved_category(IN category_name varchar(128), IN category_sort int)
+CREATE PROCEDURE ensure_oakved_category(IN category_code varchar(64), IN category_name varchar(128), IN category_sort int)
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM product_category WHERE tenant_id=@tenant_id AND parent_id=@root_category_id AND name=category_name AND deleted=b'0') THEN
-    INSERT INTO product_category(parent_id,name,pic_url,big_pic_url,sort,status,creator,updater,tenant_id)
-    VALUES(@root_category_id,category_name,@default_image,@default_image,category_sort,0,@seed_user,@seed_user,@tenant_id);
+  IF NOT EXISTS (SELECT 1 FROM product_category WHERE tenant_id=@tenant_id AND parent_id=@root_category_id AND code=category_code AND deleted=b'0') THEN
+    INSERT INTO product_category(parent_id,code,name,pic_url,big_pic_url,sort,status,creator,updater,tenant_id)
+    VALUES(@root_category_id,category_code,category_name,@default_image,@default_image,category_sort,0,@seed_user,@seed_user,@tenant_id);
   END IF;
 END$$
 DELIMITER ;
-CALL ensure_oakved_category('Sofas',20);
-CALL ensure_oakved_category('Dining Tables',30);
-CALL ensure_oakved_category('Dining Chairs',35);
-CALL ensure_oakved_category('Coffee Tables',36);
-CALL ensure_oakved_category('Beds',40);
-CALL ensure_oakved_category('Desks',45);
-CALL ensure_oakved_category('Rugs',46);
-CALL ensure_oakved_category('Bedroom Storage',47);
-CALL ensure_oakved_category('Wardrobes',48);
-CALL ensure_oakved_category('Side Tables',49);
-CALL ensure_oakved_category('Lighting',50);
-CALL ensure_oakved_category('Media Storage',60);
+CALL ensure_oakved_category('demo-sofas','Sofas',20);
+CALL ensure_oakved_category('demo-dining-tables','Dining Tables',30);
+CALL ensure_oakved_category('demo-dining-chairs','Dining Chairs',35);
+CALL ensure_oakved_category('demo-coffee-tables','Coffee Tables',36);
+CALL ensure_oakved_category('demo-beds','Beds',40);
+CALL ensure_oakved_category('demo-desks','Desks',45);
+CALL ensure_oakved_category('demo-rugs','Rugs',46);
+CALL ensure_oakved_category('demo-bedroom-storage','Bedroom Storage',47);
+CALL ensure_oakved_category('demo-wardrobes','Wardrobes',48);
+CALL ensure_oakved_category('demo-side-tables','Side Tables',49);
+CALL ensure_oakved_category('demo-lighting','Lighting',50);
+CALL ensure_oakved_category('demo-media-storage','Media Storage',60);
 DROP PROCEDURE ensure_oakved_category;
 
 DROP PROCEDURE IF EXISTS seed_oakved_product;
@@ -49,10 +49,32 @@ CREATE PROCEDURE seed_oakved_product(
   IN product_cost_price int, IN product_stock int)
 BEGIN
   DECLARE v_category_id bigint;
+  DECLARE v_canonical_code varchar(64);
   DECLARE v_spu_id bigint;
   DECLARE v_sku_id bigint;
-  SELECT id INTO v_category_id FROM product_category
-    WHERE tenant_id=@tenant_id AND parent_id=@root_category_id AND name=category_name AND deleted=b'0' ORDER BY id LIMIT 1;
+  SET v_canonical_code = CASE category_name
+    WHEN 'Sofas' THEN 'sofa'
+    WHEN 'Dining Tables' THEN 'dining-table'
+    WHEN 'Dining Chairs' THEN 'dining-chair'
+    WHEN 'Coffee Tables' THEN 'coffee-table'
+    WHEN 'Beds' THEN 'bed'
+    WHEN 'Wardrobes' THEN 'wardrobe'
+    WHEN 'Media Storage' THEN 'media-console'
+    ELSE NULL
+  END;
+  IF v_canonical_code IS NOT NULL THEN
+    SELECT category.id INTO v_category_id
+    FROM product_category category
+    JOIN product_category room ON room.id=category.parent_id
+      AND room.tenant_id=category.tenant_id AND room.deleted=b'0'
+    WHERE category.tenant_id=@tenant_id AND category.code=v_canonical_code
+      AND category.deleted=b'0'
+      AND room.code IN ('dining-room','living-room','bedroom')
+    ORDER BY category.id LIMIT 1;
+  ELSE
+    SELECT id INTO v_category_id FROM product_category
+      WHERE tenant_id=@tenant_id AND parent_id=@root_category_id AND name=category_name AND deleted=b'0' ORDER BY id LIMIT 1;
+  END IF;
   SELECT id INTO v_spu_id FROM product_spu
     WHERE tenant_id=@tenant_id AND keyword=product_keyword AND deleted=b'0' ORDER BY id LIMIT 1;
   IF v_spu_id IS NULL THEN
@@ -121,9 +143,12 @@ INSERT INTO erp_product_category(parent_id,name,code,sort,status,creator,updater
 SET @erp_root_category_id = (SELECT id FROM erp_product_category
   WHERE tenant_id=@tenant_id AND code='FURNITURE' AND deleted=b'0' ORDER BY id LIMIT 1);
 INSERT INTO erp_product_category(parent_id,name,code,sort,status,creator,updater,tenant_id)
-SELECT @erp_root_category_id,c.name,CONCAT('MALL_CATEGORY_',c.id),c.sort,0,@erp_user,@erp_user,@tenant_id
-FROM product_category c
-WHERE c.tenant_id=@tenant_id AND c.parent_id=@root_category_id AND c.deleted=b'0'
+SELECT DISTINCT @erp_root_category_id,c.name,CONCAT('MALL_CATEGORY_',c.id),c.sort,0,@erp_user,@erp_user,@tenant_id
+FROM product_spu seeded_product
+JOIN product_category c ON c.id=seeded_product.category_id
+  AND c.tenant_id=seeded_product.tenant_id AND c.deleted=b'0'
+WHERE seeded_product.tenant_id=@tenant_id AND seeded_product.creator=@seed_user
+  AND seeded_product.deleted=b'0'
 ON DUPLICATE KEY UPDATE parent_id=VALUES(parent_id),name=VALUES(name),sort=VALUES(sort),status=VALUES(status),
   updater=VALUES(updater),update_time=CURRENT_TIMESTAMP;
 INSERT INTO erp_warehouse(name,address,sort,remark,principal,warehouse_price,truckage_price,status,default_status,creator,updater,tenant_id)

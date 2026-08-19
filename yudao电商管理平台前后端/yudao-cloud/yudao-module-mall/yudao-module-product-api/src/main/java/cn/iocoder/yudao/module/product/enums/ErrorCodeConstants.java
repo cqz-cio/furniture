@@ -16,6 +16,8 @@ public interface ErrorCodeConstants {
     ErrorCode CATEGORY_EXISTS_CHILDREN = new ErrorCode(1_008_001_003, "存在子分类，无法删除");
     ErrorCode CATEGORY_DISABLED = new ErrorCode(1_008_001_004, "商品分类({})已禁用，无法使用");
     ErrorCode CATEGORY_HAVE_BIND_SPU = new ErrorCode(1_008_001_005, "类别下存在商品，无法删除");
+    ErrorCode CATEGORY_CODE_DUPLICATE = new ErrorCode(1_008_001_006,
+            "同一父分类下已存在编码为【{}】的活动分类");
 
     // ========== 商品品牌相关 1-008-002-000 ==========
     ErrorCode BRAND_NOT_EXISTS = new ErrorCode(1_008_002_000, "品牌不存在");
@@ -42,6 +44,10 @@ public interface ErrorCodeConstants {
     ErrorCode SPU_NOT_RECYCLE = new ErrorCode(1_008_005_004, "商品 SPU 不处于回收站状态");
     ErrorCode SPU_SAVE_FAIL_DELIVERY_TYPES_EMPTY = new ErrorCode(1_008_005_005,
             "商品 SPU 保存失败，原因：B2C 商品配送方式不能为空");
+    ErrorCode SPU_SAVE_FAIL_ROOM_CATEGORY_REQUIRED = new ErrorCode(1_008_005_006,
+            "商品 SPU 保存失败，原因：B2B 商品必须选择 Room");
+    ErrorCode SPU_SAVE_FAIL_PRODUCT_TYPE_ROOM_MISMATCH = new ErrorCode(1_008_005_007,
+            "商品 SPU 保存失败，原因：Product type 不属于所选 Room");
 
     // ========== 商品 SKU 1-008-006-000 ==========
     ErrorCode SKU_NOT_EXISTS = new ErrorCode(1_008_006_000, "商品 SKU 不存在");

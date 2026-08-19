@@ -7,7 +7,6 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 import java.util.List;
-import java.util.Map;
 
 @Schema(description = "管理后台 - 商品 SPU 新增/更新 Request VO")
 @Data
@@ -36,6 +35,9 @@ public class ProductSpuSaveReqVO {
     @NotNull(message = "商品分类不能为空")
     private Long categoryId;
 
+    @Schema(description = "B2B 商品所属 P1 Room 分类编号", example = "10")
+    private Long roomCategoryId;
+
     @Schema(description = "商品品牌编号", requiredMode = Schema.RequiredMode.REQUIRED, example = "1")
     @NotNull(message = "商品品牌不能为空")
     private Long brandId;
@@ -49,7 +51,8 @@ public class ProductSpuSaveReqVO {
     private List<String> sliderPicUrls;
 
     @Schema(description = "家具 Web 详情页配置")
-    private Map<String, Object> detailConfig;
+    @Valid
+    private ProductDetailConfigSaveReqVO detailConfig;
 
     @Schema(description = "排序字段", requiredMode = Schema.RequiredMode.REQUIRED, example = "1")
     @NotNull(message = "商品排序字段不能为空")

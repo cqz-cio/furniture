@@ -63,6 +63,11 @@ public interface ProductCategoryService {
     void validateCategory(Long id);
 
     /**
+     * Validate that a writable B2B Product type is an enabled P2 directly below the selected P1 Room.
+     */
+    void validateProductTypeSelection(Long categoryId, Long roomCategoryId);
+
+    /**
      * 获得商品分类的层级
      *
      * @param id 编号

@@ -69,6 +69,9 @@ class ProductWebsiteFieldPolicyServiceTest {
                 .setVolume(0.4D);
         AppProductSpuDetailRespVO product = new AppProductSpuDetailRespVO()
                 .setId(77L)
+                .setCategoryId(30L)
+                .setCategoryCode("nightstand")
+                .setCategoryParentId(3L)
                 .setCategoryName("Bedroom")
                 .setDescription("Public description")
                 .setPrice(10000)
@@ -81,6 +84,8 @@ class ProductWebsiteFieldPolicyServiceTest {
         service.applyPolicy(product, policy);
 
         assertEquals("Bedroom", product.getCategoryName());
+        assertEquals("nightstand", product.getCategoryCode());
+        assertEquals(3L, product.getCategoryParentId());
         assertEquals("Public description", product.getDescription());
         assertNull(product.getPrice());
         assertNull(product.getMarketPrice());
@@ -134,7 +139,7 @@ class ProductWebsiteFieldPolicyServiceTest {
     }
 
     @Test
-    void shouldDefaultBlankFinishInB2BWebsiteResponse() {
+    void shouldKeepBlankFinishInB2BWebsiteResponse() {
         ProductWebsiteFieldPolicy policy = new ProductWebsiteFieldPolicy(true, Set.of("finish"));
         AppProductSpuDetailRespVO product = new AppProductSpuDetailRespVO()
                 .setDetailConfig(new LinkedHashMap<>(Map.of("finish", "   ")))
@@ -142,8 +147,7 @@ class ProductWebsiteFieldPolicyServiceTest {
 
         service.applyPolicy(product, policy);
 
-        assertEquals(ProductAdminFieldPolicyService.DEFAULT_FINISH,
-                product.getDetailConfig().get("finish"));
+        assertEquals("", product.getDetailConfig().get("finish"));
     }
 
     @Test
@@ -157,6 +161,32 @@ class ProductWebsiteFieldPolicyServiceTest {
         service.applyPolicy(product, policy);
 
         assertEquals("Two-tone weathered finish", product.getDetailConfig().get("finish"));
+    }
+
+    @Test
+    void shouldNormalizeLegacyPackingAndClearEveryCategoryFieldWhenPolicyDisallowsThem() {
+        ProductWebsiteFieldPolicy policy = new ProductWebsiteFieldPolicy(true, Set.of("packing"));
+        AppProductSpuDetailRespVO product = new AppProductSpuDetailRespVO()
+                .setCategoryId(301L)
+                .setCategoryCode("bed")
+                .setCategoryName("BED & HEADBOARD")
+                .setCategoryParentId(30L)
+                .setDetailConfig(new LinkedHashMap<>(Map.of(
+                        "packing", Map.of(
+                                "itemQuantity", 2,
+                                "itemUnit", "pc",
+                                "cartonQuantity", 1),
+                        "packingDisplay", "")))
+                .setSkus(List.of());
+
+        service.applyPolicy(product, policy);
+
+        assertNull(product.getCategoryId());
+        assertNull(product.getCategoryCode());
+        assertNull(product.getCategoryName());
+        assertNull(product.getCategoryParentId());
+        assertEquals("2 pcs/ctn", product.getDetailConfig().get("packing"));
+        assertFalse(product.getDetailConfig().containsKey("packingDisplay"));
     }
 
     @Test

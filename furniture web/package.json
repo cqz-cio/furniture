@@ -18,6 +18,7 @@
     "create:launch-evidence": "node scripts/create-launch-evidence.mjs",
     "audit:launch-evidence": "node scripts/audit-launch-evidence.mjs",
     "audit:initial-launch-readiness": "node scripts/audit-initial-launch-readiness.mjs",
+    "audit:product-data-lifecycle": "node scripts/product-data-lifecycle-audit.mjs",
     "verify:production-env": "node scripts/verify-production-env.mjs",
     "verify:backend-production-config": "node scripts/verify-backend-production-config.mjs",
     "verify:backend-production-env": "node scripts/verify-backend-production-env.mjs",

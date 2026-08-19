@@ -27,6 +27,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -61,8 +62,10 @@ public class ProductCategoryServiceImpl implements ProductCategoryService {
 
     @Override
     public Long createCategory(ProductCategorySaveReqVO createReqVO) {
+        createReqVO.setCode(normalizeCode(createReqVO.getCode()));
         // 校验父分类存在
         validateParentProductCategory(createReqVO.getParentId());
+        validateCategoryCodeUnique(createReqVO.getParentId(), createReqVO.getCode(), null);
 
         // 插入
         ProductCategoryDO category = BeanUtils.toBean(createReqVO, ProductCategoryDO.class);
@@ -75,8 +78,11 @@ public class ProductCategoryServiceImpl implements ProductCategoryService {
     public Long createNavigationCategory(ProductNavigationCategoryCreateReqVO createReqVO) {
         // 导航快速创建不要求分类图片，但仍需沿用商品分类的父级校验和默认状态
         validateParentProductCategory(createReqVO.getParentId());
+        String code = normalizeCode(createReqVO.getCode());
+        validateCategoryCodeUnique(createReqVO.getParentId(), code, null);
         ProductCategoryDO category = new ProductCategoryDO()
                 .setParentId(createReqVO.getParentId())
+                .setCode(code)
                 .setName(StrUtil.trim(createReqVO.getName()))
                 .setPicUrl("")
                 .setSort(0)
@@ -88,12 +94,15 @@ public class ProductCategoryServiceImpl implements ProductCategoryService {
     @Override
     public void updateCategory(ProductCategorySaveReqVO updateReqVO) {
         // 校验分类是否存在
-        validateProductCategoryExists(updateReqVO.getId());
+        ProductCategoryDO existing = validateProductCategoryExists(updateReqVO.getId());
         // 校验父分类存在
         validateParentProductCategory(updateReqVO.getParentId());
+        String stableCode = StrUtil.blankToDefault(existing.getCode(), normalizeCode(updateReqVO.getCode()));
+        validateCategoryCodeUnique(updateReqVO.getParentId(), stableCode, updateReqVO.getId());
 
         // 更新
-        ProductCategoryDO updateObj = BeanUtils.toBean(updateReqVO, ProductCategoryDO.class);
+        ProductCategoryDO updateObj = BeanUtils.toBean(updateReqVO, ProductCategoryDO.class)
+                .setCode(stableCode);
         productCategoryMapper.updateById(updateObj);
     }
 
@@ -130,11 +139,23 @@ public class ProductCategoryServiceImpl implements ProductCategoryService {
         }
     }
 
-    private void validateProductCategoryExists(Long id) {
+    private ProductCategoryDO validateProductCategoryExists(Long id) {
         ProductCategoryDO category = productCategoryMapper.selectById(id);
         if (category == null) {
             throw exception(CATEGORY_NOT_EXISTS);
         }
+        return category;
+    }
+
+    private void validateCategoryCodeUnique(Long parentId, String code, Long selfId) {
+        ProductCategoryDO duplicate = productCategoryMapper.selectByParentIdAndCode(parentId, code);
+        if (duplicate != null && !Objects.equals(duplicate.getId(), selfId)) {
+            throw exception(CATEGORY_CODE_DUPLICATE, code);
+        }
+    }
+
+    private static String normalizeCode(String code) {
+        return StrUtil.trim(code).toLowerCase(Locale.ROOT);
     }
 
     @Override
@@ -157,7 +178,7 @@ public class ProductCategoryServiceImpl implements ProductCategoryService {
                 throw exception(CATEGORY_DISABLED, category.getName());
             }
             // 商品分类层级校验，必须使用第二级的商品分类
-            if (getCategoryLevel(id) < CATEGORY_LEVEL) {
+            if (getCategoryLevel(id) != CATEGORY_LEVEL) {
                 throw exception(SPU_SAVE_FAIL_CATEGORY_LEVEL_ERROR);
             }
         });
@@ -176,6 +197,21 @@ public class ProductCategoryServiceImpl implements ProductCategoryService {
         }
         if (Objects.equals(category.getStatus(), CommonStatusEnum.DISABLE.getStatus())) {
             throw exception(CATEGORY_DISABLED, category.getName());
+        }
+    }
+
+    @Override
+    public void validateProductTypeSelection(Long categoryId, Long roomCategoryId) {
+        ProductCategoryDO category = productCategoryMapper.selectById(categoryId);
+        ProductCategoryDO room = productCategoryMapper.selectById(roomCategoryId);
+        if (category == null || room == null
+                || !CommonStatusEnum.ENABLE.getStatus().equals(category.getStatus())
+                || !CommonStatusEnum.ENABLE.getStatus().equals(room.getStatus())
+                || !Objects.equals(room.getParentId(), PARENT_ID_NULL)
+                || !Objects.equals(category.getParentId(), roomCategoryId)
+                || StrUtil.isBlank(category.getCode())
+                || StrUtil.isBlank(room.getCode())) {
+            throw exception(SPU_SAVE_FAIL_PRODUCT_TYPE_ROOM_MISMATCH);
         }
     }
 

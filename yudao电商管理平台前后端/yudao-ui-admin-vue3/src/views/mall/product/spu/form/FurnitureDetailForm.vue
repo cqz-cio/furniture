@@ -9,11 +9,9 @@
     <el-alert
       class="mb-16px"
       :title="
-        isSimplifiedSeating
-          ? '座椅类精简模式只保留老网页有依据的公开参数和详情折叠内容；户外模板字段不会保存。'
-          : isB2B
-            ? '以下字段直接对应 B2B 家具网站商品详情页；Product type 从当前 Room 对应的 P1 子分类中选择（不含 All），不会自动带入示例内容。公开参数按原始资料填写；Finish 未明确提供时默认为 Natural Oak，其他没有依据的可选内容保持为空。'
-            : '以下配置控制家具网站商品详情页；未填写的可选内容保持为空。'
+        isB2B
+          ? '以下字段直接对应 B2B 家具网站商品详情页；Room 与 Product type 在基础设置中从分类 API 选择。所有可选字段在资料未提供时可留空，不会自动带入示例内容。'
+          : '以下配置控制家具网站商品详情页；未填写的可选内容保持为空。'
       "
       type="info"
       :closable="false"
@@ -22,7 +20,7 @@
     <el-divider content-position="left">Product information</el-divider>
     <el-alert
       class="mb-16px"
-      title="Item No. 是客户可见的型号，不等同于 ERP 自动 SKU。Color 表示颜色；Finish 是固定字段，明确提供时按原文填写，未提供时使用 Natural Oak；Size 统一使用 cm。"
+      title="Item No. 是客户可见的型号，不等同于 ERP 自动 SKU。Color 与 Finish 按原始资料填写，资料未提供时可留空；Size 统一使用 cm。"
       type="success"
       :closable="false"
     />
@@ -110,7 +108,7 @@
         v-model="detailConfig.finish"
         class="w-100!"
         maxlength="255"
-        placeholder="Natural Oak"
+        placeholder="Optional finish"
       />
     </el-form-item>
     <el-form-item label="Service" prop="service">
@@ -134,10 +132,10 @@
         <el-option label="Unavailable" value="Unavailable" />
       </el-select>
     </el-form-item>
-    <el-form-item label="Packing" prop="packingDisplay">
+    <el-form-item label="Packing" prop="packing">
       <div class="w-100!">
         <el-input
-          v-model="detailConfig.packingDisplay"
+          v-model="detailConfig.packing"
           class="w-100!"
           maxlength="120"
           placeholder="Ships in 2 cartons / 1 pc/ctn / 2 packs"
@@ -149,42 +147,6 @@
       </div>
     </el-form-item>
 
-    <el-form-item label="Product type" prop="productType">
-      <div class="w-80!">
-        <el-select
-          v-model="detailConfig.productType"
-          class="w-100!"
-          :disabled="!selectedRoom"
-          :placeholder="
-            selectedRoom
-              ? '请选择 P1 对应的 Product type'
-              : '请先在基础设置中选择 Dining、Living 或 Bedroom Room'
-          "
-        >
-          <el-option
-            v-for="option in productTypeOptions"
-            :key="option.value"
-            :label="option.label"
-            :value="option.value"
-          />
-        </el-select>
-        <div class="mt-4px text-12px text-[var(--el-text-color-secondary)]">
-          选项与 P1 当前 Room 的框内子分类逐项一致（不含 All）；不会自动填充或修改其他内容。
-        </div>
-      </div>
-    </el-form-item>
-
-    <el-alert
-      v-if="isSimplifiedSeating"
-      class="mb-16px"
-      title="座椅类精简字段"
-      description="Chair、Dining Chair、Bar Stool 等座椅商品的 Item No.、Material、Size、Color、Service、Sample、Packing 会进入 PRODUCT INFORMATION；Feature、Application、Design Style 只放在 DETAILS。Packing 按原规格文本填写，例如 2 pcs/ctn。"
-      type="success"
-      :closable="false"
-      show-icon
-    />
-
-    <template v-if="!isSimplifiedSeating">
       <el-form-item label="Collection">
         <el-input
           v-model="detailConfig.collection"
@@ -266,8 +228,6 @@
       <el-form-item label=" ">
         <el-button @click="addOptionGroup">Add option group</el-button>
       </el-form-item>
-    </template>
-
     <el-divider content-position="left">Accordion sections</el-divider>
     <div
       v-for="(section, sectionIndex) in detailConfig.accordions"
@@ -289,7 +249,6 @@
       <el-button @click="addAccordion">Add accordion section</el-button>
     </el-form-item>
 
-    <template v-if="!isSimplifiedSeating">
       <el-divider content-position="left">Related links</el-divider>
       <div
         v-for="(link, linkIndex) in detailConfig.relatedLinks"
@@ -305,8 +264,6 @@
       <el-form-item label=" ">
         <el-button @click="addRelatedLink">Add related link</el-button>
       </el-form-item>
-    </template>
-
     <el-alert
       v-if="isB2B"
       :closable="false"
@@ -320,20 +277,12 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, onMounted, reactive, ref, unref, watch } from 'vue'
+import { computed, reactive, ref, unref, watch } from 'vue'
 import type { PropType } from 'vue'
-import * as ProductCategoryApi from '@/api/mall/product/category'
-import type { CategoryVO } from '@/api/mall/product/category'
 import type { Spu } from '@/api/mall/product/spu'
 import { useMessage } from '@/hooks/web/useMessage'
 import { propTypes } from '@/utils/propTypes'
 import { formatLegacyPacking, type LegacyPacking } from './packingDisplay'
-import {
-  getProductTypeOptions,
-  isProductTypeValid,
-  migrateProductType,
-  resolveProductRoom
-} from './productTypeOptions'
 
 defineOptions({ name: 'ProductFurnitureDetailForm' })
 
@@ -356,8 +305,7 @@ type DetailConfig = {
   dimension: Dimension
   service: string
   sample: string
-  packingDisplay: string
-  productType: string
+  packing: string
   collection: string
   heroNote: string
   fabricSelector: {
@@ -387,18 +335,12 @@ const formRef = ref()
 const message = useMessage()
 
 const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value))
-const DEFAULT_FINISH = 'Natural Oak'
-
-const normalizeFinish = (value: unknown): string => {
-  const finish = typeof value === 'string' ? value.trim() : ''
-  return finish || DEFAULT_FINISH
-}
 
 const createEmptyConfig = (): DetailConfig => ({
   itemNo: '',
   material: '',
   color: '',
-  finish: DEFAULT_FINISH,
+  finish: '',
   dimension: {
     shape: 'rectangular',
     width: null,
@@ -409,8 +351,7 @@ const createEmptyConfig = (): DetailConfig => ({
   },
   service: '',
   sample: '',
-  packingDisplay: '',
-  productType: '',
+  packing: '',
   collection: '',
   heroNote: '',
   fabricSelector: {
@@ -426,42 +367,37 @@ const createEmptyConfig = (): DetailConfig => ({
 })
 
 const detailConfig = reactive<DetailConfig>(createEmptyConfig())
-const categoryList = ref<CategoryVO[]>([])
-const selectedRoom = computed(() =>
-  resolveProductRoom(categoryList.value, props.propFormData?.categoryId)
-)
-const productTypeOptions = computed(() => getProductTypeOptions(selectedRoom.value))
-const simplifiedSeatingTypes = new Set(['dining-chair', 'bar-stool'])
-const isSimplifiedSeating = computed(() => simplifiedSeatingTypes.has(detailConfig.productType))
-
-const refreshCategoryList = async () => {
-  categoryList.value = await ProductCategoryApi.getCategoryList({})
-}
-
-onMounted(refreshCategoryList)
 
 const positiveNumberOrNull = (value: unknown): number | null => {
   const number = Number(value)
   return Number.isFinite(number) && number > 0 ? number : null
 }
 
-type DetailConfigInput = Partial<DetailConfig> & { packing?: LegacyPacking | string }
+type DetailConfigInput = Partial<Omit<DetailConfig, 'packing'>> & {
+  packing?: LegacyPacking | string
+  packingDisplay?: string
+  productType?: string
+}
 
 const normalizeConfig = (config?: DetailConfigInput): DetailConfig => {
   const empty = createEmptyConfig()
   const dimension = config?.dimension || empty.dimension
-  const { packing: legacyPacking, ...configWithoutLegacyPacking } = config || {}
-  const packingDisplay =
-    typeof config?.packingDisplay === 'string'
-      ? config.packingDisplay
-      : formatLegacyPacking(legacyPacking)
+  const legacyPacking = typeof config?.packing === 'object' ? config.packing : undefined
+  const { packing: _packing, packingDisplay: _packingDisplay, productType: _productType,
+    ...configWithoutLegacyFields } = config || {}
+  const packing =
+    typeof config?.packing === 'string'
+      ? config.packing
+      : typeof config?.packingDisplay === 'string' && config.packingDisplay.trim()
+        ? config.packingDisplay
+        : formatLegacyPacking(legacyPacking)
   return {
     ...empty,
-    ...configWithoutLegacyPacking,
+    ...configWithoutLegacyFields,
     itemNo: typeof config?.itemNo === 'string' ? config.itemNo : '',
     material: typeof config?.material === 'string' ? config.material : '',
     color: typeof config?.color === 'string' ? config.color : '',
-    finish: normalizeFinish(config?.finish),
+    finish: typeof config?.finish === 'string' ? config.finish : '',
     dimension: {
       shape: dimension.shape === 'round' ? 'round' : 'rectangular',
       width: positiveNumberOrNull(dimension.width),
@@ -472,7 +408,7 @@ const normalizeConfig = (config?: DetailConfigInput): DetailConfig => {
     },
     service: typeof config?.service === 'string' ? config.service : '',
     sample: typeof config?.sample === 'string' ? config.sample : '',
-    packingDisplay,
+    packing,
     fabricSelector: {
       ...empty.fabricSelector,
       ...(config?.fabricSelector || {})
@@ -492,25 +428,14 @@ watch(
   { immediate: true }
 )
 
-watch(
-  [selectedRoom, () => detailConfig.productType] as const,
-  ([room, productType]) => {
-    if (!room || !productType || isProductTypeValid(room, productType)) return
-    detailConfig.productType = migrateProductType(room, productType)
-  },
-  { immediate: true }
-)
-
-const validateText =
-  (label: string) => (_rule: unknown, value: unknown, callback: (error?: Error) => void) => {
-    if (typeof value === 'string' && value.trim()) {
-      callback()
-      return
-    }
-    callback(new Error(`${label} is required`))
-  }
-
 const validateDimension = (_rule: unknown, value: Dimension, callback: (error?: Error) => void) => {
+  const hasAnyValue = [value?.width, value?.depth, value?.diameter, value?.height].some(
+    (item) => positiveNumberOrNull(item) !== null
+  )
+  if (!hasAnyValue) {
+    callback()
+    return
+  }
   const commonValid = value?.unit === 'cm' && positiveNumberOrNull(value?.height) !== null
   const footprintValid =
     value?.shape === 'round'
@@ -519,37 +444,10 @@ const validateDimension = (_rule: unknown, value: Dimension, callback: (error?: 
   callback(commonValid && footprintValid ? undefined : new Error('Enter complete dimensions in cm'))
 }
 
-const validateProductType = (
-  _rule: unknown,
-  value: unknown,
-  callback: (error?: Error) => void
-) => {
-  if (!selectedRoom.value) {
-    callback(new Error('Select Dining Room, Living Room or Bedroom in Basic settings first'))
-    return
-  }
-  callback(
-    typeof value === 'string' && isProductTypeValid(selectedRoom.value, value)
-      ? undefined
-      : new Error('Select a Product type from the current P1 Room options')
-  )
-}
-
 const detailRules = computed(() =>
   isB2B.value
     ? {
-        ...(isSimplifiedSeating.value
-          ? {
-              itemNo: [{ validator: validateText('Item No.'), trigger: 'blur' }],
-              color: [{ validator: validateText('Color'), trigger: 'blur' }],
-              service: [{ validator: validateText('Service'), trigger: 'blur' }],
-              sample: [{ validator: validateText('Sample'), trigger: 'change' }]
-            }
-          : {}),
-        finish: [{ validator: validateText('Finish'), trigger: 'blur' }],
-        material: [{ validator: validateText('Material'), trigger: 'blur' }],
-        dimension: [{ validator: validateDimension, trigger: 'change' }],
-        productType: [{ validator: validateProductType, trigger: 'change' }]
+        dimension: [{ validator: validateDimension, trigger: 'change' }]
       }
     : {}
 )
@@ -588,36 +486,26 @@ const removeRelatedLink = (index: number) => detailConfig.relatedLinks.splice(in
 
 const validate = async () => {
   try {
-    if (categoryList.value.length === 0) {
-      await refreshCategoryList()
-    }
     await unref(formRef)?.validate()
     const normalized = normalizeConfig(detailConfig)
-    normalized.productType = normalized.productType.trim()
-    if (isB2B.value && !isProductTypeValid(selectedRoom.value, normalized.productType)) {
-      throw new Error('Product type must match the selected P1 Room option')
-    }
     normalized.itemNo = normalized.itemNo.trim()
     normalized.material = normalized.material.trim()
     normalized.color = normalized.color.trim()
-    normalized.finish = normalized.finish.trim() || DEFAULT_FINISH
+    normalized.finish = normalized.finish.trim()
     normalized.service = normalized.service.trim()
     normalized.sample = normalized.sample.trim()
-    normalized.packingDisplay = normalized.packingDisplay.trim()
-    if (simplifiedSeatingTypes.has(normalized.productType)) {
-      normalized.collection = ''
-      normalized.heroNote = ''
-      normalized.fabricSelector = {
-        stockedCount: 0,
-        specialOrderCount: 0,
-        label: '',
-        swatches: []
-      }
-      normalized.highlights = []
-      normalized.optionGroups = []
-      normalized.relatedLinks = []
+    normalized.packing = normalized.packing.trim()
+    const hasDimension = [
+      normalized.dimension.width,
+      normalized.dimension.depth,
+      normalized.dimension.diameter,
+      normalized.dimension.height
+    ].some((value) => positiveNumberOrNull(value) !== null)
+    const payload: Partial<DetailConfig> = clone(normalized)
+    if (!hasDimension) {
+      delete payload.dimension
     }
-    ;(props.propFormData as any).detailConfig = clone(normalized)
+    ;(props.propFormData as any).detailConfig = payload
   } catch (e) {
     message.error('Furniture detail configuration is incomplete')
     emit('update:activeName', 'furnitureDetail')

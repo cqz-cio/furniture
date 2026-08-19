@@ -14,17 +14,18 @@ describe("mall ERP product synchronization service", () => {
     const serviceUrl = file("service/integration/MallErpProductSyncServiceImpl.java");
     expect(existsSync(serviceUrl)).toBe(true);
     const service = readFileSync(serviceUrl, "utf8");
-    expect(service).toContain('"RH-" + TenantContextHolder.getTenantId() + "-" + mallSkuId');
+    expect(service).toContain("MallErpProductCodeGenerator productCodeGenerator");
+    expect(service).toContain("TenantContextHolder.getRequiredTenantId(), sku.getId()");
     expect(service).toContain("productSkuApi.getSku(mallSkuId).getCheckedData()");
     expect(service).toContain("productSpuApi.getSpu(mallSpuId).getCheckedData()");
     expect(service).toContain("mappingMapper.selectByMallSkuId(mallSkuId)");
     expect(service).toContain("erpStockMapper.selectSumByProductId");
-    expect(service).toContain("resolveErpCategory(spu)");
-    expect(service).toContain('"MALL_CATEGORY_" + spu.getCategoryId()');
+    expect(service).not.toContain("erpProductMapper.insert(");
+    expect(service).not.toContain("resolveErpCategory(spu)");
     expect(service).not.toMatch(/getName\(\).*select|select.*getName\(\)/);
   });
 
-  it("exposes mall category names to both storefront and ERP synchronization", () => {
+  it("exposes stable mall category identity to both storefront and ERP synchronization", () => {
     const controller = readFileSync(new URL(
       "yudao电商管理平台前后端/yudao-cloud/yudao-module-mall/yudao-module-product-server/src/main/java/cn/iocoder/yudao/module/product/controller/app/spu/AppProductSpuController.java",
       repositoryRoot,
@@ -34,8 +35,10 @@ describe("mall ERP product synchronization service", () => {
       repositoryRoot,
     ), "utf8");
 
-    expect(controller).toContain("overlayCategoryNames");
+    expect(controller).toContain("overlayCategoryDetails");
     expect(controller).toContain("setCategoryName");
+    expect(controller).toContain("setCategoryCode");
+    expect(controller).toContain("setCategoryParentId");
     expect(dto).toContain("private String categoryName;");
   });
 

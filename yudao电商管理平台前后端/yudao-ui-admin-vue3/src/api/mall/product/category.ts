@@ -12,6 +12,8 @@ export interface CategoryVO {
    * 父分类编号
    */
   parentId?: number
+  /** Stable identity; display-name changes must not alter it. */
+  code: string
   /**
    * 分类名称
    */
@@ -33,6 +35,7 @@ export interface CategoryVO {
 /** 导航管理快速创建商品分类 */
 export interface NavigationCategoryCreateVO {
   parentId: number
+  code: string
   name: string
 }
 

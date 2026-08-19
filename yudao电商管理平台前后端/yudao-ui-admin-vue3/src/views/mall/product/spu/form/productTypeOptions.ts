@@ -1,141 +1,120 @@
 import type { CategoryVO } from '@/api/mall/product/category'
 
-export type ProductRoom = 'diningRoom' | 'livingRoom' | 'bedroom'
-
-export type ProductTypeOption = {
+export type ProductCategoryOption = {
   label: string
-  value: string
+  value: number
+  code: string
+  parentId: number
 }
 
-// Labels are the P1 catalogue tabs verbatim. Values are the stable productType
-// keys already understood by the public website's product presentation layer.
-export const ROOM_PRODUCT_TYPE_OPTIONS: Record<ProductRoom, ProductTypeOption[]> = {
-  diningRoom: [
-    { label: 'DING CHAIRS', value: 'dining-chair' },
-    { label: 'BAR STOOLS', value: 'bar-stool' },
-    { label: 'DING TABLES', value: 'dining-table' }
-  ],
-  livingRoom: [
-    { label: 'Sofa & Occasional Chair', value: 'sofa' },
-    { label: 'Side Table & Coffee Table', value: 'coffee-table' },
-    { label: 'Bookcase & Display Cabinet', value: 'bookcase' },
-    { label: 'Console Table & Buffet', value: 'media-console' }
-  ],
-  bedroom: [
-    { label: 'Bed & Headboard', value: 'bed' },
-    { label: 'Bedside Table', value: 'nightstand' },
-    { label: 'Chest of Drawer', value: 'dresser' },
-    { label: 'Bench', value: 'bench' },
-    { label: 'Dressing Table', value: 'dressing-table' },
-    { label: 'Wadrobe', value: 'wardrobe' }
-  ]
-}
+type CategoryNode = CategoryVO & { children?: CategoryNode[] }
 
-const ROOM_CATEGORY_NAMES: Record<string, ProductRoom> = {
-  'dining room': 'diningRoom',
-  'dining room furniture': 'diningRoom',
-  'living room': 'livingRoom',
-  'living room furniture': 'livingRoom',
-  bedroom: 'bedroom',
-  'bedroom furniture': 'bedroom'
-}
-
-const normalizeCategoryName = (value: string) => value.trim().toLocaleLowerCase().replace(/\s+/g, ' ')
-
-/** Resolve the P1 room from the selected category or one of its ancestors. */
-export const resolveProductRoom = (
-  categories: CategoryVO[],
-  categoryId: number | string | null | undefined
-): ProductRoom | '' => {
-  const normalizedCategoryId = Number(categoryId)
-  if (!Number.isFinite(normalizedCategoryId)) return ''
-
-  const categoriesById = new Map<number, CategoryVO>()
-  categories.forEach((category) => {
-    const id = Number(category.id)
-    if (Number.isFinite(id)) categoriesById.set(id, category)
-  })
-
-  const visited = new Set<number>()
-  let category = categoriesById.get(normalizedCategoryId)
-  while (category) {
-    const room = ROOM_CATEGORY_NAMES[normalizeCategoryName(category.name)]
-    if (room) return room
-
-    const currentId = Number(category.id)
-    if (Number.isFinite(currentId)) {
-      if (visited.has(currentId)) return ''
-      visited.add(currentId)
-    }
-
-    const parentId = Number(category.parentId)
-    if (!Number.isFinite(parentId) || parentId <= 0 || visited.has(parentId)) return ''
-    category = categoriesById.get(parentId)
-  }
-
-  return ''
-}
-
-export const getProductTypeOptions = (room: ProductRoom | ''): ProductTypeOption[] =>
-  room ? ROOM_PRODUCT_TYPE_OPTIONS[room] : []
-
-export const isProductTypeValid = (room: ProductRoom | '', productType: string): boolean =>
-  getProductTypeOptions(room).some((option) => option.value === productType)
-
+const PRODUCT_ROOM_CODES = new Set(['dining-room', 'living-room', 'bedroom'])
 const LEGACY_PRODUCT_TYPE_ALIASES: Record<string, string> = {
-  chair: 'dining-chair',
-  'dining chairs': 'dining-chair',
-  'bar stools': 'bar-stool',
-  'bar counter stools': 'bar-stool',
-  'bar and counter stools': 'bar-stool',
-  'dining tables': 'dining-table',
-  'round table': 'dining-table',
-  'round tables': 'dining-table',
-  'single sofa': 'sofa',
-  'single sofas': 'sofa',
-  'lounge chair': 'sofa',
-  'lounge chairs': 'sofa',
-  armchair: 'sofa',
-  'occasional chair': 'sofa',
-  'side table': 'coffee-table',
-  'side tables': 'coffee-table',
-  'coffee tables': 'coffee-table',
-  cabinet: 'bookcase',
-  'display cabinet': 'bookcase',
-  console: 'media-console',
-  'console table': 'media-console',
-  buffet: 'media-console',
-  sideboard: 'media-console',
-  beds: 'bed',
-  headboard: 'bed',
-  benches: 'bench',
-  'bed bench': 'bench',
-  ottoman: 'bench',
-  nightstands: 'nightstand',
-  'bedside table': 'nightstand',
-  dressers: 'dresser',
-  'chest of drawer': 'dresser',
-  'chest of drawers': 'dresser',
+  'bed-bench': 'bench',
   vanity: 'dressing-table',
-  vanities: 'dressing-table',
-  wardrobe: 'wardrobe',
-  wardrobes: 'wardrobe',
-  wadrobe: 'wardrobe'
+  'round-table': 'dining-table',
+  'single-sofa': 'sofa'
 }
 
-const normalizeProductType = (value: string) =>
-  value.trim().toLocaleLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ')
+const flattenCategories = (categories: CategoryNode[]): CategoryVO[] => {
+  const flattened: CategoryVO[] = []
+  const visit = (category: CategoryNode) => {
+    flattened.push(category)
+    category.children?.forEach(visit)
+  }
+  categories.forEach(visit)
+  return flattened
+}
 
-/** Convert an older granular value to the matching P1 tab without guessing a default. */
-export const migrateProductType = (room: ProductRoom | '', productType: string): string => {
-  const value = productType.trim()
-  if (!value || !room) return ''
-  if (isProductTypeValid(room, value)) return value
+const isEnabled = (category: CategoryVO) => category.status === undefined || category.status === 0
+const categoryOrder = (left: CategoryVO, right: CategoryVO) =>
+  Number(left.sort || 0) - Number(right.sort || 0) || Number(left.id || 0) - Number(right.id || 0)
 
-  const normalized = normalizeProductType(value)
-  const directOption = getProductTypeOptions(room).find(
-    (option) => normalizeProductType(option.label) === normalized
-  )
-  const migrated = directOption?.value || LEGACY_PRODUCT_TYPE_ALIASES[normalized] || ''
-  return isProductTypeValid(room, migrated) ? migrated : ''
+export const getProductRoomOptions = (categories: CategoryNode[]): ProductCategoryOption[] =>
+  flattenCategories(categories)
+    .filter(
+      (category) =>
+        Number(category.parentId) === 0 &&
+        PRODUCT_ROOM_CODES.has(category.code || '') &&
+        isEnabled(category)
+    )
+    .sort(categoryOrder)
+    .map((category) => ({
+      label: category.name,
+      value: Number(category.id),
+      code: category.code || '',
+      parentId: 0
+    }))
+
+/** Resolve a selected P1/P2 category to its stable-code P1 Room without name matching. */
+export const resolveProductRoom = (
+  categories: CategoryNode[],
+  categoryId: number | string | null | undefined
+): CategoryVO | undefined => {
+  const normalizedId = Number(categoryId)
+  if (!Number.isFinite(normalizedId)) return undefined
+
+  const flat = flattenCategories(categories)
+  const byId = new Map(flat.map((category) => [Number(category.id), category]))
+  const visited = new Set<number>()
+  let category = byId.get(normalizedId)
+  while (category) {
+    const id = Number(category.id)
+    if (visited.has(id)) return undefined
+    visited.add(id)
+    if (Number(category.parentId) === 0 && PRODUCT_ROOM_CODES.has(category.code || '')) {
+      return category
+    }
+    const parentId = Number(category.parentId)
+    if (!Number.isFinite(parentId) || parentId <= 0) return undefined
+    category = byId.get(parentId)
+  }
+  return undefined
+}
+
+export const getProductTypeOptions = (
+  categories: CategoryNode[],
+  roomCategoryId: number | string | null | undefined
+): ProductCategoryOption[] => {
+  const roomId = Number(roomCategoryId)
+  if (!Number.isFinite(roomId)) return []
+  return flattenCategories(categories)
+    .filter(
+      (category) =>
+        Number(category.parentId) === roomId &&
+        Boolean(category.code) &&
+        isEnabled(category)
+    )
+    .sort(categoryOrder)
+    .map((category) => ({
+      label: category.name,
+      value: Number(category.id),
+      code: category.code || '',
+      parentId: roomId
+    }))
+}
+
+export const isProductTypeSelectionValid = (
+  categories: CategoryNode[],
+  roomCategoryId: number | string | null | undefined,
+  categoryId: number | string | null | undefined
+): boolean => {
+  const selectedId = Number(categoryId)
+  return Number.isFinite(selectedId) &&
+    getProductTypeOptions(categories, roomCategoryId).some((option) => option.value === selectedId)
+}
+
+/** One-release read compatibility for deterministic legacy JSON values. */
+export const migrateProductType = (
+  categories: CategoryNode[],
+  roomCategoryId: number | string | null | undefined,
+  legacyProductType: string
+): number | undefined => {
+  const normalized = String(legacyProductType || '').trim().toLocaleLowerCase()
+  if (!normalized) return undefined
+  const targetCode = LEGACY_PRODUCT_TYPE_ALIASES[normalized] || normalized
+  return getProductTypeOptions(categories, roomCategoryId).find(
+    (option) => option.code === targetCode
+  )?.value
 }

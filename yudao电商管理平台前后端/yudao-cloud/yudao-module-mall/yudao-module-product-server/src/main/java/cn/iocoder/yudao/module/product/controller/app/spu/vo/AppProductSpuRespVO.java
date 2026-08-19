@@ -22,6 +22,12 @@ public class AppProductSpuRespVO {
     @Schema(description = "分类编号", requiredMode = Schema.RequiredMode.REQUIRED)
     private Long categoryId;
 
+    @Schema(description = "P2 稳定分类编码", example = "dining-table")
+    private String categoryCode;
+
+    @Schema(description = "P1 Room 分类编号")
+    private Long categoryParentId;
+
     @Schema(description = "分类名称", requiredMode = Schema.RequiredMode.REQUIRED)
     private String categoryName;
 

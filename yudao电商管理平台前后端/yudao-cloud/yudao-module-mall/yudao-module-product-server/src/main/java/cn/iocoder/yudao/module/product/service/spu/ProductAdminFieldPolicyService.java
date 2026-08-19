@@ -6,11 +6,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.Map;
 
 import static cn.iocoder.yudao.framework.common.exception.util.ServiceExceptionUtil.exception;
 import static cn.iocoder.yudao.module.product.enums.ErrorCodeConstants.SPU_SAVE_FAIL_DELIVERY_TYPES_EMPTY;
+import static cn.iocoder.yudao.module.product.enums.ErrorCodeConstants.SPU_SAVE_FAIL_ROOM_CATEGORY_REQUIRED;
 
 /**
  * ERP 商品保存字段策略。
@@ -21,8 +20,6 @@ import static cn.iocoder.yudao.module.product.enums.ErrorCodeConstants.SPU_SAVE_
 @Service
 @RequiredArgsConstructor
 public class ProductAdminFieldPolicyService {
-
-    public static final String DEFAULT_FINISH = "Natural Oak";
 
     private final ProductWebsiteFieldPolicyService productWebsiteFieldPolicyService;
 
@@ -35,18 +32,17 @@ public class ProductAdminFieldPolicyService {
             saveReqVO.setDeliveryTypes(Collections.emptyList());
         }
         if (b2b) {
-            normalizeFinish(saveReqVO);
+            if (saveReqVO.getRoomCategoryId() == null) {
+                throw exception(SPU_SAVE_FAIL_ROOM_CATEGORY_REQUIRED);
+            }
+            normalizeDetailConfig(saveReqVO);
         }
     }
 
-    private void normalizeFinish(ProductSpuSaveReqVO saveReqVO) {
-        Map<String, Object> detailConfig = saveReqVO.getDetailConfig() == null
-                ? new LinkedHashMap<>()
-                : new LinkedHashMap<>(saveReqVO.getDetailConfig());
-        Object rawFinish = detailConfig.get("finish");
-        String finish = rawFinish instanceof String ? ((String) rawFinish).trim() : "";
-        detailConfig.put("finish", finish.isEmpty() ? DEFAULT_FINISH : finish);
-        saveReqVO.setDetailConfig(detailConfig);
+    private void normalizeDetailConfig(ProductSpuSaveReqVO saveReqVO) {
+        if (saveReqVO.getDetailConfig() != null) {
+            saveReqVO.getDetailConfig().normalize();
+        }
     }
 
 }

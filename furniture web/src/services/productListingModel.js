@@ -204,6 +204,10 @@ export const resolveProductListingQuery = (search = "") => {
 };
 
 export const inferListingType = (product = {}) => {
+  if (product.source === "yudao") {
+    const stableCode = String(product.categoryCode || product.productType || "").trim().toLowerCase();
+    return stableCode || "uncategorized";
+  }
   const rawType = String(product.productType || product.type || product.categoryName || product.category || "").toLowerCase();
   const rawSlug = rawType.trim().replace(/[\s_]+/g, "-");
   const knownTypes = new Set(productListingFilters.map((filter) => filter.value).filter((value) => value !== "all"));
@@ -303,13 +307,15 @@ export const buildProductListingModel = (products = [], options = {}) => {
   const sort = options.sort || "featured";
   const facets = options.facets || {};
   const tag = options.tag || "";
+  const allowedTypes = new Set(Array.isArray(options.allowedTypes) ? options.allowedTypes : []);
   const filterGroup = productTypeGroupFilters[filter] || null;
   const filteredProducts = products.filter((product) => {
     const listingType = inferListingType(product);
+    const matchesRoom = allowedTypes.size === 0 || allowedTypes.has(listingType);
     const matchesType = filter === "all" || (filterGroup ? filterGroup.includes(listingType) : listingType === filter);
     const matchesFacets = Object.entries(facets).every(([key, value]) => matchesFacet(product, key, value));
     const matchesTag = tag === "new" ? product.isNew === true : tag === "best-seller" ? product.isBestSeller === true : true;
-    return matchesType && matchesFacets && matchesTag;
+    return matchesRoom && matchesType && matchesFacets && matchesTag;
   });
   const sortedProducts = sortProducts(filteredProducts, sort);
   const collectionCount = new Set(sortedProducts.map((product) => inferListingType(product))).size;

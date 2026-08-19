@@ -39,3 +39,6 @@ export const getProductDetail = async (id, options = {}) => {
   const data = await requestYudao(`/product/spu/get-detail?id=${encodeURIComponent(id)}`, options);
   return mapSpuToProduct(data);
 };
+
+export const getProductCategoryTree = async (options = {}) =>
+  requestYudao("/product/category/tree", options);

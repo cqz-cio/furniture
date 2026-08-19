@@ -1,6 +1,7 @@
 package cn.iocoder.yudao.module.product.service.spu;
 
 import cn.iocoder.yudao.framework.common.exception.ServiceException;
+import cn.iocoder.yudao.module.product.controller.admin.spu.vo.ProductDetailConfigSaveReqVO;
 import cn.iocoder.yudao.module.product.controller.admin.spu.vo.ProductSpuSaveReqVO;
 import cn.iocoder.yudao.module.product.service.spu.ProductWebsiteFieldPolicyService.ProductWebsiteFieldPolicy;
 import org.junit.jupiter.api.Test;
@@ -26,7 +27,7 @@ class ProductAdminFieldPolicyServiceTest {
     void shouldAllowEmptyDeliveryTypesForB2B() {
         when(websiteFieldPolicyService.getCurrentPolicy())
                 .thenReturn(new ProductWebsiteFieldPolicy(true, Set.of()));
-        ProductSpuSaveReqVO saveReqVO = new ProductSpuSaveReqVO();
+        ProductSpuSaveReqVO saveReqVO = new ProductSpuSaveReqVO().setRoomCategoryId(30L);
 
         service.prepareForSave(saveReqVO);
 
@@ -37,7 +38,8 @@ class ProductAdminFieldPolicyServiceTest {
     void shouldPreserveExistingDeliveryTypesForB2B() {
         when(websiteFieldPolicyService.getCurrentPolicy())
                 .thenReturn(new ProductWebsiteFieldPolicy(true, Set.of()));
-        ProductSpuSaveReqVO saveReqVO = new ProductSpuSaveReqVO().setDeliveryTypes(List.of(1));
+        ProductSpuSaveReqVO saveReqVO = new ProductSpuSaveReqVO()
+                .setRoomCategoryId(30L).setDeliveryTypes(List.of(1));
 
         service.prepareForSave(saveReqVO);
 
@@ -45,16 +47,16 @@ class ProductAdminFieldPolicyServiceTest {
     }
 
     @Test
-    void shouldDefaultMissingFinishForB2B() {
+    void shouldPreserveBlankFinishForB2B() {
         when(websiteFieldPolicyService.getCurrentPolicy())
                 .thenReturn(new ProductWebsiteFieldPolicy(true, Set.of()));
         ProductSpuSaveReqVO saveReqVO = new ProductSpuSaveReqVO()
-                .setDetailConfig(Map.of("finish", "   "));
+                .setRoomCategoryId(30L)
+                .setDetailConfig(new ProductDetailConfigSaveReqVO().setFinish("   "));
 
         service.prepareForSave(saveReqVO);
 
-        assertEquals(ProductAdminFieldPolicyService.DEFAULT_FINISH,
-                saveReqVO.getDetailConfig().get("finish"));
+        assertEquals("", saveReqVO.getDetailConfig().getFinish());
     }
 
     @Test
@@ -62,11 +64,22 @@ class ProductAdminFieldPolicyServiceTest {
         when(websiteFieldPolicyService.getCurrentPolicy())
                 .thenReturn(new ProductWebsiteFieldPolicy(true, Set.of()));
         ProductSpuSaveReqVO saveReqVO = new ProductSpuSaveReqVO()
-                .setDetailConfig(Map.of("finish", "  Whitewashed finishing  "));
+                .setRoomCategoryId(30L)
+                .setDetailConfig(new ProductDetailConfigSaveReqVO()
+                        .setFinish("  Whitewashed finishing  "));
 
         service.prepareForSave(saveReqVO);
 
-        assertEquals("Whitewashed finishing", saveReqVO.getDetailConfig().get("finish"));
+        assertEquals("Whitewashed finishing", saveReqVO.getDetailConfig().getFinish());
+    }
+
+    @Test
+    void shouldRequireRoomCategoryForB2B() {
+        when(websiteFieldPolicyService.getCurrentPolicy())
+                .thenReturn(new ProductWebsiteFieldPolicy(true, Set.of()));
+
+        assertThrows(ServiceException.class,
+                () -> service.prepareForSave(new ProductSpuSaveReqVO()));
     }
 
     @Test

@@ -30,10 +30,43 @@ export interface GiveCouponTemplate {
   name?: string // 优惠券名称
 }
 
+export interface ProductDetailDimension {
+  shape: 'rectangular' | 'round'
+  width?: number | null
+  depth?: number | null
+  diameter?: number | null
+  height?: number | null
+  unit: 'cm'
+}
+
+export interface ProductDetailConfig {
+  itemNo?: string
+  material?: string
+  dimension?: ProductDetailDimension | null
+  color?: string
+  finish?: string
+  service?: string
+  sample?: string
+  packing?: string
+  collection?: string
+  heroNote?: string
+  fabricSelector?: {
+    stockedCount?: number
+    specialOrderCount?: number
+    label?: string
+    swatches?: Array<{ label: string; swatch: string }>
+  } | null
+  highlights?: string[]
+  optionGroups?: Array<{ key: string; label: string; helper?: string; values: string[] }>
+  accordions?: Array<{ title: string; rows: string[][] }>
+  relatedLinks?: Array<{ label: string; href: string }>
+}
+
 export interface Spu {
   id?: number
   name?: string // 商品名称
   categoryId?: number // 商品分类
+  roomCategoryId?: number // B2B P1 Room 分类，仅保存校验使用
   keyword?: string // 关键字
   unit?: number | undefined // 单位
   picUrl?: string // 商品封面图
@@ -58,6 +91,7 @@ export interface Spu {
   stock?: number // 商品库存
   createTime?: Date // 商品创建时间
   status?: number // 商品状态
+  detailConfig?: ProductDetailConfig
 }
 
 export interface ErpIntegration {

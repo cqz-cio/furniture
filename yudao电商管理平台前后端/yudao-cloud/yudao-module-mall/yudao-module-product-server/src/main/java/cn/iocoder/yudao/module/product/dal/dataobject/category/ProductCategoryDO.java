@@ -41,6 +41,10 @@ public class ProductCategoryDO extends BaseDO {
      */
     private Long parentId;
     /**
+     * Stable category code. Display-name edits must never change this identity.
+     */
+    private String code;
+    /**
      * 分类名称
      */
     private String name;

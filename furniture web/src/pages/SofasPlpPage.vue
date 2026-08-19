@@ -3,11 +3,11 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import ProductImage from "../components/ProductImage.vue";
 import { useI18n } from "../i18n.js";
 import { PRODUCT_SORT_OPTIONS } from "../services/productListControls.js";
+import { buildRoomCatalog } from "../services/productCategoryModel.js";
 import {
   buildProductListingModel,
   inferListingType,
   productFacetGroups,
-  productListingFilters,
   resolveProductListingQuery,
 } from "../services/productListingModel.js";
 import {
@@ -15,7 +15,7 @@ import {
   loadWishlistIdentityState,
   withWishlistItemSaved,
 } from "../services/wishlistState.js";
-import { getAllProducts } from "../services/yudaoProductApi.js";
+import { getAllProducts, getProductCategoryTree } from "../services/yudaoProductApi.js";
 
 const props = defineProps({
   authVersion: {
@@ -33,11 +33,19 @@ const { t } = useI18n();
 const loading = ref(true);
 const source = ref("yudao");
 const products = ref([]);
+const roomCatalog = ref([]);
 const catalogError = ref(false);
 const searchQuery = ref("");
 const initialListingQuery = resolveProductListingQuery(typeof window === "undefined" ? "" : window.location.search);
+const initialSearchParams = new URLSearchParams(typeof window === "undefined" ? "" : window.location.search);
+const legacyRoomFilters = {
+  "bedroom-room": "bedroom",
+  living: "living-room",
+  dining: "dining-room",
+};
 const emptyFacetState = () => Object.fromEntries(productFacetGroups.map((group) => [group.key, "all"]));
-const selectedProductType = ref(initialListingQuery.filter);
+const selectedRoomCode = ref(initialSearchParams.get("room") || legacyRoomFilters[initialListingQuery.filter] || "");
+const selectedProductType = ref(legacyRoomFilters[initialListingQuery.filter] ? "all" : initialListingQuery.filter);
 const selectedFacets = ref({ ...emptyFacetState(), ...initialListingQuery.facets });
 const selectedTag = ref(initialListingQuery.tag);
 const selectedSort = ref("featured");
@@ -133,20 +141,22 @@ const sortForListingModel = computed(() => {
   if (selectedSort.value === "priceDesc") return "price-desc";
   return "featured";
 });
+const selectedRoom = computed(() => roomCatalog.value.find((room) => room.code === selectedRoomCode.value) || null);
+const categoryTypes = computed(() =>
+  (selectedRoom.value ? selectedRoom.value.productTypes : roomCatalog.value.flatMap((room) => room.productTypes)),
+);
+const categoryByCode = computed(() => new Map(
+  roomCatalog.value.flatMap((room) => room.productTypes).map((category) => [category.code, category]),
+));
 const productTypeOptions = computed(() => {
-  const availableTypes = new Set(products.value.map((product) => inferListingType(product)));
-  const baseOptions = productListingFilters
-    .filter((option) => option.value !== "all" && availableTypes.has(option.value))
-    .map((option) => ({ value: option.value }));
-  const hasSelectedOption = baseOptions.some((option) => option.value === selectedProductType.value);
-  if (hasSelectedOption || selectedProductType.value === "all") return baseOptions;
-
-  return [
-    { value: selectedProductType.value },
-    ...baseOptions,
-  ];
+  return categoryTypes.value.map((category) => ({
+    value: category.code,
+    label: category.name,
+  }));
 });
 const productTypeLabel = (value) => {
+  const categoryLabel = categoryByCode.value.get(value)?.name;
+  if (categoryLabel) return categoryLabel;
   const key = productTypeLabelKeys[value];
   return key ? t(key) : value;
 };
@@ -168,6 +178,7 @@ const listingModel = computed(() =>
     sort: sortForListingModel.value,
     facets: selectedFacets.value,
     tag: selectedTag.value,
+    allowedTypes: selectedRoom.value?.productTypes.map((category) => category.code) || [],
   })
 );
 const productMatchesSearch = (product) => {
@@ -194,8 +205,14 @@ const activeFilterLabels = computed(() => {
   return labels;
 });
 const money = (value) => `$${Number(value || 0).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
-const isProductAvailable = (product) => Number(product.stock) > 0;
+const isProductFieldVisible = (product, field) => product.displayPolicy?.fields?.[field] !== false;
+const hasProductPrice = (product) =>
+  isProductFieldVisible(product, "price") && product.price !== null && product.price !== undefined;
+const hasProductInventory = (product) =>
+  isProductFieldVisible(product, "inventory") && product.stock !== null && product.stock !== undefined;
+const isProductAvailable = (product) => hasProductInventory(product) && Number(product.stock) > 0;
 const productStockLabel = (product) => {
+  if (!hasProductInventory(product)) return "";
   const stock = Number(product.stock || 0);
   if (stock <= 0) return t("productList.stock.madeToOrder");
   if (stock <= 5) return t("productList.stock.onlyLeft", { count: stock });
@@ -203,6 +220,7 @@ const productStockLabel = (product) => {
 };
 const resetProductListControls = () => {
   searchQuery.value = "";
+  selectedRoomCode.value = "";
   selectedProductType.value = "all";
   selectedFacets.value = emptyFacetState();
   selectedTag.value = "";
@@ -226,10 +244,27 @@ const handleWishlistSave = (product) => {
 };
 const syncListingQueryFromLocation = () => {
   const listingQuery = resolveProductListingQuery(window.location.search);
-  selectedProductType.value = listingQuery.filter;
+  const params = new URLSearchParams(window.location.search);
+  selectedRoomCode.value = params.get("room") || legacyRoomFilters[listingQuery.filter] || "";
+  selectedProductType.value = legacyRoomFilters[listingQuery.filter] ? "all" : listingQuery.filter;
   selectedFacets.value = { ...emptyFacetState(), ...listingQuery.facets };
   selectedTag.value = listingQuery.tag;
   mobileFiltersOpen.value = false;
+};
+
+const reconcileCategorySelection = (categoryId) => {
+  const rooms = roomCatalog.value;
+  const pathRoom = rooms.find((room) => room.id === categoryId || room.productTypes.some((type) => type.id === categoryId));
+  const selectedTypeRoom = rooms.find((room) => room.productTypes.some((type) => type.code === selectedProductType.value));
+  if (pathRoom) selectedRoomCode.value = pathRoom.code;
+  else if (!selectedRoomCode.value && selectedTypeRoom) selectedRoomCode.value = selectedTypeRoom.code;
+
+  if (selectedRoomCode.value && !rooms.some((room) => room.code === selectedRoomCode.value)) {
+    selectedRoomCode.value = "";
+  }
+  if (selectedProductType.value !== "all" && !categoryByCode.value.has(selectedProductType.value)) {
+    selectedProductType.value = "all";
+  }
 };
 
 const resolveCategoryIdFromPath = (pathname = window.location.pathname) => {
@@ -244,12 +279,18 @@ onMounted(async () => {
   try {
     const categoryId = resolveCategoryIdFromPath();
     const requestOptions = props.tenantId ? { tenantId: props.tenantId } : {};
-    const page = await getAllProducts(categoryId ? { categoryId } : {}, requestOptions);
+    const [page, categoryTree] = await Promise.all([
+      getAllProducts(categoryId ? { categoryId } : {}, requestOptions),
+      getProductCategoryTree(requestOptions),
+    ]);
     products.value = page.list;
+    roomCatalog.value = buildRoomCatalog(categoryTree);
+    reconcileCategorySelection(categoryId);
     source.value = "yudao";
     catalogError.value = false;
   } catch {
     products.value = [];
+    roomCatalog.value = [];
     source.value = "error";
     catalogError.value = true;
   } finally {
@@ -258,6 +299,12 @@ onMounted(async () => {
 });
 
 watch(() => props.authVersion, loadProductWishlistState);
+watch(selectedRoomCode, () => {
+  if (selectedProductType.value === "all") return;
+  if (!selectedRoom.value?.productTypes.some((category) => category.code === selectedProductType.value)) {
+    selectedProductType.value = "all";
+  }
+});
 
 onBeforeUnmount(() => {
   window.removeEventListener("popstate", syncListingQueryFromLocation);
@@ -307,7 +354,26 @@ onBeforeUnmount(() => {
       <p>{{ resultSummary }}</p>
     </section>
 
-    <div class="product-filter-list" aria-label="Furniture categories">
+    <div v-if="roomCatalog.length" class="product-filter-list" aria-label="Furniture rooms">
+      <button
+        type="button"
+        :class="{ active: selectedRoomCode === '' }"
+        @click="selectedRoomCode = ''"
+      >
+        {{ t("productList.allFurniture") }}
+      </button>
+      <button
+        v-for="room in roomCatalog"
+        :key="room.code"
+        type="button"
+        :class="{ active: selectedRoomCode === room.code }"
+        @click="selectedRoomCode = room.code"
+      >
+        {{ room.name }}
+      </button>
+    </div>
+
+    <div v-if="roomCatalog.length" class="product-filter-list" aria-label="Furniture categories">
       <button
         type="button"
         :class="{ active: selectedProductType === 'all' }"
@@ -379,7 +445,7 @@ onBeforeUnmount(() => {
     <section v-else-if="!loading" class="product-grid product-grid-editorial" aria-label="Furniture products">
       <article v-for="product in visibleProducts" :key="product.skuId" class="product-card">
         <a :href="`/sofa-pdp?id=${product.id}`" class="product-card-media">
-          <span class="product-card-badge">{{ product.badge || productStockLabel(product) }}</span>
+          <span v-if="product.badge || hasProductInventory(product)" class="product-card-badge">{{ product.badge || productStockLabel(product) }}</span>
           <ProductImage :src="product.cover" :hover-src="product.gallery?.[0]" :label="product.name" />
         </a>
         <div class="product-card-body">
@@ -389,7 +455,7 @@ onBeforeUnmount(() => {
             <p>{{ product.subtitle }}</p>
           </div>
           <dl class="product-card-meta">
-            <div>
+            <div v-if="hasProductPrice(product)">
               <dt>{{ t("productList.card.member") }}</dt>
               <dd>{{ money(product.price) }}</dd>
             </div>
@@ -403,8 +469,8 @@ onBeforeUnmount(() => {
             </div>
           </dl>
           <div class="product-card-foot">
-            <strong>{{ money(product.price) }}</strong>
-            <span>{{ productStockLabel(product) }}</span>
+             <strong v-if="hasProductPrice(product)">{{ money(product.price) }}</strong>
+             <span v-if="hasProductInventory(product)">{{ productStockLabel(product) }}</span>
           </div>
           <div class="product-card-actions">
             <a :href="`/sofa-pdp?id=${product.id}`">{{ t("viewDetails") }}</a>
@@ -425,7 +491,7 @@ onBeforeUnmount(() => {
               {{ isProductAvailable(product) ? t("addToCart") : t("product.unavailable") }}
             </button>
           </div>
-          <p v-if="!isProductAvailable(product)" class="product-card-unavailable">{{ t("product.unavailableHint") }}</p>
+           <p v-if="hasProductInventory(product) && !isProductAvailable(product)" class="product-card-unavailable">{{ t("product.unavailableHint") }}</p>
         </div>
       </article>
 

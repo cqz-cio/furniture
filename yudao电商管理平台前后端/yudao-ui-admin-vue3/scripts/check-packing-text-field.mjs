@@ -7,44 +7,19 @@ const furnitureDetail = await readFile(
   'utf8'
 )
 
-assert.match(furnitureDetail, /v-model="detailConfig\.packingDisplay"/)
+assert.match(furnitureDetail, /v-model="detailConfig\.packing"/)
 assert.match(furnitureDetail, /placeholder="Ships in 2 cartons \/ 1 pc\/ctn \/ 2 packs"/)
 assert.match(furnitureDetail, /资料未提供时可留空/)
+assert.match(furnitureDetail, /typeof config\?\.packing === 'string'/)
+assert.match(furnitureDetail, /config\?\.packingDisplay/)
 assert.match(furnitureDetail, /formatLegacyPacking\(legacyPacking\)/)
-assert.match(furnitureDetail, /normalized\.packingDisplay = normalized\.packingDisplay\.trim\(\)/)
-
-for (const removedControl of [
-  'detailConfig.packing.method',
-  'detailConfig.packing.itemQuantity',
-  'detailConfig.packing.itemUnit',
-  'detailConfig.packing.cartonQuantity',
-  'Carton packing',
-  'Knock-down carton',
-  'Fully assembled carton',
-  'Protective export carton',
-  'Mail-order carton',
-  'product-packing-grid',
-  'validatePacking'
-]) {
-  assert.ok(
-    !furnitureDetail.includes(removedControl),
-    `Packing must not retain the removed structured control: ${removedControl}`
-  )
-}
+assert.match(furnitureDetail, /normalized\.packing = normalized\.packing\.trim\(\)/)
+assert.doesNotMatch(furnitureDetail, /v-model="detailConfig\.packingDisplay"/)
 
 assert.equal(formatLegacyPacking(), '')
 assert.equal(formatLegacyPacking(' Ships in 2 cartons '), 'Ships in 2 cartons')
 assert.equal(
   formatLegacyPacking({ itemQuantity: 1, itemUnit: 'pc', cartonQuantity: 2 }),
-  'Ships in 2 cartons'
-)
-assert.equal(
-  formatLegacyPacking({
-    method: 'Knock-down carton',
-    itemQuantity: 1,
-    itemUnit: 'pc',
-    cartonQuantity: 2
-  }),
   'Ships in 2 cartons'
 )
 assert.equal(
@@ -56,4 +31,4 @@ assert.equal(
   '1 pc/ctn'
 )
 
-console.log('Packing text-field contract passed.')
+console.log('Packing canonical text-field contract passed.')
