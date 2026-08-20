@@ -1,77 +1,68 @@
-version: "2.4"
+name: furniture-full-stack
 
 services:
   mysql:
     image: mysql:8.0
-    container_name: furniture-demo-mysql
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
       - --default-time-zone=+08:00
     environment:
-      MYSQL_ROOT_PASSWORD: "123456"
-      MYSQL_DATABASE: "ruoyi-vue-pro"
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in the Compose env file}
+      MYSQL_DATABASE: ruoyi-vue-pro
       TZ: Asia/Shanghai
     ports:
-      - "3306:3306"
+      - "127.0.0.1:${MYSQL_PORT:-3306}:3306"
     volumes:
-      - furniture_demo_mysql_data:/var/lib/mysql
-      - ./sql/ruoyi-vue-pro.sql:/docker-entrypoint-initdb.d/01-ruoyi-vue-pro.sql:ro
-      - ./sql/quartz.sql:/docker-entrypoint-initdb.d/02-quartz.sql:ro
-      - ./sql/yudao-module-tables.sql:/docker-entrypoint-initdb.d/03-yudao-module-tables.sql:ro
-      - ./sql/member-email-auth.sql:/docker-entrypoint-initdb.d/04-member-email-auth.sql:ro
-      - ./sql/member-trade-application.sql:/docker-entrypoint-initdb.d/05-member-trade-application.sql:ro
+      - furniture_mysql_data:/var/lib/mysql
+      - ./yudao电商管理平台前后端/yudao-cloud/sql/mysql/oakved-baseline.sql:/docker-entrypoint-initdb.d/01-oakved-baseline.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "mysql --protocol=TCP -h127.0.0.1 -P3306 -uroot -p$${MYSQL_ROOT_PASSWORD} $${MYSQL_DATABASE} -e 'SELECT 1' >/dev/null 2>&1"]
+      test:
+        [
+          "CMD-SHELL",
+          "mysqladmin ping -h 127.0.0.1 -uroot -p$${MYSQL_ROOT_PASSWORD} --silent",
+        ]
       interval: 5s
       timeout: 5s
       retries: 40
       start_period: 40s
+    restart: unless-stopped
 
   redis:
     image: redis:7-alpine
-    container_name: furniture-demo-redis
     command: ["redis-server", "--appendonly", "yes"]
     ports:
-      - "6379:6379"
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
     volumes:
-      - furniture_demo_redis_data:/data
+      - furniture_redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 30
       start_period: 10s
-
-  libretranslate:
-    image: libretranslate/libretranslate:latest
-    container_name: furniture-demo-libretranslate
-    command: ["--threads", "4", "--load-only", "en,zh"]
-    ports:
-      - "127.0.0.1:5000:5000"
-    volumes:
-      - furniture_demo_libretranslate_models:/home/libretranslate/.local/share/argos-translate
     restart: unless-stopped
 
-  yudao-server:
-    image: furniture-yudao-server:main
-    container_name: furniture-yudao-server
+  erp-backend:
+    build:
+      context: ./yudao电商管理平台前后端/yudao-cloud
+      dockerfile: yudao-server/Dockerfile
     environment:
       TZ: Asia/Shanghai
-      ARGS: "--spring.profiles.active=local"
-      SPRING_DATASOURCE_DYNAMIC_DATASOURCE_MASTER_URL: "jdbc:mysql://mysql:3306/ruoyi-vue-pro?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&nullCatalogMeansCurrent=true&rewriteBatchedStatements=true"
-      SPRING_DATASOURCE_DYNAMIC_DATASOURCE_SLAVE_URL: "jdbc:mysql://mysql:3306/ruoyi-vue-pro?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true&nullCatalogMeansCurrent=true"
+      ARGS: --spring.profiles.active=local
+      SPRING_DATASOURCE_DYNAMIC_DATASOURCE_MASTER_URL: jdbc:mysql://mysql:3306/ruoyi-vue-pro?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&nullCatalogMeansCurrent=true&rewriteBatchedStatements=true
+      SPRING_DATASOURCE_DYNAMIC_DATASOURCE_SLAVE_URL: jdbc:mysql://mysql:3306/ruoyi-vue-pro?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&nullCatalogMeansCurrent=true&rewriteBatchedStatements=true
       SPRING_DATASOURCE_DYNAMIC_DATASOURCE_MASTER_USERNAME: root
-      SPRING_DATASOURCE_DYNAMIC_DATASOURCE_MASTER_PASSWORD: "123456"
+      SPRING_DATASOURCE_DYNAMIC_DATASOURCE_MASTER_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       SPRING_DATASOURCE_DYNAMIC_DATASOURCE_SLAVE_USERNAME: root
-      SPRING_DATASOURCE_DYNAMIC_DATASOURCE_SLAVE_PASSWORD: "123456"
-      SPRING_REDIS_HOST: redis
-      SPRING_REDIS_PORT: "6379"
-      ROCKETMQ_NAME_SERVER: "127.0.0.1:9876"
-      SPRING_RABBITMQ_HOST: "127.0.0.1"
-      SPRING_KAFKA_BOOTSTRAP_SERVERS: "127.0.0.1:9092"
+      SPRING_DATASOURCE_DYNAMIC_DATASOURCE_SLAVE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: "6379"
+      ROCKETMQ_NAME_SERVER: 127.0.0.1:9876
+      SPRING_RABBITMQ_HOST: 127.0.0.1
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: 127.0.0.1:9092
     ports:
-      - "48080:48080"
+      - "127.0.0.1:${ERP_BACKEND_PORT:-48080}:48080"
     depends_on:
       mysql:
         condition: service_healthy
@@ -79,21 +70,34 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  furniture-web:
-    image: furniture-web:main
-    container_name: furniture-web
+  erp-admin:
+    build:
+      context: ./yudao电商管理平台前后端/yudao-ui-admin-vue3
+      args:
+        VITE_BASE_URL: ${ERP_PUBLIC_BASE_URL:-http://localhost:48080}
+        VITE_API_URL: /admin-api
+        VITE_BASE_PATH: /admin/
+        VITE_FURNITURE_WEB_URL: ${VANZ_PUBLIC_URL:-http://localhost:8081}
+        VITE_MALL_H5_DOMAIN: ${VANZ_PUBLIC_URL:-http://localhost:8081}
     ports:
-      - "80:80"
+      - "${ERP_ADMIN_PORT:-8080}:80"
+    depends_on:
+      - erp-backend
     restart: unless-stopped
 
-  furniture-admin:
-    image: furniture-admin:main
-    container_name: furniture-admin
+  vanz-website:
+    build:
+      context: ${VANZ_WEB_CONTEXT:?Set VANZ_WEB_CONTEXT to the vanz-homepage-prototype directory}
+      args:
+        VITE_YUDAO_APP_API_BASE: ${VANZ_APP_API_BASE:-http://localhost:48080/app-api}
+        VITE_YUDAO_APP_TENANT_ID: "162"
+        VITE_ERP_BLOG_ENABLED: "true"
     ports:
-      - "8080:80"
+      - "${VANZ_WEB_PORT:-8081}:80"
+    depends_on:
+      - erp-backend
     restart: unless-stopped
 
 volumes:
-  furniture_demo_mysql_data:
-  furniture_demo_redis_data:
-  furniture_demo_libretranslate_models:
+  furniture_mysql_data:
+  furniture_redis_data:

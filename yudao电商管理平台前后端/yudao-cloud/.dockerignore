@@ -1,0 +1,9 @@
+.git
+.idea
+.vscode
+**/target
+**/*.log
+work
+docs
+script
+sql/tools

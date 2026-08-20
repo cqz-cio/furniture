@@ -1,23 +1,26 @@
-## AdoptOpenJDK 停止发布 OpenJDK 二进制，而 Eclipse Temurin 是它的延伸，提供更好的稳定性
-## 感谢复旦核博士的建议！灰子哥，牛皮！
-FROM eclipse-temurin:21-jre
+# Build with yudao-cloud as the Docker context:
+# docker build -f yudao-server/Dockerfile -t furniture-erp-backend .
+FROM maven:3.9-eclipse-temurin-17-alpine AS build
 
-## 创建目录，并使用它作为工作目录
-RUN mkdir -p /yudao-server
-WORKDIR /yudao-server
-## 将后端项目的 Jar 文件，复制到镜像中
-COPY ./target/yudao-server.jar app.jar
+WORKDIR /workspace
+COPY . .
 
-## 设置 TZ 时区
+RUN mvn -B -ntp -pl yudao-server -am -DskipTests package \
+    && test -s yudao-server/target/yudao-server.jar
+
+FROM eclipse-temurin:17-jre-alpine AS runtime
+
+RUN addgroup -S yudao && adduser -S -G yudao yudao
+
+WORKDIR /opt/yudao
+COPY --from=build --chown=yudao:yudao /workspace/yudao-server/target/yudao-server.jar app.jar
+
 ENV TZ=Asia/Shanghai
-## 设置 JAVA_OPTS 环境变量，可通过 docker run -e "JAVA_OPTS=" 进行覆盖
-ENV JAVA_OPTS="-Xms512m -Xmx512m -Djava.security.egd=file:/dev/./urandom"
+ENV JAVA_OPTS="-Xms512m -Xmx2048m -Djava.security.egd=file:/dev/./urandom"
+ENV ARGS="--spring.profiles.active=prod"
 
-## 应用参数
-ENV ARGS=""
+USER yudao
 
-## 暴露后端项目的 48080 端口
 EXPOSE 48080
 
-## 启动后端项目
-CMD java ${JAVA_OPTS} -jar app.jar $ARGS
+ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar app.jar $ARGS"]

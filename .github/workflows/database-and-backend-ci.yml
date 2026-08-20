@@ -1,4 +1,4 @@
-name: Database and backend CI
+name: ERP full-stack CI
 
 on:
   push:
@@ -11,13 +11,13 @@ permissions:
   contents: read
 
 concurrency:
-  group: database-backend-${{ github.workflow }}-${{ github.ref }}
+  group: erp-full-stack-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  verify-database-and-jar:
+  verify-database-and-backend:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
     services:
       mysql:
         image: mysql:8.0
@@ -55,13 +55,15 @@ jobs:
             exit 1
           fi
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
+      - name: Set up Node.js for database verification
+        uses: actions/setup-node@v7
         with:
-          node-version: 24
+          node-version: 22
           cache: npm
           cache-dependency-path: furniture web/package-lock.json
 
+      # These migration tools currently live in furniture web. This step does
+      # not build or publish that unrelated RH storefront.
       - name: Install database verification dependencies
         working-directory: furniture web
         run: npm ci
@@ -93,6 +95,7 @@ jobs:
 
       - name: Verify migrations are packaged in the JAR
         working-directory: yudao电商管理平台前后端/yudao-cloud
+        shell: bash
         run: |
           jar tf yudao-server/target/yudao-server.jar > yudao-server/target/jar-contents.txt
           baseline_count=$(grep -c 'BOOT-INF/classes/db/migration/B[0-9][0-9][0-9]__oakved_baseline.sql' yudao-server/target/jar-contents.txt)
@@ -110,3 +113,92 @@ jobs:
           path: yudao电商管理平台前后端/yudao-cloud/yudao-server/target/yudao-server.jar
           if-no-files-found: error
           retention-days: 14
+
+  verify-erp-admin:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: yudao电商管理平台前后端/yudao-ui-admin-vue3
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8.15.9
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: yudao电商管理平台前后端/yudao-ui-admin-vue3/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # The inherited Yudao UI still has known type debt outside the furniture
+      # modules. Keep reporting it without making every production build red.
+      - name: Report ERP admin type debt
+        continue-on-error: true
+        run: pnpm ts:check
+
+      - name: Build ERP admin
+        env:
+          VITE_BASE_URL: https://api.vanzhome.com
+          VITE_API_URL: /admin-api
+          VITE_BASE_PATH: /admin/
+          VITE_FURNITURE_WEB_URL: https://www.vanzhome.com
+          VITE_MALL_H5_DOMAIN: https://www.vanzhome.com
+        run: pnpm build:prod
+
+      - name: Verify ERP admin output
+        shell: bash
+        run: |
+          test -s dist-prod/index.html
+          grep -Rsl 'https://api.vanzhome.com' dist-prod/assets | grep -q .
+
+      - name: Upload verified ERP admin bundle
+        uses: actions/upload-artifact@v7
+        with:
+          name: yudao-admin-${{ github.sha }}
+          path: yudao电商管理平台前后端/yudao-ui-admin-vue3/dist-prod/
+          if-no-files-found: error
+          retention-days: 14
+
+  verify-docker-images:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    needs:
+      - verify-database-and-backend
+      - verify-erp-admin
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Build ERP admin image
+        run: |
+          docker build \
+            --build-arg VITE_BASE_URL=https://api.vanzhome.com \
+            --build-arg VITE_API_URL=/admin-api \
+            --build-arg VITE_BASE_PATH=/admin/ \
+            --build-arg VITE_FURNITURE_WEB_URL=https://www.vanzhome.com \
+            --build-arg VITE_MALL_H5_DOMAIN=https://www.vanzhome.com \
+            --tag furniture-erp-admin:${{ github.sha }} \
+            "yudao电商管理平台前后端/yudao-ui-admin-vue3"
+
+      - name: Build ERP backend image
+        run: |
+          docker build \
+            --file "yudao电商管理平台前后端/yudao-cloud/yudao-server/Dockerfile" \
+            --tag furniture-erp-backend:${{ github.sha }} \
+            "yudao电商管理平台前后端/yudao-cloud"
+
+      - name: Verify image metadata
+        run: |
+          test "$(docker image inspect furniture-erp-admin:${{ github.sha }} --format '{{.Config.ExposedPorts}}')" = "map[80/tcp:{}]"
+          test "$(docker image inspect furniture-erp-backend:${{ github.sha }} --format '{{.Config.ExposedPorts}}')" = "map[48080/tcp:{}]"
