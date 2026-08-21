@@ -10,6 +10,11 @@ on:
 permissions:
   contents: read
 
+env:
+  REGISTRY: ghcr.io
+  ERP_ADMIN_IMAGE: cqz-cio/furniture-erp-admin
+  ERP_BACKEND_IMAGE: cqz-cio/furniture-erp-backend
+
 concurrency:
   group: erp-full-stack-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -170,35 +175,105 @@ jobs:
           retention-days: 14
 
   verify-docker-images:
+    name: Build and publish ERP Docker images
     runs-on: ubuntu-latest
     timeout-minutes: 60
     needs:
       - verify-database-and-backend
       - verify-erp-admin
+    permissions:
+      contents: read
+      packages: write
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
 
-      - name: Build ERP admin image
-        run: |
-          docker build \
-            --build-arg VITE_BASE_URL=https://api.vanzhome.com \
-            --build-arg VITE_API_URL=/admin-api \
-            --build-arg VITE_BASE_PATH=/admin/ \
-            --build-arg VITE_FURNITURE_WEB_URL=https://www.vanzhome.com \
-            --build-arg VITE_MALL_H5_DOMAIN=https://www.vanzhome.com \
-            --tag furniture-erp-admin:${{ github.sha }} \
-            "yudao电商管理平台前后端/yudao-ui-admin-vue3"
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
 
-      - name: Build ERP backend image
-        run: |
-          docker build \
-            --file "yudao电商管理平台前后端/yudao-cloud/yudao-server/Dockerfile" \
-            --tag furniture-erp-backend:${{ github.sha }} \
-            "yudao电商管理平台前后端/yudao-cloud"
+      - name: Log in to GitHub Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Verify image metadata
+      - name: Generate ERP admin image metadata
+        id: admin-meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.ERP_ADMIN_IMAGE }}
+          tags: |
+            type=sha,format=long,prefix=
+            type=raw,value=main,enable=${{ github.ref == 'refs/heads/main' }}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Generate ERP backend image metadata
+        id: backend-meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.ERP_BACKEND_IMAGE }}
+          tags: |
+            type=sha,format=long,prefix=
+            type=raw,value=main,enable=${{ github.ref == 'refs/heads/main' }}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build and publish ERP admin image
+        id: admin-image
+        uses: docker/build-push-action@v7
+        with:
+          context: ./yudao电商管理平台前后端/yudao-ui-admin-vue3
+          push: ${{ github.event_name != 'pull_request' }}
+          load: ${{ github.event_name == 'pull_request' }}
+          tags: ${{ steps.admin-meta.outputs.tags }}
+          labels: ${{ steps.admin-meta.outputs.labels }}
+          build-args: |
+            VITE_BASE_URL=https://api.vanzhome.com
+            VITE_API_URL=/admin-api
+            VITE_BASE_PATH=/admin/
+            VITE_FURNITURE_WEB_URL=https://www.vanzhome.com
+            VITE_MALL_H5_DOMAIN=https://www.vanzhome.com
+          cache-from: type=gha,scope=erp-admin
+          cache-to: type=gha,mode=max,scope=erp-admin
+
+      - name: Build and publish ERP backend image
+        id: backend-image
+        uses: docker/build-push-action@v7
+        with:
+          context: ./yudao电商管理平台前后端/yudao-cloud
+          file: ./yudao电商管理平台前后端/yudao-cloud/yudao-server/Dockerfile
+          push: ${{ github.event_name != 'pull_request' }}
+          load: ${{ github.event_name == 'pull_request' }}
+          tags: ${{ steps.backend-meta.outputs.tags }}
+          labels: ${{ steps.backend-meta.outputs.labels }}
+          cache-from: type=gha,scope=erp-backend
+          cache-to: type=gha,mode=max,scope=erp-backend
+
+      - name: Verify local image metadata
+        if: github.event_name == 'pull_request'
+        shell: bash
         run: |
-          test "$(docker image inspect furniture-erp-admin:${{ github.sha }} --format '{{.Config.ExposedPorts}}')" = "map[80/tcp:{}]"
-          test "$(docker image inspect furniture-erp-backend:${{ github.sha }} --format '{{.Config.ExposedPorts}}')" = "map[48080/tcp:{}]"
+          test "$(docker image inspect "${REGISTRY}/${ERP_ADMIN_IMAGE}:${GITHUB_SHA}" --format '{{.Config.ExposedPorts}}')" = "map[80/tcp:{}]"
+          test "$(docker image inspect "${REGISTRY}/${ERP_BACKEND_IMAGE}:${GITHUB_SHA}" --format '{{.Config.ExposedPorts}}')" = "map[48080/tcp:{}]"
+
+      - name: Verify published images
+        if: github.event_name != 'pull_request'
+        run: |
+          docker buildx imagetools inspect "${REGISTRY}/${ERP_ADMIN_IMAGE}:${GITHUB_SHA}"
+          docker buildx imagetools inspect "${REGISTRY}/${ERP_BACKEND_IMAGE}:${GITHUB_SHA}"
+
+      - name: Summarize published images
+        if: github.event_name != 'pull_request'
+        shell: bash
+        run: |
+          {
+            echo "## ERP Docker images"
+            echo
+            echo "- \`${REGISTRY}/${ERP_ADMIN_IMAGE}:${GITHUB_SHA}\`"
+            echo "- \`${REGISTRY}/${ERP_BACKEND_IMAGE}:${GITHUB_SHA}\`"
+            if [[ "$GITHUB_REF" == "refs/heads/main" ]]; then
+              echo "- Updated aliases: \`main\`, \`latest\`"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
