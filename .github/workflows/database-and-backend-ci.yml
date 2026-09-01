@@ -111,14 +111,6 @@ jobs:
           grep -q "BOOT-INF/classes/db/migration/${latest_baseline}" yudao-server/target/jar-contents.txt
           test "$versioned_count" -eq "$expected_count"
 
-      - name: Upload verified backend JAR
-        uses: actions/upload-artifact@v7
-        with:
-          name: yudao-server-${{ github.sha }}
-          path: yudao电商管理平台前后端/yudao-cloud/yudao-server/target/yudao-server.jar
-          if-no-files-found: error
-          retention-days: 14
-
   verify-erp-admin:
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -165,14 +157,6 @@ jobs:
         run: |
           test -s dist-prod/index.html
           grep -Rsl 'https://api.vanzhome.com' dist-prod/assets | grep -q .
-
-      - name: Upload verified ERP admin bundle
-        uses: actions/upload-artifact@v7
-        with:
-          name: yudao-admin-${{ github.sha }}
-          path: yudao电商管理平台前后端/yudao-ui-admin-vue3/dist-prod/
-          if-no-files-found: error
-          retention-days: 14
 
   verify-docker-images:
     name: Build and publish ERP Docker images
