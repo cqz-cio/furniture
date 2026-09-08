@@ -1,0 +1,47 @@
+name: ERP test environment check
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: erp-test-environment-check
+  cancel-in-progress: false
+
+jobs:
+  verify-checker:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Test diagnostic safeguards without credentials
+        run: timeout --kill-after=5s 30s python3 -B -m unittest discover -s scripts/test-environment -p 'test_*.py' -v
+
+  check-test-server:
+    needs: verify-checker
+    environment: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Verify saved credentials and current test services
+        env:
+          TENCENT_SSH_HOST: ${{ vars.TENCENT_SSH_HOST }}
+          TENCENT_SSH_USER: ${{ vars.TENCENT_SSH_USER }}
+          TENCENT_SSH_PORT: ${{ vars.TENCENT_SSH_PORT }}
+          TENCENT_SSH_PRIVATE_KEY: ${{ secrets.TENCENT_SSH_PRIVATE_KEY }}
+          TENCENT_SSH_KNOWN_HOSTS: ${{ secrets.TENCENT_SSH_KNOWN_HOSTS }}
+          YUDAO_DB_PASSWORD: ${{ secrets.YUDAO_DB_PASSWORD }}
+          YUDAO_REDIS_PASSWORD: ${{ secrets.YUDAO_REDIS_PASSWORD }}
+          VANZ_WEBSITE_INQUIRY_SHARED_SECRET: ${{ secrets.VANZ_WEBSITE_INQUIRY_SHARED_SECRET }}
+        run: >-
+          timeout --kill-after=5s 55s python3 -B scripts/test-environment/check.py
+          --report "$RUNNER_TEMP/erp-test-check.json"
+          --summary "$GITHUB_STEP_SUMMARY"
