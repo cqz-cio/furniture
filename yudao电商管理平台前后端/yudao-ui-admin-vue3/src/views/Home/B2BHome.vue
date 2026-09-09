@@ -309,7 +309,7 @@ const actions = computed(() => [
   ...(canReadSeo
     ? [
         {
-          title: '官网运营',
+          title: '网站管理（CMS）',
           description: `已发布 ${seoPublishedCount.value} 项元数据`,
           icon: 'ep:promotion',
           path: '/seo/metadata'

@@ -7,7 +7,7 @@
         </div>
         <div>
           <div class="blog-toolbar__title">
-            <strong>VANZ 企业日志</strong>
+            <strong>文章管理</strong>
             <el-tag size="small" type="info" effect="plain">English</el-tag>
           </div>
           <p>编辑文章、管理排序与发布状态；官网只展示已发布且开启显示的内容。</p>

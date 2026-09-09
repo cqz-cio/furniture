@@ -44,6 +44,7 @@ export const setAnalyticsConsent = ({ granted, evidence = "" }) => {
     localStorage.removeItem(CONSENT_KEY);
     clearIdentifiers();
   }
+  if (typeof window !== "undefined") window.dispatchEvent(new Event("oakved:analytics-consent-changed"));
 };
 
 const isAllowed = () => isBehaviorTrackingEnabled() && Boolean(readConsent());

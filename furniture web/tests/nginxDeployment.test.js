@@ -4,6 +4,14 @@ import { describe, expect, it } from "vitest";
 const readSource = (path) => readFileSync(new URL(path, import.meta.url), "utf8").replace(/\r\n/g, "\n");
 
 describe("nginx deployment config", () => {
+  it("authorizes CMS scripts with a per-response nonce on the non-cached HTML shell", () => {
+    const source = readSource("../nginx.conf");
+    const shell = source.split("location = /index.html")[1].split("location /assets/")[0];
+    expect(source).toContain("sub_filter '<script ' '<script nonce=\"$request_id\" ';");
+    expect(shell).toContain("'nonce-$request_id' 'strict-dynamic'");
+    expect(shell).toContain('add_header Cache-Control "no-store" always;');
+    expect(source).not.toMatch(/script-src[^;]*'unsafe-inline'/);
+  });
   it("serves the Vite SPA with immutable asset caching and a non-cached shell", () => {
     const source = readSource("../nginx.conf");
 

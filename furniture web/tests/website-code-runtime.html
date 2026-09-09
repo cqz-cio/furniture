@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="zh-CN"><meta charset="utf-8"><title>CMS 脚本运行验收</title>
+<style>body{font:16px/1.8 system-ui;margin:32px;color:#172033}button{padding:12px 20px}pre{white-space:pre-wrap}iframe{width:100%;height:60px;border:1px solid #ddd}</style>
+<h1>CMS 脚本运行验收</h1><p>使用隔离 iframe 和本地测试代码验证真实浏览器执行，不请求广告平台。</p>
+<button id="run">运行检查</button><pre id="results">尚未运行</pre><div id="frames"></div>
+<script type="module">
+import { createWebsiteCodeRuntime } from "../src/services/websiteCodeRuntime.js";
+const output = document.querySelector("#results");
+const assert = (value, message) => { if (!value) throw new Error(message); output.textContent += "通过：" + message + "\n"; };
+const script = (content, attrs = "") => "<scr" + "ipt " + attrs + ">" + content + "</scr" + "ipt>";
+document.querySelector("#run").onclick = async () => {
+ output.textContent = ""; document.querySelector("#run").disabled = true;
+ try {
+  const iframe = document.createElement("iframe"); iframe.title = "CMS 隔离测试网站";
+  const ready = new Promise(resolve => iframe.onload = resolve);
+  iframe.srcdoc = '<!doctype html><html><head><meta http-equiv="Content-Security-Policy" content="script-src \'nonce-cms-test-nonce\' \'strict-dynamic\'">' +
+    script('window.cmsOrder = []', 'nonce="cms-test-nonce"') +
+    '</head><body><main id="site">原网站内容</main></body></html>';
+  document.querySelector("#frames").append(iframe); await ready;
+  const doc = iframe.contentDocument, win = iframe.contentWindow;
+  let calls = 0, reloads = 0;
+  const runtime = createWebsiteCodeRuntime({ document: doc, reload: () => reloads++,
+    loadPublished: () => { calls++; return { version: 2, content: {
+      header: { enabled: true, code: '<meta name="cms-verification" content="ok">' +
+        script('window.cmsOrder.push("inline-first")') +
+        script('window.cmsOrder.push("external")', 'src="data:text/javascript,window.cmsOrder.push(%22external%22)"') +
+        script('window.cmsOrder.push("inline-after")') },
+      body: { enabled: true, code: script('window.cmsOrder.push("body")', 'id="cms-body"') },
+      footer: { enabled: true, code: script('window.cmsOrder.push("footer")', 'id="cms-footer"') }
+    } }; }, onError: error => { throw error; },
+  });
+  await runtime.ready;
+  assert(doc.head.querySelector('meta[name="cms-verification"]')?.content === "ok", "无追踪同意时，验证 meta 仍在 head 中");
+  assert(win.cmsOrder.length === 0, "默认拒绝时不执行追踪脚本");
+  await runtime.updateConsent({ analytics: true });
+  assert(win.cmsOrder.length === 0, "仅统计同意不会启用混合广告代码");
+  await runtime.updateConsent({ analytics: true, marketing: true });
+  assert(win.cmsOrder.join(",") === "inline-first,external,inline-after,body,footer", "外部和内联脚本按顺序执行");
+  assert(doc.body.firstElementChild.id === "cms-body", "Body 代码放在正文开始");
+  assert(doc.body.lastElementChild.id === "cms-footer", "Footer 代码放在正文末尾");
+  assert(doc.querySelector("#cms-body").nonce === "cms-test-nonce", "脚本继承页面 CSP nonce 并成功执行");
+  assert(doc.querySelector("#site").textContent === "原网站内容", "原网站内容保持正常");
+  await runtime.updateConsent({ analytics: true, marketing: true });
+  assert(win.cmsOrder.length === 5, "重复同意通知不会重复插入和执行");
+  assert(createWebsiteCodeRuntime({document:doc}) === runtime && calls === 1, "重复初始化只读取一次配置");
+  await runtime.updateConsent({});
+  assert(reloads === 1, "撤回同意会重载页面以停止已运行脚本");
+  const frameDoc = document.implementation.createHTMLDocument("无脚本资源测试");
+  let frameReloads = 0;
+  const frameRuntime = createWebsiteCodeRuntime({ document: frameDoc, reload: () => frameReloads++,
+    loadPublished: () => ({ version: 1, content: {
+      footer: { enabled: true, code: '<iframe title="嵌入工具" src="about:blank" data-cms-consent="marketing"></iframe>' }
+    } })
+  });
+  await frameRuntime.ready;
+  await frameRuntime.updateConsent({ marketing: true });
+  assert(Boolean(frameDoc.querySelector("iframe")), "已同意的嵌入工具可以加载");
+  await frameRuntime.updateConsent({});
+  assert(frameReloads === 1, "撤回同意也会停止没有 script 标签的嵌入工具");
+  output.textContent += "\n全部 13 项通过";
+ } catch(error) { output.textContent += "\n失败：" + error.message; }
+ finally { document.querySelector("#run").disabled = false; }
+};
+</script></html>

@@ -16,15 +16,18 @@ class FurnitureNavigationConfigurationTest {
                 .furnitureNavigationCatalog(new ObjectMapper());
 
         assertThat(catalog.getMenuPaths())
+                .contains("/seo/website-code")
                 .contains("/system/role", "/ai/chat", "/crm/clue", "/member/user", "/seo/navigation");
 
         assertThat(catalog.getMenuPaths(TenantBusinessModeEnum.B2C.getCode()))
+                .contains("/seo/website-code")
                 .contains("/mall/trade/order", "/mall/trade/after-sale", "/member/user",
                         "/pay/order", "/pay/refund", "/infra/file", "/seo/navigation", "/seo/analysis")
                 .doesNotContain("/crm", "/crm/clue", "/member/trade-application", "/pay/app",
                         "/ai", "/system/role", "/infra/file-config");
 
         assertThat(catalog.getMenuPaths(TenantBusinessModeEnum.B2B.getCode()))
+                .contains("/seo/website-code")
                 .contains("/crm/clue", "/crm/customer", "/crm/contact", "/mall/product/spu",
                         "/infra/file", "/seo/navigation", "/seo/analysis")
                 .doesNotContain("/mall/trade/order", "/member/user", "/pay/order", "/ai",

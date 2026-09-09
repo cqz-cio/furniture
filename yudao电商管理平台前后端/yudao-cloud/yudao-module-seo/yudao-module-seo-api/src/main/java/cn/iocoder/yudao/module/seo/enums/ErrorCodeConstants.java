@@ -7,6 +7,10 @@ import cn.iocoder.yudao.framework.common.exception.ErrorCode;
  */
 public interface ErrorCodeConstants {
 
+    ErrorCode WEBSITE_CODE_VERSION_CONFLICT = new ErrorCode(1_070_007_000, "网站代码已被其他用户修改，请重新加载后再保存");
+    ErrorCode WEBSITE_CODE_HISTORY_NOT_EXISTS = new ErrorCode(1_070_007_001, "本站的代码历史记录不存在");
+    ErrorCode WEBSITE_CODE_DRAFT_REQUIRED = new ErrorCode(1_070_007_002, "请先保存代码草稿再发布");
+
     ErrorCode LOCALE_INVALID = new ErrorCode(1_070_000_000, "Locale 必须是有效的 BCP 47 语言标签");
 
     ErrorCode SITE_CONFIG_NOT_EXISTS = new ErrorCode(1_070_001_000, "SEO 站点配置不存在");

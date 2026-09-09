@@ -6,3 +6,5 @@ DELETE FROM seo_analysis_item;
 DELETE FROM seo_analysis;
 DELETE FROM seo_metadata;
 DELETE FROM seo_site_config;
+DELETE FROM website_code_history;
+DELETE FROM website_code_config;

@@ -19,6 +19,7 @@ import * as TenantApi from '@/api/system/tenant'
 import { getVisitTenantId, setVisitTenantId } from '@/utils/auth'
 import { useMessage } from '@/hooks/web/useMessage'
 import { useTagsView } from '@/hooks/web/useTagsView'
+import { canChangeTenant } from '@/utils/tenantChangeGuard'
 
 const message = useMessage() // 消息弹窗
 const tagsView = useTagsView() // 标签页操作
@@ -26,7 +27,11 @@ const tagsView = useTagsView() // 标签页操作
 const value = ref(getVisitTenantId()) // 当前选中的租户 ID
 const tenants = ref<any[]>([]) // 租户列表
 
-const handleChange = (id: number) => {
+const handleChange = async (id: number) => {
+  if (!(await canChangeTenant())) {
+    value.value = getVisitTenantId()
+    return
+  }
   // 设置访问租户 ID
   setVisitTenantId(id)
   // 关闭其他标签页，只保留当前页

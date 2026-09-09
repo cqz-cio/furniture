@@ -1,7 +1,7 @@
 <template>
   <header class="seo-todo-header">
     <div>
-      <p>VANZ 官网运营</p>
+      <p>网站管理（CMS）</p>
       <h1>SEO 待办中心</h1>
       <span>按商品、分类和页面维护搜索标题与摘要，不需要记站点 ID 或实体 ID。</span>
     </div>
