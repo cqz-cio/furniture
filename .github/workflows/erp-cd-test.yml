@@ -37,12 +37,12 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ERP_CD_ENABLED: ${{ vars.ERP_CD_ENABLED }}
-          ERP_SSH_HOST: ${{ vars.ERP_SSH_HOST }}
-          ERP_SSH_USER: ${{ vars.ERP_SSH_USER }}
-          ERP_SSH_PORT: ${{ vars.ERP_SSH_PORT }}
+          ERP_SSH_HOST: ${{ vars.ERP_SSH_HOST || vars.TENCENT_SSH_HOST }}
+          ERP_SSH_USER: ${{ vars.ERP_SSH_USER || vars.TENCENT_SSH_USER }}
+          ERP_SSH_PORT: ${{ vars.ERP_SSH_PORT || vars.TENCENT_SSH_PORT }}
           ERP_DEPLOY_ROOT: ${{ vars.ERP_DEPLOY_ROOT }}
-          ERP_SSH_PRIVATE_KEY: ${{ secrets.ERP_SSH_PRIVATE_KEY }}
-          ERP_SSH_KNOWN_HOSTS: ${{ secrets.ERP_SSH_KNOWN_HOSTS }}
+          ERP_SSH_PRIVATE_KEY: ${{ secrets.ERP_SSH_PRIVATE_KEY || secrets.TENCENT_SSH_PRIVATE_KEY }}
+          ERP_SSH_KNOWN_HOSTS: ${{ secrets.ERP_SSH_KNOWN_HOSTS || secrets.TENCENT_SSH_KNOWN_HOSTS }}
           RELEASE_ID: ${{ inputs.release_id }}
           OPERATION: ${{ inputs.operation }}
         run: timeout --kill-after=10s 1550s bash deploy/erp/deploy-test.sh --release "$RELEASE_ID" --operation "$OPERATION"

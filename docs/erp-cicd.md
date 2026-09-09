@@ -55,7 +55,9 @@ CI 发布清单需要仓库 contents write 权限；清理还需要对应镜像�
 | Secret | `ERP_SSH_PRIVATE_KEY` | 本环境部署用户的 SSH 私钥 |
 | Secret | `ERP_SSH_KNOWN_HOSTS` | 从可信渠道核对过的服务器主机公钥记录 |
 
-脚本启用严格主机公钥检查，不在部署时自动信任 `ssh-keyscan` 的结果。数据库、Redis 和业务密钥不传到 GitHub，也不写入镜像或清单。服务器需预先使用仅可读取镜像的凭据登录 GHCR；清理权限只给独立清理工作流。
+测试入口兼容已有 `test` Environment 中的 `TENCENT_SSH_HOST`、`TENCENT_SSH_USER`、`TENCENT_SSH_PORT`、`TENCENT_SSH_PRIVATE_KEY`、`TENCENT_SSH_KNOWN_HOSTS`，仅在对应 `ERP_SSH_*` 未配置时回退。无需读出或复制已有 GitHub Secret。清理流程也仅为 `test` 使用此回退；生产入口和生产清理目标仍只读取 `ERP_SSH_*`。
+
+脚本启用严格主机公钥检查，不在部署时自动信任 `ssh-keyscan` 的结果。数据库、Redis 和业务密钥不传到 GitHub，也不写入镜像或清单。镜像私有时，服务器需预先使用仅可读取镜像的凭据登录 GHCR；公开镜像可匿名拉取。清理权限只给独立清理工作流。
 
 测试、生产部署、CI 镜像发布登记、远端清理共用 `erp-release-control` 并发组。运行中的操作不会因为另一个发布主动取消；GitHub 待执行任务仍可能被后来的待执行任务替换，未执行不能记为成功。服务器另有文件锁与部署日志，SSH 中断后不能绕过未完成状态重复操作。
 

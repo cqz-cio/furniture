@@ -53,12 +53,12 @@ jobs:
         env:
           TARGET_ENV: ${{ matrix.environment }}
           APPLY: ${{ needs.prepare.outputs.apply }}
-          ERP_SSH_HOST: ${{ vars.ERP_SSH_HOST }}
-          ERP_SSH_USER: ${{ vars.ERP_SSH_USER }}
-          ERP_SSH_PORT: ${{ vars.ERP_SSH_PORT }}
+          ERP_SSH_HOST: ${{ vars.ERP_SSH_HOST || (matrix.environment == 'test' && vars.TENCENT_SSH_HOST) || '' }}
+          ERP_SSH_USER: ${{ vars.ERP_SSH_USER || (matrix.environment == 'test' && vars.TENCENT_SSH_USER) || '' }}
+          ERP_SSH_PORT: ${{ vars.ERP_SSH_PORT || (matrix.environment == 'test' && vars.TENCENT_SSH_PORT) || '' }}
           ERP_DEPLOY_ROOT: ${{ vars.ERP_DEPLOY_ROOT }}
-          ERP_SSH_PRIVATE_KEY: ${{ secrets.ERP_SSH_PRIVATE_KEY }}
-          ERP_SSH_KNOWN_HOSTS: ${{ secrets.ERP_SSH_KNOWN_HOSTS }}
+          ERP_SSH_PRIVATE_KEY: ${{ secrets.ERP_SSH_PRIVATE_KEY || (matrix.environment == 'test' && secrets.TENCENT_SSH_PRIVATE_KEY) || '' }}
+          ERP_SSH_KNOWN_HOSTS: ${{ secrets.ERP_SSH_KNOWN_HOSTS || (matrix.environment == 'test' && secrets.TENCENT_SSH_KNOWN_HOSTS) || '' }}
         run: |
           operation=snapshot
           if [[ "$APPLY" == true ]]; then operation=lease-start; fi
@@ -124,12 +124,12 @@ jobs:
       - name: Release the temporary cleanup lock
         env:
           TARGET_ENV: ${{ matrix.environment }}
-          ERP_SSH_HOST: ${{ vars.ERP_SSH_HOST }}
-          ERP_SSH_USER: ${{ vars.ERP_SSH_USER }}
-          ERP_SSH_PORT: ${{ vars.ERP_SSH_PORT }}
+          ERP_SSH_HOST: ${{ vars.ERP_SSH_HOST || (matrix.environment == 'test' && vars.TENCENT_SSH_HOST) || '' }}
+          ERP_SSH_USER: ${{ vars.ERP_SSH_USER || (matrix.environment == 'test' && vars.TENCENT_SSH_USER) || '' }}
+          ERP_SSH_PORT: ${{ vars.ERP_SSH_PORT || (matrix.environment == 'test' && vars.TENCENT_SSH_PORT) || '' }}
           ERP_DEPLOY_ROOT: ${{ vars.ERP_DEPLOY_ROOT }}
-          ERP_SSH_PRIVATE_KEY: ${{ secrets.ERP_SSH_PRIVATE_KEY }}
-          ERP_SSH_KNOWN_HOSTS: ${{ secrets.ERP_SSH_KNOWN_HOSTS }}
+          ERP_SSH_PRIVATE_KEY: ${{ secrets.ERP_SSH_PRIVATE_KEY || (matrix.environment == 'test' && secrets.TENCENT_SSH_PRIVATE_KEY) || '' }}
+          ERP_SSH_KNOWN_HOSTS: ${{ secrets.ERP_SSH_KNOWN_HOSTS || (matrix.environment == 'test' && secrets.TENCENT_SSH_KNOWN_HOSTS) || '' }}
         run: >-
           timeout --kill-after=5s 75s python3 -B deploy/erp/runner.py --environment "$TARGET_ENV"
           --operation lease-end --lease-id "gc-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
