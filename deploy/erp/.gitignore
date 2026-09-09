@@ -1,0 +1,5 @@
+__pycache__/
+erp-cd-result.json
+retention-plan.json
+release.json
+tests/__pycache__/

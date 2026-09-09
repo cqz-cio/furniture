@@ -1,0 +1,55 @@
+name: ERP CD - production
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_id:
+        description: Exact release ID already verified by ERP CD - test
+        required: true
+        type: string
+      operation:
+        description: Deploy or roll back the production environment
+        required: true
+        default: deploy
+        type: choice
+        options: [deploy, rollback]
+
+permissions:
+  contents: read
+  actions: read
+  deployments: write
+
+concurrency:
+  group: erp-release-control
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Require test success and deploy the exact production release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ERP_CD_ENABLED: ${{ vars.ERP_CD_ENABLED }}
+          ERP_SSH_HOST: ${{ vars.ERP_SSH_HOST }}
+          ERP_SSH_USER: ${{ vars.ERP_SSH_USER }}
+          ERP_SSH_PORT: ${{ vars.ERP_SSH_PORT }}
+          ERP_DEPLOY_ROOT: ${{ vars.ERP_DEPLOY_ROOT }}
+          ERP_SSH_PRIVATE_KEY: ${{ secrets.ERP_SSH_PRIVATE_KEY }}
+          ERP_SSH_KNOWN_HOSTS: ${{ secrets.ERP_SSH_KNOWN_HOSTS }}
+          RELEASE_ID: ${{ inputs.release_id }}
+          OPERATION: ${{ inputs.operation }}
+        run: timeout --kill-after=10s 1550s bash deploy/erp/deploy-production.sh --release "$RELEASE_ID" --operation "$OPERATION"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: erp-production-deployment-result
+          path: deploy/erp/erp-cd-result.json
+          if-no-files-found: ignore
+          retention-days: 30

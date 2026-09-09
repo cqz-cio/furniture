@@ -1,0 +1,25 @@
+{
+  "environment": "test",
+  "initialized": false,
+  "project": "oakved-erp-test",
+  "backend_port": 48081,
+  "admin_port": 18080,
+  "api_base_url": "https://erp-test-api.example.com",
+  "admin_url": "https://erp-test.example.com/admin/",
+  "storefront_url": "https://store-test.example.com",
+  "database_name": "CHANGE_TO_VERIFIED_TEST_DATABASE",
+  "uploads_path": "/srv/oakved-test/uploads",
+  "uploads_target": "/opt/yudao/uploads",
+  "logs_path": "/srv/oakved-test/logs",
+  "image_peak_bytes": 4294967296,
+  "min_free_bytes": 10737418240,
+  "backup_estimate_bytes": 0,
+  "backup_timeout_seconds": 300,
+  "migration_reviews": {},
+  "smoke_checks": [
+    {"tenant_id": 162, "path": "/app-api/seo/navigation/public?siteId=1&locale=en"},
+    {"tenant_id": 121, "path": "/app-api/seo/navigation/public?siteId=1&locale=en"},
+    {"tenant_id": 162, "path": "/app-api/seo/blog/public?siteId=1&locale=en&pageSize=1"},
+    {"tenant_id": 121, "path": "/app-api/seo/blog/public?siteId=1&locale=en&pageSize=1"}
+  ]
+}

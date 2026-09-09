@@ -1,0 +1,5 @@
+[client]
+host=127.0.0.1
+port=3306
+user=CHANGE_TO_BACKUP_AND_CHECK_USER
+password=CHANGE_ON_SERVER_ONLY

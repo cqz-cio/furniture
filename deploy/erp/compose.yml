@@ -1,0 +1,47 @@
+services:
+  erp-backend:
+    image: ${ERP_BACKEND_IMAGE:?fixed backend digest required}
+    network_mode: host
+    restart: unless-stopped
+    env_file:
+      - path: ./backend.env
+        format: raw
+    environment:
+      ARGS: --spring.profiles.active=prod
+      SERVER_ADDRESS: 127.0.0.1
+      SERVER_PORT: ${ERP_BACKEND_PORT:?backend port required}
+      SPRING_FLYWAY_ENABLED: "true"
+      YUDAO_SECURITY_MOCK_ENABLE: "false"
+      ERP_RELEASE_INFO_ENABLED: "true"
+      ERP_RELEASE_ID: ${ERP_RELEASE_ID:?release ID required}
+      ERP_DEPLOY_ENVIRONMENT: ${ERP_DEPLOY_ENVIRONMENT:?deployment environment required}
+      YUDAO_LOG_FILE: /opt/yudao/logs/server.log
+      LOGGING_LOGBACK_ROLLINGPOLICY_MAX_FILE_SIZE: 20MB
+      LOGGING_LOGBACK_ROLLINGPOLICY_MAX_HISTORY: "14"
+      LOGGING_LOGBACK_ROLLINGPOLICY_TOTAL_SIZE_CAP: 300MB
+    volumes:
+      - type: bind
+        source: ${ERP_UPLOADS_PATH:?existing upload directory required}
+        target: ${ERP_UPLOADS_TARGET:?existing application upload path required}
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${ERP_LOGS_PATH:?existing writable log directory required}
+        target: /opt/yudao/logs
+        bind:
+          create_host_path: false
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+  erp-admin:
+    image: ${ERP_ADMIN_IMAGE:?fixed admin digest required}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${ERP_ADMIN_PORT:?admin port required}:80"
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"

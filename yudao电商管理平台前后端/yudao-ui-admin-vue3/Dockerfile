@@ -14,6 +14,8 @@ ARG VITE_API_URL=/admin-api
 ARG VITE_BASE_PATH=/admin/
 ARG VITE_FURNITURE_WEB_URL=https://www.vanzhome.com
 ARG VITE_MALL_H5_DOMAIN=https://www.vanzhome.com
+ARG ERP_RELEASE_ID=unmanaged
+ARG ERP_DEPLOY_ENVIRONMENT=unmanaged
 
 ENV VITE_BASE_URL=${VITE_BASE_URL}
 ENV VITE_API_URL=${VITE_API_URL}
@@ -21,7 +23,8 @@ ENV VITE_BASE_PATH=${VITE_BASE_PATH}
 ENV VITE_FURNITURE_WEB_URL=${VITE_FURNITURE_WEB_URL}
 ENV VITE_MALL_H5_DOMAIN=${VITE_MALL_H5_DOMAIN}
 
-RUN pnpm build:prod && test -s dist-prod/index.html
+RUN pnpm build:prod && test -s dist-prod/index.html \
+    && node -e 'require("fs").writeFileSync("dist-prod/release.json", JSON.stringify({release: process.env.ERP_RELEASE_ID, environment: process.env.ERP_DEPLOY_ENVIRONMENT}))'
 
 FROM nginx:1.27-alpine AS runtime
 

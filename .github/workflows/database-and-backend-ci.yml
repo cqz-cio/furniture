@@ -14,12 +14,30 @@ env:
   REGISTRY: ghcr.io
   ERP_ADMIN_IMAGE: cqz-cio/furniture-erp-admin
   ERP_BACKEND_IMAGE: cqz-cio/furniture-erp-backend
+  ERP_RELEASE_ID: cd-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+  ERP_TEST_API_BASE_URL: ${{ vars.ERP_TEST_API_BASE_URL }}
+  ERP_TEST_STOREFRONT_URL: ${{ vars.ERP_TEST_STOREFRONT_URL }}
 
 concurrency:
   group: erp-full-stack-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  verify-deployment-scripts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Verify release, isolation, rollback and retention behavior
+        run: timeout --kill-after=5s 90s python3 -B -m unittest discover -s deploy/erp/tests -v
+      - name: Check the two shell entry points
+        run: |
+          for script in deploy/erp/deploy-test.sh deploy/erp/deploy-production.sh; do
+            bash -n "$script"
+          done
+
   verify-database-and-backend:
     runs-on: ubuntu-latest
     timeout-minutes: 35
@@ -165,9 +183,13 @@ jobs:
     needs:
       - verify-database-and-backend
       - verify-erp-admin
+      - verify-deployment-scripts
     permissions:
-      contents: read
+      contents: write
       packages: write
+    concurrency:
+      group: erp-release-control
+      cancel-in-progress: false
 
     steps:
       - name: Check out repository
@@ -175,6 +197,21 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
+
+      - name: Validate optional test image configuration
+        shell: bash
+        run: |
+          if [[ -z "$ERP_TEST_API_BASE_URL" && -z "$ERP_TEST_STOREFRONT_URL" ]]; then
+            echo '::notice::Production image publishing continues. Configure both ERP_TEST_API_BASE_URL and ERP_TEST_STOREFRONT_URL to register deployable test/production releases.'
+          else
+            PYTHONPATH=deploy/erp python3 - <<'PY'
+          import os
+          from common import public_url, api_origin, require
+          public_url(os.environ['ERP_TEST_API_BASE_URL'])
+          public_url(os.environ['ERP_TEST_STOREFRONT_URL'])
+          require(api_origin(os.environ['ERP_TEST_API_BASE_URL']) != api_origin('https://api.vanzhome.com'), 'Test API cannot be production')
+          PY
+          fi
 
       - name: Log in to GitHub Container Registry
         if: github.event_name != 'pull_request'
@@ -193,6 +230,7 @@ jobs:
             type=sha,format=long,prefix=
             type=raw,value=main,enable=${{ github.ref == 'refs/heads/main' }}
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=raw,value=${{ env.ERP_RELEASE_ID }}-production,enable=${{ github.ref == 'refs/heads/main' }}
 
       - name: Generate ERP backend image metadata
         id: backend-meta
@@ -203,17 +241,21 @@ jobs:
             type=sha,format=long,prefix=
             type=raw,value=main,enable=${{ github.ref == 'refs/heads/main' }}
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=raw,value=${{ env.ERP_RELEASE_ID }},enable=${{ github.ref == 'refs/heads/main' }}
 
       - name: Build and publish ERP admin image
         id: admin-image
         uses: docker/build-push-action@v7
         with:
           context: ./yudao电商管理平台前后端/yudao-ui-admin-vue3
+          platforms: linux/amd64
           push: ${{ github.event_name != 'pull_request' }}
           load: ${{ github.event_name == 'pull_request' }}
           tags: ${{ steps.admin-meta.outputs.tags }}
           labels: ${{ steps.admin-meta.outputs.labels }}
           build-args: |
+            ERP_RELEASE_ID=${{ env.ERP_RELEASE_ID }}
+            ERP_DEPLOY_ENVIRONMENT=production
             VITE_BASE_URL=https://api.vanzhome.com
             VITE_API_URL=/admin-api
             VITE_BASE_PATH=/admin/
@@ -227,6 +269,7 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: ./yudao电商管理平台前后端/yudao-cloud
+          platforms: linux/amd64
           file: ./yudao电商管理平台前后端/yudao-cloud/yudao-server/Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           load: ${{ github.event_name == 'pull_request' }}
@@ -234,6 +277,46 @@ jobs:
           labels: ${{ steps.backend-meta.outputs.labels }}
           cache-from: type=gha,scope=erp-backend
           cache-to: type=gha,mode=max,scope=erp-backend
+
+      - name: Build and publish test admin image from the same commit
+        if: github.ref == 'refs/heads/main' && env.ERP_TEST_API_BASE_URL != '' && env.ERP_TEST_STOREFRONT_URL != ''
+        id: test-admin-image
+        uses: docker/build-push-action@v7
+        with:
+          context: ./yudao电商管理平台前后端/yudao-ui-admin-vue3
+          platforms: linux/amd64
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.ERP_ADMIN_IMAGE }}:${{ env.ERP_RELEASE_ID }}-test
+          labels: ${{ steps.admin-meta.outputs.labels }}
+          build-args: |
+            ERP_RELEASE_ID=${{ env.ERP_RELEASE_ID }}
+            ERP_DEPLOY_ENVIRONMENT=test
+            VITE_BASE_URL=${{ env.ERP_TEST_API_BASE_URL }}
+            VITE_API_URL=/admin-api
+            VITE_BASE_PATH=/admin/
+            VITE_FURNITURE_WEB_URL=${{ env.ERP_TEST_STOREFRONT_URL }}
+            VITE_MALL_H5_DOMAIN=${{ env.ERP_TEST_STOREFRONT_URL }}
+          cache-from: type=gha,scope=erp-admin-test
+          cache-to: type=gha,mode=max,scope=erp-admin-test
+
+      - name: Verify test admin does not embed the production API
+        if: steps.test-admin-image.outcome == 'success'
+        env:
+          TEST_ADMIN_DIGEST: ${{ steps.test-admin-image.outputs.digest }}
+        shell: bash
+        run: |
+          container_id=$(docker create "${REGISTRY}/${ERP_ADMIN_IMAGE}@${TEST_ADMIN_DIGEST}")
+          trap 'docker rm "$container_id" >/dev/null' EXIT
+          mkdir -p "$RUNNER_TEMP/erp-admin-test"
+          docker cp "$container_id:/usr/share/nginx/html/admin/." "$RUNNER_TEMP/erp-admin-test/"
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          assets = list((Path(os.environ['RUNNER_TEMP']) / 'erp-admin-test/assets').glob('*.js'))
+          assert assets, 'No test admin assets'
+          assert all(b'https://api.vanzhome.com' not in p.read_bytes() for p in assets), 'Production API found in test bundle'
+          assert any(os.environ['ERP_TEST_API_BASE_URL'].encode() in p.read_bytes() for p in assets), 'Test API absent from bundle'
+          PY
 
       - name: Verify local image metadata
         if: github.event_name == 'pull_request'
@@ -261,3 +344,12 @@ jobs:
               echo "- Updated aliases: \`main\`, \`latest\`"
             fi
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Register complete deployable release
+        if: github.ref == 'refs/heads/main' && steps.test-admin-image.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BACKEND_DIGEST: ${{ steps.backend-image.outputs.digest }}
+          TEST_ADMIN_DIGEST: ${{ steps.test-admin-image.outputs.digest }}
+          PRODUCTION_ADMIN_DIGEST: ${{ steps.admin-image.outputs.digest }}
+        run: timeout --kill-after=5s 120s python3 -B deploy/erp/github_release.py --publish --output "$RUNNER_TEMP/release.json"
