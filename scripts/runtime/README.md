@@ -59,6 +59,20 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File "D:\code\.runtime\bin\oa
 
 ## 状态与数据边界
 
+### 避免其他项目占用 MySQL / Redis 端口
+
+启动器从 `yudao-mysql-local`、`yudao-redis-local` 的实际 Docker 发布端口生成后端配置，不再盲连 3306 / 6379。容器停止或没有有效端口时，会在数据库升级和构建之前报错；不会自动停止其他项目或删除数据卷。
+
+需要共存时，从本文件所在源码仓库根目录执行一次：
+
+```powershell
+docker compose -p yudao-local-infra -f ".\yudao电商管理平台前后端\yudao-cloud\script\docker\docker-compose-local-infra.yml" -f ".\scripts\runtime\docker-compose.ports.yml" up -d --no-deps mysql redis
+```
+
+端口覆盖文件需要 Docker Compose 2.24.4+，使用 127.0.0.1:13306（MySQL）和 127.0.0.1:16379（Redis），保留原有命名数据卷。之后重新创建基础设施也需带上该覆盖文件，勿执行 `down -v`。日常 `oakved.ps1 start -Branch main` 命令不变。直接启动后端的 live-worktree 脚本不经过此自动发现，应另行配置相同的数据库和 Redis 端口。
+
+MySQL 检查和 JAR 使用同一个启动器密码（`-MySqlRootPassword` 或 `OAKVED_MYSQL_ROOT_PASSWORD`）；密码仅通过子进程环境传入，不写入运行清单。后端提前退出时，启动器会提示具体日志路径。
+
 - `D:\code\.runtime\runtime.json` 记录实际运行的模式、commit、快照路径、数据库和进程 PID；`status` 与 `stop` 以它为准，不猜测当前 checkout。
 - 数据库名称仍按逻辑分支生成。例如 `main` 始终使用 `oakved_main_0d6e4079`，更换 commit 快照不会新建或丢失商品数据。
 - 启动器只创建/检查目标数据库并保留旧库升级备份；真正的版本升级由目标提交构建出的 `yudao-server.jar` 内 Flyway 完成，状态读取 `flyway_schema_history`。

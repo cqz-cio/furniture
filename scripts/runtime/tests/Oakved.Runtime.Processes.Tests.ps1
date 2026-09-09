@@ -197,6 +197,23 @@ Describe 'Get-OakvedBuildFingerprint' {
 }
 
 Describe 'Start-OakvedRuntime orchestration' {
+    BeforeEach {
+        Mock Get-OakvedInfrastructureEndpoints -ModuleName Oakved.Runtime -MockWith {
+            [pscustomobject]@{ MySqlPort = 13306; RedisPort = 16379 }
+        }
+    }
+
+    It 'rejects missing ERP published ports before database changes or builds' {
+        Mock Get-OakvedInfrastructureEndpoints -ModuleName Oakved.Runtime -MockWith { throw 'ERP ports unavailable' }
+        $fixture = New-RuntimeFixture -Root (Join-Path $TestDrive 'no-infra')
+        $capture = @{ Gate = $false; Build = $false }
+        { Start-OakvedRuntime -Target $fixture.Target -Layout $fixture.Layout -RuntimeRoot (Join-Path $TestDrive 'no-infra-state') -MySqlRootPassword 'secret' `
+            -DatabaseGateProvider ({ $capture.Gate = $true }.GetNewClosure()) `
+            -BuildProvider ({ $capture.Build = $true }.GetNewClosure()) -ListenerProvider { @() } } | Should Throw 'ERP ports unavailable'
+        $capture.Gate | Should Be $false
+        $capture.Build | Should Be $false
+    }
+
     It 'rejects any selected build or working path outside the resolved worktree before the database gate' {
         $fixture = New-RuntimeFixture -Root (Join-Path $TestDrive 'contained')
         $fixture.Layout.AdminUi = Join-Path $TestDrive 'other-worktree\admin'
@@ -407,8 +424,12 @@ Describe 'Start-OakvedRuntime orchestration' {
         ($backend.Arguments -join ' ') | Should Match '-Dfile.encoding=UTF-8'
         ($backend.Arguments -join ' ') | Should Match '-Dsun.stdout.encoding=UTF-8'
         ($backend.Arguments -join ' ') | Should Match '-Dsun.stderr.encoding=UTF-8'
-        ($backend.Arguments -join ' ') | Should Match 'jdbc:mysql://127.0.0.1:3306/oakved_feature_runtime_12345678'
-        (($backend.Arguments -join ' ') + ($backend.Environment.Values -join ' ')) | Should Not Match 'not-in-commands'
+        ($backend.Arguments -join ' ') | Should Match 'jdbc:mysql://127.0.0.1:13306/oakved_feature_runtime_12345678'
+        ($backend.Arguments -join ' ') | Should Match '--spring.data.redis.port=16379'
+        ($backend.Arguments -join ' ') | Should Not Match 'not-in-commands'
+        $backend.Environment.SPRING_DATASOURCE_DYNAMIC_DATASOURCE_MASTER_PASSWORD | Should Be 'not-in-commands'
+        $backend.Environment.SPRING_DATASOURCE_DYNAMIC_DATASOURCE_SLAVE_PASSWORD | Should Be 'not-in-commands'
+        (Get-Content -LiteralPath (Join-Path $runtimeRoot 'runtime.json') -Raw) | Should Not Match 'not-in-commands'
         $admin.FilePath | Should Be 'pnpm.cmd'
         ($admin.Arguments -join ' ') | Should Be 'dev -- --host 0.0.0.0 --port 80 --strictPort'
         $admin.WorkingDirectory | Should Be $fixture.Layout.AdminUi

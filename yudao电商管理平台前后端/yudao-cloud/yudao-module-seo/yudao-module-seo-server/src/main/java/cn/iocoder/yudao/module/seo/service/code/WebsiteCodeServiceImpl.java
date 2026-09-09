@@ -21,7 +21,7 @@ import static cn.iocoder.yudao.module.seo.enums.ErrorCodeConstants.*;
 @Service
 @Validated
 public class WebsiteCodeServiceImpl implements WebsiteCodeService {
-    @Resource private WebsiteCodeConfigMapper configMapper;
+    @Resource(name = "websiteCodeConfigMapper") private WebsiteCodeConfigMapper configMapper;
     @Resource private WebsiteCodeHistoryMapper historyMapper;
     @Resource private SeoSiteConfigMapper siteMapper;
 

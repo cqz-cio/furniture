@@ -136,6 +136,13 @@ class WebsiteCodeServiceImplTest extends BaseDbUnitTest {
     @TestConfiguration(proxyBeanMethods = false)
     @EnableConfigurationProperties(TenantProperties.class)
     static class TenantConfiguration {
+        // The full application already has an infra bean named configMapper.
+        // Keep an incompatible bean with that name to catch @Resource's
+        // name-first resolution, which a SEO-only test context used to miss.
+        @Bean(name = "configMapper") Object unrelatedInfraConfigMapper() {
+            return new Object();
+        }
+
         @Bean TenantLineInnerInterceptor tenantLine(TenantProperties properties, MybatisPlusInterceptor interceptor) {
             TenantLineInnerInterceptor inner = new TenantLineInnerInterceptor(new TenantDatabaseInterceptor(properties));
             MyBatisUtils.addInterceptor(interceptor, inner, 0);

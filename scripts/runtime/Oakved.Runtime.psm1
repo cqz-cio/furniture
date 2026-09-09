@@ -2201,6 +2201,39 @@ function Stop-OakvedRuntime {
     return [pscustomobject]@{ Stopped = $stopped.ToArray(); Skipped = $skipped.ToArray(); RemovedManifest = $removed }
 }
 
+function Get-OakvedInfrastructureEndpoints {
+    param([scriptblock]$NativeProcessRunner)
+
+    $endpoints = @{}
+    foreach ($service in @(
+        @{ Name = 'MySql'; Container = 'yudao-mysql-local'; Port = '3306/tcp' },
+        @{ Name = 'Redis'; Container = 'yudao-redis-local'; Port = '6379/tcp' }
+    )) {
+        # Requested HostConfig bindings can exist even if publishing failed.
+        # Only use active NetworkSettings bindings for these named containers.
+        $spec = [pscustomobject]@{
+            FileName = 'docker.exe'
+            Arguments = @('inspect', '--format', '{"Running":{{json .State.Running}},"Ports":{{json .NetworkSettings.Ports}}}', $service.Container)
+            Environment = @{}
+        }
+        $result = Invoke-OakvedProcessRunner -Spec $spec -NativeProcessRunner $NativeProcessRunner -TimeoutMilliseconds 15000
+        if ($result.ExitCode -ne 0) { throw "Cannot inspect ERP container $($service.Container). Check Docker Desktop and the container." }
+        $state = [Text.Encoding]::UTF8.GetString([byte[]]$result.StdOut) | ConvertFrom-Json
+        if (-not $state.Running) { throw "ERP container $($service.Container) is stopped." }
+        $portProperty = $state.Ports.PSObject.Properties[$service.Port]
+        $bindings = if ($null -ne $portProperty) { @($portProperty.Value) } else { @() }
+        $ports = @($bindings | Where-Object {
+            $null -ne $_ -and $_.HostIp -in @('', '0.0.0.0', '127.0.0.1') -and
+            [int]$_.HostPort -ge 1 -and [int]$_.HostPort -le 65535
+        } | ForEach-Object { [int]$_.HostPort } | Select-Object -Unique)
+        if ($ports.Count -ne 1) {
+            throw "ERP container $($service.Container) has no unique active localhost port for $($service.Port). Another project may own its requested port. Recreate ERP infrastructure with dedicated ports; do not delete data volumes."
+        }
+        $endpoints[$service.Name + 'Port'] = $ports[0]
+    }
+    return [pscustomobject]$endpoints
+}
+
 function Start-OakvedRuntime {
     [CmdletBinding()]
     param(
@@ -2253,6 +2286,11 @@ function Start-OakvedRuntime {
     $activeManagedPids = if ($null -eq $activeManifest) { @() } else { @($activeManifest.Processes | ForEach-Object { [int]$_.Pid }) }
     Assert-OakvedPortsAvailable -Ports $fixedPorts -ListenerProvider $ListenerProvider -ManagedPids $activeManagedPids -ProcessTreeProvider $ProcessTreeProvider
 
+    # Fail before migrations/builds, never connect to another project's defaults.
+    $infrastructure = Get-OakvedInfrastructureEndpoints
+    if ($VisibleProcesses) {
+        Write-Host "ERP infrastructure: MySQL=127.0.0.1:$($infrastructure.MySqlPort), Redis=127.0.0.1:$($infrastructure.RedisPort)" -ForegroundColor Cyan
+    }
     if ($VisibleProcesses) { Write-Host '[1/5] Checking database and migrations...' -ForegroundColor Cyan }
     if ($null -ne $DatabaseGateProvider) {
         $database = & $DatabaseGateProvider $Target $Layout $runtimeRootPath $MySqlRootPassword
@@ -2357,12 +2395,19 @@ function Start-OakvedRuntime {
     if ($VisibleProcesses) { Write-Host '[3/5] Frontend dependencies ready.' -ForegroundColor Green }
     if ($null -eq $ProcessStarter) { $ProcessStarter = { param($spec) Start-OakvedManagedProcess -Spec $spec } }
 
-    $jdbc = "jdbc:mysql://127.0.0.1:3306/$($database.Name)?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&nullCatalogMeansCurrent=true&rewriteBatchedStatements=true"
+    $jdbc = "jdbc:mysql://127.0.0.1:$($infrastructure.MySqlPort)/$($database.Name)?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&nullCatalogMeansCurrent=true&rewriteBatchedStatements=true"
     $specs = @(
         [pscustomobject]@{ Role = 'backend'; FilePath = 'java.exe'; Arguments = @('-Dfile.encoding=UTF-8', '-Dsun.stdout.encoding=UTF-8', '-Dsun.stderr.encoding=UTF-8', '-jar', [string]$Layout.ServerJar, '--spring.profiles.active=local', "--server.port=48080", "--spring.datasource.dynamic.datasource.master.url=$jdbc", "--spring.datasource.dynamic.datasource.slave.url=$jdbc"); WorkingDirectory = [string]$Layout.YudaoCloud; Environment = @{}; Port = 48080; Visible = [bool]$VisibleProcesses },
         [pscustomobject]@{ Role = 'admin'; FilePath = 'pnpm.cmd'; Arguments = @('dev', '--', '--host', '0.0.0.0', '--port', '80', '--strictPort'); WorkingDirectory = [string]$Layout.AdminUi; Environment = @{ VITE_CACHE_DIR = (Join-Path $cacheRoot 'admin'); VITE_BASE_URL = 'http://127.0.0.1:48080'; VITE_API_URL = '/admin-api'; VITE_FURNITURE_WEB_URL = 'http://127.0.0.1:5173' }; Port = 80; Visible = [bool]$VisibleProcesses },
         [pscustomobject]@{ Role = 'storefront'; FilePath = 'npm.cmd'; Arguments = @('run', 'dev', '--', '--host', '127.0.0.1', '--port', '5173', '--strictPort'); WorkingDirectory = [string]$Layout.FurnitureWeb; Environment = @{ VITE_CACHE_DIR = (Join-Path $cacheRoot 'storefront'); VITE_YUDAO_APP_API_BASE = 'http://127.0.0.1:48080/app-api' }; Port = 5173; Visible = [bool]$VisibleProcesses }
     )
+    $specs[0].Arguments += @('--spring.data.redis.host=127.0.0.1', "--spring.data.redis.port=$($infrastructure.RedisPort)")
+    # Keep gate/JAR credentials consistent without putting secrets in arguments
+    # or the public manifest. Preserve other locally configured environment keys.
+    foreach ($dataSource in @('MASTER', 'SLAVE')) {
+        $specs[0].Environment["SPRING_DATASOURCE_DYNAMIC_DATASOURCE_${dataSource}_USERNAME"] = 'root'
+        $specs[0].Environment["SPRING_DATASOURCE_DYNAMIC_DATASOURCE_${dataSource}_PASSWORD"] = $MySqlRootPassword
+    }
     foreach ($spec in $specs) {
         $spec | Add-Member -NotePropertyName StdOutLog -NotePropertyValue (Join-Path $logRoot "$($spec.Role).stdout.log")
         $spec | Add-Member -NotePropertyName StdErrLog -NotePropertyValue (Join-Path $logRoot "$($spec.Role).stderr.log")
@@ -2407,7 +2452,7 @@ function Start-OakvedRuntime {
             $backendRecord = $started[0]
             $current = & $ProcessProvider ([int]$backendRecord.Pid)
             if ($null -eq $current -or ([datetime]$current.StartTime).ToUniversalTime().Ticks -ne ([datetime]$backendRecord.StartTime).ToUniversalTime().Ticks) {
-                throw 'Managed backend process is no longer the recorded PID/start-time instance.'
+                throw "Managed backend exited or its PID was reused before readiness. See $($backendRecord.StdOutLog) and $($backendRecord.StdErrLog) for the underlying application error."
             }
             $backendPortsHealthy = $true
             try { Assert-OakvedPortsAvailable -Ports $fixedPorts -ListenerProvider $ListenerProvider -ManagedPids @([int]$backendRecord.Pid) -ProcessTreeProvider $ProcessTreeProvider }

@@ -1,0 +1,9 @@
+# Add after docker-compose-local-infra.yml. Requires Compose 2.24.4+.
+# Replace (not append) bindings to coexist with other local MySQL/Redis stacks.
+services:
+  mysql:
+    ports: !override
+      - "127.0.0.1:13306:3306"
+  redis:
+    ports: !override
+      - "127.0.0.1:16379:6379"
