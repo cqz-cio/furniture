@@ -8,11 +8,16 @@ on:
         required: true
         type: string
       operation:
-        description: Deploy or roll back the test environment
+        description: prepare first, cutover once, then deploy/rollback; recover an interrupted cutover
         required: true
-        default: deploy
+        default: prepare
         type: choice
-        options: [deploy, rollback]
+        options: [prepare, cutover, recover, deploy, rollback]
+      confirm_cutover:
+        description: Allow the first test maintenance cutover or recovery (brief ERP interruption)
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -28,12 +33,21 @@ jobs:
     if: github.ref == 'refs/heads/main'
     environment: test
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
-      - name: Deploy the exact release to test
+      - uses: actions/setup-node@v7
+        if: inputs.operation == 'prepare' || inputs.operation == 'cutover' || inputs.operation == 'recover'
+        with:
+          node-version: 22
+      - uses: actions/setup-java@v5
+        if: inputs.operation == 'prepare' || inputs.operation == 'cutover' || inputs.operation == 'recover'
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Run the unified test CD entry point
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ERP_CD_ENABLED: ${{ vars.ERP_CD_ENABLED }}
@@ -45,7 +59,8 @@ jobs:
           ERP_SSH_KNOWN_HOSTS: ${{ secrets.ERP_SSH_KNOWN_HOSTS || secrets.TENCENT_SSH_KNOWN_HOSTS }}
           RELEASE_ID: ${{ inputs.release_id }}
           OPERATION: ${{ inputs.operation }}
-        run: timeout --kill-after=10s 1550s bash deploy/erp/deploy-test.sh --release "$RELEASE_ID" --operation "$OPERATION"
+          CONFIRM_CUTOVER: ${{ inputs.confirm_cutover }}
+        run: timeout --kill-after=15s 1850s bash deploy/erp/deploy-test.sh --release "$RELEASE_ID" --operation "$OPERATION" --confirm-cutover "$CONFIRM_CUTOVER"
       - uses: actions/upload-artifact@v4
         if: always()
         with:

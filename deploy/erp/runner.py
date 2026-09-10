@@ -8,25 +8,82 @@ import re
 import shlex
 import subprocess
 import tempfile
+import time
 
 from common import require, write_json
 from github_release import GitHub
+from bootstrap_policy import OPERATIONS, PROFILE, validate_target, validate_audit_bundle, sha256
 
 HERE = Path(__file__).resolve().parent
 BOOTSTRAP = """import base64,json,sys,types
 b=json.load(sys.stdin)
-m=types.ModuleType('common');sys.modules['common']=m
-exec(compile(base64.b64decode(b['common']),'common.py','exec'),m.__dict__)
-s=types.ModuleType('erp_server')
-exec(compile(base64.b64decode(b['server']),'server.py','exec'),s.__dict__)
-try:s.main(b['request'])
+for name in b['modules']:
+ m=types.ModuleType(name);sys.modules[name]=m
+ exec(compile(base64.b64decode(b['modules'][name]),name+'.py','exec'),m.__dict__)
+try:sys.modules[b['entry']].main(b['request'])
 except Exception as e:
  print('ERP_CD_ERROR='+str(e),flush=True)
  sys.exit(1)
 """
 
 
-def ssh_request(environment, operation, release=None, lease_id=None):
+def bootstrap_bundle():
+    """Compile trusted source with no package downloads and export existing read-only audits."""
+    audit = json.loads(subprocess.run(["node", str(HERE / "bootstrap-audit.mjs")], capture_output=True, text=True,
+                                     check=True, timeout=30).stdout)
+    validate_audit_bundle(audit)
+    with tempfile.TemporaryDirectory(prefix="erp-clone-helper-") as directory:
+        javac = str(Path(os.environ["JAVA_HOME"]) / "bin" / ("javac.exe" if os.name == "nt" else "javac")) if os.environ.get("JAVA_HOME") else "javac"
+        subprocess.run([javac, "--release", "17", "-d", directory, str(HERE / "CloneMigration.java")],
+                       capture_output=True, check=True, timeout=30)
+        code = (Path(directory) / "CloneMigration.class").read_bytes()
+    return {"audit": audit, "helper": {"class": base64.b64encode(code).decode(), "sha256": sha256(code)}}
+
+
+def transport(command, bundle, directory, timeout):
+    """Stream sanitized server progress; keep SSH diagnostics out of public Actions logs."""
+    incoming, outgoing, errors = (Path(directory) / name for name in ("request", "stdout", "stderr"))
+    incoming.write_text(json.dumps(bundle), encoding="utf-8")
+    start = changed = time.monotonic()
+    offset = last_size = 0
+    pending, results = "", []
+    with incoming.open("rb") as source, outgoing.open("wb") as out, errors.open("wb") as err:
+        child = subprocess.Popen(command, stdin=source, stdout=out, stderr=err)
+        try:
+            while True:
+                size = outgoing.stat().st_size
+                if size != last_size:
+                    changed, last_size = time.monotonic(), size
+                    with outgoing.open("rb") as reader:
+                        reader.seek(offset)
+                        pending += reader.read().decode("utf-8", errors="replace")
+                        offset = reader.tell()
+                    lines = pending.split("\n")
+                    pending = lines.pop()
+                    for line in lines:
+                        if line.startswith("ERP_CD_RESULT="):
+                            results.append(json.loads(line.removeprefix("ERP_CD_RESULT=")))
+                        else:
+                            print(line, flush=True)
+                if child.poll() is not None and outgoing.stat().st_size == offset:
+                    break
+                require(time.monotonic() - start < timeout, "SSH operation exceeded its deadline; use recover to inspect the journal")
+                require(time.monotonic() - changed < 60, "No server progress for 60 seconds; inspect the journal before retrying")
+                time.sleep(0.2)
+        finally:
+            if child.poll() is None:
+                child.terminate()
+                try:
+                    child.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    child.kill()
+                    child.wait(timeout=5)
+    require(child.returncode == 0, "SSH operation failed; inspect the recorded bootstrap/deployment report on the server")
+    require(len(results) == 1 and not pending.strip(), "Missing or ambiguous server result")
+    return results[0]
+
+
+def ssh_request(environment, operation, release=None, lease_id=None, confirm_cutover=False):
     host, user = os.environ["ERP_SSH_HOST"], os.environ["ERP_SSH_USER"]
     require(re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.-]*", host) and re.fullmatch(r"[a-z_][a-z0-9_-]*", user), "Invalid SSH destination")
     port = int(os.environ.get("ERP_SSH_PORT") or "22")
@@ -38,7 +95,16 @@ def ssh_request(environment, operation, release=None, lease_id=None):
         request.update(release=release, compose=(HERE / "compose.yml").read_text(encoding="utf-8"))
     if lease_id:
         request["lease_id"] = lease_id
-    bundle = {name: base64.b64encode((HERE / (name + ".py")).read_bytes()).decode() for name in ("common", "server")}
+    names = ["common", "server"]
+    entry, remote_command = "server", "python3 -B -c "
+    if operation in OPERATIONS:
+        validate_target(environment, root, release, operation, confirm_cutover)
+        require((host, user, port) == (PROFILE["host"], PROFILE["user"], 22), "Bootstrap SSH target differs from the verified test host")
+        request.update(bootstrap_bundle(), confirm_cutover=confirm_cutover)
+        names += ["bootstrap_policy", "bootstrap_io", "bootstrap_image", "bootstrap"]
+        entry = "bootstrap"
+        remote_command = "sudo -n timeout --signal=TERM --kill-after=200s 1400s python3 -B -c "
+    bundle = {"entry": entry, "modules": {name: base64.b64encode((HERE / (name + ".py")).read_bytes()).decode() for name in names}}
     bundle["request"] = request
     with tempfile.TemporaryDirectory(prefix="erp-cd-ssh-") as directory:
         key, known = Path(directory) / "identity", Path(directory) / "known_hosts"
@@ -49,49 +115,52 @@ def ssh_request(environment, operation, release=None, lease_id=None):
         command = ["ssh", "-T", "-i", str(key), "-p", str(port), "-o", "BatchMode=yes", "-o", "IdentitiesOnly=yes",
             "-o", "StrictHostKeyChecking=yes", "-o", "UserKnownHostsFile=" + str(known), "-o", "ConnectTimeout=10",
             "-o", "ServerAliveInterval=10", "-o", "ServerAliveCountMax=3", user + "@" + host,
-            "python3 -B -c " + shlex.quote(BOOTSTRAP)]
+            remote_command + shlex.quote(BOOTSTRAP)]
         # The remote journal remains unfinished if SSH disconnects, so a retry cannot blindly deploy twice.
-        result = subprocess.run(command, input=json.dumps(bundle), capture_output=True, text=True,
-                                timeout=1500 if operation in ("deploy", "rollback") else 60)
-        for line in result.stdout.splitlines():
-            if not line.startswith("ERP_CD_RESULT="):
-                print(line, flush=True)
-        require(result.returncode == 0, "SSH deployment failed; inspect the server's deployment.log/state.json")
-        values = [line[len("ERP_CD_RESULT="):] for line in result.stdout.splitlines() if line.startswith("ERP_CD_RESULT=")]
-        require(len(values) == 1, "Missing or ambiguous server result")
-        return json.loads(values[0])
+        return transport(command, bundle, directory, 1700 if operation in OPERATIONS else (1500 if operation in ("deploy", "rollback") else 60))
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--environment", choices=("test", "production"), required=True)
-    parser.add_argument("--operation", choices=("deploy", "rollback", "snapshot", "lease-start", "lease-check", "lease-end"), default="deploy")
+    parser.add_argument("--operation", choices=(*OPERATIONS, "deploy", "rollback", "snapshot", "lease-start", "lease-check", "lease-end"), default="deploy")
+    parser.add_argument("--confirm-cutover", choices=("true", "false"), default="false")
     parser.add_argument("--release")
     parser.add_argument("--lease-id")
     parser.add_argument("--output", default="erp-cd-result.json")
     args = parser.parse_args()
     require(os.environ.get("GITHUB_REF") == "refs/heads/main", "Use the trusted main workflow")
-    if args.operation not in ("deploy", "rollback"):
+    if args.operation not in (*OPERATIONS, "deploy", "rollback"):
         result = ssh_request(args.environment, args.operation, lease_id=args.lease_id)
     else:
-        require(os.environ.get("ERP_CD_ENABLED") == "true", "Enable this environment only after first-cutover rehearsal")
+        if args.operation in ("deploy", "rollback"):
+            require(os.environ.get("ERP_CD_ENABLED") == "true", "Enable daily CD after successful first cutover; use prepare/cutover for test onboarding")
         github = GitHub()
         _, release = github.release(args.release or "")
         github.verify_ci(release)
         if args.environment == "production" and args.operation == "deploy":
             require(github.test_passed(release), "This exact release manifest has not passed the test CD")
-        deployment = github.deployment(release, args.environment)
-        github.deployment_status(deployment, "in_progress")
+        if args.operation in OPERATIONS:
+            validate_target(args.environment, os.environ.get("ERP_DEPLOY_ROOT") or PROFILE["root"], release, args.operation, args.confirm_cutover == "true")
+        deployment = None if args.operation in ("prepare", "recover") else github.deployment(release, args.environment)
+        if deployment:
+            github.deployment_status(deployment, "in_progress")
         try:
-            result = ssh_request(args.environment, args.operation, release=release)
-            require(result["status"] in ("success", "already-current"), "Remote deployment did not complete")
-        except Exception:
+            result = ssh_request(args.environment, args.operation, release=release, confirm_cutover=args.confirm_cutover == "true")
+            accepted = ("prepared",) if args.operation == "prepare" else ("success", "already-current", "restored-legacy", "prepare-failed") if args.operation == "recover" else ("success", "already-current")
+            require(result["status"] in accepted, "Remote operation did not complete")
+        except Exception as error:
+            write_json(args.output, {"status": "failed", "environment": args.environment, "operation": args.operation, "release_id": release["id"], "error": str(error)})
             try:
-                github.deployment_status(deployment, "failure")
+                if deployment:
+                    github.deployment_status(deployment, "failure")
             except Exception:
                 print("Could not update GitHub deployment status; inspect the server journal.", flush=True)
             raise
-        github.deployment_status(deployment, "success")
+        if args.operation == "recover" and result["status"] in ("success", "already-current"):
+            deployment = github.deployment(release, args.environment)
+        if deployment:
+            github.deployment_status(deployment, "success")
     write_json(args.output, result)
     summary = os.environ.get("GITHUB_STEP_SUMMARY")
     if summary:

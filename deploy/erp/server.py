@@ -15,12 +15,15 @@ import signal
 import socket
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.error
 import urllib.request
 from urllib.parse import urlsplit
 
 from common import environment_images, fingerprint, require, timestamp, utcnow, validate_release, write_json, RELEASE
+
+COMMAND_LOG_DIRECTORY = None
 
 
 @contextmanager
@@ -35,18 +38,39 @@ def locked(path):
 
 
 def run(args, timeout=30, output=None):
-    process = subprocess.Popen(args, stdin=subprocess.DEVNULL, stdout=output or subprocess.PIPE,
-                               stderr=subprocess.PIPE, start_new_session=True)
-    try:
-        stdout, stderr = process.communicate(timeout=timeout)
-    except subprocess.TimeoutExpired:
-        os.killpg(process.pid, signal.SIGKILL)
-        process.communicate(timeout=5)
-        raise RuntimeError(f"Command timed out after {timeout}s: {Path(args[0]).name}") from None
-    if process.returncode:
-        # Some tools include credentials in diagnostic output. Keep them off the CI log.
-        raise RuntimeError(f"Command failed (exit {process.returncode}): {Path(args[0]).name}")
-    return (stdout or b"").decode("utf-8")
+    retained = timeout > 60 and COMMAND_LOG_DIRECTORY is not None
+    if retained:
+        COMMAND_LOG_DIRECTORY.mkdir(mode=0o700, exist_ok=True)
+    def stream(suffix):
+        return tempfile.NamedTemporaryFile(prefix=utcnow().strftime("%Y%m%dT%H%M%S-"), suffix=suffix,
+            dir=COMMAND_LOG_DIRECTORY if retained else None, delete=not retained)
+    with stream(".stdout.log") as stdout, stream(".stderr.log") as stderr:
+        process = subprocess.Popen(args, stdin=subprocess.DEVNULL, stdout=output or stdout,
+                                   stderr=stderr, start_new_session=True)
+        started = changed = notified = time.monotonic()
+        size = 0
+        try:
+            while process.poll() is None:
+                time.sleep(0.25)
+                now = time.monotonic()
+                current = os.fstat((output or stdout).fileno()).st_size + os.fstat(stderr.fileno()).st_size
+                if current != size:
+                    size, changed = current, now
+                if now - started >= timeout:
+                    raise RuntimeError(f"Command deadline reached: {Path(args[0]).name}")
+                if now - changed >= 60:
+                    raise RuntimeError(f"Command made no progress for 60 seconds: {Path(args[0]).name}")
+                if now - notified >= 10:
+                    print(f"ERP command {Path(args[0]).name}: elapsed={round(now-started)}s, output_bytes={size}", flush=True)
+                    notified = now
+            if process.returncode:
+                raise RuntimeError(f"Command failed (exit {process.returncode}): {Path(args[0]).name}")
+        finally:
+            if process.poll() is None:
+                os.killpg(process.pid, signal.SIGKILL)
+                process.wait(timeout=5)
+        stdout.seek(0)
+        return stdout.read().decode("utf-8") if output is None else ""
 
 
 def http_json(url, headers=None):
@@ -70,6 +94,7 @@ def http_json(url, headers=None):
 
 class Server:
     def __init__(self, root, environment):
+        global COMMAND_LOG_DIRECTORY
         self.root = Path(root).resolve()
         self.environment = environment
         require(environment in ("test", "production") and self.root.name == environment
@@ -83,6 +108,7 @@ class Server:
             "environment": environment, "current": None, "history": [], "pins": [], "in_progress": None, "compatible": []}
         require(self.state["environment"] == environment, "State belongs to another environment")
         self.log_path = self.root / "deployment.log"
+        COMMAND_LOG_DIRECTORY = self.root / "command-logs"
 
     def log(self, message):
         message = utcnow().isoformat() + " " + message
@@ -263,39 +289,51 @@ class Server:
         (directory / "images.env").write_text("".join(f"{k}={v}\n" for k, v in values.items()))
         write_json(directory / "release.json", release)
 
-    def healthy(self, release):
+    def healthy(self, release, headers=None, local_only=False):
         self.verify_containers(release)
-        urls = [f"http://127.0.0.1:{self.config['backend_port']}/actuator/health", self.config["api_base_url"] + "/actuator/health"]
+        local_api = f"http://127.0.0.1:{self.config['backend_port']}"
+        api = local_api if local_only else self.config["api_base_url"]
+        urls = [local_api + "/actuator/health"]
+        if not local_only:
+            urls.append(api + "/actuator/health")
         for url in urls:
-            status, data = http_json(url)
+            status, data = http_json(url, headers)
             require(status == 200 and isinstance(data, dict) and data.get("status") == "UP", "Backend/proxy health failed")
-            status, data = http_json(url.removesuffix("/health") + "/info")
+            status, data = http_json(url.removesuffix("/health") + "/info", headers)
             require(status == 200 and isinstance(data, dict) and data.get("erp") == {
                 "release": release["id"], "environment": self.environment}, "Backend/proxy serves another release or environment")
-        for url in [f"http://127.0.0.1:{self.config['admin_port']}/healthz", self.config["admin_url"]]:
-            require(http_json(url)[0] == 200, "Admin/proxy HTTP check failed")
-        for url in [f"http://127.0.0.1:{self.config['admin_port']}/admin/release.json",
-                    self.config["admin_url"].rstrip("/") + "/release.json"]:
-            status, data = http_json(url)
+        admin_urls = [f"http://127.0.0.1:{self.config['admin_port']}/healthz"]
+        receipts = [f"http://127.0.0.1:{self.config['admin_port']}/admin/release.json"]
+        if not local_only:
+            admin_urls.append(self.config["admin_url"])
+            receipts.append(self.config["admin_url"].rstrip("/") + "/release.json")
+        for url in admin_urls:
+            require(http_json(url, headers)[0] == 200, "Admin/proxy HTTP check failed")
+        for url in receipts:
+            status, data = http_json(url, headers)
             require(status == 200 and data == {"release": release["id"], "environment": self.environment},
                     "Admin/proxy serves another release or environment")
-        status, data = http_json(self.config["api_base_url"] + "/admin-api/system/auth/get-permission-info", {"tenant-id": "1"})
+        status, data = http_json(api + "/admin-api/system/auth/get-permission-info", {**(headers or {}), "tenant-id": "1"})
         require(status in (401, 403) or (status == 200 and isinstance(data, dict) and data.get("code") in (401, 403)), "Anonymous admin access is not denied")
         for check in self.config["smoke_checks"]:
             require(check["path"].startswith("/app-api/") and ".." not in check["path"], "Only public read-only smoke checks are supported")
-            status, data = http_json(self.config["api_base_url"] + check["path"], {"tenant-id": str(check["tenant_id"])})
+            status, data = http_json(api + check["path"], {**(headers or {}), "tenant-id": str(check["tenant_id"])})
             require(status == 200 and isinstance(data, dict) and data.get("code") == 0, "Tenant public API smoke check failed")
         require(self.database_version() >= release["database_version"], "Migration target was not reached")
 
-    def wait_healthy(self, release):
+    def wait_healthy(self, release, **options):
         deadline = time.monotonic() + 180
+        last_log = 0
         while True:
             try:
-                self.healthy(release)
+                self.healthy(release, **options)
                 return
             except (ValueError, RuntimeError, OSError):
                 if time.monotonic() >= deadline:
                     raise RuntimeError("Service readiness/smoke checks did not pass within 180 seconds") from None
+                if time.monotonic() - last_log >= 10:
+                    self.log("Waiting for service readiness and tenant smoke checks")
+                    last_log = time.monotonic()
                 time.sleep(3)
 
     def deploy(self, release, operation, compose_source):

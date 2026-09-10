@@ -25,13 +25,22 @@ concurrency:
 jobs:
   verify-deployment-scripts:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
       - name: Verify release, isolation, rollback and retention behavior
         run: timeout --kill-after=5s 90s python3 -B -m unittest discover -s deploy/erp/tests -v
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Compile migration-only helper and verify both tenant audit phases
+        run: timeout --kill-after=5s 60s python3 -B deploy/erp/verify-bootstrap.py
       - name: Check the two shell entry points
         run: |
           for script in deploy/erp/deploy-test.sh deploy/erp/deploy-production.sh; do
