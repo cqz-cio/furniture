@@ -82,7 +82,9 @@ class LocalConnection:
                 require(hashlib.file_digest(source, "sha256").hexdigest() == header["sha256"], "Cached archive is corrupt")
             return archive, header
         with tempfile.TemporaryDirectory(prefix="download-", dir=root) as tmp:
-            archive, header = build_archive(release, "test", Path(tmp) / "bundle")
+            # Real local download reached 760 MB at 293 s; the CI runner's 300 s
+            # deadline is too short here. Keep a finite local-only 15 min budget.
+            archive, header = build_archive(release, "test", Path(tmp) / "bundle", timeout_seconds=900)
             write_json(archive.parent / "header.json", header)
             # Complete cache becomes visible only after every blob was verified.
             archive.parent.rename(saved)

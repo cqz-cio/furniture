@@ -33,14 +33,33 @@ class LocalSCPTests(unittest.TestCase):
             connection = self.connection(Path(tmp))
             registry = MemoryRegistry()
             from image_archive import build_archive
-            with patch('local_test.build_archive', side_effect=lambda r,e,d: build_archive(r,e,d,registry)) as build:
+            with patch('local_test.build_archive', side_effect=lambda r,e,d,**kw: build_archive(r,e,d,registry,**kw)) as build:
                 archive, header = connection.archive(registry.release)
                 self.assertTrue(archive.is_file())
                 self.assertEqual(connection.archive(registry.release), (archive, header))
                 self.assertEqual(build.call_count, 1)
+                self.assertEqual(build.call_args.kwargs['timeout_seconds'], 900)
                 archive.write_bytes(b'x' * archive.stat().st_size)
                 with self.assertRaisesRegex(ValueError, 'corrupt'):
                     connection.archive(registry.release)
+
+    def test_local_download_can_pass_300_seconds_but_still_has_a_deadline(self):
+        from image_archive import build_archive
+        for limit, elapsed, succeeds in ((300,350,False),(900,350,True),(900,901,False)):
+            with self.subTest(limit=limit,elapsed=elapsed), tempfile.TemporaryDirectory() as tmp:
+                registry=MemoryRegistry(); clock=[0]
+                original=registry.blob
+                def blob(*args,**kwargs):
+                    clock[0]=elapsed
+                    return original(*args,**kwargs)
+                registry.blob=blob
+                with patch('image_archive.time.monotonic',side_effect=lambda:clock[0]):
+                    if succeeds:
+                        archive,_=build_archive(registry.release,'test',Path(tmp)/'bundle',registry,timeout_seconds=limit)
+                        self.assertTrue(archive.is_file())
+                    else:
+                        with self.assertRaisesRegex(ValueError, 'exceeded'):
+                            build_archive(registry.release,'test',Path(tmp)/'bundle',registry,timeout_seconds=limit)
 
     def test_failed_scp_cleans_staging_and_never_imports(self):
         with tempfile.TemporaryDirectory() as tmp:

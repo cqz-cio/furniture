@@ -90,8 +90,9 @@ def download_blob(registry, package, ref, child, path, check, advanced):
     require(size == child["size"] and "sha256:" + checksum.hexdigest() == ref, "Downloaded blob checksum mismatch")
 
 
-def build_archive(release, environment, directory, registry=None):
+def build_archive(release, environment, directory, registry=None, timeout_seconds=300):
     validate_release(release)
+    require(type(timeout_seconds) is int and 30 <= timeout_seconds <= 1800, "Invalid image archive timeout")
     registry = registry or Registry()
     directory = Path(directory)
     directory.mkdir(mode=0o700)
@@ -104,7 +105,7 @@ def build_archive(release, environment, directory, registry=None):
     def check():
         nonlocal notified
         now = time.monotonic()
-        require(now - started < 300, "Actions image archive exceeded 300 seconds")
+        require(now - started < timeout_seconds, f"Image archive exceeded {timeout_seconds} seconds")
         if now - notified >= 10:
             print(json.dumps({"stage": "runner-image-download", "downloaded_bytes": transferred, "elapsed_seconds": round(now-started)}), flush=True)
             notified = now
@@ -134,7 +135,7 @@ def build_archive(release, environment, directory, registry=None):
                 pending[child["digest"]] = (package, child)
         return descriptor
 
-    print(json.dumps({"stage": "runner-image-download", "timeout_seconds": 300}), flush=True)
+    print(json.dumps({"stage": "runner-image-download", "timeout_seconds": timeout_seconds}), flush=True)
     for reference in environment_images(release, environment).values():
         package, ref = reference.removeprefix("ghcr.io/").split("@")
         roots.append({**visit(package, ref), "annotations": {"io.containerd.image.name": reference}})
