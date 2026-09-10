@@ -12,6 +12,7 @@ import sys
 import tarfile
 import tempfile
 import time
+from contextlib import nullcontext
 
 from common import environment_images, fingerprint, require, validate_release
 from bootstrap_policy import PROFILE
@@ -95,6 +96,19 @@ def cache_ready(release, commands):
     return True
 
 
+def scp_directory(value):
+    """Only this tool's single-level staging directory may be read or removed."""
+    require(isinstance(value, str) and re.fullmatch(r"/var/tmp/oakved-local-scp-[a-z0-9_]{8}", value), "Invalid SCP staging directory")
+    directory = Path(value)
+    require(not directory.is_symlink() and directory.is_dir() and directory.resolve() == directory, "Unsafe SCP staging directory")
+    import pwd
+    require(directory.stat().st_uid == pwd.getpwnam(PROFILE["user"]).pw_uid, "Unexpected SCP directory owner")
+    require({p.name for p in directory.iterdir()} <= {"images.oci.tar"}, "Unexpected files in SCP staging directory")
+    path = directory / "images.oci.tar"
+    require(not path.is_symlink() and (not path.exists() or (path.is_file() and path.stat().st_nlink == 1)), "Unsafe SCP archive")
+    return directory
+
+
 def main(request):
     def interrupted(signum, frame):
         # Give Commands.run and TemporaryDirectory time to cancel the owned
@@ -116,20 +130,46 @@ def main(request):
     logs.mkdir(mode=0o700, parents=True)
     commands = Commands(logs)
     operation = request.get("operation", "receive")
-    require(operation in ("probe", "receive"), "Unknown image relay operation")
+    require(operation in ("probe", "receive", "scp-stage", "scp-size", "scp-cleanup", "scp-import"), "Unknown image relay operation")
     if operation == "probe":
         status = "images-present" if cache_ready(release, commands) else "images-missing"
         print("ERP_CD_RESULT=" + json.dumps({"status": status, "release_hash": fingerprint(release)}), flush=True)
+        return
+    if operation in ("scp-size", "scp-cleanup"):
+        directory = scp_directory(request["directory"])
+        path = directory / "images.oci.tar"
+        size = path.stat().st_size if path.exists() else 0
+        if operation == "scp-cleanup":
+            if path.exists():
+                path.unlink()
+            directory.rmdir()
+        print("ERP_CD_RESULT=" + json.dumps({"status": operation, "bytes": size}), flush=True)
         return
     length = request["bytes"]
     require(type(length) is int and 0 < length < 3 * 1024**3 and re.fullmatch(r"[0-9a-f]{64}", request["sha256"]), "Invalid archive size or hash")
     driver = commands.run(["docker", "info", "--format", "{{json .DriverStatus}}"], "relay-docker-storage")
     require("io.containerd.snapshotter.v1" in driver, "OCI relay requires the verified containerd image store")
-    require(shutil.disk_usage("/var/tmp").free > PROFILE["reserve_bytes"] + length * 4, "Insufficient space for image relay and Docker import")
-    with tempfile.TemporaryDirectory(prefix="oakved-image-relay-", dir="/var/tmp") as directory:
+    # The SCP archive already occupies disk space when import begins.
+    multiplier = 3 if operation == "scp-import" else 4
+    require(shutil.disk_usage("/var/tmp").free > PROFILE["reserve_bytes"] + length * multiplier, "Insufficient space for image relay and Docker import")
+    if operation == "scp-stage":
+        import pwd
+        owner = pwd.getpwnam(PROFILE["user"])
+        directory = tempfile.mkdtemp(prefix="oakved-local-scp-", dir="/var/tmp")
+        os.chown(directory, owner.pw_uid, owner.pw_gid)
+        print("ERP_CD_RESULT=" + json.dumps({"status": "scp-staged", "directory": directory}), flush=True)
+        return
+    context = nullcontext(scp_directory(request["directory"])) if operation == "scp-import" else tempfile.TemporaryDirectory(prefix="oakved-image-relay-", dir="/var/tmp")
+    with context as directory:
         path = Path(directory) / "images.oci.tar"
-        emit("ssh-image-transfer", total_bytes=length, timeout_seconds=600)
-        require(receive(sys.stdin.buffer, path, length) == request["sha256"], "SSH image archive checksum mismatch")
+        if operation == "scp-import":
+            require(path.is_file() and path.stat().st_size == length, "SCP archive is incomplete")
+            with path.open("rb") as source:
+                checksum = hashlib.file_digest(source, "sha256").hexdigest()
+            require(checksum == request["sha256"], "SCP archive checksum mismatch")
+        else:
+            emit("ssh-image-transfer", total_bytes=length, timeout_seconds=600)
+            require(receive(sys.stdin.buffer, path, length) == request["sha256"], "SSH image archive checksum mismatch")
         validate_archive(path, environment_images(release, "test").values())
         with path.open("rb") as source:
             commands.run(["docker", "image", "load", "--platform", "linux/amd64"], "load-relayed-images", seconds=300, input_file=source)

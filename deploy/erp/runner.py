@@ -133,12 +133,15 @@ def preload_test_images(command, release, directory):
     require(receipt == {"status": "images-ready", "release_hash": fingerprint(release)}, "Incomplete image relay receipt")
 
 
-def ssh_request(environment, operation, release=None, lease_id=None, confirm_cutover=False):
-    mode = image_transport(environment)
+def ssh_request(environment, operation, release=None, lease_id=None, confirm_cutover=False, connection=None):
+    mode = "local-scp" if connection else image_transport(environment)
     host, user = os.environ["ERP_SSH_HOST"], os.environ["ERP_SSH_USER"]
     require(re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.-]*", host) and re.fullmatch(r"[a-z_][a-z0-9_-]*", user), "Invalid SSH destination")
     port = int(os.environ.get("ERP_SSH_PORT") or "22")
     require(1 <= port <= 65535, "Invalid SSH port")
+    if connection:
+        require(environment == "test" and (host, user, port) == (PROFILE["host"], PROFILE["user"], 22)
+                and not os.environ.get("GITHUB_ACTIONS"), "Local SCP is only available on the local test deploy entry point")
     root = os.environ.get("ERP_DEPLOY_ROOT") or "/opt/oakved-deploy/" + environment
     require(re.fullmatch(r"/[A-Za-z0-9_/-]+", root) and ".." not in root and root.endswith("/" + environment), "Invalid deployment root")
     request = {"root": root, "environment": environment, "operation": operation}
@@ -159,20 +162,28 @@ def ssh_request(environment, operation, release=None, lease_id=None, confirm_cut
     bundle["request"] = request
     with tempfile.TemporaryDirectory(prefix="erp-cd-ssh-") as directory:
         key, known = Path(directory) / "identity", Path(directory) / "known_hosts"
-        key.write_text(os.environ["ERP_SSH_PRIVATE_KEY"].rstrip() + "\n", encoding="utf-8")
-        known.write_text(os.environ["ERP_SSH_KNOWN_HOSTS"].rstrip() + "\n", encoding="utf-8")
-        key.chmod(0o600)
-        known.chmod(0o600)
+        if connection:
+            key, known = connection.key, connection.known
+        else:
+            key.write_text(os.environ["ERP_SSH_PRIVATE_KEY"].rstrip() + "\n", encoding="utf-8")
+            known.write_text(os.environ["ERP_SSH_KNOWN_HOSTS"].rstrip() + "\n", encoding="utf-8")
+            key.chmod(0o600)
+            known.chmod(0o600)
         command = ["ssh", "-T", "-i", str(key), "-p", str(port), "-o", "BatchMode=yes", "-o", "IdentitiesOnly=yes",
             "-o", "StrictHostKeyChecking=yes", "-o", "UserKnownHostsFile=" + str(known), "-o", "ConnectTimeout=10",
             "-o", "ServerAliveInterval=10", "-o", "ServerAliveCountMax=3", user + "@" + host,
             remote_command + shlex.quote(BOOTSTRAP)]
+        if connection:
+            command = connection.command(remote_command + shlex.quote(BOOTSTRAP))
         if operation in ("prepare", "deploy", "rollback"):
             print(json.dumps({"stage": "image-delivery", "transport": mode, "environment": environment}), flush=True)
         if mode == "ssh" and operation in ("prepare", "deploy", "rollback"):
             require(environment == "test" and (host, user, port, root) == (PROFILE["host"], PROFILE["user"], 22, PROFILE["root"]),
                     "SSH image relay is limited to the verified test host")
             preload_test_images(command, release, directory)
+            request["images_preloaded"] = True
+        if connection and operation in ("prepare", "deploy", "rollback"):
+            connection.preload(command, release, directory)
             request["images_preloaded"] = True
         # The remote journal remains unfinished if SSH disconnects, so a retry cannot blindly deploy twice.
         return transport(command, bundle, directory, 1700 if operation in OPERATIONS else (1500 if operation in ("deploy", "rollback") else 60))
@@ -188,8 +199,13 @@ def main():
     parser.add_argument("--output", default="erp-cd-result.json")
     args = parser.parse_args()
     require(os.environ.get("GITHUB_REF") == "refs/heads/main", "Use the trusted main workflow")
+    execute(args)
+
+
+def execute(args, connection=None):
+    options = {"connection": connection} if connection else {}
     if args.operation not in (*OPERATIONS, "deploy", "rollback"):
-        result = ssh_request(args.environment, args.operation, lease_id=args.lease_id)
+        result = ssh_request(args.environment, args.operation, lease_id=args.lease_id, **options)
     else:
         if args.operation in ("deploy", "rollback"):
             require(os.environ.get("ERP_CD_ENABLED") == "true", "Enable daily CD after successful first cutover; use prepare/cutover for test onboarding")
@@ -204,7 +220,7 @@ def main():
         if deployment:
             github.deployment_status(deployment, "in_progress")
         try:
-            result = ssh_request(args.environment, args.operation, release=release, confirm_cutover=args.confirm_cutover == "true")
+            result = ssh_request(args.environment, args.operation, release=release, confirm_cutover=args.confirm_cutover == "true", **options)
             accepted = ("prepared",) if args.operation == "prepare" else ("success", "already-current", "restored-legacy", "prepare-failed") if args.operation == "recover" else ("success", "already-current")
             require(result["status"] in accepted, "Remote operation did not complete")
         except Exception as error:

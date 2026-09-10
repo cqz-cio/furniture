@@ -110,9 +110,10 @@ class GitHub:
             "payload": {"release_id": manifest["id"], "release_hash": fingerprint(manifest)}})
 
     def deployment_status(self, deployment, status):
-        self.request(self.repo(f"/deployments/{deployment['id']}/statuses"), "POST", {"state": status,
-            "auto_inactive": status == "success", "description": "ERP CD: " + status,
-            "log_url": f"https://github.com/{self.repository}/actions/runs/{os.environ['GITHUB_RUN_ID']}"})
+        body = {"state": status, "auto_inactive": status == "success", "description": "ERP deployment: " + status}
+        if os.environ.get("GITHUB_RUN_ID"):
+            body["log_url"] = f"https://github.com/{self.repository}/actions/runs/{os.environ['GITHUB_RUN_ID']}"
+        self.request(self.repo(f"/deployments/{deployment['id']}/statuses"), "POST", body)
 
 
 def build_manifest(directory, env):
