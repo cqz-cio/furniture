@@ -56,6 +56,34 @@ def verify_image(info, reference, metadata, commit):
     require(info.get("Config", {}).get("Labels", {}).get("org.opencontainers.image.revision") == commit, "Image commit differs from the CI release")
 
 
+def extract_migrations(jar, runtime, release, layered=False, space_check=None):
+    """Accept both old fat JARs and the flat JAR produced by Boot tools mode."""
+    prefix = "" if layered else "BOOT-INF/classes/"
+    with zipfile.ZipFile(jar) as archive:
+        require(len(archive.namelist()) == len(set(archive.namelist())), "Duplicate entries in CI JAR")
+        migrations = sorted(n for n in archive.namelist() if re.fullmatch(
+            re.escape(prefix) + r"db/migration/V\d{3}__[a-z0-9_]+\.sql", n))
+        require([int(Path(n).name[1:4]) for n in migrations] == list(range(1, release["database_version"] + 1)), "Incomplete CI migration catalog")
+        digest = hashlib.sha256()
+        for name in migrations:
+            digest.update(Path(name).name.encode() + b"\0" + archive.read(name).replace(b"\r\n", b"\n"))
+        require(digest.hexdigest() == release["migrations_hash"], "Migration SQL differs from the CI release")
+        selected = [n for n in archive.namelist() if re.fullmatch(
+            re.escape(prefix) + r"db/migration/[BV]\d{3}__[a-z0-9_]+\.sql", n)
+            or (not layered and re.fullmatch(r"BOOT-INF/lib/[A-Za-z0-9_.+\-]+\.jar", n))]
+        (space_check or capacity)([runtime], sum(archive.getinfo(n).file_size for n in selected))
+        for name in selected:
+            target = runtime / ("lib/" + Path(name).name if name.startswith("BOOT-INF/lib/") else "sql/db/migration/" + Path(name).name)
+            target.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+            with archive.open(name) as source, target.open("xb") as output:
+                shutil.copyfileobj(source, output)
+    libraries = list((runtime / "lib").iterdir()) if (runtime / "lib").is_dir() else []
+    require(libraries and all(p.is_file() and not p.is_symlink() and re.fullmatch(r"[A-Za-z0-9_.+\-]+\.jar", p.name) for p in libraries),
+            "Invalid CI migration library layout")
+    require(any(p.name.startswith("flyway-core-") for p in libraries) and any(p.name.startswith("flyway-mysql-") for p in libraries),
+            "CI image lacks Flyway libraries")
+
+
 def prepare_images(commands, release, work, helper, preloaded=False):
     refs = environment_images(release, "test")
     metadata = {name: registry_size(ref) for name, ref in refs.items()}
@@ -72,6 +100,9 @@ def prepare_images(commands, release, work, helper, preloaded=False):
         info = json.loads(commands.run(["docker", "image", "inspect", ref], "inspect-" + name))[0]
         verify_image(info, ref, metadata[name], release["commit"])
         metadata[name]["size_bytes"] = info["Size"]
+        metadata[name]["layout"] = info.get("Config", {}).get("Labels", {}).get("io.oakved.image.layout", "fat-jar")
+    layout = metadata["erp-backend"]["layout"]
+    require(layout in ("fat-jar", "spring-boot-tools-v1"), "Unsupported backend image layout")
     runtime = work / "runtime"
     require(not runtime.exists(), "Runtime extraction already exists; inspect the prior prepare attempt")
     runtime.mkdir(mode=0o700)
@@ -81,6 +112,9 @@ def prepare_images(commands, release, work, helper, preloaded=False):
     try:
         jar = runtime / "backend.jar"
         commands.run(["docker", "cp", container + ":/opt/yudao/app.jar", str(jar)], "copy-ci-jar", seconds=45)
+        if layout == "spring-boot-tools-v1":
+            (runtime / "lib").mkdir(mode=0o700)
+            commands.run(["docker", "cp", container + ":/opt/yudao/lib/.", str(runtime / "lib")], "copy-ci-libraries", seconds=60)
         commands.run(["docker", "cp", container + ":/etc/passwd", str(runtime / "passwd")], "copy-image-passwd")
         commands.run(["docker", "cp", container + ":/etc/group", str(runtime / "group")], "copy-image-group")
     finally:
@@ -90,22 +124,7 @@ def prepare_images(commands, release, work, helper, preloaded=False):
     rows = [line.split(":") for line in (runtime / "passwd").read_text().splitlines() if line.split(":")[0] == user]
     require(len(rows) == 1 and rows[0][2].isdigit() and int(rows[0][2]) > 0 and rows[0][3].isdigit(), "Cannot establish the backend image's non-root identity")
     metadata["uid"], metadata["gid"] = int(rows[0][2]), int(rows[0][3])
-    with zipfile.ZipFile(jar) as archive:
-        migrations = sorted(n for n in archive.namelist() if re.fullmatch(r"BOOT-INF/classes/db/migration/V\d{3}__[a-z0-9_]+\.sql", n))
-        require([int(Path(n).name[1:4]) for n in migrations] == list(range(1, 50)), "Incomplete CI migration catalog")
-        digest = hashlib.sha256()
-        for name in migrations:
-            digest.update(Path(name).name.encode() + b"\0" + archive.read(name).replace(b"\r\n", b"\n"))
-        require(digest.hexdigest() == release["migrations_hash"], "Migration SQL differs from the CI release")
-        selected = [n for n in archive.namelist() if re.fullmatch(r"BOOT-INF/lib/[A-Za-z0-9_.+\-]+\.jar", n)
-                    or re.fullmatch(r"BOOT-INF/classes/db/migration/[BV]\d{3}__[a-z0-9_]+\.sql", n)]
-        require(any("/flyway-core-" in n for n in selected) and any("/flyway-mysql-" in n for n in selected), "CI image lacks Flyway libraries")
-        capacity([runtime], sum(archive.getinfo(n).file_size for n in selected))
-        for name in selected:
-            target = runtime / ("lib/" + Path(name).name if name.startswith("BOOT-INF/lib/") else "sql/db/migration/" + Path(name).name)
-            target.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-            with archive.open(name) as source, target.open("xb") as output:
-                shutil.copyfileobj(source, output)
+    extract_migrations(jar, runtime, release, layered=layout == "spring-boot-tools-v1")
     jar.unlink()  # Only the transient copy created in this attempt.
     code = base64.b64decode(helper["class"])
     require(sha256(code) == helper["sha256"] and code[:4] == b"\xca\xfe\xba\xbe", "Invalid migration helper")

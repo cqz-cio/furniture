@@ -1,5 +1,6 @@
 """Build an OCI archive on the Actions runner, preserving GHCR root digests."""
 import hashlib
+import http.client
 import io
 import json
 from pathlib import Path
@@ -37,22 +38,56 @@ class Registry:
         require(len(data) <= 2 * 1024**2 and digest(data) == reference, "Registry manifest digest mismatch")
         return data
 
-    def blob(self, package, reference):
+    def blob(self, package, reference, offset=0):
         # Bearer credentials belong to ghcr.io; do not forward them to CDN redirects.
         class NoRedirect(urllib.request.HTTPRedirectHandler):
             def redirect_request(self, *args):
                 return None
-        request = urllib.request.Request("https://ghcr.io/v2/" + package + "/blobs/" + reference, headers=self.headers(package))
+        headers = self.headers(package)
+        if offset:
+            headers = {**headers, "Range": f"bytes={offset}-"}
+        request = urllib.request.Request("https://ghcr.io/v2/" + package + "/blobs/" + reference, headers=headers)
         try:
             return urllib.request.build_opener(NoRedirect()).open(request, timeout=15)
         except urllib.error.HTTPError as error:
-            require(error.code in (301, 302, 303, 307, 308), "GHCR refused a blob download")
+            if error.code not in (301, 302, 303, 307, 308):
+                raise
             target = error.headers["Location"]
             error.close()
             url = urllib.parse.urlsplit(target)
             require(url.scheme == "https" and url.hostname and url.hostname.endswith(".githubusercontent.com")
                     and not url.username and not url.password, "Unexpected GHCR blob redirect")
-            return urllib.request.urlopen(target, timeout=15)
+            return urllib.request.urlopen(urllib.request.Request(target, headers={"Range": f"bytes={offset}-"} if offset else {}), timeout=15)
+
+
+def download_blob(registry, package, ref, child, path, check, advanced):
+    """Retry a transient read once, resuming only an explicitly verified HTTP range."""
+    size, checksum = 0, hashlib.sha256()
+    with path.open("xb") as output:
+        for attempt in range(2):
+            try:
+                check()
+                with registry.blob(package, ref, offset=size) as response:
+                    if size:
+                        require(response.status == 206 and response.headers.get("Content-Range") == f"bytes {size}-{child['size']-1}/{child['size']}",
+                                "Registry did not honor the resume range; refusing to append different content")
+                    while chunk := response.read1(1024 * 1024):
+                        size += len(chunk)
+                        require(size <= child["size"], "Downloaded blob exceeds declared size")
+                        checksum.update(chunk)
+                        output.write(chunk)
+                        advanced(len(chunk))
+                        check()
+                if size != child["size"]:
+                    raise ConnectionError("Registry closed the blob before its declared length")
+                break
+            except (urllib.error.URLError, TimeoutError, ConnectionError, http.client.IncompleteRead) as error:
+                transient = not isinstance(error, urllib.error.HTTPError) or error.code in (408, 429, 500, 502, 503, 504)
+                if attempt or not transient:
+                    raise RuntimeError(f"Actions image download failed ({type(error).__name__}); bytes={size}/{child['size']}") from None
+                print(json.dumps({"stage": "runner-image-download-retry", "attempt": 2, "resume_bytes": size,
+                                  "reason": type(error).__name__}), flush=True)
+    require(size == child["size"] and "sha256:" + checksum.hexdigest() == ref, "Downloaded blob checksum mismatch")
 
 
 def build_archive(release, environment, directory, registry=None):
@@ -105,18 +140,13 @@ def build_archive(release, environment, directory, registry=None):
         roots.append({**visit(package, ref), "annotations": {"io.containerd.image.name": reference}})
     total = sum(child["size"] for _, child in pending.values())
     require(total < 3 * 1024**3 and shutil.disk_usage(directory).free > total * 3 + 1024**3, "Insufficient Actions space for the image archive")
+    def advanced(count):
+        nonlocal transferred
+        transferred += count
+
     for ref, (package, child) in pending.items():
         check()
-        size, checksum = 0, hashlib.sha256()
-        with registry.blob(package, ref) as response, (blobs / ref[7:]).open("xb") as output:
-            while chunk := response.read1(1024 * 1024):
-                size += len(chunk)
-                transferred += len(chunk)
-                require(size <= child["size"], "Downloaded blob exceeds declared size")
-                checksum.update(chunk)
-                output.write(chunk)
-                check()
-        require(size == child["size"] and "sha256:" + checksum.hexdigest() == ref, "Downloaded blob checksum mismatch")
+        download_blob(registry, package, ref, child, blobs / ref[7:], check, advanced)
     archive = directory / "images.oci.tar"
     with tarfile.open(archive, "w") as output:
         for name, value in (("oci-layout", {"imageLayoutVersion": "1.0.0"}), ("index.json", {"schemaVersion": 2, "manifests": roots})):

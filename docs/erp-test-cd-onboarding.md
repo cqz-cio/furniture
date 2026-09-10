@@ -63,6 +63,8 @@ V048 修改分类结构，不能假定旧 V047 程序兼容 V049。首次切换�
 
 ## 日志与容量
 
+测试环境下载方式可通过 Environment 变量 `ERP_IMAGE_TRANSPORT` 选择 `ssh`（默认）或 `ghcr`。新镜像分层、下载续传和上海仓库待接入条件见 [ERP 镜像下载与分层](erp-image-delivery.md)。上海仓库目前尚未创建或启用。
+
 首次接入状态位于 `/opt/oakved-deploy/test/bootstrap/state.json`。`bootstrap/<attempt>/` 保存原配置、`rehearsal.sql`、`cutover.sql`、哈希清单、迁移/审核报告；`bootstrap/commands-*/` 保存命令日志、PID、耗时和退出结果。上述目录只在服务器供 root 读取，Actions 附件只含脱敏结果。
 
 镜像中转的私有日志在 `/opt/oakved-deploy/test/image-relay-logs/`；Actions 每 10 秒显示下载或 SSH 接收的实际字节数。Actions 下载打包上限 300 秒，SSH 传输上限 600 秒，服务器导入上限 300 秒；60 秒没有传输进展会停止。工作流总上限 55 分钟，包含中转及原有数据库演练/恢复预算。临时包位于自建 `/var/tmp/oakved-image-relay-*` 目录，信号中断时也执行本次文件清理。

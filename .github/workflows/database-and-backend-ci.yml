@@ -138,6 +138,12 @@ jobs:
           grep -q "BOOT-INF/classes/db/migration/${latest_baseline}" yudao-server/target/jar-contents.txt
           test "$versioned_count" -eq "$expected_count"
 
+      - name: Verify layered backend dependencies and CD migration extraction
+        run: >-
+          timeout --kill-after=5s 120s python3 -B deploy/erp/verify-image-layers.py
+          --jar "yudao电商管理平台前后端/yudao-cloud/yudao-server/target/yudao-server.jar"
+          --migrations "yudao电商管理平台前后端/yudao-cloud/sql/mysql/migrations"
+
   verify-erp-admin:
     runs-on: ubuntu-latest
     timeout-minutes: 30

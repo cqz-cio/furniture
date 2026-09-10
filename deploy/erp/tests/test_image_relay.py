@@ -43,8 +43,12 @@ class MemoryRegistry:
     def manifest(self, package, ref):
         return self.objects[ref]
 
-    def blob(self, package, ref):
-        return io.BytesIO(b'corrupt' if self.corrupt else self.objects[ref])
+    def blob(self, package, ref, offset=0):
+        data = b'\0' * len(self.objects[ref]) if self.corrupt else self.objects[ref]
+        response = io.BytesIO(data[offset:])
+        response.status = 206 if offset else 200
+        response.headers = {'Content-Range': f'bytes {offset}-{len(data)-1}/{len(data)}'} if offset else {}
+        return response
 
 
 class ArchiveTests(unittest.TestCase):

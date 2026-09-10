@@ -50,7 +50,7 @@ jobs:
       - name: Run the unified test CD entry point
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ERP_IMAGE_TRANSPORT: ssh
+          ERP_IMAGE_TRANSPORT: ${{ vars.ERP_IMAGE_TRANSPORT || 'ssh' }}
           ERP_CD_ENABLED: ${{ vars.ERP_CD_ENABLED }}
           ERP_SSH_HOST: ${{ vars.ERP_SSH_HOST || vars.TENCENT_SSH_HOST }}
           ERP_SSH_USER: ${{ vars.ERP_SSH_USER || vars.TENCENT_SSH_USER }}

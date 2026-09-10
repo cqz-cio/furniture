@@ -40,6 +40,13 @@ if not 0<length<1048576:raise ValueError('Invalid relay header size')
 b=json.loads(read_exact(length))""")
 
 
+def image_transport(environment):
+    mode = os.environ.get("ERP_IMAGE_TRANSPORT") or ("ssh" if environment == "test" else "ghcr")
+    require(mode in ("ssh", "ghcr"), "ERP_IMAGE_TRANSPORT must be ssh or ghcr; a regional registry is not configured")
+    require(mode != "ssh" or environment == "test", "SSH image relay is limited to test")
+    return mode
+
+
 def bootstrap_bundle():
     """Compile trusted source with no package downloads and export existing read-only audits."""
     audit = json.loads(subprocess.run(["node", str(HERE / "bootstrap-audit.mjs")], capture_output=True, text=True,
@@ -127,6 +134,7 @@ def preload_test_images(command, release, directory):
 
 
 def ssh_request(environment, operation, release=None, lease_id=None, confirm_cutover=False):
+    mode = image_transport(environment)
     host, user = os.environ["ERP_SSH_HOST"], os.environ["ERP_SSH_USER"]
     require(re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.-]*", host) and re.fullmatch(r"[a-z_][a-z0-9_-]*", user), "Invalid SSH destination")
     port = int(os.environ.get("ERP_SSH_PORT") or "22")
@@ -159,7 +167,9 @@ def ssh_request(environment, operation, release=None, lease_id=None, confirm_cut
             "-o", "StrictHostKeyChecking=yes", "-o", "UserKnownHostsFile=" + str(known), "-o", "ConnectTimeout=10",
             "-o", "ServerAliveInterval=10", "-o", "ServerAliveCountMax=3", user + "@" + host,
             remote_command + shlex.quote(BOOTSTRAP)]
-        if os.environ.get("ERP_IMAGE_TRANSPORT") == "ssh" and operation in ("prepare", "deploy", "rollback"):
+        if operation in ("prepare", "deploy", "rollback"):
+            print(json.dumps({"stage": "image-delivery", "transport": mode, "environment": environment}), flush=True)
+        if mode == "ssh" and operation in ("prepare", "deploy", "rollback"):
             require(environment == "test" and (host, user, port, root) == (PROFILE["host"], PROFILE["user"], 22, PROFILE["root"]),
                     "SSH image relay is limited to the verified test host")
             preload_test_images(command, release, directory)

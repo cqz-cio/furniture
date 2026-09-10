@@ -6,14 +6,21 @@ WORKDIR /workspace
 COPY . .
 
 RUN mvn -B -ntp -pl yudao-server -am -DskipTests package \
-    && test -s yudao-server/target/yudao-server.jar
+    && test -s yudao-server/target/yudao-server.jar \
+    && cp yudao-server/target/yudao-server.jar app.jar \
+    && java -Djarmode=tools -jar app.jar extract --layers --destination extracted
 
 FROM eclipse-temurin:17-jre-alpine AS runtime
 
 RUN addgroup -S yudao && adduser -S -G yudao yudao
 
 WORKDIR /opt/yudao
-COPY --from=build --chown=yudao:yudao /workspace/yudao-server/target/yudao-server.jar app.jar
+# Keep stable dependencies reusable when only application modules change.
+COPY --from=build --chown=yudao:yudao /workspace/extracted/dependencies/ ./
+COPY --from=build --chown=yudao:yudao /workspace/extracted/spring-boot-loader/ ./
+COPY --from=build --chown=yudao:yudao /workspace/extracted/snapshot-dependencies/ ./
+COPY --from=build --chown=yudao:yudao /workspace/extracted/application/ ./
+LABEL io.oakved.image.layout="spring-boot-tools-v1"
 
 ENV TZ=Asia/Shanghai
 ENV JAVA_OPTS="-Xms512m -Xmx2048m -Djava.security.egd=file:/dev/./urandom"
