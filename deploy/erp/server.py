@@ -143,7 +143,12 @@ class Server:
 
     def pull_images(self, release):
         for name, reference in environment_images(release, self.environment).items():
-            pull_image(reference, "pull-" + name, self.root / "command-logs")
+            if not getattr(self, "images_preloaded", False):
+                pull_image(reference, "pull-" + name, self.root / "command-logs")
+            else:
+                info = json.loads(run(["docker", "image", "inspect", reference]))[0]
+                require(reference in info.get("RepoDigests", []) and info["Architecture"] == "amd64" and info["Os"] == "linux"
+                        and info["Config"].get("Labels", {}).get("org.opencontainers.image.revision") == release["commit"], "Preloaded image differs from the requested release")
 
     def verify_containers(self, release):
         for service, image in environment_images(release, self.environment).items():
@@ -444,6 +449,7 @@ def main(payload):
     require(root.is_dir() and root.name == payload["environment"], "Invalid environment directory")
     with locked(root / "operation.lock"):
         server = Server(payload["root"], payload["environment"])
+        server.images_preloaded = payload.get("images_preloaded") is True
         action = payload["operation"]
         if action in ("lease-start", "lease-check", "lease-end"):
             result = server.lease(action, payload["lease_id"])

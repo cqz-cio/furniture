@@ -36,29 +36,41 @@ def registry_size(reference):
             data = response.read(2 * 1024**2)
         require("sha256:" + sha256(data) == value, "Registry manifest digest mismatch")
         return json.loads(data)
+    manifest_digest = digest
     manifest = fetch(digest)
     if "manifests" in manifest:
         children = [v for v in manifest["manifests"] if v.get("platform", {}).get("os") == "linux"
                     and v.get("platform", {}).get("architecture") == "amd64"]
         require(len(children) == 1, "Ambiguous image platform")
-        manifest = fetch(children[0]["digest"])
-    return {"compressed_bytes": sum(v["size"] for v in manifest["layers"]), "config_digest": manifest["config"]["digest"]}
+        manifest_digest = children[0]["digest"]
+        manifest = fetch(manifest_digest)
+    return {"compressed_bytes": sum(v["size"] for v in manifest["layers"]), "config_digest": manifest["config"]["digest"],
+            "root_digest": digest, "manifest_digest": manifest_digest}
 
 
-def prepare_images(commands, release, work, helper):
+def verify_image(info, reference, metadata, commit):
+    # Containerd reports the root manifest/index as Id; legacy stores report config.
+    require(info["Id"] in {metadata[key] for key in ("config_digest", "root_digest", "manifest_digest")}
+            and reference in info.get("RepoDigests", []) and info["Architecture"] == "amd64" and info["Os"] == "linux",
+            "Image identity or platform mismatch")
+    require(info.get("Config", {}).get("Labels", {}).get("org.opencontainers.image.revision") == commit, "Image commit differs from the CI release")
+
+
+def prepare_images(commands, release, work, helper, preloaded=False):
     refs = environment_images(release, "test")
     metadata = {name: registry_size(ref) for name, ref in refs.items()}
     docker_root = commands.run(["docker", "info", "--format", "{{.DockerRootDir}}"], "docker-directory").strip()
     require(Path(docker_root).is_absolute(), "Docker directory unavailable")
     # Includes compressed content, unpacked layers and extraction working space.
-    peak = sum(v["compressed_bytes"] for v in metadata.values()) * 4
+    # Relayed layers are already in Docker. Budget extraction space without
+    # charging the occupied image storage a second time.
+    peak = metadata["erp-backend"]["compressed_bytes"] * 2 if preloaded else sum(v["compressed_bytes"] for v in metadata.values()) * 4
     capacity([work, docker_root], peak)
     for name, ref in refs.items():
-        pull_image(ref, "pull-" + name, commands.directory)
+        if not preloaded:
+            pull_image(ref, "pull-" + name, commands.directory)
         info = json.loads(commands.run(["docker", "image", "inspect", ref], "inspect-" + name))[0]
-        require(info["Id"] == metadata[name]["config_digest"] and info["Architecture"] == "amd64" and info["Os"] == "linux",
-                "Image identity or platform mismatch")
-        require(info.get("Config", {}).get("Labels", {}).get("org.opencontainers.image.revision") == release["commit"], "Image commit differs from the CI release")
+        verify_image(info, ref, metadata[name], release["commit"])
         metadata[name]["size_bytes"] = info["Size"]
     runtime = work / "runtime"
     require(not runtime.exists(), "Runtime extraction already exists; inspect the prior prepare attempt")

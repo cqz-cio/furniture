@@ -150,7 +150,7 @@ class Bootstrap:
         write_json(work / "source.json", snapshot)
         write_json(work / "release.json", self.release)
         try:
-            prepare_images(self.commands, self.release, work, self.payload["helper"])
+            prepare_images(self.commands, self.release, work, self.payload["helper"], preloaded=self.payload.get("images_preloaded") is True)
             receipt = self.database.backup(PROFILE["source_database"], work / "rehearsal.sql")
             result = self.clone_and_migrate(self.state["rehearsal_database"], work / "rehearsal.sql", receipt, work / "runtime")
             pid, _ = self.source_runtime()

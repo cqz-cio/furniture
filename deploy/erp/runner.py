@@ -6,11 +6,12 @@ import os
 from pathlib import Path
 import re
 import shlex
+import shutil
 import subprocess
 import tempfile
 import time
 
-from common import require, write_json
+from common import fingerprint, require, write_json
 from github_release import GitHub
 from bootstrap_policy import OPERATIONS, PROFILE, validate_target, validate_audit_bundle, sha256
 
@@ -26,6 +27,18 @@ except Exception as e:
  sys.exit(1)
 """
 
+RELAY_BOOTSTRAP = BOOTSTRAP.replace("b=json.load(sys.stdin)", """import os
+def read_exact(count):
+ data=bytearray()
+ while len(data)<count:
+  part=os.read(0,min(65536,count-len(data)))
+  if not part:raise ValueError('Truncated relay header')
+  data.extend(part)
+ return data
+length=int.from_bytes(read_exact(8),'big')
+if not 0<length<1048576:raise ValueError('Invalid relay header size')
+b=json.loads(read_exact(length))""")
+
 
 def bootstrap_bundle():
     """Compile trusted source with no package downloads and export existing read-only audits."""
@@ -40,10 +53,13 @@ def bootstrap_bundle():
     return {"audit": audit, "helper": {"class": base64.b64encode(code).decode(), "sha256": sha256(code)}}
 
 
-def transport(command, bundle, directory, timeout):
+def transport(command, bundle, directory, timeout, input_path=None):
     """Stream sanitized server progress; keep SSH diagnostics out of public Actions logs."""
     incoming, outgoing, errors = (Path(directory) / name for name in ("request", "stdout", "stderr"))
-    incoming.write_text(json.dumps(bundle), encoding="utf-8")
+    if input_path is None:
+        incoming.write_text(json.dumps(bundle), encoding="utf-8")
+    else:
+        incoming = Path(input_path)
     start = changed = time.monotonic()
     offset = last_size = 0
     pending, results, remote_errors = "", [], []
@@ -86,6 +102,30 @@ def transport(command, bundle, directory, timeout):
     return results[0]
 
 
+def preload_test_images(command, release, directory):
+    from image_archive import build_archive
+    modules = {name: base64.b64encode((HERE / (name + ".py")).read_bytes()).decode()
+               for name in ("common", "bootstrap_policy", "bootstrap_io", "image_relay")}
+    relay = {"entry": "image_relay", "request": {"operation": "probe", "release": release, "environment": "test"}, "modules": modules}
+    probe_command = command[:-1] + ["sudo -n timeout --kill-after=15s 70s python3 -B -c " + shlex.quote(BOOTSTRAP)]
+    receipt = transport(probe_command, relay, directory, 85)
+    require(receipt.get("release_hash") == fingerprint(release) and receipt.get("status") in ("images-present", "images-missing"), "Invalid image cache receipt")
+    if receipt["status"] == "images-present":
+        print("Verified release images are already cached; skipping image download/transfer.", flush=True)
+        return
+    archive, header = build_archive(release, "test", Path(directory) / "image-archive")
+    relay["request"] = header
+    # Exact framing avoids OS argument limits and buffered JSON readers consuming tar bytes.
+    incoming = Path(directory) / "image-transfer.bin"
+    raw = json.dumps(relay).encode()
+    with incoming.open("wb") as output, archive.open("rb") as source:
+        output.write(len(raw).to_bytes(8, "big") + raw)
+        shutil.copyfileobj(source, output, length=1024 * 1024)
+    relay_command = command[:-1] + ["sudo -n timeout --signal=TERM --kill-after=15s 950s python3 -B -c " + shlex.quote(RELAY_BOOTSTRAP)]
+    receipt = transport(relay_command, {}, directory, 970, input_path=incoming)
+    require(receipt == {"status": "images-ready", "release_hash": fingerprint(release)}, "Incomplete image relay receipt")
+
+
 def ssh_request(environment, operation, release=None, lease_id=None, confirm_cutover=False):
     host, user = os.environ["ERP_SSH_HOST"], os.environ["ERP_SSH_USER"]
     require(re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.-]*", host) and re.fullmatch(r"[a-z_][a-z0-9_-]*", user), "Invalid SSH destination")
@@ -119,6 +159,11 @@ def ssh_request(environment, operation, release=None, lease_id=None, confirm_cut
             "-o", "StrictHostKeyChecking=yes", "-o", "UserKnownHostsFile=" + str(known), "-o", "ConnectTimeout=10",
             "-o", "ServerAliveInterval=10", "-o", "ServerAliveCountMax=3", user + "@" + host,
             remote_command + shlex.quote(BOOTSTRAP)]
+        if os.environ.get("ERP_IMAGE_TRANSPORT") == "ssh" and operation in ("prepare", "deploy", "rollback"):
+            require(environment == "test" and (host, user, port, root) == (PROFILE["host"], PROFILE["user"], 22, PROFILE["root"]),
+                    "SSH image relay is limited to the verified test host")
+            preload_test_images(command, release, directory)
+            request["images_preloaded"] = True
         # The remote journal remains unfinished if SSH disconnects, so a retry cannot blindly deploy twice.
         return transport(command, bundle, directory, 1700 if operation in OPERATIONS else (1500 if operation in ("deploy", "rollback") else 60))
 

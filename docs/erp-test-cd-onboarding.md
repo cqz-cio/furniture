@@ -2,6 +2,12 @@
 
 所有操作都从 GitHub Actions 的 **ERP CD - test** 进入。首次接入不再需要逐条运行本机的备份、恢复、迁移助手。
 
+测试工作流的 `prepare/deploy/rollback` 默认使用 `ERP_IMAGE_TRANSPORT=ssh`：Actions 按已通过 CI 的发布清单下载 GHCR 镜像，校验每个文件层的 SHA-256，打成保留原始根摘要的 OCI 包，通过现有 SSH 连接发送到测试服务器。服务器核对整个包、OCI 内容、镜像摘要、平台和提交标识，导入缓存后才进入原 CD。已有成功 `prepare` 的 `cutover/recover` 继续使用已验证的本机镜像和迁移文件。
+
+无需新增账号或 Secret，也无需服务器直接下载 GitHub 的大镜像文件。测试机已验证使用 Docker 29 的 containerd 镜像存储；镜像加载使用 [Docker 的 load 功能](https://docs.docker.com/reference/cli/docker/image/load/)。传输时临时占用一个镜像包，完成或正常失败后删除；不清理其他镜像、数据库或 Docker 卷。生产工作流仍保持原有入口和下载方式。
+
+每次先核对服务器镜像缓存；两个指定摘要、平台和提交标识均一致时，跳过下载与传输。因此后续数据库演练失败后重试可以复用已导入镜像，容量检查也不会再次计入已占用的镜像空间。
+
 ## 操作入口
 
 | operation | 自动执行的工作 | 对现有 ERP 的影响 |
@@ -59,11 +65,13 @@ V048 修改分类结构，不能假定旧 V047 程序兼容 V049。首次切换�
 
 首次接入状态位于 `/opt/oakved-deploy/test/bootstrap/state.json`。`bootstrap/<attempt>/` 保存原配置、`rehearsal.sql`、`cutover.sql`、哈希清单、迁移/审核报告；`bootstrap/commands-*/` 保存命令日志、PID、耗时和退出结果。上述目录只在服务器供 root 读取，Actions 附件只含脱敏结果。
 
+镜像中转的私有日志在 `/opt/oakved-deploy/test/image-relay-logs/`；Actions 每 10 秒显示下载或 SSH 接收的实际字节数。Actions 下载打包上限 300 秒，SSH 传输上限 600 秒，服务器导入上限 300 秒；60 秒没有传输进展会停止。工作流总上限 55 分钟，包含中转及原有数据库演练/恢复预算。临时包位于自建 `/var/tmp/oakved-image-relay-*` 目录，信号中断时也执行本次文件清理。
+
 最终生成 `config/server.json`、`config/backend.env`、`config/mysql.cnf` 和 `releases/<release_id>/`，登记日常 CD 的 `state.json`，配置专用 `/opt/oakved-cd-data/test/{logs,uploads}` 目录权限。
 
 首次成功后清理本次自建且无连接的演练库和 Java 解包临时文件；保留原库、新业务库、备份和审核报告。之前人工建立的演练库及其他 Docker 资源不自动清理。
 
-每阶段有有限超时和进度输出，命令 60 秒无进展会终止进程组。镜像下载通过本机 Docker Engine API 读取下载/解压字节数，每 10 秒报告实际进度；不再用非交互 `docker pull` 的日志增长判断下载是否卡住。每张镜像总时限 300 秒，60 秒无字节增长或新阶段就关闭请求取消下载；重复状态和重试倒计时不算进展。完成后再次核对完整镜像 digest 和 linux/amd64 平台。此方式用于首次准备及后续日常 CD，不开放 Docker TCP 端口。API 的连接取消行为见 [Docker 官方说明](https://docs.docker.com/reference/api/engine/version/v1.46/#tag/Image/operation/ImageCreate)。
+每阶段有有限超时和进度输出，命令 60 秒无进展会终止进程组。未启用 SSH 中转的直接下载方式通过本机 Docker Engine API 读取下载/解压字节数，每 10 秒报告实际进度；每张镜像总时限 300 秒，60 秒无字节增长或新阶段就关闭请求取消下载。重复状态和重试倒计时不算进展。API 的连接取消行为见 [Docker 官方说明](https://docs.docker.com/reference/api/engine/version/v1.46/#tag/Image/operation/ImageCreate)。两种方式均核对完整镜像 digest 和 linux/amd64 平台，不开放 Docker TCP 端口。
 
 根据镜像压缩/解包大小核算容量，保留至少 10 GiB 余量，占用超过 90% 停止。GHCR 继续保留 **5 套普通版本**，额外保护当前/回滚/pin；生产未接入时保持清理关闭。
 
@@ -76,3 +84,5 @@ V048 修改分类结构，不能假定旧 V047 程序兼容 V049。首次切换�
 首次真实 `prepare`（run `34431586588`）在后端镜像下载阶段因 60 秒无 CLI 输出而停止，尚未备份/迁移数据库或切换服务。随后确认原 ERP PID 3135530、健康状态 UP、无运行中的 Docker 容器。下载进度修复已覆盖模拟 Engine 的真实 HTTP 分块响应、持续慢下载、重复状态、无响应、总超时、错误响应、连接中断及 digest 不匹配；这些测试不代替实际镜像下载。
 
 完整隔离迁移和 Docker 切换是否通过，仍以修复后新工作流对应运行记录为准。
+
+第二次 `prepare`（run `34433852337`）仍在下载层时超时。服务器实测从 `pkg-containers.githubusercontent.com` 读取大层的 1 MiB 样本用了 52.56 秒，最大层为 697,913,509 字节，因此改用 Actions 下载后 SSH 中转。已使用本次真实打包、二进制 SSH 传输、服务器校验和导入代码，在测试机完成两个微型探针镜像的导入与摘要检查，随后只删除自建探针镜像，未启动容器。另修正 Docker 29 的根摘要型镜像 ID 校验；仍要求 RepoDigests 和提交标识精确匹配。
