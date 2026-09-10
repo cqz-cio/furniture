@@ -32,6 +32,10 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\deploy\erp\deploy-test
 
 中断后先查看本地日志和服务器部署日志。首次切换的恢复使用 `-Operation recover -ConfirmCutover`；保留现有状态机对写入开放后的恢复约束，不直接还原旧数据库。
 
+如果结果已明确为 `restored-legacy`，旧服务已恢复，需要重新 `prepare`，再对同一发行版 `cutover`。镜像仍在服务器缓存，不需要再次上传；准备过程会使用新的隔离数据库与账号。
+
+测试后端显式配置 `SPRING_FLYWAY_URL/USER/PASSWORD`，让启动时 Flyway 使用与业务相同的受限数据库账号、独立于 Druid 的原生连接。这样与迁移演练的连接方式一致，不额外授予读取其他会话变量的全局权限，也不关闭 Flyway 校验。
+
 ## 超时、缓存和清理
 
 - SCP 最长 30 分钟；通过独立 SSH stat 读取实际上传字节，每 10 秒报告进度，连续 60 秒不增长停止。按已测约 716 KB/s，800 MB 首次传输预计约 19 分钟，不能承诺几分钟完成。

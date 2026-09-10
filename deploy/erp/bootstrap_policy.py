@@ -54,6 +54,11 @@ def backend_environment(runtime, database, user, password):
     values.update(YUDAO_DB_URL="jdbc:" + urlunsplit(url._replace(path="/" + database)),
                   YUDAO_DB_USERNAME=user, YUDAO_DB_PASSWORD=password,
                   JAVA_OPTS="-Xms256m -Xmx1024m -XX:MaxMetaspaceSize=384m -XX:ActiveProcessorCount=2 -Djava.security.egd=file:/dev/./urandom")
+    # Flyway must use a native connection, just like the verified clone migration.
+    # Druid discards its pooled connection on Flyway's optional metadata query
+    # when the schema-scoped account cannot read performance_schema tables.
+    values.update(SPRING_FLYWAY_URL=values["YUDAO_DB_URL"], SPRING_FLYWAY_USER=user,
+                  SPRING_FLYWAY_PASSWORD=password)
     for key, value in values.items():
         require(re.fullmatch(r"[A-Z][A-Z0-9_]*", key) and not any(c in value for c in "\r\n\0"), "Environment contains unsupported multiline values")
     return "".join(k + "=" + v + "\n" for k, v in sorted(values.items()))

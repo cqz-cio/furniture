@@ -98,6 +98,7 @@ class IsolationPolicy(unittest.TestCase):
                 for line in originals[path].splitlines():
                     if "root " in line or "location /catalog/" in line or "location /assets/" in line or "include " in line:
                         self.assertIn(line, data)
+
                 if mode == "open":
                     self.assertNotIn("return 503", data)
                     self.assertNotIn(":48080", data)
@@ -106,6 +107,17 @@ class IsolationPolicy(unittest.TestCase):
         main = plans["candidate"][PROFILE["nginx_main"]]
         self.assertEqual(main.count("location = /actuator/"), 2)
         self.assertIn("proxy_pass http://127.0.0.1:18080;", main)
+
+    def test_flyway_uses_native_connection_to_same_restricted_clone(self):
+        runtime = {"YUDAO_DB_URL": "jdbc:mysql://127.0.0.1:3306/" + PROFILE["source_database"] + "?useSSL=false",
+                   "SPRING_FLYWAY_URL": "jdbc:mysql://wrong/legacy", "SPRING_FLYWAY_USER": "old-user",
+                   "SPRING_FLYWAY_PASSWORD": "old-password"}
+        result = dict(line.split('=', 1) for line in backend_environment(runtime,
+                      "oakved_cd_test_live_"+'a'*16,"erp_cd_a_"+'a'*16,'c'*64).splitlines())
+        self.assertEqual(result['SPRING_FLYWAY_URL'],result['YUDAO_DB_URL'])
+        self.assertEqual(result['SPRING_FLYWAY_USER'],result['YUDAO_DB_USERNAME'])
+        self.assertEqual(result['SPRING_FLYWAY_PASSWORD'],result['YUDAO_DB_PASSWORD'])
+        self.assertNotIn(PROFILE['source_database'],result['SPRING_FLYWAY_URL'])
 
     def test_unknown_proxy_shape_or_additional_site_blocks_mutation(self):
         originals = proxy_files()
