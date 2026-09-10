@@ -260,6 +260,12 @@ class TransportTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "SSH operation failed"):
                 transport([sys.executable, "-c", "raise SystemExit(1)"], {}, directory, 10)
 
+    def test_server_failure_reason_survives_into_the_runner_error(self):
+        with tempfile.TemporaryDirectory() as directory, patch("builtins.print"):
+            script = "print('ERP_CD_ERROR=pull-erp-backend had no download progress',flush=True); raise SystemExit(1)"
+            with self.assertRaisesRegex(ValueError, "SSH operation failed: pull-erp-backend had no download progress"):
+                transport([sys.executable, "-c", script], {}, directory, 10)
+
     @unittest.skipIf(os.name == "nt", "Server command process groups require Linux")
     def test_command_timeout_kills_its_own_process_group(self):
         with tempfile.TemporaryDirectory() as directory:

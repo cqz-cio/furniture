@@ -37,9 +37,12 @@ class FakeServer(Server):
 
     def compose(self, release_id, *args, timeout=60):
         self.calls.append((release_id, args))
-        if self.fail_pull and args[0] == "pull":
-            raise RuntimeError("pull failed")
         return ""
+
+    def pull_images(self, value):
+        self.calls.append((value["id"], ("pull",)))
+        if self.fail_pull:
+            raise RuntimeError("pull failed")
 
     def healthy(self, value):
         self.calls.append((value["id"], ("health",)))

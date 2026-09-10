@@ -22,6 +22,7 @@ import urllib.request
 from urllib.parse import urlsplit
 
 from common import environment_images, fingerprint, require, timestamp, utcnow, validate_release, write_json, RELEASE
+from image_pull import pull_image
 
 COMMAND_LOG_DIRECTORY = None
 
@@ -139,6 +140,10 @@ class Server:
     def current_verified(self):
         require(self.state.get("current"), "No registered running version")
         self.verify_containers(self.manifest(self.state["current"]))
+
+    def pull_images(self, release):
+        for name, reference in environment_images(release, self.environment).items():
+            pull_image(reference, "pull-" + name, self.root / "command-logs")
 
     def verify_containers(self, release):
         for service, image in environment_images(release, self.environment).items():
@@ -354,7 +359,7 @@ class Server:
         switched = False
         try:
             self.log("Pulling " + release["id"])
-            self.compose(release["id"], "pull", timeout=300)
+            self.pull_images(release)
             if release["database_version"] > schema:
                 self.state["in_progress"]["backup"] = self.backup(release["id"])
                 self.save()

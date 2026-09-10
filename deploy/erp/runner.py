@@ -46,7 +46,7 @@ def transport(command, bundle, directory, timeout):
     incoming.write_text(json.dumps(bundle), encoding="utf-8")
     start = changed = time.monotonic()
     offset = last_size = 0
-    pending, results = "", []
+    pending, results, remote_errors = "", [], []
     with incoming.open("rb") as source, outgoing.open("wb") as out, errors.open("wb") as err:
         child = subprocess.Popen(command, stdin=source, stdout=out, stderr=err)
         try:
@@ -64,6 +64,8 @@ def transport(command, bundle, directory, timeout):
                         if line.startswith("ERP_CD_RESULT="):
                             results.append(json.loads(line.removeprefix("ERP_CD_RESULT=")))
                         else:
+                            if line.startswith("ERP_CD_ERROR="):
+                                remote_errors.append(line.removeprefix("ERP_CD_ERROR=")[:1000])
                             print(line, flush=True)
                 if child.poll() is not None and outgoing.stat().st_size == offset:
                     break
@@ -78,7 +80,8 @@ def transport(command, bundle, directory, timeout):
                 except subprocess.TimeoutExpired:
                     child.kill()
                     child.wait(timeout=5)
-    require(child.returncode == 0, "SSH operation failed; inspect the recorded bootstrap/deployment report on the server")
+    require(child.returncode == 0, "SSH operation failed: " + ("; ".join(remote_errors)[-2000:] if remote_errors
+            else "inspect the recorded bootstrap/deployment report on the server"))
     require(len(results) == 1 and not pending.strip(), "Missing or ambiguous server result")
     return results[0]
 
@@ -95,7 +98,7 @@ def ssh_request(environment, operation, release=None, lease_id=None, confirm_cut
         request.update(release=release, compose=(HERE / "compose.yml").read_text(encoding="utf-8"))
     if lease_id:
         request["lease_id"] = lease_id
-    names = ["common", "server"]
+    names = ["common", "image_pull", "server"]
     entry, remote_command = "server", "python3 -B -c "
     if operation in OPERATIONS:
         validate_target(environment, root, release, operation, confirm_cutover)

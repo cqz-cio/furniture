@@ -11,6 +11,7 @@ import zipfile
 
 from common import environment_images, require, write_json
 from bootstrap_policy import PROFILE, sha256
+from image_pull import pull_image
 
 
 def capacity(paths, extra=0):
@@ -53,7 +54,7 @@ def prepare_images(commands, release, work, helper):
     peak = sum(v["compressed_bytes"] for v in metadata.values()) * 4
     capacity([work, docker_root], peak)
     for name, ref in refs.items():
-        commands.run(["docker", "pull", ref], "pull-" + name, seconds=300)
+        pull_image(ref, "pull-" + name, commands.directory)
         info = json.loads(commands.run(["docker", "image", "inspect", ref], "inspect-" + name))[0]
         require(info["Id"] == metadata[name]["config_digest"] and info["Architecture"] == "amd64" and info["Os"] == "linux",
                 "Image identity or platform mismatch")
