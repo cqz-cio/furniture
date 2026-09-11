@@ -1,4 +1,4 @@
-"""Trusted Windows Runner: checked main commit -> local OCI images -> test SCP deployment."""
+"""Trusted Windows Runner: checked main commit -> verified local OCI images. No deployment."""
 import argparse
 from datetime import timedelta
 import json
@@ -117,15 +117,29 @@ def cleanup_cache(cache, snapshot, active):
         print(json.dumps({'stage': 'cache-retired', 'release_id': ident}), flush=True)
 
 
+def cleanup_after_manual_deploy(cache, connection, ident):
+    lease = 'local-cache-' + uuid.uuid4().hex
+    locked = False
+    try:
+        snapshot = ssh_request('test','lease-start',lease_id=lease,connection=connection)
+        locked = True
+        cleanup_cache(Path(cache),snapshot,ident)
+    except Exception as error:
+        print('Archive cleanup skipped: '+type(error).__name__, flush=True)
+    finally:
+        if locked:
+            try:
+                ssh_request('test','lease-end',lease_id=lease,connection=connection)
+            except Exception:
+                print('Could not release cleanup lease; it expires automatically.', flush=True)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--ci-run', type=int, required=True)
     parser.add_argument('--ci-attempt', type=int, required=True)
     parser.add_argument('--commit', required=True)
     parser.add_argument('--cache', required=True)
-    parser.add_argument('--key', default=str(Path.home()/'.ssh/tripeer_github_actions'))
-    parser.add_argument('--known-hosts', default=str(Path.home()/'.ssh/known_hosts'))
-    parser.add_argument('--build-only', action='store_true')
     args = parser.parse_args()
     require(os.environ.get('GITHUB_ACTIONS') == 'true' and os.environ.get('RUNNER_ENVIRONMENT') == 'self-hosted'
         and os.environ.get('GITHUB_REPOSITORY') == 'cqz-cio/furniture' and os.environ.get('GITHUB_EVENT_NAME') == 'workflow_run',
@@ -186,43 +200,11 @@ def main():
                 repository, logs, 'trim-owned-build-cache', 120)
     except Exception as error:
         print('Build cache trimming skipped: '+type(error).__name__, flush=True)
-    if args.build_only:
-        return
-    if client.request(client.repo('/git/ref/heads/main'))['object']['sha'] != args.commit:
-        print('A newer main commit exists; keeping this archive without deploying.', flush=True)
-        return
-    client.verify_ci(release)
-    connection = BuiltConnection(args.key, args.known_hosts, cache)
-    os.environ.update(ERP_SSH_HOST=PROFILE['host'], ERP_SSH_USER=PROFILE['user'], ERP_SSH_PORT='22', ERP_DEPLOY_ROOT=PROFILE['root'])
-    deployment = client.deployment(release, 'test')
-    client.deployment_status(deployment, 'in_progress')
-    try:
-        result = ssh_request('test', 'deploy', release=release, connection=connection)
-        require(result['status'] in ('success','already-current'), 'Test deployment did not complete')
-    except Exception:
-        write_json(cache/'latest-result.json', {**summary, 'status':'deployment-failed'})
-        try:
-            client.deployment_status(deployment, 'failure')
-        except Exception:
-            print('Could not record the failure on GitHub; inspect the server journal.', flush=True)
-        raise
-    write_json(cache/'latest-result.json', {**summary, **result})
-    client.deployment_status(deployment, 'success')
-    print(json.dumps(result), flush=True)
-    lease = 'local-cache-' + uuid.uuid4().hex
-    locked = False
-    try:
-        snapshot = ssh_request('test','lease-start',lease_id=lease,connection=connection)
-        locked = True
-        cleanup_cache(cache,snapshot,ident)
-    except Exception as error:
-        print('Archive cleanup skipped: '+type(error).__name__, flush=True)
-    finally:
-        if locked:
-            try:
-                ssh_request('test','lease-end',lease_id=lease,connection=connection)
-            except Exception:
-                print('Could not release cleanup lease; it expires automatically.', flush=True)
+    print('Build complete. Select this release in ERP CD - test to deploy manually: '+ident, flush=True)
+    if os.environ.get('GITHUB_STEP_SUMMARY'):
+        with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as output:
+            output.write(f'### Local image build complete\n\nRelease: `{ident}`\n\nNo deployment performed. '
+                         'Run **ERP CD - test** manually and enter this release ID.\n')
 
 
 if __name__ == '__main__':

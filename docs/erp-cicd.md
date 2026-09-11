@@ -1,6 +1,6 @@
 # ERP 测试与生产 CD
 
-测试环境新增默认流程：[本机 CI 构建 → 本地镜像包 → SCP → 自动部署](../deploy/erp/LOCAL-CI.md)。正常 push 只运行云端验证，验证成功后由已启用的本机 Runner 构建并部署测试版本，不推送 GHCR。Runner 和工作流尚未启用时不会自动部署。
+测试环境新增流程：[自动本机 CI 构建 → 本地镜像包 → 手动 CD 上传部署](../deploy/erp/LOCAL-CI.md)。正常 push 运行云端验证，验证成功后由已启用的本机 Runner 构建测试版本并结束，不推送 GHCR、不更新服务器。测试与生产 CD 都只能手动触发。
 
 下文保留旧 GHCR 发布、首次接入及生产手动入口说明。生产镜像构建改为手动运行 `ERP full-stack CI` 并选择 `publish_production=true`；本地测试清单与生产 GHCR 清单分别验收。
 

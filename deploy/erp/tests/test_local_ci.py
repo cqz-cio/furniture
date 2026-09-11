@@ -15,10 +15,11 @@ import zipfile
 
 from fixtures import release, snapshots, NOW
 from common import environment_images, validate_release, deletion_plan
-from local_ci import CHECKS, cleanup_plan, verify_upstream, command
+from local_ci import CHECKS, cleanup_plan, verify_upstream, command, main as build_main
 from local_artifacts import OCI, assemble
 from image_relay import validate_archive
 from local_test import worker
+from github_release import GitHub
 
 
 def local_release(number=1):
@@ -59,6 +60,53 @@ def image(path, files, config, extra_layers=()):
 
 
 class LocalReleaseTests(unittest.TestCase):
+    def test_manual_cd_requires_successful_local_build_attempt(self):
+        value=local_release()
+        client=GitHub('cqz-cio/furniture','test-token')
+        run={'head_sha':value['commit'],'head_branch':'main','head_repository':{'full_name':client.repository},
+             'conclusion':'success','event':'workflow_run','path':'.github/workflows/erp-local-ci.yml'}
+        with patch.object(client,'request',return_value=run):
+            client.verify_local_build(value)
+        for changes in ({'conclusion':'failure'},{'conclusion':None},{'event':'pull_request'},
+                        {'head_sha':'f'*40},{'path':'.github/workflows/unrelated.yml'}):
+            with patch.object(client,'request',return_value={**run,**changes}), self.assertRaises(ValueError):
+                client.verify_local_build(value)
+    def test_successful_automatic_build_does_not_connect_upload_or_deploy(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory); repo=root/'repo'; here=repo/'deploy/erp'; cache=root/'cache'
+            here.mkdir(parents=True)
+            value=local_release()
+            def run_command(args,*unused):
+                if args[:2]==['git','rev-parse']: return value['commit']
+                if args[:2]==['git','status']: return ''
+                if args[:2]==['docker','info']: return 'linux/amd64'
+                if '--output' in args:
+                    Path(args[args.index('--output')+1].split('dest=',1)[1]).write_bytes(b'build-fixture')
+                return ''
+            def assemble_fixture(backend,admin,destination,*unused):
+                Path(destination).mkdir()
+                return value
+            env={'GITHUB_ACTIONS':'true','RUNNER_ENVIRONMENT':'self-hosted','GITHUB_REPOSITORY':'cqz-cio/furniture',
+                 'GITHUB_EVENT_NAME':'workflow_run','RUNNER_OS':'Windows','GITHUB_RUN_ID':'1','GITHUB_RUN_ATTEMPT':'1'}
+            with patch.dict(os.environ,env,clear=True), patch('builtins.print'), patch('local_ci.HERE',here), \
+                    patch('sys.argv',['local_ci.py','--ci-run','123','--ci-attempt','1','--commit',value['commit'],'--cache',str(cache)]), \
+                    patch('local_ci.command',side_effect=run_command), patch('local_ci.assemble',side_effect=assemble_fixture), \
+                    patch('local_ci.shutil.which',return_value='docker'), \
+                    patch('local_ci.shutil.disk_usage',return_value=SimpleNamespace(free=20*1024**3)), \
+                    patch('local_ci.subprocess.run',return_value=SimpleNamespace(returncode=0)), \
+                    patch('local_ci.GitHub') as github, patch('local_ci.verify_upstream',return_value=value['ci']), \
+                    patch('local_ci.BuiltConnection') as connection, patch('local_ci.ssh_request') as ssh:
+                github.return_value.request.return_value={'object':{'sha':value['commit']}}
+                build_main()
+                connection.assert_not_called()
+                ssh.assert_not_called()
+                github.return_value.deployment.assert_not_called()
+                self.assertEqual(json.loads((cache/'latest-result.json').read_text())['status'],'images-verified')
+
+    def test_automatic_workflow_cannot_call_manual_deployment_entry(self):
+        with patch.dict(os.environ,{'GITHUB_ACTIONS':'true','GITHUB_EVENT_NAME':'workflow_run'},clear=True):
+            with self.assertRaisesRegex(ValueError,'manual'):
+                worker(SimpleNamespace(local_built=True))
     def test_windows_legacy_console_can_stream_unicode_build_output(self):
         with tempfile.TemporaryDirectory() as directory:
             output = io.BytesIO()

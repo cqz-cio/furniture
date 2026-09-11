@@ -1,0 +1,49 @@
+name: ERP CD - test
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_id:
+        description: Exact local release ID from a successful ERP local image CI run
+        required: true
+        type: string
+      operation:
+        description: Manually deploy or roll back the test environment
+        required: true
+        default: deploy
+        type: choice
+        options: [deploy, rollback]
+
+permissions:
+  contents: read
+  actions: read
+  deployments: write
+
+# Share the local cache/Runner lock with CI; never cancel an active deployment.
+concurrency:
+  group: erp-test-local-build-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    environment: test
+    runs-on: [self-hosted, Windows, X64, erp-test-local]
+    timeout-minutes: 70
+    defaults:
+      run:
+        shell: powershell
+    env:
+      PYTHONUTF8: '1'
+      GH_TOKEN: ${{ github.token }}
+      ERP_RELEASE_ID: ${{ inputs.release_id }}
+      ERP_OPERATION: ${{ inputs.operation }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Upload the selected local archive and deploy only on manual request
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & 'C:\Python314\python.exe' -u -B deploy/erp/local_test.py --local-built --release $env:ERP_RELEASE_ID --operation $env:ERP_OPERATION --cache 'D:\furniture web2b\work\erp-ci-cache'
+          exit $LASTEXITCODE

@@ -1,4 +1,4 @@
-name: ERP local build and test CD
+name: ERP local image CI
 
 on:
   workflow_run:
@@ -9,7 +9,6 @@ on:
 permissions:
   contents: read
   actions: read
-  deployments: write
 
 # Never interrupt an active upload or database/service switch.
 concurrency:
@@ -17,7 +16,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  local-build-deploy:
+  local-build:
     if: >-
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.head_repository.full_name == github.repository &&
@@ -42,7 +41,7 @@ jobs:
           ref: ${{ github.event.workflow_run.head_sha }}
           persist-credentials: false
           clean: true
-      - name: Build, verify and deploy the same local images
+      - name: Build and verify local images for manual CD
         run: |
           $ErrorActionPreference = 'Stop'
           $env:PATH = 'C:\Program Files\Docker\Docker\resources\bin;D:\Git\cmd;C:\Windows\System32\OpenSSH;' + $env:PATH

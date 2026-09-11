@@ -1,6 +1,8 @@
 # 本地构建与测试服务器部署
 
-日常流程：推送 `main` → GitHub `ERP full-stack CI` 完成部署脚本、数据库/后端、管理端检查 → 本机 `ERP local build and test CD` 检出同一提交 → Docker 构建并校验前后端 OCI 包 → SCP 上传 → 服务器导入镜像并更新服务 → 健康检查，失败自动恢复旧版本。
+CI 流程：推送 `main` → GitHub `ERP full-stack CI` 完成部署脚本、数据库/后端、管理端检查 → 本机 `ERP local image CI` 检出同一提交 → Docker 构建并校验前后端 OCI 包 → 保存本地版本并结束。CI 不连接服务器、不上传镜像、不创建部署记录。
+
+CD 流程：用户手动运行 `ERP CD - test`，填写 CI 输出的 release-id 和 deploy/rollback → 核对云端检查、本机构建均已成功 → SCP 上传指定的本地包 → 服务器导入镜像并更新服务 → 健康检查，失败自动恢复旧版本。生产使用独立的手动 `ERP CD - production` 入口。
 
 测试镜像不推送 GHCR，也不从 GHCR 下载。首次构建仍需下载 Maven、Node、JRE 等基础镜像和依赖，之后使用本机构建缓存。服务器无需安装编译工具。
 
@@ -25,7 +27,7 @@ Runner 注册完成后，以当前用户执行一次 `deploy/erp/install-local-r
 
 本地清单采用 schema 2，`localhost/...@sha256:...` 仅为导入后的镜像名称，不需要启动 localhost 镜像仓库。schema 2 只允许测试环境，必须预先导入，禁止触发注册表拉取或生产部署。旧 schema 1 的 GHCR 清单继续可用。
 
-工作流串行执行，不取消正在进行的部署。构建前和部署前都会检查 `main` 是否已有新提交；过时版本保留验证包但跳过部署。
+本机构建与测试 CD 共用串行锁，不取消正在进行的部署。构建前检查 `main` 是否已有新提交，过时提交跳过构建。手动 CD 允许明确选择已成功构建的旧版本，不会擅自改为最新版本；回滚仍受服务器保护版本和数据库兼容性检查约束。
 
 ## 日志、空间与回滚
 
@@ -33,12 +35,12 @@ Runner 注册完成后，以当前用户执行一次 `deploy/erp/install-local-r
 
 - `logs/`：每个构建步骤独立日志、PID、耗时及退出码。
 - `<release-id>/complete/`：`release.json`、`header.json`、`images.oci.tar`，仅在校验完成后原子发布。
-- `latest-result.json`：最近结果。GitHub Actions 同时展示构建和部署输出。
-- 成功部署后获取服务器清理锁及新鲜状态，保留最近 5 个普通版本，额外保留当前、最近两次回滚和指定保护版本。状态不完整或服务器不可达时跳过清理。
+- `latest-result.json`：最近构建结果；`latest-deployment.json`：最近手动部署结果。构建页面 Summary 提供可复制的 release-id。
+- 手动成功部署后获取服务器清理锁及新鲜状态，保留最近 5 个普通版本，额外保留当前、最近两次回滚和指定保护版本。CI 不连接服务器执行清理；只构建不部署时版本包会累积。状态不完整或服务器不可达时跳过清理。
 - 专用构建器 `oakved-local-ci` 的可回收缓存目标上限 10 GB；不会执行全局 Docker prune、删除卷或清理其他项目。构建和归档可能临时超过该值，开始前要求至少 12 GiB 空闲。失败构建的残留包和日志保留供排查，不纳入自动删除。
-- 每个子进程有总时限；无进展 60 秒终止。完整单镜像构建上限 30 分钟，SCP 上限 30 分钟，工作流总上限 100 分钟。
+- 每个子进程有总时限；无进展 60 秒终止。完整单镜像构建上限 30 分钟，SCP 上限 30 分钟；本地 CI 工作流上限 100 分钟，手动测试 CD 上限 70 分钟。
 
-重试已经生成的本地版本（在 PowerShell 执行，替换实际 release-id）：
+首选在 GitHub Actions 手动运行 `ERP CD - test`；也可在 PowerShell 手动部署已经生成的本地版本（替换实际 release-id）：
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\deploy\erp\deploy-test-built.ps1 -Release '<release-id>' -Operation deploy

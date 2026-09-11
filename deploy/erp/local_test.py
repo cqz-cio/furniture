@@ -145,7 +145,14 @@ class LocalConnection:
 
 
 def worker(args):
-    require(not os.environ.get("GITHUB_ACTIONS"), "Run this entry point on your own computer")
+    manual_runner = (args.local_built and os.environ.get('GITHUB_ACTIONS') == 'true'
+        and os.environ.get('RUNNER_ENVIRONMENT') == 'self-hosted'
+        and os.environ.get('GITHUB_EVENT_NAME') == 'workflow_dispatch'
+        and os.environ.get('GITHUB_REF') == 'refs/heads/main'
+        and os.environ.get('GITHUB_REPOSITORY') == 'cqz-cio/furniture'
+        and os.environ.get('GITHUB_WORKFLOW') == 'ERP CD - test')
+    require(not os.environ.get("GITHUB_ACTIONS") or manual_runner,
+            "Deployment requires a local manual command or the trusted manual test CD workflow")
     os.environ.update(GITHUB_REPOSITORY="cqz-cio/furniture", ERP_SSH_HOST=PROFILE["host"],
                       ERP_SSH_USER=PROFILE["user"], ERP_SSH_PORT="22", ERP_DEPLOY_ROOT=PROFILE["root"])
     if not os.environ.get("GH_TOKEN"):
@@ -155,7 +162,7 @@ def worker(args):
     connection = LocalConnection(args.key, args.known_hosts, args.cache)
     tool("scp")
     if args.local_built:
-        from local_ci import BuiltConnection, verify_upstream
+        from local_ci import BuiltConnection, verify_upstream, cleanup_after_manual_deploy
         require(args.operation in ('deploy', 'rollback'), 'Local build cache supports daily deploy or rollback')
         require(RELEASE.fullmatch(args.release), 'Invalid cached release identity')
         cached = Path(args.cache).resolve()/args.release/'complete/release.json'
@@ -165,6 +172,7 @@ def worker(args):
                 'Expected a local test build manifest')
         client = GitHub()
         verify_upstream(client, release['ci']['run_id'], release['ci']['run_attempt'], release['commit'])
+        client.verify_local_build(release)
         connection = BuiltConnection(args.key, args.known_hosts, args.cache)
         connection.archive(release)
         if args.check_only:
@@ -183,7 +191,9 @@ def worker(args):
                 pass
             raise
         client.deployment_status(deployment, 'success')
+        write_json(Path(args.cache)/'latest-deployment.json', result)
         print(json.dumps(result), flush=True)
+        cleanup_after_manual_deploy(args.cache, connection, release['id'])
         return
     # Fail before uploading if migration-audit tools are missing.
     if args.operation in ("prepare", "cutover", "recover"):

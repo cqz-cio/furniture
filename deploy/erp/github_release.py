@@ -80,6 +80,15 @@ class GitHub:
             and run["path"].split("@")[0] == ".github/workflows/database-and-backend-ci.yml",
             "Release was not produced by a successful trusted main CI attempt")
 
+    def verify_local_build(self, manifest):
+        require(manifest.get('schema') == 2, 'Expected a local build manifest')
+        run = self.request(self.repo(f"/actions/runs/{manifest['run_id']}/attempts/{manifest['run_attempt']}"))
+        require(run['head_sha'] == manifest['commit'] and run['head_branch'] == 'main'
+            and run['head_repository']['full_name'] == self.repository and run['conclusion'] == 'success'
+            and run['event'] == 'workflow_run'
+            and run['path'].split('@')[0] == '.github/workflows/erp-local-ci.yml',
+            'Local image build has not completed successfully in the trusted workflow')
+
     def add_asset(self, record, name, value):
         require(name in ("release.json", "retirement.json"), "Unexpected asset name")
         return self.request(f"https://uploads.github.com/repos/{self.repository}/releases/{record['id']}/assets?name={name}", "POST", value)
