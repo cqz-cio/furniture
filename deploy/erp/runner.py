@@ -162,6 +162,12 @@ def ssh_request(environment, operation, release=None, lease_id=None, confirm_cut
         names += ["bootstrap_policy", "bootstrap_io", "bootstrap_image", "bootstrap"]
         entry = "bootstrap"
         remote_command = "sudo -n timeout --signal=TERM --kill-after=200s 1400s python3 -B -c "
+    elif environment == "test":
+        # Bootstrap creates a private root-owned parent; image import already uses
+        # sudo. Daily operations must use the same identity to reach state/config.
+        require((host, user, port, root) == (PROFILE["host"], PROFILE["user"], 22, PROFILE["root"]),
+                "Privileged test operations require the verified test destination")
+        remote_command = "sudo -n " + remote_command
     bundle = {"entry": entry, "modules": {name: base64.b64encode((HERE / (name + ".py")).read_bytes()).decode() for name in names}}
     bundle["request"] = request
     with tempfile.TemporaryDirectory(prefix="erp-cd-ssh-") as directory:
