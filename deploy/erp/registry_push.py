@@ -20,7 +20,7 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 
 
 class Publisher:
-    def __init__(self, actor, token, seconds=900):
+    def __init__(self, actor, token, seconds=1800):
         require(actor and token, 'Registry credentials missing')
         self.actor, self.token = actor, token
         self.tokens = {}
@@ -55,14 +55,21 @@ class Publisher:
     def request(self, package, method, location, data=None, headers=None, expected=(200,)):
         self.check()
         url = self.url(package, location)
-        req = urllib.request.Request(url, data=data, method=method,
-            headers={**self.headers(package), **(headers or {})})
-        try:
-            response = self.opener.open(req, timeout=max(1, min(20, self.deadline-time.monotonic())))
-        except urllib.error.HTTPError as error:
-            response = error
-        except Exception as error:
-            raise RuntimeError('GHCR '+method+' failed: '+type(error).__name__) from None
+        for attempt in range(2):
+            req = urllib.request.Request(url, data=data, method=method,
+                headers={**self.headers(package), **(headers or {})})
+            try:
+                response = self.opener.open(req, timeout=max(1, min(20, self.deadline-time.monotonic())))
+            except urllib.error.HTTPError as error:
+                response = error
+            except Exception as error:
+                raise RuntimeError('GHCR '+method+' failed: '+type(error).__name__) from None
+            if response.status == 401 and attempt == 0:
+                response.close()
+                self.tokens.pop(package, None)
+                self.check()
+                continue
+            break
         with response:
             require(response.status in expected, f'GHCR {method} returned HTTP {response.status}')
             raw = response.read(2*1024**2+1)
@@ -103,7 +110,9 @@ class Publisher:
                 try:
                     self.request(package, 'DELETE', location, expected=(204, 404))
                 except Exception:
-                    pass
+                    # GHCR currently responds 405 to upload cancellation. Never
+                    # claim that a failed upload's temporary bytes were removed.
+                    print(json.dumps({'stage':'upload-cancellation-unconfirmed'}), flush=True)
 
     def archive(self, path, references, release_id):
         require(RELEASE.fullmatch(release_id), 'Invalid publication release')

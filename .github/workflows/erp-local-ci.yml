@@ -17,6 +17,8 @@ concurrency:
 
 jobs:
   local-build:
+    outputs:
+      release_id: ${{ steps.build.outputs.release_id }}
     if: >-
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.head_repository.full_name == github.repository &&
@@ -46,8 +48,52 @@ jobs:
           persist-credentials: false
           clean: true
       - name: Build and verify local images for manual CD
+        id: build
         run: |
           $ErrorActionPreference = 'Stop'
           $env:PATH = 'C:\Program Files\Docker\Docker\resources\bin;D:\Git\cmd;C:\Windows\System32\OpenSSH;' + $env:PATH
           & 'C:\Python314\python.exe' -u -B deploy/erp/local_ci.py --ci-run $env:ERP_CI_RUN --ci-attempt $env:ERP_CI_ATTEMPT --commit $env:ERP_SOURCE_SHA --cache $env:ERP_LOCAL_CACHE
           exit $LASTEXITCODE
+
+  publish-images:
+    needs: local-build
+    if: needs.local-build.outputs.release_id != ''
+    runs-on: [self-hosted, Windows, X64, erp-test-local]
+    timeout-minutes: 35
+    concurrency:
+      group: erp-release-control
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      actions: read
+      packages: write
+    defaults:
+      run:
+        shell: powershell
+    env:
+      GIT_CONFIG_COUNT: '1'
+      GIT_CONFIG_KEY_0: core.longpaths
+      GIT_CONFIG_VALUE_0: 'true'
+      PYTHONUTF8: '1'
+      ERP_SOURCE_SHA: ${{ github.event.workflow_run.head_sha }}
+      ERP_RELEASE_ID: ${{ needs.local-build.outputs.release_id }}
+      ERP_LOCAL_CACHE: D:\furniture web2b\work\erp-ci-cache
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+          clean: true
+      - name: Upload verified local images using this job's temporary token
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          & 'C:\Python314\python.exe' -u -B deploy/erp/publish_local.py --release $env:ERP_RELEASE_ID --cache $env:ERP_LOCAL_CACHE
+          exit $LASTEXITCODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: erp-ci-image-publication-result
+          path: ci-image-publication-result.json
+          if-no-files-found: ignore
+          retention-days: 30

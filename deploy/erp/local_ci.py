@@ -202,18 +202,22 @@ def main():
                'archive': str(release_root/'complete/images.oci.tar'),
                'production_archive': str(release_root/'complete/production.oci.tar')}
     write_json(cache/'latest-result.json', summary)
+    if os.environ.get('GITHUB_OUTPUT'):
+        with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as output:
+            output.write('release_id='+ident+'\n')
     print(json.dumps(summary), flush=True)
     try:
         command([docker,'buildx','prune','--builder',builder,'--max-used-space','10GB','--force'],
                 repository, logs, 'trim-owned-build-cache', 120)
     except Exception as error:
         print('Build cache trimming skipped: '+type(error).__name__, flush=True)
-    print('Build complete. Select this release in ERP CD - test to deploy manually: '+ident, flush=True)
+    print('Build complete. CI will upload these images to GHCR next: '+ident, flush=True)
     if os.environ.get('GITHUB_STEP_SUMMARY'):
         with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as output:
             output.write(f'### Local image build complete\n\nRelease: `{ident}`\n\nNo deployment performed. '
                          'Backend, test admin and production admin were built together. '
-                         'Run **ERP CD - test** manually and enter this release ID. '
+                         'Wait for the automatic GHCR upload and the entire CI workflow to succeed. '
+                         'Then run **ERP CD - test** manually and enter this release ID. '
                          'After test succeeds, select the same ID in **ERP CD - production**.\n')
 
 

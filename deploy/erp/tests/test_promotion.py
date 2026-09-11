@@ -7,6 +7,7 @@ from pathlib import Path
 import tempfile
 import tarfile
 import unittest
+import urllib.error
 from unittest.mock import Mock, patch
 
 import fixtures
@@ -14,7 +15,7 @@ from common import fingerprint, production_release, validate_release
 from github_release import GitHub
 from image_relay import validate_archive
 from local_artifacts import assemble
-from promote_local import prepare, main as promote_main
+from publish_local import publish, verify_build_job
 from registry_push import Publisher
 import test_local_ci as local_fixtures
 from test_local_ci import local_release, image, tar_bytes
@@ -138,85 +139,118 @@ class PairedArtifacts(unittest.TestCase):
         self.assertGreater(blob.call_count,0)
 
 
-class ManualPreparation(unittest.TestCase):
+class AutomaticPublication(unittest.TestCase):
     def setUp(self):
-        self.tmp=tempfile.TemporaryDirectory(); self.addCleanup(self.tmp.cleanup)
-        self.cache=Path(self.tmp.name)
-        self.source=paired_release()
-        complete=self.cache/self.source['id']/'complete'; complete.mkdir(parents=True)
+        self.tmp = tempfile.TemporaryDirectory(); self.addCleanup(self.tmp.cleanup)
+        self.cache = Path(self.tmp.name)
+        self.source = paired_release()
+        complete = self.cache/self.source['id']/'complete'; complete.mkdir(parents=True)
         (complete/'release.json').write_text(json.dumps(self.source))
         (complete/'production.oci.tar').write_bytes(b'fixture')
-        self.client=Mock(repository=self.source['repository'])
-        self.client.release.side_effect=RuntimeError('GitHub GET failed: HTTP 404')
-        self.client.test_passed.return_value=True
-        self.publisher=Mock()
+        self.client = Mock(repository=self.source['repository'])
+        self.client.release.side_effect = RuntimeError('GitHub GET failed: HTTP 404')
+        self.publisher = Mock()
+        self.env = {'GITHUB_ACTIONS':'true','GITHUB_EVENT_NAME':'workflow_run','GITHUB_REF':'refs/heads/main',
+            'RUNNER_ENVIRONMENT':'self-hosted','GITHUB_REPOSITORY':self.source['repository'],
+            'GITHUB_WORKFLOW':'ERP local image CI','GITHUB_JOB':'publish-images',
+            'GITHUB_RUN_ID':str(self.source['run_id']),'GITHUB_RUN_ATTEMPT':str(self.source['run_attempt']),
+            'ERP_SOURCE_SHA':self.source['commit']}
 
-    def prepare(self,operation='deploy'):
-        with patch('promote_local.verify_upstream'), patch('promote_local.validate_archive'):
-            return prepare(self.client,self.cache,self.source['id'],operation,self.publisher)
+    def publish(self):
+        with patch('publish_local.verify_upstream'), patch('publish_local.verify_build_job'), patch('publish_local.validate_archive'):
+            return publish(self.client,self.cache,self.source['id'],self.publisher,self.env)
 
-    def test_manual_publish_never_calls_a_build_or_server(self):
+    def test_ci_uploads_before_test_but_never_deploys_or_rebuilds(self):
         with patch('local_ci.command') as build, patch('runner.ssh_request') as ssh:
-            result=self.prepare()
+            result = self.publish()
         self.publisher.archive.assert_called_once()
         self.client.publish.assert_called_once_with(result)
+        self.client.test_passed.assert_not_called()
+        self.client.verify_local_build.assert_not_called()
         build.assert_not_called(); ssh.assert_not_called()
 
-    def test_failed_test_blocks_all_registry_writes(self):
-        self.client.test_passed.return_value=False
-        with self.assertRaisesRegex(ValueError,'not passed'):
-            self.prepare()
-        self.publisher.archive.assert_not_called(); self.client.publish.assert_not_called()
+    def test_failed_upload_does_not_register_release(self):
+        self.publisher.archive.side_effect = RuntimeError('upload failed')
+        with self.assertRaisesRegex(RuntimeError,'upload failed'):
+            self.publish()
+        self.client.publish.assert_not_called()
 
     def test_missing_variant_does_not_rebuild(self):
-        path=self.cache/self.source['id']/'complete/production.oci.tar'; path.unlink()
+        (self.cache/self.source['id']/'complete/production.oci.tar').unlink()
         with self.assertRaisesRegex(ValueError,'artifact is missing'):
-            self.prepare()
+            self.publish()
         self.publisher.archive.assert_not_called()
 
-    def test_failed_publication_does_not_register_release(self):
-        self.publisher.archive.side_effect=RuntimeError('upload failed')
-        with self.assertRaisesRegex(RuntimeError,'upload failed'):
-            self.prepare()
+    def test_existing_identical_release_is_verified_without_duplicate_registration(self):
+        self.client.release.side_effect = None
+        self.client.release.return_value = ({},production_release(self.source))
+        self.publish()
+        self.publisher.archive.assert_called_once()
         self.client.publish.assert_not_called()
 
-    def test_test_changed_during_upload_blocks_registration(self):
-        self.client.test_passed.side_effect=[True,False]
-        with self.assertRaisesRegex(ValueError,'changed while publishing'):
-            self.prepare()
-        self.client.publish.assert_not_called()
-
-    def test_existing_release_reuses_registry_without_local_cache(self):
-        self.client.release.side_effect=None
-        self.client.release.return_value=({},production_release(self.source))
-        prepare(self.client,self.cache/'missing',self.source['id'],'deploy',self.publisher)
+    def test_existing_different_release_cannot_be_replaced(self):
+        self.client.release.side_effect = None
+        value = production_release(self.source); value['commit'] = 'f'*40
+        self.client.release.return_value = ({},value)
+        with self.assertRaisesRegex(ValueError,'different content'):
+            self.publish()
         self.publisher.archive.assert_not_called()
-        self.client.verify_ci.assert_called_once()
 
-    def test_rollback_never_publishes_and_does_not_require_latest_test_success(self):
-        with self.assertRaisesRegex(ValueError,'already published'):
-            self.prepare('rollback')
-        self.client.release.side_effect=None
-        self.client.release.return_value=({},production_release(self.source))
-        self.prepare('rollback')
-        self.publisher.archive.assert_not_called(); self.client.test_passed.assert_not_called()
-
-    def test_retired_or_incomplete_release_cannot_be_republished(self):
-        self.client.release.side_effect=ValueError('This release is retired')
+    def test_retired_release_cannot_be_republished(self):
+        self.client.release.side_effect = ValueError('This release is retired')
         with self.assertRaisesRegex(ValueError,'retired'):
-            self.prepare()
+            self.publish()
         self.publisher.archive.assert_not_called()
 
-    def test_automatic_workflow_cannot_promote(self):
-        with patch.dict(os.environ,{'GITHUB_ACTIONS':'true','GITHUB_EVENT_NAME':'workflow_run'},clear=True), \
-                patch('sys.argv',['promote_local.py','--release',self.source['id'],'--operation','deploy','--cache',str(self.cache)]), \
-                patch('promote_local.prepare') as prepare_mock:
-            with self.assertRaisesRegex(ValueError,'manual production'):
-                promote_main()
-            prepare_mock.assert_not_called()
+    def test_manual_and_untrusted_jobs_cannot_upload(self):
+        for key,value in [('GITHUB_EVENT_NAME','workflow_dispatch'),('GITHUB_REF','refs/heads/other'),
+                          ('GITHUB_JOB','local-build'),('GITHUB_REPOSITORY','other/repo')]:
+            with self.subTest(key=key), patch.dict(self.env,{key:value}), self.assertRaisesRegex(ValueError,'automatic local CI'):
+                self.publish()
+        self.publisher.archive.assert_not_called()
+
+    def test_other_commit_or_build_attempt_cannot_be_published(self):
+        for key,value in [('GITHUB_RUN_ID','999999'),('GITHUB_RUN_ATTEMPT','999'),('ERP_SOURCE_SHA','f'*40)]:
+            with self.subTest(key=key), patch.dict(self.env,{key:value}), self.assertRaisesRegex(ValueError,'another CI attempt'):
+                self.publish()
+        self.publisher.archive.assert_not_called()
+
+    def test_running_workflow_requires_a_successful_build_job(self):
+        client = GitHub(self.source['repository'],'fake')
+        run = {'head_sha':self.source['commit'],'head_branch':'main',
+            'head_repository':{'full_name':self.source['repository']},'event':'workflow_run',
+            'path':'.github/workflows/erp-local-ci.yml','conclusion':None}
+        for status in ('success','failure','in_progress','skipped'):
+            with self.subTest(status=status), patch.object(client,'request',side_effect=[run,{'jobs':[{'name':'local-build','conclusion':status}]}]):
+                if status == 'success': verify_build_job(client,self.source)
+                else:
+                    with self.assertRaisesRegex(ValueError,'has not succeeded'):
+                        verify_build_job(client,self.source)
+
+    def test_cd_rejects_the_build_attempt_if_its_upload_failed(self):
+        client = GitHub(self.source['repository'],'fake')
+        run = {'head_sha':self.source['commit'],'head_branch':'main',
+            'head_repository':{'full_name':self.source['repository']},'event':'workflow_run',
+            'path':'.github/workflows/erp-local-ci.yml','conclusion':'failure'}
+        with patch.object(client,'request',return_value=run), self.assertRaisesRegex(ValueError,'not completed successfully'):
+            client.verify_local_build(self.source)
 
 
 class RegistryGuards(unittest.TestCase):
+    def test_expired_registry_token_is_refreshed_once_without_user_login(self):
+        publisher = Publisher('actor','job-token')
+        package = 'cqz-cio/furniture-erp-backend'
+        publisher.tokens[package] = 'expired-token'
+        expired = urllib.error.HTTPError('https://ghcr.io/',401,'Unauthorized',{},io.BytesIO())
+        success = io.BytesIO(b''); success.status = 200; success.headers = {}
+        with patch.object(publisher,'headers',side_effect=[{'Authorization':'Bearer expired-token'},
+                {'Authorization':'Bearer fresh-token'}]), patch.object(publisher.opener,'open',side_effect=[expired,success]) as network:
+            status,_,_ = publisher.request(package,'HEAD','/v2/'+package+'/blobs/sha256:'+'a'*64)
+        self.assertEqual(status,200)
+        self.assertEqual(network.call_count,2)
+        self.assertNotIn(package,publisher.tokens)
+        self.assertEqual(network.call_args.args[0].get_header('Authorization'),'Bearer fresh-token')
+
     def upload(self, bad_range=False):
         content = b'abc'*(2*1024**2)
         digest = 'sha256:'+hashlib.sha256(content).hexdigest()

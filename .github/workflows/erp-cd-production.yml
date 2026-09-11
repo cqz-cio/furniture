@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       operation:
-        description: Preflight publishes built images and checks server without switching; deploy or rollback changes production
+        description: Preflight checks published images and server without switching; deploy or rollback changes production
         required: true
         default: preflight
         type: choice
@@ -24,50 +24,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  prepare-images:
-    if: github.ref == 'refs/heads/main'
-    environment: production
-    runs-on: [self-hosted, Windows, X64, erp-test-local]
-    timeout-minutes: 20
-    concurrency:
-      group: erp-test-local-build-deploy
-      cancel-in-progress: false
-    permissions:
-      contents: write
-      actions: read
-      packages: write
-      deployments: read
-    env:
-      GIT_CONFIG_COUNT: '1'
-      GIT_CONFIG_KEY_0: core.longpaths
-      GIT_CONFIG_VALUE_0: 'true'
-    defaults:
-      run:
-        shell: powershell
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          persist-credentials: false
-      - name: Publish the tested CI artifacts without rebuilding
-        env:
-          PYTHONUTF8: '1'
-          GH_TOKEN: ${{ github.token }}
-          ERP_CD_ENABLED: ${{ vars.ERP_CD_ENABLED }}
-          ERP_RELEASE_ID: ${{ inputs.release_id }}
-          ERP_OPERATION: ${{ inputs.operation }}
-        run: |
-          & 'C:\Python314\python.exe' -u -B deploy/erp/promote_local.py --release $env:ERP_RELEASE_ID --operation $env:ERP_OPERATION --cache 'D:\furniture web2b\work\erp-ci-cache'
-          exit $LASTEXITCODE
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: erp-production-promotion-result
-          path: production-promotion-result.json
-          if-no-files-found: ignore
-          retention-days: 30
-
   deploy:
-    needs: prepare-images
     if: github.ref == 'refs/heads/main'
     environment: production
     runs-on: ubuntu-latest

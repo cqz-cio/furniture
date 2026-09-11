@@ -1,8 +1,8 @@
 # ERP 测试与生产 CD
 
-当前流程：[自动本机 CI 构建 → 本地镜像包 → 手动测试 / 生产 CD](../deploy/erp/LOCAL-CI.md)。正常 push 运行云端验证，验证成功后由已启用的本机 Runner 构建同一后端及测试、生产后台变体并结束，不推送 GHCR、不更新服务器。测试与生产 CD 都只能手动触发。
+当前流程：[自动本机 CI 构建并上传 GHCR → 手动测试 / 生产 CD](../deploy/erp/LOCAL-CI.md)。push 触发云端验证，再由本机 Runner 构建同一后端及测试、生产后台变体，保存本地并自动上传 GHCR。CI 不更新服务器，两个 CD 均手动触发。
 
-测试 CD 通过 SCP 上传本地 OCI 包。生产 CD 核对同一产物的测试成功记录，上传原始镜像到 GHCR，再让正式服务器按 digest 拉取。原 `publish_production=true` 独立构建入口已移除；生产 CD 不重新构建。已有 GHCR 历史版本继续兼容原清单校验。
+测试 CD 通过 SCP 上传本地 OCI 包。生产 CD 核对同一产物的测试成功记录，让正式服务器拉取 CI 已上传的 GHCR 镜像，不依赖本地电脑。原独立生产构建入口和 CD 本地上传步骤已移除；历史 GHCR 清单仍兼容原校验。
 
 ## 本次实现与当前状态
 
@@ -13,7 +13,7 @@
 | GitHub Actions 入口 | 仓库入口脚本 | 固定环境 |
 | --- | --- | --- |
 | ERP CD - test | `deploy/erp/local_test.py --local-built` | `test` |
-| ERP CD - production | `deploy/erp/promote_local.py` → `deploy/erp/deploy-production.sh` | `production` |
+| ERP CD - production | `deploy/erp/deploy-production.sh` | `production` |
 | ERP image retention | `deploy/erp/retention.py` | 同时读取两环境的保护记录 |
 
 两套 CD 均手动触发。生产日常 `deploy/rollback` 要求 `ERP_CD_ENABLED=true`；测试使用已接入主机的固定本机配置。测试首次接入仍使用专用适配器，不属于日常 Actions 入口。生产部署要求原始测试清单的测试 CD 成功；准备/演练成功不会解除生产门禁。生产回滚仍要求本机登记成功、受保护且数据库兼容。
@@ -29,7 +29,7 @@
 1. 部署脚本单元测试和两个 shell 入口的语法检查。
 2. 用同一提交构建测试后台，测试 API 与生产 API 分开；测试产物不能包含生产 API 地址。
 3. 唯一 `cd-<完整 commit SHA>-<run ID>-<attempt>` 版本号。
-4. 三个镜像全部成功后，本地原子保存测试包、生产包和 schema 2 清单，包含后端、测试/生产后台 digest、源码、云端 CI 与本机构建 run/attempt、数据库迁移目标及指纹。手动生产 CD 验收原始测试记录后上传原始镜像，并登记含 `source_test` 的 schema 1 GitHub 预发布清单；不更新 main/latest 镜像标签。
+4. 三个镜像全部构建成功后，本地原子保存测试包、生产包和 schema 2 清单。自动 CI 上传 job 发布原始镜像，并登记含 source_test 的 schema 1 GitHub 预发布清单，不更新 main/latest 标签。测试、生产 CD 都要求整个本地 CI attempt 成功；生产部署额外要求精确测试清单验收成功。
 5. 部署时核对源仓库、main、CI 工作流路径、指定 run attempt 的成功状态和清单内容；按 digest 拉取，不能输入任意镜像或 latest。
 
 后台目前使用 Vite 构建时配置。因此测试和生产后台是同一提交的两个镜像变体；后端在两环境使用同一份镜像。五套版本按配套发布计算，不是总共五个镜像条目。
@@ -45,7 +45,7 @@
 
 前两个变量仅供旧 GHCR 清单构建工具使用；当前本地 CI 的测试地址取已核实测试配置 `http://124.220.2.69`。生产公开地址沿用 `https://api.vanzhome.com`、`https://www.vanzhome.com`，两套后台配置不得混用。
 
-自动 CI 只需仓库和 Actions 读取权限。手动生产上传任务需要 packages/contents write 及 actions/deployments read；清理还需要对应镜像包的管理权限。GitHub Release 仅保存小型清单和清理记录，生产发布后的镜像本体保存在 GHCR；本地产物缓存按单独保留策略维护。
+自动 CI 的构建 job 仅有仓库和 Actions 读取权限；上传 job 使用任务临时 GITHUB_TOKEN，授予 packages/contents write 和 actions read，不需要个人 Token 或交互登录。生产 CD 没有镜像上传权限。清理使用独立工作流及镜像包管理权限。
 
 ## 两个 GitHub Environments
 
@@ -63,9 +63,9 @@
 
 测试入口兼容已有 `test` Environment 中的 `TENCENT_SSH_HOST`、`TENCENT_SSH_USER`、`TENCENT_SSH_PORT`、`TENCENT_SSH_PRIVATE_KEY`、`TENCENT_SSH_KNOWN_HOSTS`，仅在对应 `ERP_SSH_*` 未配置时回退。无需读出或复制已有 GitHub Secret。清理流程也仅为 `test` 使用此回退；生产入口和生产清理目标仍只读取 `ERP_SSH_*`。
 
-脚本启用严格主机公钥检查，不在部署时自动信任 `ssh-keyscan` 的结果。数据库、Redis 和业务密钥不传到 GitHub，也不写入镜像或清单。当前服务器 Engine 拉取仅支持公开 GHCR 镜像，不读取 docker login 凭据；生产上传任务会验证匿名可读。清理权限只给独立清理工作流。
+脚本启用严格主机公钥检查，不自动信任 ssh-keyscan。数据库、Redis 和业务密钥不传到 GitHub 或镜像。服务器 Engine 拉取仅支持公开 GHCR 包，不读取 docker login 凭据；CI 上传验证匿名可读。清理权限只给独立清理工作流。
 
-生产发布和注册表清理共用 `erp-release-control` 并发组。本机构建、测试 CD 和生产上传共用 `erp-test-local-build-deploy`。运行中的操作不会因为另一个发布主动取消；GitHub 待执行任务仍可能被后来的待执行任务替换，未执行不能记为成功。服务器另有文件锁与部署日志，SSH 中断后不能绕过未完成状态重复操作。
+CI 上传、生产发布和注册表清理共用 erp-release-control；本机构建、上传和测试 CD 共用 erp-test-local-build-deploy。运行中的任务不主动取消；后来的待执行任务仍可能替换原待执行任务，未执行不视为成功。服务器另有锁与未完成部署记录。
 
 ## 服务器首次接入
 
@@ -112,7 +112,7 @@
 2. 运行 `ERP CD - test`，选 `deploy` 并填写该版本号。
 3. 测试 CD 校验原始 CI 和本机构建，经 SCP 上传并导入精确 OCI 包，记录未完成状态，处理必要的备份与迁移，切换配套后端和后台，检查实际容器及经代理访问到的版本、依赖健康、匿名后台拒绝访问、CMS 公共接口。
 4. 在测试环境完成人员登录、商品操作、账号隔离和 CMS 编辑发布等业务验收。自动只读检查并不能替代这些操作验证。
-5. 运行 `ERP CD - production`，选同一版本，先执行默认 `preflight`。它校验精确测试记录、将现有镜像上传 GHCR 并登记清单，再在正式机预检；随后明确选择 `deploy` 才切换服务。
+5. 运行 ERP CD - production，选择同一版本，先执行默认 preflight，校验 CI 和测试记录并在正式机预检；明确选择 deploy 才切换服务。生产入口不构建、不上传镜像。
 6. 回滚时在对应入口选 `rollback`，填写最近两次成功旧版本之一，或已登记保护的历史成功版本。脚本恢复其配套镜像和配置快照，不重新构建。
 
 重复发布同一当前版本只验证健康，不重启。失败尝试不计入成功历史。两套入口均不允许改变目标环境参数来混用凭据。
