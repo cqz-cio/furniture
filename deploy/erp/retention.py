@@ -1,14 +1,13 @@
-"""Plan/apply GHCR retention; deletion is opt-in and requires both server leases."""
+"""Plan/apply latest-five GHCR retention under the local/publication workflow locks."""
 import argparse
 import base64
 import hashlib
 import json
 import os
-from pathlib import Path
 import urllib.parse
 import urllib.request
 
-from common import PACKAGES, RELEASE, DIGEST, deletion_plan, fingerprint, release_plan, require, timestamp, utcnow, write_json
+from common import PACKAGES, RELEASE, DIGEST, deletion_plan, fingerprint, image_refs, latest_release_plan, manifest_children, require, utcnow, write_json
 from github_release import GitHub
 
 
@@ -41,18 +40,21 @@ def collection(github, package):
     return prefix + owner + "/packages/container/" + urllib.parse.quote(name, safe="") + "/versions"
 
 
-def valid_leases(snapshots):
-    expected = "gc-" + os.environ["GITHUB_RUN_ID"] + "-" + os.environ["GITHUB_RUN_ATTEMPT"]
-    for snapshot in snapshots.values():
-        require(snapshot.get("lease_id") == expected and (timestamp(snapshot["lease_expires"]) - utcnow()).total_seconds() > 60,
-                "Server cleanup lease is missing/near expiry; no more deletions")
+def require_cleanup_context():
+    require(os.environ.get('GITHUB_ACTIONS') == 'true' and os.environ.get('GITHUB_REF') == 'refs/heads/main'
+        and os.environ.get('GITHUB_REPOSITORY') == 'cqz-cio/furniture'
+        and os.environ.get('GITHUB_WORKFLOW') == 'ERP image retention' and os.environ.get('GITHUB_JOB') == 'clean'
+        and os.environ.get('RUNNER_ENVIRONMENT') == 'self-hosted'
+        and os.environ.get('ERP_IMAGE_CLEANUP_ENABLED') == 'true',
+        'Actual cleanup requires the trusted retention workflow and both concurrency locks')
 
 
-def clean(github, registry, snapshots, apply=False):
+def clean(github, registry, apply=False):
     catalog, records, retired, pending = [], {}, set(), []
     for record in github.pages(github.repo("/releases")):
         if record["draft"] or not RELEASE.fullmatch(record["tag_name"]):
             continue
+        print("Inspect release: " + record["tag_name"], flush=True)
         record, manifest = github.release(record["tag_name"], allow_retired=True)
         catalog.append(manifest)
         records[manifest["id"]] = record
@@ -63,31 +65,46 @@ def clean(github, registry, snapshots, apply=False):
             marker = json.loads(github.request(github.repo("/releases/assets/" + str(tombstones[0]["id"])), raw=True))
             require(marker["schema"] == 1 and marker["plan_hash"] == fingerprint(marker["delete"]), "Invalid saved retirement plan")
             pending.extend(marker["delete"])
-    policy = release_plan([r for r in catalog if r["id"] not in retired], snapshots,
-                          pins=json.loads(os.environ.get("ERP_RETAIN_RELEASES_JSON") or "[]"))
+    policy = latest_release_plan([r for r in catalog if r['id'] not in retired])
     retired.update(policy["retire"])
     versions, manifests, endpoints = {}, {}, {}
     for package in PACKAGES.values():
         endpoints[package] = collection(github, package)
+        print("Inspect package: " + package, flush=True)
         versions[package] = github.pages(endpoints[package])
         for version in versions[package]:
+            print("Inspect manifest: " + version["name"], flush=True)
             manifests[(package, version["name"])] = registry.manifest(package, version["name"])
-    actions = deletion_plan(catalog, retired, versions, manifests, pending=pending)
-    report = {**policy, "mode": "apply" if apply else "dry-run", "delete": actions}
+    actions = deletion_plan(catalog, retired, versions, manifests, pending=pending, strict=True)
+    unmanaged = []
+    for package in PACKAGES.values():
+        present = {version['name'] for version in versions[package]}
+        managed = {digest for release in catalog for owner, digest in image_refs(release) if owner == package}
+        managed.update(entry['digest'] for entry in pending if entry['package'] == package)
+        queue = list(managed & present)
+        visited = set()
+        while queue:
+            digest = queue.pop()
+            if digest not in visited:
+                visited.add(digest)
+                queue.extend(manifest_children(manifests[(package, digest)]) - visited)
+        unmanaged.extend({'package':package,'digest':digest} for digest in sorted(present - visited))
+    report = {**policy, "mode": "apply" if apply else "dry-run", "delete": actions,
+              "unmanaged_preserved": unmanaged}
     # Persist the reviewable plan before the first mutation, including on a partial failure.
     write_json("retention-plan.json", report)
     if apply:
-        valid_leases(snapshots)
+        require_cleanup_context()
         marker = {"schema": 1, "created_at": utcnow().isoformat(), "plan_hash": fingerprint(actions), "delete": actions}
         for release_id in policy["retire"]:
-            valid_leases(snapshots)
+            require_cleanup_context()
             github.add_asset(records[release_id], "retirement.json", marker)
         for action in actions:
-            valid_leases(snapshots)
+            require_cleanup_context()
             path = endpoints[action["package"]] + "/" + str(action["version_id"])
             current = github.request(path)
             require(current["name"] == action["digest"], "Version identity changed; stop deletion")
-            # A new manual tag is a pin even if it appeared after inventory collection.
+            # Unexpected mutations outside the shared workflow lock stop deletion.
             original = next(v for v in versions[action["package"]] if v["id"] == action["version_id"])
             require(current["metadata"]["container"]["tags"] == original["metadata"]["container"]["tags"], "Tags changed during cleanup")
             github.request(path, "DELETE")
@@ -96,13 +113,12 @@ def clean(github, registry, snapshots, apply=False):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--snapshots", required=True)
     parser.add_argument("--apply", action="store_true")
     args = parser.parse_args()
     require(os.environ.get("GITHUB_REF") == "refs/heads/main", "Cleanup must use main")
-    require(not args.apply or os.environ.get("ERP_IMAGE_CLEANUP_ENABLED") == "true", "Real image deletion has not been enabled")
-    states = {e: json.loads((Path(args.snapshots) / ("snapshot-" + e + ".json")).read_text()) for e in ("test", "production")}
-    result = clean(GitHub(), Registry(), states, args.apply)
+    if args.apply:
+        require_cleanup_context()
+    result = clean(GitHub(), Registry(), args.apply)
     print(json.dumps(result, indent=2))
     if os.environ.get("GITHUB_STEP_SUMMARY"):
         with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as stream:

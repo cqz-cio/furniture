@@ -15,7 +15,7 @@ import zipfile
 
 from fixtures import release, snapshots, NOW
 from common import environment_images, validate_release, deletion_plan
-from local_ci import CHECKS, cleanup_plan, verify_upstream, command, main as build_main
+from local_ci import CHECKS, verify_upstream, command, main as build_main
 from local_artifacts import OCI, assemble
 from image_relay import validate_archive
 from local_test import worker
@@ -95,7 +95,7 @@ class LocalReleaseTests(unittest.TestCase):
                     patch('local_ci.shutil.disk_usage',return_value=SimpleNamespace(free=20*1024**3)), \
                     patch('local_ci.subprocess.run',return_value=SimpleNamespace(returncode=0)), \
                     patch('local_ci.GitHub') as github, patch('local_ci.verify_upstream',return_value=value['ci']), \
-                    patch('local_ci.BuiltConnection') as connection, patch('local_ci.ssh_request') as ssh:
+                    patch('local_ci.BuiltConnection') as connection, patch('runner.ssh_request') as ssh:
                 github.return_value.request.return_value={'object':{'sha':value['commit']}}
                 build_main()
                 connection.assert_not_called()
@@ -156,16 +156,6 @@ class LocalReleaseTests(unittest.TestCase):
         for field, replacement in [('ci', {}), ('environment', 'production'), ('delivery', 'ghcr')]:
             with self.assertRaises(ValueError):
                 validate_release({**value, field: replacement})
-
-    def test_cleanup_keeps_five_plus_current_rollback_and_pins(self):
-        records = [local_release(n) for n in range(1, 13)]
-        snapshot = snapshots(current=1, rollback=(2,))['test']
-        snapshot['pins'] = [local_release(3)['id']]
-        with patch('local_ci.utcnow', return_value=NOW):
-            self.assertEqual(set(cleanup_plan(records, snapshot)), {local_release(n)['id'] for n in (4,5,6,7)})
-            for changes in ({'verified': False}, {'in_progress': 'deploying'}, {'checked_at': '2020-01-01T00:00:00Z'}):
-                with self.assertRaises(ValueError):
-                    cleanup_plan(records, {**snapshot, **changes})
 
     def test_required_ci_jobs_and_same_commit_are_mandatory(self):
         sha = 'a'*40

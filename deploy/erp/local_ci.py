@@ -1,6 +1,5 @@
 """Trusted Windows Runner: checked main commit -> verified local OCI images. No deployment."""
 import argparse
-from datetime import timedelta
 import json
 import os
 from pathlib import Path
@@ -9,14 +8,13 @@ import shutil
 import subprocess
 import sys
 import time
-import uuid
 
 from bootstrap_policy import PROFILE
-from common import RELEASE, require, timestamp, utcnow, validate_release, write_json
+from cache_retention import cache_lock
+from common import require, write_json
 from github_release import GitHub
 from local_artifacts import assemble
 from local_test import LocalConnection, stop
-from runner import ssh_request
 
 HERE = Path(__file__).resolve().parent
 CHECKS = {'verify-deployment-scripts', 'verify-database-and-backend', 'verify-erp-admin'}
@@ -84,58 +82,6 @@ class BuiltConnection(LocalConnection):
         return super().archive(release)
 
 
-def cleanup_plan(records, snapshot, keep=5):
-    require(keep == 5 and snapshot.get('verified') is True and snapshot.get('environment') == 'test'
-            and snapshot.get('current') and not snapshot.get('in_progress'), 'Verified test snapshot required for cleanup')
-    require(timedelta(seconds=-30) <= utcnow()-timestamp(snapshot['checked_at']) <= timedelta(minutes=5),
-            'Stale snapshot; retain local archives')
-    protected = {snapshot['current'], *snapshot.get('rollback', []), *snapshot.get('pins', [])}
-    ordinary = sorted((record for record in records if record['id'] not in protected),
-                      key=lambda record: timestamp(record['created_at']), reverse=True)
-    return [record['id'] for record in ordinary[keep:]]
-
-
-def cleanup_cache(cache, snapshot, active):
-    records = []
-    for directory in cache.iterdir():
-        path = directory/'complete/release.json'
-        if RELEASE.fullmatch(directory.name) and path.is_file() and not directory.is_symlink():
-            value = validate_release(json.loads(path.read_text()))
-            require(value['id'] == directory.name, 'Cache directory identity mismatch')
-            if value['schema'] == 2:
-                records.append(value)
-    for ident in cleanup_plan(records, snapshot):
-        if ident == active:
-            continue
-        directory = cache/ident/'complete'
-        require(directory.resolve().is_relative_to(cache.resolve()) and not directory.is_symlink(), 'Unsafe cache path')
-        members = {p.name for p in directory.iterdir()}
-        require(members in ({'release.json', 'header.json', 'images.oci.tar'},
-                            {'release.json', 'header.json', 'images.oci.tar', 'production.oci.tar'}), 'Unknown cache files; retaining archive')
-        require(all(p.is_file() and not p.is_symlink() for p in directory.iterdir()), 'Unsafe cache member')
-        for name in sorted(members):
-            (directory/name).unlink()
-        directory.rmdir()
-        print(json.dumps({'stage': 'cache-retired', 'release_id': ident}), flush=True)
-
-
-def cleanup_after_manual_deploy(cache, connection, ident):
-    lease = 'local-cache-' + uuid.uuid4().hex
-    locked = False
-    try:
-        snapshot = ssh_request('test','lease-start',lease_id=lease,connection=connection)
-        locked = True
-        cleanup_cache(Path(cache),snapshot,ident)
-    except Exception as error:
-        print('Archive cleanup skipped: '+type(error).__name__, flush=True)
-    finally:
-        if locked:
-            try:
-                ssh_request('test','lease-end',lease_id=lease,connection=connection)
-            except Exception:
-                print('Could not release cleanup lease; it expires automatically.', flush=True)
-
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--ci-run', type=int, required=True)
@@ -149,76 +95,77 @@ def main():
     require(os.environ.get('RUNNER_OS') == 'Windows', 'This entry point requires the configured Windows Runner')
     repository = HERE.parents[1]
     cache = Path(args.cache).resolve(); cache.mkdir(parents=True, exist_ok=True)
-    require(not cache.is_relative_to(repository), 'Persistent build cache must be outside the checkout')
-    logs = cache/'logs'
-    client = GitHub()
-    ci = verify_upstream(client, args.ci_run, args.ci_attempt, args.commit)
-    if client.request(client.repo('/git/ref/heads/main'))['object']['sha'] != args.commit:
-        print('A newer main commit exists; skipping superseded build.', flush=True)
-        return
-    require(command(['git','rev-parse','HEAD'], repository, logs, 'checkout-identity') == args.commit, 'Checkout differs from passed CI')
-    require(not command(['git','status','--porcelain','--untracked-files=all'], repository, logs, 'clean-checkout'), 'Runner checkout has local modifications')
-    docker = shutil.which('docker')
-    require(docker, 'Docker CLI is missing')
-    require(command([docker,'info','--format','{{.OSType}}/{{.Architecture}}'], repository, logs, 'docker-engine') in ('linux/x86_64','linux/amd64'),
-            'Start the local Docker Desktop Linux engine')
-    require(shutil.disk_usage(cache).free > 12 * 1024**3, 'At least 12 GiB local free space required for build/export')
-    build_id, build_attempt = os.environ['GITHUB_RUN_ID'], os.environ['GITHUB_RUN_ATTEMPT']
-    require(build_id.isdigit() and build_attempt.isdigit() and int(build_id)>0 and int(build_attempt)>0, 'Invalid local build run')
-    ident = f'cd-{args.commit}-{build_id}-{build_attempt}'
-    identity = {'id': ident, 'commit': args.commit, 'run_id': int(build_id), 'run_attempt': int(build_attempt), 'ci': ci}
-    release_root = cache/ident; release_root.mkdir(exist_ok=True)
-    require(not (release_root/'complete').exists(), 'This build attempt already has an immutable archive')
-    builder = 'oakved-local-ci'
-    probe = subprocess.run([docker,'buildx','inspect',builder], capture_output=True, timeout=15)
-    if probe.returncode:
-        command([docker,'buildx','create','--name',builder,'--driver','docker-container'], repository, logs, 'create-builder')
-    command([docker,'buildx','inspect',builder,'--bootstrap'], repository, logs, 'start-builder',120)
-    paths = {'backend': repository/'yudao电商管理平台前后端/yudao-cloud', 'admin': repository/'yudao电商管理平台前后端/yudao-ui-admin-vue3',
-             'admin-production': repository/'yudao电商管理平台前后端/yudao-ui-admin-vue3'}
-    api = 'http://' + PROFILE['host']
-    for kind, context in paths.items():
-        output = release_root/(kind+'.oci.tar')
-        require(not output.exists(), 'Partial build already exists; use a new workflow attempt')
-        build = [docker,'buildx','build','--builder',builder,'--platform','linux/amd64','--progress','plain',
-            '--provenance=false','--sbom=false','--label','org.opencontainers.image.revision='+args.commit,
-            '--label','org.opencontainers.image.source=https://github.com/cqz-cio/furniture',
-            '--output','type=oci,dest='+str(output),'-f',str(context/('yudao-server/Dockerfile' if kind=='backend' else 'Dockerfile'))]
-        if kind != 'backend':
-            production = kind == 'admin-production'
-            build_api = 'https://api.vanzhome.com' if production else api
-            storefront = 'https://www.vanzhome.com' if production else api
-            for key,value in {'ERP_RELEASE_ID':ident,'ERP_DEPLOY_ENVIRONMENT':'production' if production else 'test','VITE_BASE_URL':build_api,
-                'VITE_API_URL':'/admin-api','VITE_BASE_PATH':'/admin/','VITE_FURNITURE_WEB_URL':storefront,'VITE_MALL_H5_DOMAIN':storefront}.items():
-                build += ['--build-arg',key+'='+value]
-        command([*build,str(context)], repository, logs, 'build-'+kind,1800)
-    print(json.dumps({'stage':'verify-and-assemble-local-images'}), flush=True)
-    temporary = release_root/'assembling'
-    release = assemble(release_root/'backend.oci.tar', release_root/'admin.oci.tar', temporary, repository, identity, api, release_root/'admin-production.oci.tar')
-    temporary.rename(release_root/'complete')
-    for kind in paths:
-        (release_root/(kind+'.oci.tar')).unlink()
-    summary = {'release_id': ident, 'commit': args.commit, 'ci': ci, 'status': 'images-verified',
-               'archive': str(release_root/'complete/images.oci.tar'),
-               'production_archive': str(release_root/'complete/production.oci.tar')}
-    write_json(cache/'latest-result.json', summary)
-    if os.environ.get('GITHUB_OUTPUT'):
-        with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as output:
-            output.write('release_id='+ident+'\n')
-    print(json.dumps(summary), flush=True)
-    try:
-        command([docker,'buildx','prune','--builder',builder,'--max-used-space','10GB','--force'],
-                repository, logs, 'trim-owned-build-cache', 120)
-    except Exception as error:
-        print('Build cache trimming skipped: '+type(error).__name__, flush=True)
-    print('Build complete. CI will upload these images to GHCR next: '+ident, flush=True)
-    if os.environ.get('GITHUB_STEP_SUMMARY'):
-        with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as output:
-            output.write(f'### Local image build complete\n\nRelease: `{ident}`\n\nNo deployment performed. '
-                         'Backend, test admin and production admin were built together. '
-                         'Wait for the automatic GHCR upload and the entire CI workflow to succeed. '
-                         'Then run **ERP CD - test** manually and enter this release ID. '
-                         'After test succeeds, select the same ID in **ERP CD - production**.\n')
+    with cache_lock(cache):
+        require(not cache.is_relative_to(repository), 'Persistent build cache must be outside the checkout')
+        logs = cache/'logs'
+        client = GitHub()
+        ci = verify_upstream(client, args.ci_run, args.ci_attempt, args.commit)
+        if client.request(client.repo('/git/ref/heads/main'))['object']['sha'] != args.commit:
+            print('A newer main commit exists; skipping superseded build.', flush=True)
+            return
+        require(command(['git','rev-parse','HEAD'], repository, logs, 'checkout-identity') == args.commit, 'Checkout differs from passed CI')
+        require(not command(['git','status','--porcelain','--untracked-files=all'], repository, logs, 'clean-checkout'), 'Runner checkout has local modifications')
+        docker = shutil.which('docker')
+        require(docker, 'Docker CLI is missing')
+        require(command([docker,'info','--format','{{.OSType}}/{{.Architecture}}'], repository, logs, 'docker-engine') in ('linux/x86_64','linux/amd64'),
+                'Start the local Docker Desktop Linux engine')
+        require(shutil.disk_usage(cache).free > 12 * 1024**3, 'At least 12 GiB local free space required for build/export')
+        build_id, build_attempt = os.environ['GITHUB_RUN_ID'], os.environ['GITHUB_RUN_ATTEMPT']
+        require(build_id.isdigit() and build_attempt.isdigit() and int(build_id)>0 and int(build_attempt)>0, 'Invalid local build run')
+        ident = f'cd-{args.commit}-{build_id}-{build_attempt}'
+        identity = {'id': ident, 'commit': args.commit, 'run_id': int(build_id), 'run_attempt': int(build_attempt), 'ci': ci}
+        release_root = cache/ident; release_root.mkdir(exist_ok=True)
+        require(not (release_root/'complete').exists(), 'This build attempt already has an immutable archive')
+        builder = 'oakved-local-ci'
+        probe = subprocess.run([docker,'buildx','inspect',builder], capture_output=True, timeout=15)
+        if probe.returncode:
+            command([docker,'buildx','create','--name',builder,'--driver','docker-container'], repository, logs, 'create-builder')
+        command([docker,'buildx','inspect',builder,'--bootstrap'], repository, logs, 'start-builder',120)
+        paths = {'backend': repository/'yudao电商管理平台前后端/yudao-cloud', 'admin': repository/'yudao电商管理平台前后端/yudao-ui-admin-vue3',
+                 'admin-production': repository/'yudao电商管理平台前后端/yudao-ui-admin-vue3'}
+        api = 'http://' + PROFILE['host']
+        for kind, context in paths.items():
+            output = release_root/(kind+'.oci.tar')
+            require(not output.exists(), 'Partial build already exists; use a new workflow attempt')
+            build = [docker,'buildx','build','--builder',builder,'--platform','linux/amd64','--progress','plain',
+                '--provenance=false','--sbom=false','--label','org.opencontainers.image.revision='+args.commit,
+                '--label','org.opencontainers.image.source=https://github.com/cqz-cio/furniture',
+                '--output','type=oci,dest='+str(output),'-f',str(context/('yudao-server/Dockerfile' if kind=='backend' else 'Dockerfile'))]
+            if kind != 'backend':
+                production = kind == 'admin-production'
+                build_api = 'https://api.vanzhome.com' if production else api
+                storefront = 'https://www.vanzhome.com' if production else api
+                for key,value in {'ERP_RELEASE_ID':ident,'ERP_DEPLOY_ENVIRONMENT':'production' if production else 'test','VITE_BASE_URL':build_api,
+                    'VITE_API_URL':'/admin-api','VITE_BASE_PATH':'/admin/','VITE_FURNITURE_WEB_URL':storefront,'VITE_MALL_H5_DOMAIN':storefront}.items():
+                    build += ['--build-arg',key+'='+value]
+            command([*build,str(context)], repository, logs, 'build-'+kind,1800)
+        print(json.dumps({'stage':'verify-and-assemble-local-images'}), flush=True)
+        temporary = release_root/'assembling'
+        release = assemble(release_root/'backend.oci.tar', release_root/'admin.oci.tar', temporary, repository, identity, api, release_root/'admin-production.oci.tar')
+        temporary.rename(release_root/'complete')
+        for kind in paths:
+            (release_root/(kind+'.oci.tar')).unlink()
+        summary = {'release_id': ident, 'commit': args.commit, 'ci': ci, 'status': 'images-verified',
+                   'archive': str(release_root/'complete/images.oci.tar'),
+                   'production_archive': str(release_root/'complete/production.oci.tar')}
+        write_json(cache/'latest-result.json', summary)
+        if os.environ.get('GITHUB_OUTPUT'):
+            with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as output:
+                output.write('release_id='+ident+'\n')
+        print(json.dumps(summary), flush=True)
+        try:
+            command([docker,'buildx','prune','--builder',builder,'--max-used-space','10GB','--force'],
+                    repository, logs, 'trim-owned-build-cache', 120)
+        except Exception as error:
+            print('Build cache trimming skipped: '+type(error).__name__, flush=True)
+        print('Build complete. CI will upload these images to GHCR next: '+ident, flush=True)
+        if os.environ.get('GITHUB_STEP_SUMMARY'):
+            with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as output:
+                output.write(f'### Local image build complete\n\nRelease: `{ident}`\n\nNo deployment performed. '
+                             'Backend, test admin and production admin were built together. '
+                             'Wait for the automatic GHCR upload and the entire CI workflow to succeed. '
+                             'Then run **ERP CD - test** manually and enter this release ID. '
+                             'After test succeeds, select the same ID in **ERP CD - production**.\n')
 
 
 if __name__ == '__main__':

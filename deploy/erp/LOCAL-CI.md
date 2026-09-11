@@ -36,7 +36,7 @@ Runner 注册完成后，以当前用户执行一次 `deploy/erp/install-local-r
 - `logs/`：每个构建步骤独立日志、PID、耗时及退出码。
 - `<release-id>/complete/`：`release.json`、`header.json`、测试用 `images.oci.tar`、生产上传用 `production.oci.tar`，仅在全部校验完成后原子发布。
 - `latest-result.json`：最近构建结果；`latest-deployment.json`：最近手动部署结果。构建页面 Summary 提供可复制的 release-id。
-- 手动成功部署后获取服务器清理锁及新鲜状态，保留最近 5 个普通版本，额外保留当前、最近两次回滚和指定保护版本。CI 不连接服务器执行清理；只构建不部署时版本包会累积。状态不完整或服务器不可达时跳过清理。
+- CI 构建和上传全部成功后，以及每天北京时间 03:30，`ERP image retention` 同时检查本地和 GHCR，各只保留最新 5 个完整版本。电脑离线时清理排队；默认启用，仓库变量 `ERP_IMAGE_CLEANUP_ENABLED=false` 可暂停。详见 [清理策略](RETENTION.md)。
 - 专用构建器 `oakved-local-ci` 的可回收缓存目标上限 10 GB；不会执行全局 Docker prune、删除卷或清理其他项目。构建和归档可能临时超过该值，开始前要求至少 12 GiB 空闲。失败构建的残留包和日志保留供排查，不纳入自动删除。
 - 构建子进程有总时限且无进展 60 秒终止。单镜像构建最多 30 分钟，构建 job 最多 100 分钟；GHCR 上传最多 30 分钟、上传 job 最多 35 分钟，每次 HTTP 请求最多 20 秒。手动测试 CD 最多 70 分钟。
 
@@ -60,7 +60,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\deploy\erp\deploy-test
 
 原 `publish_production=true` 独立构建入口和 CD 阶段本地上传入口均已移除。旧测试产物缺少生产变体时必须重跑共享 CI，再手动测试新 release，不能在 CD 补建。生产预检、部署和回滚都不依赖本地缓存。详见 [生产 CD 说明](../../docs/erp-production-cd.md)。
 
-GitHub 镜像保留策略继续适用于已有 GHCR 版本；本地清单不参与 GHCR 清理。
+本地清单和 GHCR 清单分别盘点各自的最新五个完整版本；本地 schema 2 清单不会直接传入 GHCR 删除接口。被清理的旧版本不能再用于常规重新部署或回滚。
 
 ## 自动上传授权与失败重试
 

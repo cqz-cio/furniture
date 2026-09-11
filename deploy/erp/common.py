@@ -1,5 +1,5 @@
 """Shared release validation and retention rules; no network or deletion here."""
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 import hashlib
 import json
 from pathlib import Path
@@ -127,28 +127,15 @@ def environment_images(value, environment):
     return {"erp-backend": value["images"]["backend"], "erp-admin": value["images"]["admin"][environment]}
 
 
-def release_plan(releases, snapshots, pins=(), now=None, keep=5):
-    """Protect both environments, then retain five additional ordinary releases."""
-    now = now or utcnow()
-    require(keep == 5, "This project's ordinary retention count is fixed at five")
-    require(set(snapshots) == {"test", "production"}, "Both environment snapshots are required")
-    by_id = {r["id"]: validate_release(r) for r in releases}
-    require(len(by_id) == len(releases), "Duplicate release IDs")
-    protected = set(pins)
-    for environment, snapshot in snapshots.items():
-        require(snapshot.get("environment") == environment and snapshot.get("verified") is True, "Unverified environment snapshot")
-        age = now - timestamp(snapshot["checked_at"])
-        require(timedelta(seconds=-30) <= age <= timedelta(minutes=5), "Stale snapshot")
-        require(not snapshot.get("in_progress"), "An unfinished deployment blocks cleanup")
-        require(snapshot.get("current"), "No registered current release; onboard this environment first")
-        protected.update([snapshot["current"], *snapshot.get("rollback", []), *snapshot.get("pins", [])])
-    require(protected <= by_id.keys(), "Protected version has no release manifest; stop cleanup")
-    ordinary = sorted((r for r in releases if r["id"] not in protected),
-                      key=lambda r: (timestamp(r["created_at"]), r["id"]), reverse=True)
-    retained = protected | {r["id"] for r in ordinary[:keep]}
-    retained |= {r["id"] for r in releases if now - timestamp(r["created_at"]) < timedelta(hours=24)}
-    return {"protected": sorted(protected), "keep": sorted(retained),
-            "retire": sorted(by_id.keys() - retained), "ordinary_limit": keep}
+def latest_release_plan(releases, keep=5):
+    """Keep exactly the newest five complete releases, including same-day builds."""
+    require(keep == 5, 'Release retention is fixed at five')
+    by_id = {value['id']: validate_release(value) for value in releases}
+    require(len(by_id) == len(releases), 'Duplicate release IDs')
+    ordered = sorted(by_id.values(), key=lambda value: (timestamp(value['created_at']),
+        int(value['run_id']), int(value['run_attempt']), value['id']), reverse=True)
+    return {'keep':[value['id'] for value in ordered[:keep]],
+            'retire':[value['id'] for value in ordered[keep:]], 'release_limit':keep}
 
 
 def manifest_children(manifest):
@@ -166,7 +153,7 @@ def manifest_children(manifest):
     return result
 
 
-def deletion_plan(releases, retired_ids, versions, manifests, pending=()):
+def deletion_plan(releases, retired_ids, versions, manifests, pending=(), strict=False):
     """Delete a release's OCI closure only when no retained/unknown root references it."""
     roots = {p: set() for p in PACKAGES.values()}
     preserved = {p: set() for p in PACKAGES.values()}
@@ -207,7 +194,7 @@ def deletion_plan(releases, retired_ids, versions, manifests, pending=()):
         for digest, entry in entries.items():
             tags = set(entry["metadata"]["container"]["tags"])
             unknown_tags = tags - allowed_tags[package].get(digest, set())
-            if unknown_tags or (tags and digest not in roots[package]) or (not tags and digest not in children and digest not in roots[package]):
+            if (unknown_tags and not (strict and digest in roots[package])) or (tags and digest not in roots[package]) or (not tags and digest not in children and digest not in roots[package]):
                 keep_roots.add(digest)
         # Previously retired manifests may already be partly deleted; only existing roots remain candidates.
         removable = closure(roots[package] & entries.keys()) - closure(keep_roots)

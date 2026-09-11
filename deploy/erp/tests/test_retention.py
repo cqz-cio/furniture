@@ -3,7 +3,7 @@ from datetime import timedelta
 import unittest
 
 from fixtures import NOW, IMAGE, INDEX, digest, release, snapshots, inventory
-from common import PACKAGES, deletion_plan, release_plan, validate_release
+from common import PACKAGES, deletion_plan, latest_release_plan, validate_release
 
 
 class ReleaseValidation(unittest.TestCase):
@@ -48,50 +48,26 @@ class ReleaseValidation(unittest.TestCase):
 
 
 class RetentionPolicy(unittest.TestCase):
-    def setUp(self):
-        self.releases = [release(i) for i in range(1, 11)]
+    def test_only_latest_five_are_retained(self):
+        plan = latest_release_plan([release(i) for i in range(1, 11)])
+        self.assertEqual(plan['keep'], [release(i)['id'] for i in range(10, 5, -1)])
+        self.assertEqual(len(plan['retire']), 5)
 
-    def test_five_ordinary_plus_three_protected(self):
-        plan = release_plan(self.releases, snapshots(), now=NOW)
-        self.assertEqual(set(plan["keep"]), {release(i)["id"] for i in range(3, 11)})
-        self.assertEqual(set(plan["retire"]), {release(i)["id"] for i in (1, 2)})
+    def test_small_and_empty_catalogs(self):
+        for count in range(6):
+            self.assertEqual(latest_release_plan([release(i+1) for i in range(count)])['retire'], [])
 
-    def test_other_environment_old_version_does_not_consume_five(self):
-        states = snapshots()
-        states["test"]["current"] = release(1)["id"]
-        plan = release_plan(self.releases, states, now=NOW)
-        self.assertEqual(len(plan["keep"]), 9)
-        self.assertIn(release(1)["id"], plan["protected"])
+    def test_same_day_builds_have_no_extra_grace(self):
+        values = [release(i) for i in range(1, 11)]
+        for value in values:
+            value['created_at'] = NOW.isoformat()
+        plan = latest_release_plan(values)
+        self.assertEqual(plan['keep'], [release(i)['id'] for i in range(10, 5, -1)])
 
-    def test_manual_pin_is_extra(self):
-        plan = release_plan(self.releases, snapshots(), pins=[release(1)["id"]], now=NOW)
-        self.assertIn(release(1)["id"], plan["keep"])
-        self.assertEqual(len(plan["keep"]), 9)
-
-    def test_small_catalog_is_not_deleted(self):
-        self.assertEqual(release_plan(self.releases[-3:], snapshots(), now=NOW)["retire"], [])
-
-    def test_snapshot_missing_stale_failed_or_moving_blocks_deletion(self):
-        for mutate in (lambda s: s.pop("test"), lambda s: s["test"].update(verified=False),
-                       lambda s: s["test"].update(checked_at=(NOW-timedelta(minutes=6)).isoformat()),
-                       lambda s: s["test"].update(in_progress={"release_id": release(2)["id"]}),
-                       lambda s: s["test"].update(current=None)):
-            with self.subTest(mutate=mutate):
-                states = snapshots()
-                mutate(states)
-                with self.assertRaises(ValueError):
-                    release_plan(self.releases, states, now=NOW)
-
-    def test_unknown_protected_release_blocks_deletion(self):
-        with self.assertRaises(ValueError):
-            release_plan(self.releases, snapshots(), pins=[release(11)["id"]], now=NOW)
-
-    def test_new_release_has_24_hour_grace_even_with_many_builds(self):
-        extra = [release(i) for i in range(11, 20)]
-        for value in extra:
-            value["created_at"] = (NOW-timedelta(hours=1)).isoformat()
-        plan = release_plan(self.releases + extra, snapshots(), now=NOW)
-        self.assertTrue({r["id"] for r in extra} <= set(plan["keep"]))
+    def test_duplicate_or_invalid_release_blocks_selection(self):
+        for values in ([release(1),release(1)], [dict(release(1),schema=9)]):
+            with self.assertRaises(ValueError):
+                latest_release_plan(values)
 
 
 class OciDeletion(unittest.TestCase):

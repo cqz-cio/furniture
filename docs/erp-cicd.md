@@ -14,11 +14,11 @@
 | --- | --- | --- |
 | ERP CD - test | `deploy/erp/local_test.py --local-built` | `test` |
 | ERP CD - production | `deploy/erp/deploy-production.sh` | `production` |
-| ERP image retention | `deploy/erp/retention.py` | 同时读取两环境的保护记录 |
+| ERP image retention | `deploy/erp/cache_retention.py`、`retention.py` | 本地与 GHCR 各保留最新五个完整版本 |
 
 两套 CD 均手动触发。生产日常 `deploy/rollback` 要求 `ERP_CD_ENABLED=true`；测试使用已接入主机的固定本机配置。测试首次接入仍使用专用适配器，不属于日常 Actions 入口。生产部署要求原始测试清单的测试 CD 成功；准备/演练成功不会解除生产门禁。生产回滚仍要求本机登记成功、受保护且数据库兼容。
 
-清理默认 dry-run，实际删除还要求仓库变量 `ERP_IMAGE_CLEANUP_ENABLED=true`。定时入口建议在真实 dry-run 和首轮清理核对后开启；变量未开启时定时任务不执行。工作流默认北京时间每天 03:30 检查。
+清理在完整 CI 成功后及北京时间每天 03:30 自动执行，仓库变量 `ERP_IMAGE_CLEANUP_ENABLED=false` 可暂停。手动入口默认只预览。完整规则见 [镜像清理](../deploy/erp/RETENTION.md)。
 
 最新服务器核对记录见 [测试接入说明](erp-test-cd-onboarding.md)。第三个官网内容接入不在本次范围。`ERP test environment check` 仍是旧环境的只读诊断；新 CD 自带容器验收，不能把旧检查通过当成新版本发布成功。
 
@@ -40,7 +40,7 @@
 | --- | --- |
 | `ERP_TEST_API_BASE_URL` | Repository variable，真实测试 API 根地址，无末尾 `/` |
 | `ERP_TEST_STOREFRONT_URL` | Repository variable，真实测试网站根地址，无末尾 `/` |
-| `ERP_IMAGE_CLEANUP_ENABLED` | Repository variable，初始不配置；核对后填 `true` 才允许实际删除和定时清理 |
+| `ERP_IMAGE_CLEANUP_ENABLED` | Repository variable，默认启用；填 `false` 暂停自动及实际清理 |
 | `ERP_RETAIN_RELEASES_JSON` | Repository variable，可选的额外保护版本数组，如 `["cd-...-123-1"]` |
 
 前两个变量仅供旧 GHCR 清单构建工具使用；当前本地 CI 的测试地址取已核实测试配置 `http://124.220.2.69`。生产公开地址沿用 `https://api.vanzhome.com`、`https://www.vanzhome.com`，两套后台配置不得混用。
@@ -61,7 +61,7 @@
 | Secret | `ERP_SSH_PRIVATE_KEY` | 本环境部署用户的 SSH 私钥 |
 | Secret | `ERP_SSH_KNOWN_HOSTS` | 从可信渠道核对过的服务器主机公钥记录 |
 
-测试入口兼容已有 `test` Environment 中的 `TENCENT_SSH_HOST`、`TENCENT_SSH_USER`、`TENCENT_SSH_PORT`、`TENCENT_SSH_PRIVATE_KEY`、`TENCENT_SSH_KNOWN_HOSTS`，仅在对应 `ERP_SSH_*` 未配置时回退。无需读出或复制已有 GitHub Secret。清理流程也仅为 `test` 使用此回退；生产入口和生产清理目标仍只读取 `ERP_SSH_*`。
+测试入口兼容已有 `test` Environment 中的 `TENCENT_SSH_HOST`、`TENCENT_SSH_USER`、`TENCENT_SSH_PORT`、`TENCENT_SSH_PRIVATE_KEY`、`TENCENT_SSH_KNOWN_HOSTS`，仅在对应 `ERP_SSH_*` 未配置时回退。无需读出或复制已有 GitHub Secret。生产入口仍只读取 `ERP_SSH_*`。本地/GHCR 清理不连接服务器，不需要 SSH 配置。
 
 脚本启用严格主机公钥检查，不自动信任 ssh-keyscan。数据库、Redis 和业务密钥不传到 GitHub 或镜像。服务器 Engine 拉取仅支持公开 GHCR 包，不读取 docker login 凭据；CI 上传验证匿名可读。清理权限只给独立清理工作流。
 
@@ -143,23 +143,14 @@ CI 上传、生产发布和注册表清理共用 erp-release-control；本机构
 
 ## 五套版本保留规则
 
-保护集合包含：两环境当前版本、各环境最近两次成功旧版本、人工 pin，以及明确登记的保护版本。普通完整版本按时间排序，保护版本之外再保留最近 5 套；24 小时内的新完整产物额外保留。
+本地 OCI 包与 GHCR 分别保留最新 5 个完整版本，不再额外保留 current、rollback、pin 或 24 小时内产物。清理在 CI 完成及每日定时任务中执行，不依赖服务器接入。电脑离线时统一清理排队。旧版本清理后不能再从归档/注册表重新部署或回滚。
 
-例如只有一环境，当前 R10，回滚 R09/R08，则额外保留五套普通版本 R07～R03，共八套。两个环境保护版本不同时，总量还可能增加。
-
-远端清理的约束已经在代码中实现：
-
-- 两环境都必须接入并能读取、核对实际容器；缺失、不一致、过期、未完成部署时不删除。
-- dry-run 无远端写入；实际删除先在两服务器取得最长 15 分钟的清理锁。标准部署入口在锁有效期内拒绝切换版本；锁不足 60 秒时停止继续删除。
-- 完整分页读取两个固定 ERP 镜像包，解析 OCI 索引和关联 manifest。仍被受保护或未知版本引用的内容保留，不能直接删除全部无标签条目。
-- 先保存删除计划并为退役版本写入标记，再按父到子的顺序删除。失败后保存的计划支持后续重试；新手工标签、缺失依赖、未知格式等都会阻止不确定的删除。
-- 首次接入前遗留的 SHA 标签、未登记构建和其他无明确归属产物默认保留。它们需要单独盘点迁移，不能声称启用脚本后整个账号会立即变成五个镜像。
-- 本机成功部署后保留当前 + 最近两次成功旧版本 + 人工保护，回收其他已登记成功/失败候选的未使用镜像；不用全局 prune、不强删被容器使用的镜像、不删除数据卷。
+清理使用本地构建/部署锁和发布锁；GHCR 完整分页核对依赖并写淘汰标记后删除，本地归档先重命名再删除以支持中断恢复。未登记的历史资源、共享引用和失败构建见 [详细范围及操作说明](../deploy/erp/RETENTION.md)。服务器自身镜像仍由部署流程回收，保留当前及所需旧版本；不删除卷或业务数据。
 
 镜像之外，容器日志为 20 MB × 5；后端文件日志为每份 20 MB、14 天、总上限 300 MB；部署日志为 5 MB × 4。备份和业务附件需要独立容量/保留策略，镜像清理不处理它们。
 
 ## 验证范围
 
-本地验证覆盖发布来源、环境 URL、固定 digest、测试到生产的版本关联、错误环境和旧产物识别、未完成状态、迁移/回滚失败、备份库归属、五套普通版本及额外保护、多环境不可达、OCI 子 manifest/共享引用、分页、删除中断、dry-run 零删除、清理锁和本机候选回收。
+本地验证覆盖发布来源、环境 URL、固定 digest、测试到生产的版本关联、错误环境和旧产物识别、未完成状态、迁移/回滚失败、备份库归属、最新五套完整版本、本地清理中断恢复、OCI 子 manifest/共享引用、分页、删除中断、dry-run 零删除、清理锁和本机候选回收。
 
 另外校验 GitHub Actions、两个 shell 入口、Compose 设置、首次切换故障恢复、Java 迁移助手和两租户审核查询。测试机通过只读预检和三阶段代理语法检查；真实准备/切换仍以工作流记录为准，不能把本地检查写成已部署成功。

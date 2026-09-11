@@ -4,132 +4,78 @@ on:
   workflow_dispatch:
     inputs:
       apply:
-        description: Delete the reviewed candidates (also requires ERP_IMAGE_CLEANUP_ENABLED=true)
+        description: Delete older complete releases, keeping the latest five locally and in GHCR
         type: boolean
         default: false
+  workflow_run:
+    workflows: [ERP local image CI]
+    types: [completed]
+    branches: [main]
   schedule:
-    - cron: '30 19 * * *' # 03:30 Asia/Shanghai; gated off until explicitly configured.
+    - cron: '30 19 * * *' # 03:30 Asia/Shanghai
 
 permissions:
   contents: read
 
+# Same lock order as CI: local archives first, then registry/releases.
 concurrency:
-  group: erp-release-control
+  group: erp-test-local-build-deploy
   cancel-in-progress: false
 
 jobs:
-  prepare:
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || vars.ERP_IMAGE_CLEANUP_ENABLED == 'true')
-    runs-on: ubuntu-latest
-    timeout-minutes: 2
-    outputs:
-      apply: ${{ steps.mode.outputs.apply }}
-    steps:
-      - id: mode
-        env:
-          REQUESTED: ${{ github.event_name == 'schedule' || inputs.apply }}
-          ENABLED: ${{ vars.ERP_IMAGE_CLEANUP_ENABLED }}
-        run: |
-          if [[ "$REQUESTED" == true && "$ENABLED" != true ]]; then
-            echo 'Real cleanup has not been enabled.' >&2
-            exit 1
-          fi
-          echo "apply=$REQUESTED" >> "$GITHUB_OUTPUT"
-
-  snapshot:
-    needs: prepare
-    strategy:
-      fail-fast: false
-      matrix:
-        environment: [test, production]
-    environment: ${{ matrix.environment }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 3
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          persist-credentials: false
-      - name: Read protected versions from the actual server
-        env:
-          TARGET_ENV: ${{ matrix.environment }}
-          APPLY: ${{ needs.prepare.outputs.apply }}
-          ERP_SSH_HOST: ${{ vars.ERP_SSH_HOST || (matrix.environment == 'test' && vars.TENCENT_SSH_HOST) || '' }}
-          ERP_SSH_USER: ${{ vars.ERP_SSH_USER || (matrix.environment == 'test' && vars.TENCENT_SSH_USER) || '' }}
-          ERP_SSH_PORT: ${{ vars.ERP_SSH_PORT || (matrix.environment == 'test' && vars.TENCENT_SSH_PORT) || '' }}
-          ERP_DEPLOY_ROOT: ${{ vars.ERP_DEPLOY_ROOT }}
-          ERP_SSH_PRIVATE_KEY: ${{ secrets.ERP_SSH_PRIVATE_KEY || (matrix.environment == 'test' && secrets.TENCENT_SSH_PRIVATE_KEY) || '' }}
-          ERP_SSH_KNOWN_HOSTS: ${{ secrets.ERP_SSH_KNOWN_HOSTS || (matrix.environment == 'test' && secrets.TENCENT_SSH_KNOWN_HOSTS) || '' }}
-        run: |
-          operation=snapshot
-          if [[ "$APPLY" == true ]]; then operation=lease-start; fi
-          timeout --kill-after=5s 75s python3 -B deploy/erp/runner.py --environment "$TARGET_ENV" \
-            --operation "$operation" --lease-id "gc-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
-            --output "$RUNNER_TEMP/snapshot-$TARGET_ENV.json"
-      - uses: actions/upload-artifact@v4
-        with:
-          name: erp-retention-state-${{ matrix.environment }}
-          path: ${{ runner.temp }}/snapshot-${{ matrix.environment }}.json
-          if-no-files-found: error
-          retention-days: 7
-
   clean:
-    needs: [prepare, snapshot]
-    runs-on: ubuntu-latest
-    timeout-minutes: 12
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'workflow_dispatch' || vars.ERP_IMAGE_CLEANUP_ENABLED != 'false') &&
+      (github.event_name != 'workflow_run' ||
+        (github.event.workflow_run.conclusion == 'success' &&
+         github.event.workflow_run.head_repository.full_name == github.repository &&
+         github.event.workflow_run.head_branch == 'main'))
+    runs-on: [self-hosted, Windows, X64, erp-test-local]
+    timeout-minutes: 15
+    concurrency:
+      group: erp-release-control
+      cancel-in-progress: false
     permissions:
       contents: write
       packages: write
       actions: read
+    defaults:
+      run:
+        shell: powershell
+    env:
+      GIT_CONFIG_COUNT: '1'
+      GIT_CONFIG_KEY_0: core.longpaths
+      GIT_CONFIG_VALUE_0: 'true'
+      PYTHONUTF8: '1'
+      ERP_LOCAL_CACHE: D:\furniture web2b\work\erp-ci-cache
+      ERP_IMAGE_CLEANUP_ENABLED: ${{ vars.ERP_IMAGE_CLEANUP_ENABLED != 'false' }}
+      ERP_CLEANUP_APPLY: ${{ github.event_name != 'workflow_dispatch' || inputs.apply }}
     steps:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: erp-retention-state-*
-          path: ${{ runner.temp }}/protected
-          merge-multiple: true
-      - name: Keep five ordinary releases plus protected versions
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          APPLY: ${{ needs.prepare.outputs.apply }}
-          ERP_IMAGE_CLEANUP_ENABLED: ${{ vars.ERP_IMAGE_CLEANUP_ENABLED }}
-          ERP_RETAIN_RELEASES_JSON: ${{ vars.ERP_RETAIN_RELEASES_JSON }}
+      - name: Inspect and clean complete local image archives
         run: |
-          options=()
-          if [[ "$APPLY" == true ]]; then options+=(--apply); fi
-          timeout --kill-after=5s 660s python3 -B deploy/erp/retention.py --snapshots "$RUNNER_TEMP/protected" "${options[@]}"
+          $options = @()
+          if ($env:ERP_CLEANUP_APPLY -eq 'true') { $options += '--apply' }
+          & 'C:\Python314\python.exe' -u -B deploy/erp/cache_retention.py --cache $env:ERP_LOCAL_CACHE @options
+          exit $LASTEXITCODE
+      - name: Inspect and clean published GHCR releases
+        if: ${{ !cancelled() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $options = @()
+          if ($env:ERP_CLEANUP_APPLY -eq 'true') { $options += '--apply' }
+          & 'C:\Python314\python.exe' -u -B deploy/erp/retention.py @options
+          exit $LASTEXITCODE
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: erp-retention-plan
-          path: retention-plan.json
+          path: |
+            local-retention-plan.json
+            retention-plan.json
           if-no-files-found: ignore
           retention-days: 30
-
-  release-leases:
-    if: always() && needs.prepare.outputs.apply == 'true'
-    needs: [prepare, snapshot, clean]
-    strategy:
-      fail-fast: false
-      matrix:
-        environment: [test, production]
-    environment: ${{ matrix.environment }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 3
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          persist-credentials: false
-      - name: Release the temporary cleanup lock
-        env:
-          TARGET_ENV: ${{ matrix.environment }}
-          ERP_SSH_HOST: ${{ vars.ERP_SSH_HOST || (matrix.environment == 'test' && vars.TENCENT_SSH_HOST) || '' }}
-          ERP_SSH_USER: ${{ vars.ERP_SSH_USER || (matrix.environment == 'test' && vars.TENCENT_SSH_USER) || '' }}
-          ERP_SSH_PORT: ${{ vars.ERP_SSH_PORT || (matrix.environment == 'test' && vars.TENCENT_SSH_PORT) || '' }}
-          ERP_DEPLOY_ROOT: ${{ vars.ERP_DEPLOY_ROOT }}
-          ERP_SSH_PRIVATE_KEY: ${{ secrets.ERP_SSH_PRIVATE_KEY || (matrix.environment == 'test' && secrets.TENCENT_SSH_PRIVATE_KEY) || '' }}
-          ERP_SSH_KNOWN_HOSTS: ${{ secrets.ERP_SSH_KNOWN_HOSTS || (matrix.environment == 'test' && secrets.TENCENT_SSH_KNOWN_HOSTS) || '' }}
-        run: >-
-          timeout --kill-after=5s 75s python3 -B deploy/erp/runner.py --environment "$TARGET_ENV"
-          --operation lease-end --lease-id "gc-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"

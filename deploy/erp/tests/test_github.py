@@ -6,8 +6,8 @@ import unittest
 from unittest.mock import patch
 from urllib.request import Request
 
-from fixtures import release, snapshots, inventory, NOW
-from common import fingerprint
+from fixtures import release, inventory, NOW, digest, IMAGE
+from common import fingerprint, PACKAGES
 from github_release import GitHub, SafeRedirect
 from retention import clean
 
@@ -117,29 +117,33 @@ class CleanupIntegration(unittest.TestCase):
         self.addCleanup(self.clock.stop)
 
     def test_dry_run_has_zero_remote_mutations(self):
-        result = clean(self.client, self.client, snapshots())
-        self.assertEqual(len(result["delete"]), 6)
+        result = clean(self.client, self.client)
+        self.assertEqual(len(result["delete"]), 15)
         self.assertEqual(self.client.mutations, [])
 
-    def test_apply_without_leases_has_zero_mutations(self):
+    def test_apply_without_workflow_context_has_zero_mutations(self):
         with patch.dict(os.environ, GITHUB_RUN_ID="1", GITHUB_RUN_ATTEMPT="1"):
             with self.assertRaises(ValueError):
-                clean(self.client, self.client, snapshots(), apply=True)
+                clean(self.client, self.client, apply=True)
         self.assertEqual(self.client.mutations, [])
+
+    def test_unmanaged_history_is_reported_without_being_deleted(self):
+        package = PACKAGES['backend']
+        old_digest = digest(9999)
+        self.client.versions[package].append({'id':9999,'name':old_digest,
+            'metadata':{'container':{'tags':['legacy-build']}}})
+        self.client.manifests[(package,old_digest)] = {'mediaType':IMAGE}
+        result = clean(self.client,self.client)
+        self.assertEqual(result['unmanaged_preserved'],[{'package':package,'digest':old_digest}])
+        self.assertNotIn(old_digest,{item['digest'] for item in result['delete']})
 
     def test_apply_marks_retired_before_deleting_both_image_packages(self):
-        with patch("retention.valid_leases") as leases:
-            result = clean(self.client, self.client, snapshots(), apply=True)
-        self.assertEqual([m[0] for m in self.client.mutations[:2]], ["retirement.json", "retirement.json"])
-        self.assertEqual(len([m for m in self.client.mutations if m[0] == "DELETE"]), 6)
-        self.assertEqual(leases.call_count, 9)
+        with patch("retention.require_cleanup_context") as context:
+            result = clean(self.client, self.client, apply=True)
+        self.assertEqual([m[0] for m in self.client.mutations[:5]], ["retirement.json"]*5)
+        self.assertEqual(len([m for m in self.client.mutations if m[0] == "DELETE"]), 15)
+        self.assertEqual(context.call_count, 21)
 
-    def test_a_missing_server_cannot_delete_any_image(self):
-        states = snapshots()
-        del states["production"]
-        with self.assertRaises(ValueError):
-            clean(self.client, self.client, states, apply=True)
-        self.assertEqual(self.client.mutations, [])
 
 
 if __name__ == "__main__":

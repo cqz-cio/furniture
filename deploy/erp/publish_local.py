@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 
+from cache_retention import cache_lock
 from common import RELEASE, require, production_release, validate_release, write_json
 from github_release import GitHub
 from image_relay import validate_archive
@@ -41,36 +42,37 @@ def publish(client, cache, ident, publisher=None, env=None):
         and env.get('GITHUB_WORKFLOW') == 'ERP local image CI' and env.get('GITHUB_JOB') == 'publish-images',
         'Only the automatic local CI publication job may upload images')
     cache = Path(cache).resolve()
-    complete = cache/ident/'complete'
-    require(complete.resolve().is_relative_to(cache) and not complete.is_symlink(), 'Unsafe cache directory')
-    for name in ('release.json', 'production.oci.tar'):
-        path = complete/name
-        require(path.is_file() and not path.is_symlink(), 'Complete production artifact is missing; run shared CI')
-    source = validate_release(json.loads((complete/'release.json').read_text(encoding='utf-8')))
-    require(source['id'] == ident and source['repository'] == client.repository, 'Cache identity mismatch')
-    require(str(source['run_id']) == env.get('GITHUB_RUN_ID')
-        and str(source['run_attempt']) == env.get('GITHUB_RUN_ATTEMPT')
-        and source['commit'] == env.get('ERP_SOURCE_SHA'),
-        'Artifact belongs to another CI attempt; use Re-run all jobs to build and publish a new release')
-    manifest = production_release(source)
-    verify_upstream(client, source['ci']['run_id'], source['ci']['run_attempt'], source['commit'])
-    verify_build_job(client, source)
-    existing = None
-    try:
-        existing = client.release(ident)[1]
-    except RuntimeError as error:
-        if str(error) != 'GitHub GET failed: HTTP 404':
-            raise
-    if existing is not None:
-        require(existing == manifest, 'Published release has different content')
-    references = [manifest['images']['backend'], manifest['images']['admin']['test'], manifest['images']['admin']['production']]
-    archive = complete/'production.oci.tar'
-    validate_archive(archive, references)
-    publisher = publisher or Publisher(env['GITHUB_ACTOR'], env['GH_TOKEN'])
-    publisher.archive(archive, references, ident)
-    if existing is None:
-        client.publish(manifest)
-    return manifest
+    with cache_lock(cache):
+        complete = cache/ident/'complete'
+        require(complete.resolve().is_relative_to(cache) and not complete.is_symlink(), 'Unsafe cache directory')
+        for name in ('release.json', 'production.oci.tar'):
+            path = complete/name
+            require(path.is_file() and not path.is_symlink(), 'Complete production artifact is missing; run shared CI')
+        source = validate_release(json.loads((complete/'release.json').read_text(encoding='utf-8')))
+        require(source['id'] == ident and source['repository'] == client.repository, 'Cache identity mismatch')
+        require(str(source['run_id']) == env.get('GITHUB_RUN_ID')
+            and str(source['run_attempt']) == env.get('GITHUB_RUN_ATTEMPT')
+            and source['commit'] == env.get('ERP_SOURCE_SHA'),
+            'Artifact belongs to another CI attempt; use Re-run all jobs to build and publish a new release')
+        manifest = production_release(source)
+        verify_upstream(client, source['ci']['run_id'], source['ci']['run_attempt'], source['commit'])
+        verify_build_job(client, source)
+        existing = None
+        try:
+            existing = client.release(ident)[1]
+        except RuntimeError as error:
+            if str(error) != 'GitHub GET failed: HTTP 404':
+                raise
+        if existing is not None:
+            require(existing == manifest, 'Published release has different content')
+        references = [manifest['images']['backend'], manifest['images']['admin']['test'], manifest['images']['admin']['production']]
+        archive = complete/'production.oci.tar'
+        validate_archive(archive, references)
+        publisher = publisher or Publisher(env['GITHUB_ACTOR'], env['GH_TOKEN'])
+        publisher.archive(archive, references, ident)
+        if existing is None:
+            client.publish(manifest)
+        return manifest
 
 
 def main():
