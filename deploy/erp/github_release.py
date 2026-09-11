@@ -72,13 +72,19 @@ class GitHub:
         return record, manifest
 
     def verify_ci(self, manifest):
-        provenance = manifest["ci"] if manifest.get("schema") == 2 else manifest
+        validate_release(manifest)
+        source = manifest.get('source_test', manifest)
+        provenance = source["ci"] if source.get("schema") == 2 else source
         run = self.request(self.repo(f"/actions/runs/{provenance['run_id']}/attempts/{provenance['run_attempt']}"))
         require(run["head_sha"] == manifest["commit"] and run["head_branch"] == "main"
             and run["head_repository"]["full_name"] == self.repository and run["conclusion"] == "success"
             and run["event"] in ("push", "workflow_dispatch")
             and run["path"].split("@")[0] == ".github/workflows/database-and-backend-ci.yml",
             "Release was not produced by a successful trusted main CI attempt")
+        if 'source_test' in manifest:
+            from local_ci import verify_upstream
+            verify_upstream(self, provenance['run_id'], provenance['run_attempt'], manifest['commit'])
+            self.verify_local_build(source)
 
     def verify_local_build(self, manifest):
         require(manifest.get('schema') == 2, 'Expected a local build manifest')
@@ -103,6 +109,8 @@ class GitHub:
         self.request(self.repo("/releases/" + str(record["id"])), "PATCH", {"draft": False, "prerelease": True, "make_latest": "false"})
 
     def test_passed(self, manifest):
+        validate_release(manifest)
+        manifest = manifest.get('source_test', manifest)
         for deployment in self.pages(self.repo("/deployments")):
             payload = deployment.get("payload") or {}
             if isinstance(payload, str):

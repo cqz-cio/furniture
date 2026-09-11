@@ -64,9 +64,19 @@ def validate_release(value):
     local = value["schema"] == 2
     registry = "localhost/" if local else "ghcr.io/"
     if local:
+        require('source_test' not in value, 'Local manifests cannot embed another release')
         require(value.get("delivery") == "local-build-scp" and value.get("environment") == "test", "Local builds are test-only")
         require(set(value["images"]["admin"]) == {"test"} and set(value["config"]) == {"test"}, "Local release must not contain production configuration")
         require(all(type(value.get("ci", {}).get(k)) is int and value["ci"][k] > 0 for k in ("run_id", "run_attempt")), "Missing upstream CI provenance")
+        if 'production' in value:
+            production = value['production']
+            require(set(production) == {'admin_image', 'api_base_url', 'storefront_url'}, 'Invalid production build proof')
+            ref = production['admin_image']
+            require(isinstance(ref, str) and ref.count('@') == 1
+                and ref.startswith('ghcr.io/' + PACKAGES['admin'] + '@')
+                and DIGEST.fullmatch(ref.split('@')[-1]), 'Invalid production admin digest')
+            require(production['api_base_url'] == 'https://api.vanzhome.com'
+                and production['storefront_url'] == 'https://www.vanzhome.com', 'Unexpected production build URLs')
     require(value["images"]["backend"].startswith(registry + PACKAGES["backend"] + "@"), "Wrong backend package")
     for environment in (("test",) if local else ("test", "production")):
         require(value["images"]["admin"][environment].startswith(registry + PACKAGES["admin"] + "@"), "Wrong admin package")
@@ -74,7 +84,26 @@ def validate_release(value):
         public_url(value["config"][environment]["storefront_url"])
     require(api_origin(value["config"]["test"]["api_base_url"]) != api_origin("https://api.vanzhome.com" if local else value["config"]["production"]["api_base_url"]),
             "Test API must not be the production API")
+    if not local and 'source_test' in value:
+        require(value['source_test'].get('schema') == 2, 'Promotion requires a local test manifest')
+        require(value == production_release(value['source_test']), 'Production release differs from tested build')
     return value
+
+
+def production_release(source):
+    """Change distribution names only; bind both variants to the tested manifest."""
+    validate_release(source)
+    require(source['schema'] == 2 and 'production' in source, 'Build lacks a production variant; run the shared CI again')
+    proof = source['production']
+    result = {k: source[k] for k in ('id', 'commit', 'run_id', 'run_attempt', 'repository',
+              'created_at', 'platform', 'database_version', 'migrations_hash', 'ci')}
+    result.update(schema=1, source_test=source, images={
+        'backend': source['images']['backend'].replace('localhost/', 'ghcr.io/', 1),
+        'admin': {'test': source['images']['admin']['test'].replace('localhost/', 'ghcr.io/', 1),
+                  'production': proof['admin_image']}},
+        config={'test': source['config']['test'], 'production': {
+            'api_base_url': proof['api_base_url'], 'storefront_url': proof['storefront_url']}})
+    return result
 
 
 def api_origin(value):

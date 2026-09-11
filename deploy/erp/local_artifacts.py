@@ -1,4 +1,4 @@
-"""Verify local BuildKit OCI outputs and assemble the exact test deployment archive."""
+"""Verify shared CI images and assemble exact test and production OCI archives."""
 from contextlib import ExitStack
 import hashlib
 import io
@@ -8,7 +8,7 @@ import re
 import tarfile
 import zipfile
 
-from common import PACKAGES, require, utcnow, validate_release, write_json
+from common import PACKAGES, production_release, require, utcnow, validate_release, write_json
 
 
 class OCI:
@@ -96,7 +96,7 @@ def migration_identity(repository):
     return files, max(int(re.match(r'V(\d+)__', p.name)[1]) for p in files), digest.hexdigest()
 
 
-def verify_images(backend, admin, repository, commit, release_id, api):
+def verify_images(backend, admin, repository, commit, release_id, api, environment='test', forbidden_api=None):
     for image, port in ((backend, '48080/tcp'), (admin, '80/tcp')):
         config = image.config['config']
         require(config.get('Labels', {}).get('org.opencontainers.image.revision') == commit, 'Image is from another commit')
@@ -114,13 +114,15 @@ def verify_images(backend, admin, repository, commit, release_id, api):
     content = admin.files(lambda name: name in (prefix+'index.html', prefix+'release.json') or
                          (name.startswith(prefix+'assets/') and name.endswith('.js')))
     require(content.get(prefix+'index.html'), 'Admin index missing')
-    require(json.loads(content[prefix+'release.json']) == {'release': release_id, 'environment': 'test'}, 'Wrong admin release receipt')
+    require(json.loads(content[prefix+'release.json']) == {'release': release_id, 'environment': environment}, 'Wrong admin release receipt')
     scripts = [v for k, v in content.items() if k.endswith('.js')]
-    require(scripts and any(api.encode() in value for value in scripts), 'Test API absent from admin bundle')
-    require(all(b'https://api.vanzhome.com' not in value for value in scripts), 'Production API present in test bundle')
+    require(scripts and any(api.encode() in value for value in scripts), 'Expected API absent from admin bundle')
+    forbidden_api = forbidden_api or ('https://api.vanzhome.com' if environment == 'test' else None)
+    if forbidden_api:
+        require(all(forbidden_api.encode() not in value for value in scripts), 'Production API present in test bundle' if environment == 'test' else 'Test API present in production bundle')
 
 
-def assemble(backend_path, admin_path, destination, repository, identity, api):
+def assemble(backend_path, admin_path, destination, repository, identity, api, production_path=None):
     destination = Path(destination)
     require(not destination.exists(), 'Complete artifact directory already exists')
     destination.mkdir(parents=True)
@@ -132,6 +134,12 @@ def assemble(backend_path, admin_path, destination, repository, identity, api):
             images.append(image)
         backend, admin = images
         verify_images(backend, admin, repository, identity['commit'], identity['id'], api)
+        production = None
+        if production_path:
+            production = OCI(production_path)
+            stack.callback(production.close)
+            verify_images(backend, production, repository, identity['commit'], identity['id'],
+                          'https://api.vanzhome.com', 'production', api)
         _, version, migrations_hash = migration_identity(repository)
         refs = ['localhost/' + PACKAGES[k] + '@' + image.root['digest'] for k, image in zip(('backend','admin'), images)]
         manifest = validate_release({**identity, 'schema': 2, 'environment': 'test', 'delivery': 'local-build-scp',
@@ -139,26 +147,38 @@ def assemble(backend_path, admin_path, destination, repository, identity, api):
             'database_version': version, 'migrations_hash': migrations_hash,
             'images': {'backend': refs[0], 'admin': {'test': refs[1]}},
             'config': {'test': {'api_base_url': api, 'storefront_url': api}}})
+        if production:
+            manifest['production'] = {'admin_image': 'ghcr.io/' + PACKAGES['admin'] + '@' + production.root['digest'],
+                'api_base_url': 'https://api.vanzhome.com', 'storefront_url': 'https://www.vanzhome.com'}
+            validate_release(manifest)
         archive = destination/'images.oci.tar'
-        with tarfile.open(archive, 'w', format=tarfile.USTAR_FORMAT) as output:
-            def add(name, data):
-                entry = tarfile.TarInfo(name); entry.size = len(data); entry.mode = 0o600
-                output.addfile(entry, io.BytesIO(data))
-            add('oci-layout', b'{"imageLayoutVersion":"1.0.0"}')
-            roots = [{**image.root, 'annotations': {'io.containerd.image.name': ref}} for image, ref in zip(images, refs)]
-            add('index.json', json.dumps({'schemaVersion': 2, 'manifests': roots}).encode())
-            seen = set()
-            for image in images:
-                for name, member in image.members.items():
-                    if not name.startswith('blobs/') or name in seen:
-                        continue
-                    seen.add(name)
-                    entry = tarfile.TarInfo(name); entry.size = member.size; entry.mode = 0o600
-                    with image.tar.extractfile(member) as source:
-                        output.addfile(entry, source)
+        write_archive(archive, images, refs)
+        if production:
+            promoted = production_release(manifest)
+            production_refs = [promoted['images']['backend'], promoted['images']['admin']['test'], promoted['images']['admin']['production']]
+            write_archive(destination/'production.oci.tar', [backend, admin, production], production_refs)
         with archive.open('rb') as source:
             checksum = hashlib.file_digest(source, 'sha256').hexdigest()
         header = {'release': manifest, 'environment': 'test', 'bytes': archive.stat().st_size, 'sha256': checksum}
         write_json(destination/'release.json', manifest)
         write_json(destination/'header.json', header)
         return manifest
+
+
+def write_archive(archive, images, refs):
+    with tarfile.open(archive, 'w', format=tarfile.USTAR_FORMAT) as output:
+        def add(name, data):
+            entry = tarfile.TarInfo(name); entry.size = len(data); entry.mode = 0o600
+            output.addfile(entry, io.BytesIO(data))
+        add('oci-layout', b'{"imageLayoutVersion":"1.0.0"}')
+        roots = [{**image.root, 'annotations': {'io.containerd.image.name': ref}} for image, ref in zip(images, refs)]
+        add('index.json', json.dumps({'schemaVersion': 2, 'manifests': roots}).encode())
+        seen = set()
+        for image in images:
+            for name, member in image.members.items():
+                if not name.startswith('blobs/') or name in seen:
+                    continue
+                seen.add(name)
+                entry = tarfile.TarInfo(name); entry.size = member.size; entry.mode = 0o600
+                with image.tar.extractfile(member) as source:
+                    output.addfile(entry, source)

@@ -109,9 +109,11 @@ def cleanup_cache(cache, snapshot, active):
             continue
         directory = cache/ident/'complete'
         require(directory.resolve().is_relative_to(cache.resolve()) and not directory.is_symlink(), 'Unsafe cache path')
-        require({p.name for p in directory.iterdir()} == {'release.json', 'header.json', 'images.oci.tar'}, 'Unknown cache files; retaining archive')
+        members = {p.name for p in directory.iterdir()}
+        require(members in ({'release.json', 'header.json', 'images.oci.tar'},
+                            {'release.json', 'header.json', 'images.oci.tar', 'production.oci.tar'}), 'Unknown cache files; retaining archive')
         require(all(p.is_file() and not p.is_symlink() for p in directory.iterdir()), 'Unsafe cache member')
-        for name in ('images.oci.tar', 'header.json', 'release.json'):
+        for name in sorted(members):
             (directory/name).unlink()
         directory.rmdir()
         print(json.dumps({'stage': 'cache-retired', 'release_id': ident}), flush=True)
@@ -172,7 +174,8 @@ def main():
     if probe.returncode:
         command([docker,'buildx','create','--name',builder,'--driver','docker-container'], repository, logs, 'create-builder')
     command([docker,'buildx','inspect',builder,'--bootstrap'], repository, logs, 'start-builder',120)
-    paths = {'backend': repository/'yudao电商管理平台前后端/yudao-cloud', 'admin': repository/'yudao电商管理平台前后端/yudao-ui-admin-vue3'}
+    paths = {'backend': repository/'yudao电商管理平台前后端/yudao-cloud', 'admin': repository/'yudao电商管理平台前后端/yudao-ui-admin-vue3',
+             'admin-production': repository/'yudao电商管理平台前后端/yudao-ui-admin-vue3'}
     api = 'http://' + PROFILE['host']
     for kind, context in paths.items():
         output = release_root/(kind+'.oci.tar')
@@ -181,18 +184,23 @@ def main():
             '--provenance=false','--sbom=false','--label','org.opencontainers.image.revision='+args.commit,
             '--label','org.opencontainers.image.source=https://github.com/cqz-cio/furniture',
             '--output','type=oci,dest='+str(output),'-f',str(context/('yudao-server/Dockerfile' if kind=='backend' else 'Dockerfile'))]
-        if kind == 'admin':
-            for key,value in {'ERP_RELEASE_ID':ident,'ERP_DEPLOY_ENVIRONMENT':'test','VITE_BASE_URL':api,
-                'VITE_API_URL':'/admin-api','VITE_BASE_PATH':'/admin/','VITE_FURNITURE_WEB_URL':api,'VITE_MALL_H5_DOMAIN':api}.items():
+        if kind != 'backend':
+            production = kind == 'admin-production'
+            build_api = 'https://api.vanzhome.com' if production else api
+            storefront = 'https://www.vanzhome.com' if production else api
+            for key,value in {'ERP_RELEASE_ID':ident,'ERP_DEPLOY_ENVIRONMENT':'production' if production else 'test','VITE_BASE_URL':build_api,
+                'VITE_API_URL':'/admin-api','VITE_BASE_PATH':'/admin/','VITE_FURNITURE_WEB_URL':storefront,'VITE_MALL_H5_DOMAIN':storefront}.items():
                 build += ['--build-arg',key+'='+value]
         command([*build,str(context)], repository, logs, 'build-'+kind,1800)
     print(json.dumps({'stage':'verify-and-assemble-local-images'}), flush=True)
     temporary = release_root/'assembling'
-    release = assemble(release_root/'backend.oci.tar', release_root/'admin.oci.tar', temporary, repository, identity, api)
+    release = assemble(release_root/'backend.oci.tar', release_root/'admin.oci.tar', temporary, repository, identity, api, release_root/'admin-production.oci.tar')
     temporary.rename(release_root/'complete')
     for kind in paths:
         (release_root/(kind+'.oci.tar')).unlink()
-    summary = {'release_id': ident, 'commit': args.commit, 'ci': ci, 'status': 'images-verified', 'archive': str(release_root/'complete/images.oci.tar')}
+    summary = {'release_id': ident, 'commit': args.commit, 'ci': ci, 'status': 'images-verified',
+               'archive': str(release_root/'complete/images.oci.tar'),
+               'production_archive': str(release_root/'complete/production.oci.tar')}
     write_json(cache/'latest-result.json', summary)
     print(json.dumps(summary), flush=True)
     try:
@@ -204,7 +212,9 @@ def main():
     if os.environ.get('GITHUB_STEP_SUMMARY'):
         with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as output:
             output.write(f'### Local image build complete\n\nRelease: `{ident}`\n\nNo deployment performed. '
-                         'Run **ERP CD - test** manually and enter this release ID.\n')
+                         'Backend, test admin and production admin were built together. '
+                         'Run **ERP CD - test** manually and enter this release ID. '
+                         'After test succeeds, select the same ID in **ERP CD - production**.\n')
 
 
 if __name__ == '__main__':
