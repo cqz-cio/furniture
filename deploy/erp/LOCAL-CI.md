@@ -12,6 +12,7 @@ CD 流程：用户手动运行 `ERP CD - test`，填写 CI 输出的 release-id 
 - Python `C:\Python314\python.exe`、Git `D:\Git\cmd`、Windows OpenSSH 可用。
 - GitHub 官方 Windows x64 Runner 安装在 `D:\furniture web2b\work\erp-actions-runner`，注册到 `cqz-cio/furniture`，自定义标签 `erp-test-local`。使用交互账户运行，不安装为 SYSTEM 服务。
 - 现有 SSH 私钥 `~/.ssh/tripeer_github_actions` 和 `known_hosts` 沿用；目标固定为测试服务器 `ubuntu@124.220.2.69:22`。
+- 测试机镜像导入和日常部署统一通过 `sudo -n` 执行。首次接入创建的 `/opt/oakved-deploy` 为 root 私有目录；不需要放宽目录、配置文件或业务密钥权限。免交互 sudo 不可用时任务直接失败。
 - 测试服务器已完成首次 Docker 接入；此流程使用日常 `deploy`。新增数据库版本仍需原有兼容性审核及恢复演练记录。
 - 工作流文件需进入远端默认分支才能触发。注册本机 Runner 和推送工作流是启用动作，不会因本地文件已修改而自动完成。
 
