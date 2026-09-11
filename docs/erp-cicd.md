@@ -8,6 +8,8 @@
 
 测试、生产现在有两个独立入口，共用 `deploy/erp` 中的部署、版本记录、回滚和清理代码：
 
+美国正式服务器的直拉、预检、首次接入边界和操作顺序见 [生产 CD 说明](erp-production-cd.md)。生产工作流默认 `preflight`，需要明确选择 `deploy` 才会切换服务。
+
 | GitHub Actions 入口 | 仓库入口脚本 | 固定环境 |
 | --- | --- | --- |
 | ERP CD - test | `deploy/erp/deploy-test.sh` | `test` |

@@ -8,11 +8,11 @@ on:
         required: true
         type: string
       operation:
-        description: Deploy or roll back the production environment
+        description: Preflight warms image cache without switching services; deploy or rollback changes production
         required: true
-        default: deploy
+        default: preflight
         type: choice
-        options: [deploy, rollback]
+        options: [preflight, deploy, rollback]
 
 permissions:
   contents: read
@@ -37,6 +37,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ERP_CD_ENABLED: ${{ vars.ERP_CD_ENABLED }}
+          ERP_IMAGE_TRANSPORT: ghcr
           ERP_SSH_HOST: ${{ vars.ERP_SSH_HOST }}
           ERP_SSH_USER: ${{ vars.ERP_SSH_USER }}
           ERP_SSH_PORT: ${{ vars.ERP_SSH_PORT }}

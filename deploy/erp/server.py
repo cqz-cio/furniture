@@ -348,14 +348,34 @@ class Server:
                     last_log = time.monotonic()
                 time.sleep(3)
 
-    def deploy(self, release, operation, compose_source):
+    def check_release(self, release, operation):
         self.ensure_no_lease()
         require(not self.state.get("in_progress"), "Previous operation is unfinished; inspect state before retrying")
         release = validate_release(release)
+        if self.environment == "production":
+            require(self.state.get("current"), "Production requires a verified, registered current release from first cutover")
         previous = self.state.get("current")
         if operation == "rollback":
             require(release["id"] in self.state["history"] and release["id"] in self.state["history"][:2] + self.state.get("pins", []),
                     "Rollback target is not a protected previously successful deployment")
+        return release, previous
+
+    def release_preflight(self, release):
+        require(self.environment == "production", "Release preflight is a production-only operation")
+        release, previous = self.check_release(release, "deploy")
+        schema, _ = self.preflight(release, "deploy")
+        self.healthy(self.manifest(previous))
+        # Network/auth/platform validation on the actual server; only image cache
+        # and diagnostic logs change. No staging, DB writes or deployment record.
+        self.pull_images(release)
+        self.healthy(self.manifest(previous))
+        return {"status": "preflight-passed", "environment": self.environment,
+            "release_id": release["id"], "current": previous, "schema_version": schema,
+            "target_schema_version": release["database_version"], "transport": "ghcr",
+            "release_hash": fingerprint(release), "checked_at": utcnow().isoformat()}
+
+    def deploy(self, release, operation, compose_source):
+        release, previous = self.check_release(release, operation)
         if previous == release["id"]:
             self.healthy(release)
             return {"status": "already-current", "release_id": previous}
@@ -445,7 +465,15 @@ class Server:
                     pass
 
 
+def interrupted(signum, frame):
+    # Bypass automatic rollback, preserve the journal, and unwind run()/pull
+    # cleanup before the outer timeout resorts to SIGKILL.
+    raise SystemExit(f"ERP CD interrupted by signal {signum}; inspect the server journal")
+
+
 def main(payload):
+    signal.signal(signal.SIGTERM, interrupted)
+    signal.signal(signal.SIGHUP, interrupted)
     os.umask(0o077)
     root = Path(payload["root"]).resolve()
     require(root.is_dir() and root.name == payload["environment"], "Invalid environment directory")
@@ -457,6 +485,8 @@ def main(payload):
             result = server.lease(action, payload["lease_id"])
         elif action == "snapshot":
             result = server.snapshot()
+        elif action == "preflight":
+            result = server.release_preflight(payload["release"])
         else:
             require(action in ("deploy", "rollback"), "Unknown server operation")
             result = server.deploy(payload["release"], action, payload["compose"])

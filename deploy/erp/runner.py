@@ -152,7 +152,9 @@ def ssh_request(environment, operation, release=None, lease_id=None, confirm_cut
     if lease_id:
         request["lease_id"] = lease_id
     names = ["common", "image_pull", "server"]
-    entry, remote_command = "server", "python3 -B -c "
+    entry, remote_command = "server", "timeout --signal=TERM --kill-after=15s 1400s python3 -B -c "
+    if operation in ("snapshot", "lease-start", "lease-check", "lease-end"):
+        remote_command = "timeout --signal=TERM --kill-after=5s 45s python3 -B -c "
     if operation in OPERATIONS:
         validate_target(environment, root, release, operation, confirm_cutover)
         require((host, user, port) == (PROFILE["host"], PROFILE["user"], 22), "Bootstrap SSH target differs from the verified test host")
@@ -188,13 +190,13 @@ def ssh_request(environment, operation, release=None, lease_id=None, confirm_cut
             connection.preload(command, release, directory)
             request["images_preloaded"] = True
         # The remote journal remains unfinished if SSH disconnects, so a retry cannot blindly deploy twice.
-        return transport(command, bundle, directory, 1700 if operation in OPERATIONS else (1500 if operation in ("deploy", "rollback") else 60))
+        return transport(command, bundle, directory, 1700 if operation in OPERATIONS else (1500 if operation in ("preflight", "deploy", "rollback") else 60))
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--environment", choices=("test", "production"), required=True)
-    parser.add_argument("--operation", choices=(*OPERATIONS, "deploy", "rollback", "snapshot", "lease-start", "lease-check", "lease-end"), default="deploy")
+    parser.add_argument("--operation", choices=(*OPERATIONS, "preflight", "deploy", "rollback", "snapshot", "lease-start", "lease-check", "lease-end"), default="deploy")
     parser.add_argument("--confirm-cutover", choices=("true", "false"), default="false")
     parser.add_argument("--release")
     parser.add_argument("--lease-id")
@@ -205,8 +207,18 @@ def main():
 
 
 def execute(args, connection=None):
+    try:
+        return execute_operation(args, connection)
+    except Exception as error:
+        # Include failures before SSH (disabled CD, missing release, CI/test gate).
+        write_json(args.output, {"status": "failed", "environment": args.environment,
+            "operation": args.operation, "release_id": args.release, "error": str(error)})
+        raise
+
+
+def execute_operation(args, connection=None):
     options = {"connection": connection} if connection else {}
-    if args.operation not in (*OPERATIONS, "deploy", "rollback"):
+    if args.operation not in (*OPERATIONS, "preflight", "deploy", "rollback"):
         result = ssh_request(args.environment, args.operation, lease_id=args.lease_id, **options)
     else:
         if args.operation in ("deploy", "rollback"):
@@ -214,16 +226,18 @@ def execute(args, connection=None):
         github = GitHub()
         _, release = github.release(args.release or "")
         github.verify_ci(release)
-        if args.environment == "production" and args.operation == "deploy":
+        if args.operation == "preflight":
+            require(args.environment == "production", "Release preflight is a production-only operation")
+        if args.environment == "production" and args.operation in ("preflight", "deploy"):
             require(github.test_passed(release), "This exact release manifest has not passed the test CD")
         if args.operation in OPERATIONS:
             validate_target(args.environment, os.environ.get("ERP_DEPLOY_ROOT") or PROFILE["root"], release, args.operation, args.confirm_cutover == "true")
-        deployment = None if args.operation in ("prepare", "recover") else github.deployment(release, args.environment)
+        deployment = None if args.operation in ("preflight", "prepare", "recover") else github.deployment(release, args.environment)
         if deployment:
             github.deployment_status(deployment, "in_progress")
         try:
             result = ssh_request(args.environment, args.operation, release=release, confirm_cutover=args.confirm_cutover == "true", **options)
-            accepted = ("prepared",) if args.operation == "prepare" else ("success", "already-current", "restored-legacy", "prepare-failed") if args.operation == "recover" else ("success", "already-current")
+            accepted = ("preflight-passed",) if args.operation == "preflight" else ("prepared",) if args.operation == "prepare" else ("success", "already-current", "restored-legacy", "prepare-failed") if args.operation == "recover" else ("success", "already-current")
             require(result["status"] in accepted, "Remote operation did not complete")
         except Exception as error:
             write_json(args.output, {"status": "failed", "environment": args.environment, "operation": args.operation, "release_id": release["id"], "error": str(error)})
