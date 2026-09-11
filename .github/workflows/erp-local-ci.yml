@@ -28,6 +28,10 @@ jobs:
       run:
         shell: powershell
     env:
+      # Apply before actions/checkout, scoped to this job (no global Git changes).
+      GIT_CONFIG_COUNT: '1'
+      GIT_CONFIG_KEY_0: core.longpaths
+      GIT_CONFIG_VALUE_0: 'true'
       PYTHONUTF8: '1'
       GH_TOKEN: ${{ github.token }}
       ERP_CI_RUN: ${{ github.event.workflow_run.id }}
