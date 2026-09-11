@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "modules": {
+    "hero": {
+      "title": "连接可靠供应，\n让每一批订单清晰交付",
+      "subtitle": "Connecting Reliable Supply\nwith Overseas Markets",
+      "body": "宁波全品轩国际贸易有限公司成立于2016年，立足宁波，围绕日用消费品、纸制与一次性用品开展国际贸易服务，将客户需求、产品与包装、质量检查和出口交付连接成清晰的订单流程。",
+      "image": {
+        "url": "/assets/trade-2026/home-hero-port.jpg",
+        "alt": "宁波港口的集装箱货轮与作业场景"
+      }
+    }
+  }
+}

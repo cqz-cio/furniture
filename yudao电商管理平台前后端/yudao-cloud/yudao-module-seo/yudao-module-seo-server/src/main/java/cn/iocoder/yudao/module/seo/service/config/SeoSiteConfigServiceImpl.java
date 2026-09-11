@@ -39,6 +39,7 @@ public class SeoSiteConfigServiceImpl implements SeoSiteConfigService {
     public void saveSiteConfig(SeoSiteConfigSaveReqVO reqVO) {
         SeoSiteConfigDO config = BeanUtils.toBean(reqVO, SeoSiteConfigDO.class)
                 .setSiteUrl(normalizeSiteUrl(reqVO.getSiteUrl()))
+                .setPreviewBaseUrl(StrUtil.isBlank(reqVO.getPreviewBaseUrl()) ? null : normalizeSiteUrl(reqVO.getPreviewBaseUrl()))
                 .setDefaultTitleSuffix(defaultIfBlank(reqVO.getDefaultTitleSuffix(), ""))
                 .setDefaultDescription(defaultIfBlank(reqVO.getDefaultDescription(), ""))
                 .setDefaultRobots(defaultIfBlank(reqVO.getDefaultRobots(), DEFAULT_ROBOTS))

@@ -68,6 +68,7 @@
                 >
                   <el-option label="VANZ · 2B 官网导航" value="VANZ_B2B" />
                   <el-option label="Oakved · 2C 家具导航" value="OAKVED_B2C" />
+                  <el-option label="TRIPEER · 企业官网" value="TRIPEER_CORPORATE" />
                 </el-select>
               </el-form-item>
               <el-form-item label="站点名称" prop="siteName" class="seo-config-grid__wide">
@@ -83,6 +84,10 @@
                   :disabled="editorDisabled"
                   placeholder="https://www.example.com"
                 />
+              </el-form-item>
+              <el-form-item label="官网草稿预览地址" prop="previewBaseUrl" class="seo-config-grid__wide">
+                <el-input v-model="formData.previewBaseUrl" :disabled="editorDisabled"
+                  placeholder="例如：http://localhost:5173（本机预览）；不填写页面路径" />
               </el-form-item>
             </div>
           </section>

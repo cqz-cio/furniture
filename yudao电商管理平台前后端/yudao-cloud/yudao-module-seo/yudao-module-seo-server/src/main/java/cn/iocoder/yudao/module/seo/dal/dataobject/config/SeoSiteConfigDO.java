@@ -20,6 +20,7 @@ public class SeoSiteConfigDO extends TenantBaseDO {
     private Long siteId;
     private String siteName;
     private String siteUrl;
+    private String previewBaseUrl;
     private String defaultTitleSuffix;
     private String defaultDescription;
     private String defaultRobots;

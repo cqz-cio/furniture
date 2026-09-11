@@ -17,6 +17,7 @@ public class SeoSiteConfigRespVO {
     private String siteName;
     @Schema(description = "站点地址", requiredMode = Schema.RequiredMode.REQUIRED)
     private String siteUrl;
+    private String previewBaseUrl;
     @Schema(description = "默认标题后缀", requiredMode = Schema.RequiredMode.REQUIRED)
     private String defaultTitleSuffix;
     @Schema(description = "默认描述", requiredMode = Schema.RequiredMode.REQUIRED)

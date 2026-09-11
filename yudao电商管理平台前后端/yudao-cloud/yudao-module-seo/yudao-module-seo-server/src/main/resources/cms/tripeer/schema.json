@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "template": "TRIPEER_CORPORATE",
+  "pageKey": "home",
+  "name": "首页首屏",
+  "fields": [
+    {
+      "path": "title",
+      "label": "主标题",
+      "type": "textarea",
+      "maxLength": 160,
+      "required": true
+    },
+    {
+      "path": "subtitle",
+      "label": "副标题",
+      "type": "textarea",
+      "maxLength": 240
+    },
+    {
+      "path": "body",
+      "label": "介绍正文",
+      "type": "textarea",
+      "maxLength": 2000
+    },
+    {
+      "path": "image.url",
+      "label": "背景图片地址",
+      "type": "text",
+      "maxLength": 1024,
+      "required": true
+    },
+    {
+      "path": "image.alt",
+      "label": "图片说明",
+      "type": "text",
+      "maxLength": 240,
+      "required": true
+    }
+  ]
+}

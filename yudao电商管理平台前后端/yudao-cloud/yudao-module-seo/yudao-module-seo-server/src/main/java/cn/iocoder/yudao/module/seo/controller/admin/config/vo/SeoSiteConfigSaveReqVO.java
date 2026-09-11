@@ -24,6 +24,10 @@ public class SeoSiteConfigSaveReqVO {
     @Size(max = 512)
     private String siteUrl;
 
+    @Schema(description = "官网草稿预览地址；与正式站点地址分开配置")
+    @Size(max = 512)
+    private String previewBaseUrl;
+
     @Schema(description = "默认标题后缀")
     @Size(max = 128)
     private String defaultTitleSuffix;

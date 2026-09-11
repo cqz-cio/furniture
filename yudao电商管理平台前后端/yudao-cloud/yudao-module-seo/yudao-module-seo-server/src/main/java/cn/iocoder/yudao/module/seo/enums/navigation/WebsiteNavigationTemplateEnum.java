@@ -10,7 +10,8 @@ import java.util.Arrays;
 public enum WebsiteNavigationTemplateEnum {
 
     VANZ_B2B("VANZ_B2B"),
-    OAKVED_B2C("OAKVED_B2C");
+    OAKVED_B2C("OAKVED_B2C"),
+    TRIPEER_CORPORATE("TRIPEER_CORPORATE");
 
     private final String code;
 

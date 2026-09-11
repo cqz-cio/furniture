@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "modules": {
+    "hero": {
+      "title": "Reliable Supply.\nClearer Delivery.",
+      "subtitle": "Connecting Reliable Supply\nwith Overseas Markets",
+      "body": "Founded in Ningbo in 2016, TRIPEER supports international trade in daily-use consumer goods, paper-based and disposable products, connecting customer requirements, product and packaging details, quality checks and export delivery.",
+      "image": {
+        "url": "/assets/trade-2026/home-hero-port.jpg",
+        "alt": "Container vessel and port operations in Ningbo"
+      }
+    }
+  }
+}

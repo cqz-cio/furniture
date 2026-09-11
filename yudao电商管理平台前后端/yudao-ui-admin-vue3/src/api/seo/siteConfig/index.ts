@@ -4,12 +4,13 @@ export interface SeoSiteConfigSaveReqVO {
   siteId: number
   siteName: string
   siteUrl: string
+  previewBaseUrl?: string
   defaultTitleSuffix: string
   defaultDescription: string
   defaultRobots: string
   defaultOgImage: string
   defaultLocale: string
-  navigationTemplate: 'VANZ_B2B' | 'OAKVED_B2C'
+  navigationTemplate: 'VANZ_B2B' | 'OAKVED_B2C' | 'TRIPEER_CORPORATE'
 }
 
 export interface SeoSiteConfigRespVO extends SeoSiteConfigSaveReqVO {

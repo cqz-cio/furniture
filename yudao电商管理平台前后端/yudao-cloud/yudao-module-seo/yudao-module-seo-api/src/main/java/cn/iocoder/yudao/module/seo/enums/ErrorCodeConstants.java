@@ -7,6 +7,14 @@ import cn.iocoder.yudao.framework.common.exception.ErrorCode;
  */
 public interface ErrorCodeConstants {
 
+    ErrorCode PAGE_SITE_UNAVAILABLE = new ErrorCode(1_070_008_000, "当前租户未配置 TRIPEER 官网");
+    ErrorCode PAGE_NOT_INITIALIZED = new ErrorCode(1_070_008_001, "页面尚未初始化，请先导入官网初始内容");
+    ErrorCode PAGE_VERSION_CONFLICT = new ErrorCode(1_070_008_002, "页面已被修改，请重新加载后再保存或发布");
+    ErrorCode PAGE_CONTENT_INVALID = new ErrorCode(1_070_008_003, "页面字段、图片地址或内容格式不正确");
+    ErrorCode PAGE_NOT_PUBLISHED = new ErrorCode(1_070_008_004, "页面尚未发布");
+    ErrorCode PAGE_PREVIEW_INVALID = new ErrorCode(1_070_008_005, "预览凭证无效、已使用、过期或不属于本站");
+    ErrorCode PAGE_PREVIEW_URL_REQUIRED = new ErrorCode(1_070_008_006, "请管理员先在站点设置配置预览地址");
+
     ErrorCode WEBSITE_CODE_VERSION_CONFLICT = new ErrorCode(1_070_007_000, "网站代码已被其他用户修改，请重新加载后再保存");
     ErrorCode WEBSITE_CODE_HISTORY_NOT_EXISTS = new ErrorCode(1_070_007_001, "本站的代码历史记录不存在");
     ErrorCode WEBSITE_CODE_DRAFT_REQUIRED = new ErrorCode(1_070_007_002, "请先保存代码草稿再发布");
@@ -16,7 +24,7 @@ public interface ErrorCodeConstants {
     ErrorCode SITE_CONFIG_NOT_EXISTS = new ErrorCode(1_070_001_000, "SEO 站点配置不存在");
     ErrorCode SITE_CONFIG_URL_INVALID = new ErrorCode(1_070_001_001, "SEO 站点地址必须是有效的 HTTP(S) 绝对地址");
     ErrorCode SITE_CONFIG_NAVIGATION_TEMPLATE_INVALID = new ErrorCode(1_070_001_002,
-            "SEO 站点导航模板仅支持 VANZ_B2B 或 OAKVED_B2C");
+            "SEO 站点导航模板仅支持 VANZ_B2B、OAKVED_B2C 或 TRIPEER_CORPORATE");
 
     ErrorCode METADATA_NOT_EXISTS = new ErrorCode(1_070_002_000, "SEO 元数据不存在");
     ErrorCode METADATA_DUPLICATE = new ErrorCode(1_070_002_001, "该实体和语言的 SEO 元数据已存在");
