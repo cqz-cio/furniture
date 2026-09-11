@@ -1,6 +1,8 @@
 # 测试 CD：首次接入与日常更新
 
-所有操作都从 GitHub Actions 的 **ERP CD - test** 进入。首次接入不再需要逐条运行本机的备份、恢复、迁移助手。
+日常测试更新的新入口为 [本地 CI 与 SCP 部署](../deploy/erp/LOCAL-CI.md)，不再下载 GitHub 镜像包。下面内容用于保留的旧 GHCR 清单与首次接入操作。
+
+旧清单操作从 GitHub Actions 的 **ERP CD - test** 进入。首次接入不再需要逐条运行本机的备份、恢复、迁移助手。
 
 测试工作流的 `prepare/deploy/rollback` 默认使用 `ERP_IMAGE_TRANSPORT=ssh`：Actions 按已通过 CI 的发布清单下载 GHCR 镜像，校验每个文件层的 SHA-256，打成保留原始根摘要的 OCI 包，通过现有 SSH 连接发送到测试服务器。服务器核对整个包、OCI 内容、镜像摘要、平台和提交标识，导入缓存后才进入原 CD。已有成功 `prepare` 的 `cutover/recover` 继续使用已验证的本机镜像和迁移文件。
 

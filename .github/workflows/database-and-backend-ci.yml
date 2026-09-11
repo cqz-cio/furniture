@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      publish_production:
+        description: 'Also build and publish the existing GHCR production release'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -192,6 +197,7 @@ jobs:
           grep -Rsl 'https://api.vanzhome.com' dist-prod/assets | grep -q .
 
   verify-docker-images:
+    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.publish_production)
     name: Build and publish ERP Docker images
     runs-on: ubuntu-latest
     timeout-minutes: 60

@@ -142,6 +142,8 @@ class Server:
         self.verify_containers(self.manifest(self.state["current"]))
 
     def pull_images(self, release):
+        require(release.get("schema") != 2 or (self.environment == "test" and getattr(self, "images_preloaded", False)),
+                "Local builds must be verified and imported before deployment")
         for name, reference in environment_images(release, self.environment).items():
             if not getattr(self, "images_preloaded", False):
                 pull_image(reference, "pull-" + name, self.root / "command-logs")

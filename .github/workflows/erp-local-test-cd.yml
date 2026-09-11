@@ -1,0 +1,50 @@
+name: ERP local build and test CD
+
+on:
+  workflow_run:
+    workflows: [ERP full-stack CI]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+  actions: read
+  deployments: write
+
+# Never interrupt an active upload or database/service switch.
+concurrency:
+  group: erp-test-local-build-deploy
+  cancel-in-progress: false
+
+jobs:
+  local-build-deploy:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_repository.full_name == github.repository &&
+      github.event.workflow_run.head_branch == 'main' &&
+      (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch')
+    runs-on: [self-hosted, Windows, X64, erp-test-local]
+    timeout-minutes: 100
+    defaults:
+      run:
+        shell: powershell
+    env:
+      PYTHONUTF8: '1'
+      GH_TOKEN: ${{ github.token }}
+      ERP_CI_RUN: ${{ github.event.workflow_run.id }}
+      ERP_CI_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+      ERP_SOURCE_SHA: ${{ github.event.workflow_run.head_sha }}
+      ERP_LOCAL_CACHE: D:\furniture web2b\work\erp-ci-cache
+    steps:
+      - name: Check out the exact commit that passed CI
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+          clean: true
+      - name: Build, verify and deploy the same local images
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $env:PATH = 'C:\Program Files\Docker\Docker\resources\bin;D:\Git\cmd;C:\Windows\System32\OpenSSH;' + $env:PATH
+          & 'C:\Python314\python.exe' -u -B deploy/erp/local_ci.py --ci-run $env:ERP_CI_RUN --ci-attempt $env:ERP_CI_ATTEMPT --commit $env:ERP_SOURCE_SHA --cache $env:ERP_LOCAL_CACHE
+          exit $LASTEXITCODE

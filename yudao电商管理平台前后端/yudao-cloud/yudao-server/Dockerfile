@@ -5,7 +5,7 @@ FROM maven:3.9-eclipse-temurin-17-alpine AS build
 WORKDIR /workspace
 COPY . .
 
-RUN mvn -B -ntp -pl yudao-server -am -DskipTests package \
+RUN --mount=type=cache,target=/root/.m2 mvn -B -ntp -pl yudao-server -am -DskipTests package \
     && test -s yudao-server/target/yudao-server.jar \
     && cp yudao-server/target/yudao-server.jar app.jar \
     && java -Djarmode=tools -jar app.jar extract --layers --destination extracted

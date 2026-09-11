@@ -50,7 +50,7 @@ def public_url(value):
 
 def validate_release(value):
     match = RELEASE.fullmatch(value.get("id", ""))
-    require(value.get("schema") == 1 and match, "Invalid release format")
+    require(value.get("schema") in (1, 2) and match, "Invalid release format")
     require(value.get("commit") == match[1] and str(value.get("run_id")) == match[2]
             and str(value.get("run_attempt")) == match[3], "Release identity mismatch")
     require(re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", value.get("repository", "")), "Invalid repository")
@@ -61,12 +61,18 @@ def validate_release(value):
     refs = image_refs(value)
     for package, digest in refs:
         require(package in PACKAGES.values() and DIGEST.fullmatch(digest), "Invalid image digest")
-    require(value["images"]["backend"].startswith("ghcr.io/" + PACKAGES["backend"] + "@"), "Wrong backend package")
-    for environment in ("test", "production"):
-        require(value["images"]["admin"][environment].startswith("ghcr.io/" + PACKAGES["admin"] + "@"), "Wrong admin package")
+    local = value["schema"] == 2
+    registry = "localhost/" if local else "ghcr.io/"
+    if local:
+        require(value.get("delivery") == "local-build-scp" and value.get("environment") == "test", "Local builds are test-only")
+        require(set(value["images"]["admin"]) == {"test"} and set(value["config"]) == {"test"}, "Local release must not contain production configuration")
+        require(all(type(value.get("ci", {}).get(k)) is int and value["ci"][k] > 0 for k in ("run_id", "run_attempt")), "Missing upstream CI provenance")
+    require(value["images"]["backend"].startswith(registry + PACKAGES["backend"] + "@"), "Wrong backend package")
+    for environment in (("test",) if local else ("test", "production")):
+        require(value["images"]["admin"][environment].startswith(registry + PACKAGES["admin"] + "@"), "Wrong admin package")
         public_url(value["config"][environment]["api_base_url"])
         public_url(value["config"][environment]["storefront_url"])
-    require(api_origin(value["config"]["test"]["api_base_url"]) != api_origin(value["config"]["production"]["api_base_url"]),
+    require(api_origin(value["config"]["test"]["api_base_url"]) != api_origin("https://api.vanzhome.com" if local else value["config"]["production"]["api_base_url"]),
             "Test API must not be the production API")
     return value
 
@@ -78,15 +84,17 @@ def api_origin(value):
 
 def image_refs(value):
     result = set()
+    prefix = "localhost/" if value.get("schema") == 2 else "ghcr.io/"
     for ref in [value["images"]["backend"], *value["images"]["admin"].values()]:
-        require(isinstance(ref, str) and ref.startswith("ghcr.io/") and ref.count("@") == 1, "Image must be pinned by digest")
-        package, digest = ref[len("ghcr.io/"):].split("@")
+        require(isinstance(ref, str) and ref.startswith(prefix) and ref.count("@") == 1, "Image must be pinned by digest")
+        package, digest = ref[len(prefix):].split("@")
         result.add((package, digest))
     return result
 
 
 def environment_images(value, environment):
     require(environment in ("test", "production"), "Invalid environment")
+    require(value.get("schema") != 2 or environment == "test", "Local images cannot deploy to production")
     return {"erp-backend": value["images"]["backend"], "erp-admin": value["images"]["admin"][environment]}
 
 
@@ -136,6 +144,7 @@ def deletion_plan(releases, retired_ids, versions, manifests, pending=()):
     allowed_tags = {p: {} for p in PACKAGES.values()}
     for release in releases:
         validate_release(release)
+        require(release["schema"] == 1, "Local releases cannot participate in GHCR deletion")
         for package, digest in image_refs(release):
             (roots if release["id"] in retired_ids else preserved)[package].add(digest)
             allowed_tags[package].setdefault(digest, set()).update({release["id"], release["id"] + "-test",

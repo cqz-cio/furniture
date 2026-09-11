@@ -14,7 +14,7 @@ import tempfile
 import time
 
 from bootstrap_policy import PROFILE
-from common import fingerprint, require, write_json
+from common import RELEASE, fingerprint, require, validate_release, write_json
 from github_release import GitHub
 from image_archive import build_archive
 from runner import BOOTSTRAP, HERE, execute, transport
@@ -154,6 +154,37 @@ def worker(args):
         os.environ["GH_TOKEN"] = token.stdout.strip()
     connection = LocalConnection(args.key, args.known_hosts, args.cache)
     tool("scp")
+    if args.local_built:
+        from local_ci import BuiltConnection, verify_upstream
+        require(args.operation in ('deploy', 'rollback'), 'Local build cache supports daily deploy or rollback')
+        require(RELEASE.fullmatch(args.release), 'Invalid cached release identity')
+        cached = Path(args.cache).resolve()/args.release/'complete/release.json'
+        require(cached.resolve().is_relative_to(Path(args.cache).resolve()), 'Cache path escapes its root')
+        release = validate_release(json.loads(cached.read_text(encoding='utf-8')))
+        require(release['schema'] == 2 and release['id'] == args.release and release['repository'] == 'cqz-cio/furniture',
+                'Expected a local test build manifest')
+        client = GitHub()
+        verify_upstream(client, release['ci']['run_id'], release['ci']['run_attempt'], release['commit'])
+        connection = BuiltConnection(args.key, args.known_hosts, args.cache)
+        connection.archive(release)
+        if args.check_only:
+            print(json.dumps({'status':'local-build-preflight-passed','release_id':release['id']}), flush=True)
+            return
+        from runner import ssh_request
+        deployment = client.deployment(release, 'test')
+        client.deployment_status(deployment, 'in_progress')
+        try:
+            result = ssh_request('test', args.operation, release=release, connection=connection)
+            require(result.get('status') in ('success','already-current'), 'Deployment did not complete')
+        except Exception:
+            try:
+                client.deployment_status(deployment, 'failure')
+            except Exception:
+                pass
+            raise
+        client.deployment_status(deployment, 'success')
+        print(json.dumps(result), flush=True)
+        return
     # Fail before uploading if migration-audit tools are missing.
     if args.operation in ("prepare", "cutover", "recover"):
         require(shutil.which("node"), "Node.js is required for the test database audit")
@@ -173,6 +204,8 @@ def worker(args):
 
 
 def main():
+    if hasattr(sys.stdout, 'reconfigure'):
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--release", required=True)
     parser.add_argument("--operation", choices=("prepare", "cutover", "recover", "deploy", "rollback"), default="prepare")
@@ -181,6 +214,7 @@ def main():
     parser.add_argument("--known-hosts", default=str(Path.home() / ".ssh/known_hosts"))
     parser.add_argument("--cache", default=str(HERE.parents[1] / "work/local-test-images"))
     parser.add_argument("--check-only", action="store_true")
+    parser.add_argument("--local-built", action="store_true", help="Use verified local CI cache, with no registry download")
     parser.add_argument("--worker", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--output", default="")
     args = parser.parse_args()

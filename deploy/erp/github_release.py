@@ -72,7 +72,8 @@ class GitHub:
         return record, manifest
 
     def verify_ci(self, manifest):
-        run = self.request(self.repo(f"/actions/runs/{manifest['run_id']}/attempts/{manifest['run_attempt']}"))
+        provenance = manifest["ci"] if manifest.get("schema") == 2 else manifest
+        run = self.request(self.repo(f"/actions/runs/{provenance['run_id']}/attempts/{provenance['run_attempt']}"))
         require(run["head_sha"] == manifest["commit"] and run["head_branch"] == "main"
             and run["head_repository"]["full_name"] == self.repository and run["conclusion"] == "success"
             and run["event"] in ("push", "workflow_dispatch")
@@ -85,6 +86,7 @@ class GitHub:
 
     def publish(self, manifest):
         validate_release(manifest)
+        require(manifest["schema"] == 1, "Local build manifests remain in the local release cache")
         record = self.request(self.repo("/releases"), "POST", {"tag_name": manifest["id"], "target_commitish": manifest["commit"],
             "name": manifest["id"], "draft": True, "prerelease": True, "make_latest": "false",
             "body": "ERP build manifest. Deployment requires successful CI and environment checks. Images may later be retired by policy."})

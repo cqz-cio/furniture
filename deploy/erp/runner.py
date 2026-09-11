@@ -141,7 +141,9 @@ def ssh_request(environment, operation, release=None, lease_id=None, confirm_cut
     require(1 <= port <= 65535, "Invalid SSH port")
     if connection:
         require(environment == "test" and (host, user, port) == (PROFILE["host"], PROFILE["user"], 22)
-                and not os.environ.get("GITHUB_ACTIONS"), "Local SCP is only available on the local test deploy entry point")
+                and (not os.environ.get("GITHUB_ACTIONS") or (getattr(connection, "ci_verified", False)
+                     and os.environ.get("RUNNER_ENVIRONMENT") == "self-hosted")),
+                "Local SCP requires the local entry point or verified self-hosted CI")
     root = os.environ.get("ERP_DEPLOY_ROOT") or "/opt/oakved-deploy/" + environment
     require(re.fullmatch(r"/[A-Za-z0-9_/-]+", root) and ".." not in root and root.endswith("/" + environment), "Invalid deployment root")
     request = {"root": root, "environment": environment, "operation": operation}
