@@ -16,6 +16,12 @@ grants include `seo:page:query`. Deploy the current backend as well as the migra
 an older backend can hide that page even when its database grant exists. Re-login after
 deployment to refresh the user's cached permission response and routes.
 
+The previous AuthController read the page-query grant from `menuList` after
+`AuthConvert.buildMenuTree` had removed button entries from that same list. It therefore
+hid page content for ordinary operators even with a valid grant. Navigation now uses the
+permission set already captured in the response. `AuthCmsPermissionInfoTest` exercises the
+actual controller and converter, both with and without the query grant.
+
 Validation covers all seven navigation paths, package membership of role grants, no
 account seeding, and no non-CMS grants. Before test CD, exercise the migration on a
 restricted database clone, compare unrelated tenants/accounts/content, restore the

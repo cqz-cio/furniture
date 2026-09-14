@@ -126,8 +126,9 @@ public class AuthController {
 
         // 2. 拼接结果返回
         AuthPermissionInfoRespVO permissionInfo = AuthConvert.INSTANCE.convert(user, roles, menuList);
+        // buildMenuTree removes button entries from menuList; use the captured permission set.
         permissionInfo.setFurnitureNavigationMenuPaths(getCurrentFurnitureNavigationMenuPaths(
-                menuList.stream().anyMatch(menu -> "seo:page:query".equals(menu.getPermission()))));
+                permissionInfo.getPermissions().contains("seo:page:query")));
         return success(permissionInfo);
     }
 
