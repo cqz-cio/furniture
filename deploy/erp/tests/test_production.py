@@ -9,7 +9,7 @@ from unittest.mock import Mock, patch
 
 from fixtures import release
 from runner import execute, ssh_request
-from server import interrupted
+from server import Server, interrupted
 from test_server import FakeServer
 
 
@@ -19,6 +19,31 @@ class ProductionPreflight(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
         self.server = FakeServer(self.tmp.name)
         self.server.environment = self.server.state['environment'] = 'production'
+
+    def test_real_preflight_supports_production_python_310(self):
+        value = release(1)
+        self.server.config = dict(value['config']['production'], backend_port=48082,
+            admin_port=18081, uploads_path=self.tmp.name, logs_path=self.tmp.name,
+            smoke_checks=[{'tenant_id': 121}, {'tenant_id': 162}], image_peak_bytes=1024)
+        config = self.server.root / 'config'
+        config.mkdir()
+        (config / 'backend.env').touch()
+        with patch('server.sys.version_info', (3, 10, 12)), \
+                patch('server.platform.system', return_value='Linux'), \
+                patch('server.platform.machine', return_value='x86_64'), \
+                patch('server.subprocess.run', return_value=SimpleNamespace(returncode=3)), \
+                patch('server.run', side_effect=['5.5.0', self.tmp.name]), \
+                patch('server.shutil.disk_usage', return_value=SimpleNamespace(
+                    free=80 * 1024**3, used=20 * 1024**3, total=100 * 1024**3)), \
+                patch.object(self.server, 'current_verified') as current:
+            self.assertEqual(Server.preflight(self.server, value, 'deploy'), (49, {}))
+            current.assert_called_once_with()
+
+    def test_real_preflight_rejects_unsupported_python_before_host_commands(self):
+        with patch('server.sys.version_info', (3, 9, 0)), patch('server.run') as command:
+            with self.assertRaisesRegex(ValueError, 'Python 3.10'):
+                Server.preflight(self.server, release(1), 'deploy')
+            command.assert_not_called()
 
     def test_preflight_only_pulls_images_and_checks_existing_service(self):
         before = copy.deepcopy(self.server.state)

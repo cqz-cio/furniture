@@ -238,7 +238,7 @@ class Server:
         return str(path)
 
     def preflight(self, release, operation):
-        require(sys.version_info >= (3, 11), "Python 3.11+ is required on the deployment server")
+        require(sys.version_info >= (3, 10), "Python 3.10+ is required on the deployment server")
         require(platform.system() == "Linux" and platform.machine() in ("x86_64", "amd64"), "linux/amd64 server required")
         require(self.config["api_base_url"] == release["config"][self.environment]["api_base_url"]
             and self.config["storefront_url"] == release["config"][self.environment]["storefront_url"], "Image/environment URL mismatch")
