@@ -113,7 +113,7 @@ public class AuthController {
         if (CollUtil.isEmpty(roleIds)) {
             AuthPermissionInfoRespVO permissionInfo = AuthConvert.INSTANCE.convert(
                     user, Collections.emptyList(), Collections.emptyList());
-            permissionInfo.setFurnitureNavigationMenuPaths(getCurrentFurnitureNavigationMenuPaths());
+            permissionInfo.setFurnitureNavigationMenuPaths(getCurrentFurnitureNavigationMenuPaths(false));
             return success(permissionInfo);
         }
         List<RoleDO> roles = roleService.getRoleList(roleIds);
@@ -126,11 +126,12 @@ public class AuthController {
 
         // 2. 拼接结果返回
         AuthPermissionInfoRespVO permissionInfo = AuthConvert.INSTANCE.convert(user, roles, menuList);
-        permissionInfo.setFurnitureNavigationMenuPaths(getCurrentFurnitureNavigationMenuPaths());
+        permissionInfo.setFurnitureNavigationMenuPaths(getCurrentFurnitureNavigationMenuPaths(
+                menuList.stream().anyMatch(menu -> "seo:page:query".equals(menu.getPermission()))));
         return success(permissionInfo);
     }
 
-    private Set<String> getCurrentFurnitureNavigationMenuPaths() {
+    private Set<String> getCurrentFurnitureNavigationMenuPaths(boolean canQueryWebsitePages) {
         Long tenantId = TenantContextHolder.getTenantId();
         if (tenantId == null) {
             return furnitureNavigationCatalog.getMenuPaths();
@@ -139,7 +140,7 @@ public class AuthController {
         if (tenant == null || TenantDO.PACKAGE_ID_SYSTEM.equals(tenant.getPackageId())) {
             return furnitureNavigationCatalog.getMenuPaths();
         }
-        return furnitureNavigationCatalog.getMenuPaths(tenant.getBusinessMode());
+        return furnitureNavigationCatalog.getMenuPaths(tenant.getBusinessMode(), canQueryWebsitePages);
     }
 
     @PostMapping("/register")
