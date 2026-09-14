@@ -8,6 +8,20 @@ import static org.junit.jupiter.api.Assertions.*;
 class FurnitureCmsNavigationTest {
 
     @Test
+    void tripeerBrandOperatorCanNavigateEveryGrantedCmsModule() throws Exception {
+        FurnitureNavigationCatalog catalog = new FurnitureNavigationConfiguration()
+                .furnitureNavigationCatalog(new ObjectMapper());
+        for (String page : new String[]{"page-content", "site-config", "navigation", "blog",
+                "metadata", "analysis", "website-code"}) {
+            assertTrue(catalog.getMenuPaths("B2B", true).contains("/seo/" + page),
+                    "TRIPEER CMS menu must survive the business-mode navigation filter: " + page);
+        }
+        assertFalse(catalog.getMenuPaths("B2B", false).contains("/seo/page-content"));
+        assertFalse(catalog.getMenuPaths("B2B").contains("/seo/page-content"),
+                "Do not grant TRIPEER page access through furniture package synchronization");
+    }
+
+    @Test
     void cmsEntryRequiresExistingRoleGrantAndDoesNotExpandFurniturePackages() throws Exception {
         FurnitureNavigationCatalog catalog = new FurnitureNavigationConfiguration()
                 .furnitureNavigationCatalog(new ObjectMapper());

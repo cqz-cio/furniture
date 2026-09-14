@@ -57,6 +57,7 @@ class OakvedFlywayIntegrationTest {
             assertEquals(Integer.parseInt(baselineVersion), scalar(dataSource, "SELECT COUNT(*) FROM schema_migrations"));
             assertTrue(scalar(dataSource, "SELECT COUNT(*) FROM system_users") > 0);
             assertTrue(freshFlyway.validateWithResult().validationSuccessful);
+            assertTripeerCmsGrants(dataSource);
 
             int usersBeforeAdoption = scalar(dataSource, "SELECT COUNT(*) FROM system_users");
             List<OakvedLegacyMigrationAdoptionPlan.MigrationDescriptor> baselineLedger;
@@ -98,6 +99,25 @@ class OakvedFlywayIntegrationTest {
                 .validateMigrationNaming(true)
                 .outOfOrder(false)
                 .cleanDisabled(true);
+    }
+
+    private static void assertTripeerCmsGrants(DataSource dataSource) throws Exception {
+        String scope = " FROM system_role_menu rm JOIN system_role r ON r.id=rm.role_id AND r.tenant_id=rm.tenant_id"
+                + " JOIN system_tenant t ON t.id=r.tenant_id JOIN system_menu m ON m.id=rm.menu_id"
+                + " WHERE t.code='TRIPEER' AND r.code='brand_operator' AND rm.deleted=0 AND r.deleted=0"
+                + " AND t.deleted=0 AND m.deleted=0";
+        assertEquals(7, scalar(dataSource, "SELECT COUNT(DISTINCT m.path)" + scope
+                + " AND m.type=2 AND m.path IN ('page-content','site-config','navigation','blog',"
+                + "'metadata','analysis','website-code')"));
+        assertEquals(0, scalar(dataSource, "SELECT COUNT(*)" + scope
+                + " AND m.permission<>'' AND m.permission NOT LIKE 'seo:%'"));
+        assertEquals(0, scalar(dataSource, "SELECT COUNT(*) FROM system_users u JOIN system_tenant t"
+                + " ON t.id=u.tenant_id WHERE t.code='TRIPEER' AND u.deleted=0"),
+                "CMS migrations must not seed login accounts or passwords");
+        assertEquals(0, scalar(dataSource, "SELECT COUNT(*)" + scope
+                + " AND NOT EXISTS (SELECT 1 FROM system_tenant_package p WHERE p.id=t.package_id"
+                + " AND JSON_CONTAINS(p.menu_ids,CAST(m.id AS JSON),'$')=1)"),
+                "Every role grant must be included in the tenant package");
     }
 
     private static int scalar(DataSource dataSource, String sql) throws Exception {
