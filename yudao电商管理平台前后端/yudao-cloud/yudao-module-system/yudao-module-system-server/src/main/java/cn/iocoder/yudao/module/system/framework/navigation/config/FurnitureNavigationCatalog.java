@@ -41,6 +41,15 @@ public class FurnitureNavigationCatalog {
         return TenantBusinessModeEnum.B2B.getCode().equals(businessMode) ? b2bMenuPaths : b2cMenuPaths;
     }
 
+    /** CMS navigation follows existing role grants, without changing furniture package sync. */
+    public Set<String> getMenuPaths(String businessMode, boolean canQueryWebsitePages) {
+        Set<String> paths = new LinkedHashSet<>(getMenuPaths(businessMode));
+        if (canQueryWebsitePages && menuPaths.contains("/seo/page-content")) {
+            paths.add("/seo/page-content");
+        }
+        return Collections.unmodifiableSet(paths);
+    }
+
     private static Set<String> immutableCopy(Set<String> source) {
         return Collections.unmodifiableSet(new LinkedHashSet<>(source));
     }
