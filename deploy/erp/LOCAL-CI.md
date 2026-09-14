@@ -57,6 +57,8 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\deploy\erp\deploy-test
 
 ## 生产流程
 
+首次接管现有生产 Docker 服务使用 `preflight` → `prepare` → 勾选确认的 `cutover`；首次完成后才开启日常 `deploy`。中断使用同版本的 `recover`。操作步骤与恢复边界见 [生产首次接管说明](PRODUCTION-CD.md)。
+
 测试 CD 和业务验收通过后，手动运行 `ERP CD - production`，选择相同 release ID。默认 `preflight` 在 GitHub 的 Ubuntu Runner 校验完整 CI 和精确测试记录，再检查正式服务器并拉取 GHCR 镜像，不构建、不上传、不切换服务。选择 `deploy` 才切换。生产 API 固定为 `https://api.vanzhome.com`，官网为 `https://www.vanzhome.com`。
 
 原 `publish_production=true` 独立构建入口和 CD 阶段本地上传入口均已移除。旧测试产物缺少生产变体时必须重跑共享 CI，再手动测试新 release，不能在 CD 补建。生产预检、部署和回滚都不依赖本地缓存。详见 [生产 CD 说明](../../docs/erp-production-cd.md)。

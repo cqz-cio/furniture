@@ -14,7 +14,7 @@ import tempfile
 import time
 
 from bootstrap_policy import PROFILE
-from common import RELEASE, fingerprint, require, validate_release, write_json
+from common import file_sha256, RELEASE, fingerprint, require, validate_release, write_json
 from github_release import GitHub
 from image_archive import build_archive
 from runner import BOOTSTRAP, HERE, execute, transport
@@ -79,7 +79,7 @@ class LocalConnection:
             require(header["release"] == release and header["environment"] == "test", "Cached release differs")
             require(archive.stat().st_size == header["bytes"], "Cached archive is incomplete")
             with archive.open("rb") as source:
-                require(hashlib.file_digest(source, "sha256").hexdigest() == header["sha256"], "Cached archive is corrupt")
+                require(file_sha256(source) == header["sha256"], "Cached archive is corrupt")
             return archive, header
         with tempfile.TemporaryDirectory(prefix="download-", dir=root) as tmp:
             # Real local download reached 760 MB at 293 s; the CI runner's 300 s

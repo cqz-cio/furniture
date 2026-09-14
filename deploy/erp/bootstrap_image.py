@@ -84,8 +84,8 @@ def extract_migrations(jar, runtime, release, layered=False, space_check=None):
             "CI image lacks Flyway libraries")
 
 
-def prepare_images(commands, release, work, helper, preloaded=False):
-    refs = environment_images(release, "test")
+def prepare_images(commands, release, work, helper, preloaded=False, environment="test"):
+    refs = environment_images(release, environment)
     metadata = {name: registry_size(ref) for name, ref in refs.items()}
     docker_root = commands.run(["docker", "info", "--format", "{{.DockerRootDir}}"], "docker-directory").strip()
     require(Path(docker_root).is_absolute(), "Docker directory unavailable")
@@ -145,14 +145,15 @@ def verify_runtime(work):
     return metadata
 
 
-def migrate(commands, runtime, database, env):
+def migrate(commands, runtime, database, env, profile=PROFILE):
     safe_env = {k: v for k, v in env.items() if k not in ("JAVA_TOOL_OPTIONS", "JDK_JAVA_OPTIONS", "_JAVA_OPTIONS")}
-    output = commands.run([PROFILE["java"], "-Xms32m", "-Xmx256m", "-XX:MaxMetaspaceSize=192m", "-XX:ActiveProcessorCount=1",
+    output = commands.run([profile["java"], "-Xms32m", "-Xmx256m", "-XX:MaxMetaspaceSize=192m", "-XX:ActiveProcessorCount=1",
         "-cp", str(runtime) + ":" + str(runtime / "sql") + ":" + str(runtime / "lib/*"),
-        "CloneMigration", database, PROFILE["source_database"]], "flyway-clone-migration", seconds=120, env=safe_env)
+        "CloneMigration", database, profile["source_database"], profile.get("environment", "test"),
+        str(profile["target_version"])], "flyway-clone-migration", seconds=120, env=safe_env)
     markers = [v.removeprefix("ERP_CLONE_RESULT=") for v in output.splitlines() if v.startswith("ERP_CLONE_RESULT=")]
     require(len(markers) == 1, "Missing migration receipt")
     result = json.loads(markers[0])
-    require(result == {"version": 49, "migrations_executed": 2, "repeat_migrations_executed": 0,
+    require(result == {"version": profile["target_version"], "migrations_executed": profile["target_version"] - profile["source_version"], "repeat_migrations_executed": 0,
                        "checksums_valid": True, "source_access_denied": True}, "Incomplete clone migration verification")
     return result

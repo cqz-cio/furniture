@@ -14,7 +14,7 @@ import tempfile
 import time
 from contextlib import nullcontext
 
-from common import environment_images, fingerprint, require, validate_release
+from common import file_sha256, environment_images, fingerprint, require, validate_release
 from bootstrap_policy import PROFILE
 from bootstrap_io import Commands, emit
 
@@ -165,7 +165,7 @@ def main(request):
         if operation == "scp-import":
             require(path.is_file() and path.stat().st_size == length, "SCP archive is incomplete")
             with path.open("rb") as source:
-                checksum = hashlib.file_digest(source, "sha256").hexdigest()
+                checksum = file_sha256(source)
             require(checksum == request["sha256"], "SCP archive checksum mismatch")
         else:
             emit("ssh-image-transfer", total_bytes=length, timeout_seconds=600)

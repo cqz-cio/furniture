@@ -2,6 +2,7 @@
 import argparse
 import base64
 import json
+import ipaddress
 import os
 from pathlib import Path
 import re
@@ -14,6 +15,7 @@ import time
 from common import fingerprint, require, write_json
 from github_release import GitHub
 from bootstrap_policy import OPERATIONS, PROFILE, validate_target, validate_audit_bundle, sha256
+import production_policy
 
 HERE = Path(__file__).resolve().parent
 BOOTSTRAP = """import base64,json,sys,types
@@ -47,11 +49,15 @@ def image_transport(environment):
     return mode
 
 
-def bootstrap_bundle():
+def bootstrap_bundle(environment="test"):
     """Compile trusted source with no package downloads and export existing read-only audits."""
     audit = json.loads(subprocess.run(["node", str(HERE / "bootstrap-audit.mjs")], capture_output=True, text=True,
                                      check=True, timeout=30).stdout)
     validate_audit_bundle(audit)
+    if environment == "production":
+        # V048 already contains category_code. Use the same queries on both sides
+        # so differing legacy/test query shapes cannot appear as data regressions.
+        audit["before"] = list(audit["after"])
     with tempfile.TemporaryDirectory(prefix="erp-clone-helper-") as directory:
         javac = str(Path(os.environ["JAVA_HOME"]) / "bin" / ("javac.exe" if os.name == "nt" else "javac")) if os.environ.get("JAVA_HOME") else "javac"
         subprocess.run([javac, "--release", "17", "-d", directory, str(HERE / "CloneMigration.java")],
@@ -135,6 +141,9 @@ def preload_test_images(command, release, directory):
 
 def ssh_request(environment, operation, release=None, lease_id=None, confirm_cutover=False, connection=None):
     mode = "local-scp" if connection else image_transport(environment)
+    required = ["ERP_SSH_HOST", "ERP_SSH_USER"]
+    missing = [name for name in required if not os.environ.get(name, "").strip()]
+    require(not missing, "Missing " + environment + " GitHub environment configuration: " + ", ".join(missing))
     host, user = os.environ["ERP_SSH_HOST"], os.environ["ERP_SSH_USER"]
     require(re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.-]*", host) and re.fullmatch(r"[a-z_][a-z0-9_-]*", user), "Invalid SSH destination")
     port = int(os.environ.get("ERP_SSH_PORT") or "22")
@@ -155,7 +164,19 @@ def ssh_request(environment, operation, release=None, lease_id=None, confirm_cut
     entry, remote_command = "server", "timeout --signal=TERM --kill-after=15s 1400s python3 -B -c "
     if operation in ("snapshot", "lease-start", "lease-check", "lease-end"):
         remote_command = "timeout --signal=TERM --kill-after=5s 45s python3 -B -c "
-    if operation in OPERATIONS:
+    if environment == "production":
+        profile = production_policy.PROFILE
+        require((host, user, port, root) == (profile["host"], profile["user"], 22, profile["root"]),
+                "Privileged production operations require the verified production destination")
+        remote_command = "sudo -n " + remote_command
+    if environment == "production" and operation in (*OPERATIONS, "preflight"):
+        if operation in OPERATIONS:
+            production_policy.validate_target(environment, root, release, operation, confirm_cutover)
+        request.update(bootstrap_bundle("production"), confirm_cutover=confirm_cutover)
+        names += ["bootstrap_policy", "bootstrap_io", "bootstrap_image", "bootstrap", "production_policy", "production_bootstrap"]
+        entry = "production_bootstrap"
+        remote_command = "sudo -n timeout --signal=TERM --kill-after=200s 1400s python3 -B -c "
+    elif operation in OPERATIONS:
         validate_target(environment, root, release, operation, confirm_cutover)
         require((host, user, port) == (PROFILE["host"], PROFILE["user"], 22), "Bootstrap SSH target differs from the verified test host")
         request.update(bootstrap_bundle(), confirm_cutover=confirm_cutover)
@@ -175,6 +196,8 @@ def ssh_request(environment, operation, release=None, lease_id=None, confirm_cut
         if connection:
             key, known = connection.key, connection.known
         else:
+            missing = [name for name in ("ERP_SSH_PRIVATE_KEY", "ERP_SSH_KNOWN_HOSTS") if not os.environ.get(name, "").strip()]
+            require(not missing, "Missing " + environment + " GitHub environment secrets: " + ", ".join(missing))
             key.write_text(os.environ["ERP_SSH_PRIVATE_KEY"].rstrip() + "\n", encoding="utf-8")
             known.write_text(os.environ["ERP_SSH_KNOWN_HOSTS"].rstrip() + "\n", encoding="utf-8")
             key.chmod(0o600)
@@ -183,6 +206,10 @@ def ssh_request(environment, operation, release=None, lease_id=None, confirm_cut
             "-o", "StrictHostKeyChecking=yes", "-o", "UserKnownHostsFile=" + str(known), "-o", "ConnectTimeout=10",
             "-o", "ServerAliveInterval=10", "-o", "ServerAliveCountMax=3", user + "@" + host,
             remote_command + shlex.quote(BOOTSTRAP)]
+        bind_address = os.environ.get("ERP_SSH_BIND_ADDRESS")
+        if bind_address and not connection:
+            require(ipaddress.ip_address(bind_address).version == 4, "Use the physical local IPv4 address for SSH binding")
+            command[1:1] = ["-b", bind_address]
         if connection:
             command = connection.command(remote_command + shlex.quote(BOOTSTRAP))
         if operation in ("prepare", "deploy", "rollback"):
@@ -228,16 +255,19 @@ def execute_operation(args, connection=None):
         result = ssh_request(args.environment, args.operation, lease_id=args.lease_id, **options)
     else:
         if args.operation in ("deploy", "rollback"):
-            require(os.environ.get("ERP_CD_ENABLED") == "true", "Enable daily CD after successful first cutover; use prepare/cutover for test onboarding")
+            require(os.environ.get("ERP_CD_ENABLED") == "true",
+                    "Daily " + args.environment + " CD is disabled. Complete prepare then confirmed cutover first; "
+                    "after success set ERP_CD_ENABLED=true in the " + args.environment + " GitHub environment.")
         github = GitHub()
         _, release = github.release(args.release or "")
         github.verify_ci(release)
         if args.operation == "preflight":
             require(args.environment == "production", "Release preflight is a production-only operation")
-        if args.environment == "production" and args.operation in ("preflight", "deploy"):
+        if args.environment == "production" and args.operation in ("preflight", "prepare", "cutover", "deploy"):
             require(github.test_passed(release), "This exact release manifest has not passed the test CD")
         if args.operation in OPERATIONS:
-            validate_target(args.environment, os.environ.get("ERP_DEPLOY_ROOT") or PROFILE["root"], release, args.operation, args.confirm_cutover == "true")
+            policy = production_policy if args.environment == "production" else __import__("bootstrap_policy")
+            policy.validate_target(args.environment, os.environ.get("ERP_DEPLOY_ROOT") or policy.PROFILE["root"], release, args.operation, args.confirm_cutover == "true")
         deployment = None if args.operation in ("preflight", "prepare", "recover") else github.deployment(release, args.environment)
         if deployment:
             github.deployment_status(deployment, "in_progress")

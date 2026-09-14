@@ -9,6 +9,9 @@ from runner import bootstrap_bundle
 from common import require
 
 bundle = bootstrap_bundle()
+production = bootstrap_bundle("production")
+require(production["audit"]["before"] == production["audit"]["after"],
+        "Production V048 audits must use identical queries before and after migration")
 code = base64.b64decode(bundle["helper"]["class"])
 require(int.from_bytes(code[6:8], "big") == 61, "The helper must target Java 17")
 with tempfile.TemporaryDirectory() as directory:
@@ -19,4 +22,13 @@ with tempfile.TemporaryDirectory() as directory:
                                 capture_output=True, text=True, timeout=10)
         require(result.returncode != 0 and ("Only an owned clone" in result.stderr or "Restricted clone credentials required" in result.stderr),
                 "Java guard must reject a legacy database and missing credentials before loading JDBC")
+    for database, source, target in (
+            ("codex_release_v47_20260814_162836", "codex_release_v47_20260814_162836", "50"),
+            ("oakved_cd_production_rehearse_" + "0"*16, "codex_release_v47_20260814_162836", "50"),
+            ("oakved_cd_production_rehearse_" + "0"*16, "codex_release_v47_20260814_162836", "51")):
+        result = subprocess.run([java, "-cp", directory, "CloneMigration", database, source, "production", target],
+                                capture_output=True, text=True, timeout=10)
+        require(result.returncode != 0 and any(message in result.stderr for message in
+                ("Only an owned clone", "Restricted clone credentials required", "Unreviewed target schema")),
+                "Production Java guard must reject source writes, missing credentials and unreviewed schemas")
 print("Java 17 helper compiled; database guards passed; 32 read-only checks cover both tenants before and after migration.")

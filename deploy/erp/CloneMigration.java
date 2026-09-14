@@ -27,16 +27,23 @@ public final class CloneMigration {
         }
     }
     public static void main(String[] args) throws Exception {
-        require(args.length == 2 && args[0].matches("oakved_cd_test_(rehearse|live)_[0-9a-f]{16}"), "Only an owned clone is allowed");
-        require(args[1].equals("oakved_v032_20260729"), "Unexpected legacy database");
+        require(args.length >= 2 && args.length <= 4, "Expected a verified clone profile");
+        String environment = args.length >= 3 ? args[2] : "test";
+        require(environment.equals("test") || environment.equals("production"), "Unknown clone profile");
+        boolean production = environment.equals("production");
+        int sourceVersion = production ? 48 : 47;
+        int targetVersion = args.length == 4 ? Integer.parseInt(args[3]) : 49;
+        require(targetVersion == 49 || (production && targetVersion == 50), "Unreviewed target schema");
+        require(args[0].matches("oakved_cd_" + environment + "_(rehearse|live)_[0-9a-f]{16}"), "Only an owned clone is allowed");
+        require(args[1].equals(production ? "codex_release_v47_20260814_162836" : "oakved_v032_20260729"), "Unexpected legacy database");
         String database = args[0], user = System.getenv("ERP_CLONE_USER"), password = System.getenv("ERP_CLONE_PASSWORD");
-        require(user != null && user.matches("erp_cd_m_[0-9a-f]{16}") && password != null && !password.isBlank(), "Restricted clone credentials required");
+        require(user != null && user.matches((production ? "erp_pd_m_" : "erp_cd_m_") + "[0-9a-f]{16}") && password != null && !password.isBlank(), "Restricted clone credentials required");
         String url = "jdbc:mysql://127.0.0.1:3306/" + database
             + "?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&connectTimeout=5000&socketTimeout=60000";
         Class.forName("com.mysql.cj.jdbc.Driver");
         try (Connection connection = DriverManager.getConnection(url, user, password)) {
             require(database.equals(connection.getCatalog()), "Wrong connection catalog");
-            require(scalar(connection, "SELECT MAX(CAST(version AS UNSIGNED)) FROM flyway_schema_history WHERE success=1") == 47, "Expected a V047 clone");
+            require(scalar(connection, "SELECT MAX(CAST(version AS UNSIGNED)) FROM flyway_schema_history WHERE success=1") == sourceVersion, "Unexpected source clone version");
             require(scalar(connection, "SELECT COUNT(*) FROM flyway_schema_history WHERE success=0") == 0, "Failed migration history");
             boolean denied = false;
             try (Statement statement = connection.createStatement()) {
@@ -57,14 +64,14 @@ public final class CloneMigration {
         Object flyway = call(configuration, "load");
         Object result = call(flyway, "migrate");
         int executed = result.getClass().getField("migrationsExecuted").getInt(result);
-        require(executed == 2, "Expected V048 and V049");
+        require(executed == targetVersion - sourceVersion, "Unexpected migration count");
         Object validation = call(flyway, "validateWithResult");
         require(validation.getClass().getField("validationSuccessful").getBoolean(validation), "Flyway checksum validation failed");
         Object repeated = call(flyway, "migrate");
         require(repeated.getClass().getField("migrationsExecuted").getInt(repeated) == 0, "Repeated migration must be a no-op");
         try (Connection connection = DriverManager.getConnection(url, user, password)) {
-            require(scalar(connection, "SELECT MAX(CAST(version AS UNSIGNED)) FROM flyway_schema_history WHERE success=1") == 49, "Expected V049");
+            require(scalar(connection, "SELECT MAX(CAST(version AS UNSIGNED)) FROM flyway_schema_history WHERE success=1") == targetVersion, "Unexpected migrated schema version");
         }
-        System.out.println("ERP_CLONE_RESULT={\"version\":49,\"migrations_executed\":2,\"repeat_migrations_executed\":0,\"checksums_valid\":true,\"source_access_denied\":true}");
+        System.out.println("ERP_CLONE_RESULT={\"version\":" + targetVersion + ",\"migrations_executed\":" + executed + ",\"repeat_migrations_executed\":0,\"checksums_valid\":true,\"source_access_denied\":true}");
     }
 }

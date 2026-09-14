@@ -14,12 +14,12 @@ import tempfile
 import zipfile
 
 from bootstrap_image import extract_migrations
-from common import require
+from common import file_sha256, require
 
 
 def file_hash(path):
     with path.open('rb') as stream:
-        return hashlib.file_digest(stream, 'sha256').hexdigest()
+        return file_sha256(stream)
 
 
 def main():

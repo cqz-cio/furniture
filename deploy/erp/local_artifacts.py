@@ -8,7 +8,7 @@ import re
 import tarfile
 import zipfile
 
-from common import PACKAGES, production_release, require, utcnow, validate_release, write_json
+from common import file_sha256, PACKAGES, production_release, require, utcnow, validate_release, write_json
 
 
 class OCI:
@@ -27,7 +27,7 @@ class OCI:
                 self.members[name] = member
                 if name.startswith('blobs/'):
                     with self.tar.extractfile(member) as source:
-                        require(hashlib.file_digest(source, 'sha256').hexdigest() == name.rsplit('/', 1)[1], 'Corrupt build blob')
+                        require(file_sha256(source) == name.rsplit('/', 1)[1], 'Corrupt build blob')
             require(self.read_json('oci-layout') == {'imageLayoutVersion': '1.0.0'}, 'Invalid OCI layout')
             roots = self.read_json('index.json')['manifests']
             require(len(roots) == 1, 'Expected one platform; disable provenance/SBOM on this archive')
@@ -158,7 +158,7 @@ def assemble(backend_path, admin_path, destination, repository, identity, api, p
             production_refs = [promoted['images']['backend'], promoted['images']['admin']['test'], promoted['images']['admin']['production']]
             write_archive(destination/'production.oci.tar', [backend, admin, production], production_refs)
         with archive.open('rb') as source:
-            checksum = hashlib.file_digest(source, 'sha256').hexdigest()
+            checksum = file_sha256(source)
         header = {'release': manifest, 'environment': 'test', 'bytes': archive.stat().st_size, 'sha256': checksum}
         write_json(destination/'release.json', manifest)
         write_json(destination/'header.json', header)

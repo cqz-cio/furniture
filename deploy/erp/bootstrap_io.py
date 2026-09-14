@@ -9,8 +9,8 @@ import signal
 import subprocess
 import time
 
-from common import require, write_json
-from bootstrap_policy import PROFILE, OWNED_USER, owned_database
+from common import file_sha256, require, write_json
+import bootstrap_policy
 
 
 def emit(stage, **fields):
@@ -73,7 +73,8 @@ class Commands:
 
 
 class Database:
-    def __init__(self, commands):
+    def __init__(self, commands, policy=bootstrap_policy):
+        self.policy = policy
         self.commands = commands
         self.created_users = set()
         self.args = ["mysql", "--defaults-extra-file=/etc/mysql/debian.cnf", "--protocol=SOCKET",
@@ -100,7 +101,7 @@ class Database:
         return values
 
     def backup(self, database, path):
-        require(database == PROFILE["source_database"], "First-cutover backup must target the verified legacy database")
+        require(database == self.policy.PROFILE["source_database"], "First-cutover backup must target the verified legacy database")
         # No --databases, USE or CREATE DATABASE: restoration must remain inside the restricted clone.
         with path.open("xb") as stream:
             self.commands.run(["mysqldump", "--defaults-extra-file=/etc/mysql/debian.cnf", "--protocol=SOCKET",
@@ -108,7 +109,7 @@ class Database:
                 "--triggers", "--set-gtid-purged=OFF", "--no-tablespaces", database], "database-backup", 180, output_file=stream)
         require(path.stat().st_size > 100, "Backup is empty")
         with path.open("rb") as stream:
-            digest = hashlib.file_digest(stream, "sha256").hexdigest()
+            digest = file_sha256(stream)
         with path.open("rb") as stream:
             tables = [match[1].decode() for line in stream if (match := re.match(rb"CREATE TABLE `([A-Za-z0-9_]+)`", line))]
         require(tables and len(set(tables)) == len(tables), "Backup table catalog is empty or ambiguous")
@@ -117,15 +118,15 @@ class Database:
         return receipt
 
     def create(self, name):
-        owned_database(name)
+        self.policy.owned_database(name)
         require(self.query(f"SELECT COUNT(*) FROM information_schema.schemata WHERE schema_name='{name}'") == "0", "Owned database already exists")
-        charset, collation = self.query("SELECT DEFAULT_CHARACTER_SET_NAME,DEFAULT_COLLATION_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME='" + PROFILE["source_database"] + "'").split("\t")
+        charset, collation = self.query("SELECT DEFAULT_CHARACTER_SET_NAME,DEFAULT_COLLATION_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME='" + self.policy.PROFILE["source_database"] + "'").split("\t")
         require(all(re.fullmatch(r"[A-Za-z0-9_]+", v) for v in (charset, collation)), "Invalid source charset or collation")
         self.query(f"CREATE DATABASE `{name}` CHARACTER SET {charset} COLLATE {collation}")
 
     def create_user(self, database, user, password):
-        owned_database(database)
-        require(OWNED_USER.fullmatch(user) and re.fullmatch(r"[a-f0-9]{64}", password), "Invalid clone credentials")
+        self.policy.owned_database(database)
+        require(self.policy.OWNED_USER.fullmatch(user) and re.fullmatch(r"[a-f0-9]{64}", password), "Invalid clone credentials")
         require(self.query(f"SELECT COUNT(*) FROM mysql.user WHERE User='{user}'") == "0", "Owned account already exists")
         self.query(f"CREATE USER '{user}'@'localhost' IDENTIFIED BY '{password}' WITH MAX_USER_CONNECTIONS 20")
         self.created_users.add(user)
@@ -135,7 +136,7 @@ class Database:
         self.query(f"GRANT ALL PRIVILEGES ON `{schema_pattern}`.* TO '{user}'@'localhost'")
 
     def remove_user(self, user):
-        require(OWNED_USER.fullmatch(user), "Only an owned clone account may be removed")
+        require(self.policy.OWNED_USER.fullmatch(user), "Only an owned clone account may be removed")
         for value in self.query(f"SELECT ID FROM information_schema.processlist WHERE USER='{user}'").splitlines():
             require(value.isdigit(), "Invalid owned session id")
             self.query("KILL CONNECTION " + value)
@@ -153,16 +154,16 @@ class Database:
                 self.remove_user(user)
 
     def restore(self, path, receipt, database, user, env):
-        owned_database(database)
+        self.policy.owned_database(database)
         with path.open("rb") as stream:
-            require(hashlib.file_digest(stream, "sha256").hexdigest() == receipt["sha256"], "Backup checksum changed")
+            require(file_sha256(stream) == receipt["sha256"], "Backup checksum changed")
         with path.open("rb") as stream:
             for line in stream:
                 require(not re.match(rb"\s*(USE\b|(?:CREATE|DROP)\s+DATABASE\b)", line, re.I), "Backup can escape the selected schema")
         with path.open("rb") as stream:
             self.commands.run(["mysql", "--no-defaults", "--protocol=TCP", "--host=127.0.0.1", "--port=3306",
                 "--user=" + user, "--connect-timeout=5", "--database=" + database], "database-restore", 180, input_file=stream, env=env)
-        require(self.version(database) == 47, "Restored ledger differs from V047")
+        require(self.version(database) == self.policy.PROFILE["source_version"], "Restored ledger differs from the source profile")
         tables = self.query("SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA='" + database + "' ORDER BY TABLE_NAME").splitlines()
         require(tables == receipt["tables"], "Restored table catalog differs from the verified backup")
 

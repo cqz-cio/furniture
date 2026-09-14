@@ -8,11 +8,16 @@ on:
         required: true
         type: string
       operation:
-        description: Preflight checks published images and server without switching; deploy or rollback changes production
+        description: First adoption uses preflight, prepare, cutover; daily releases use deploy; recover resumes an interrupted first cutover
         required: true
         default: preflight
         type: choice
-        options: [preflight, deploy, rollback]
+        options: [preflight, prepare, cutover, recover, deploy, rollback]
+      confirm_cutover:
+        description: Confirm production maintenance and database-copy cutover or recovery (required only for cutover/recover)
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -33,7 +38,14 @@ jobs:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
-      - name: Require test success and deploy the exact production release
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Require test success and run the selected production operation
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ERP_CD_ENABLED: ${{ vars.ERP_CD_ENABLED }}
@@ -46,7 +58,8 @@ jobs:
           ERP_SSH_KNOWN_HOSTS: ${{ secrets.ERP_SSH_KNOWN_HOSTS }}
           RELEASE_ID: ${{ inputs.release_id }}
           OPERATION: ${{ inputs.operation }}
-        run: timeout --kill-after=10s 1550s bash deploy/erp/deploy-production.sh --release "$RELEASE_ID" --operation "$OPERATION"
+          CONFIRM_CUTOVER: ${{ inputs.confirm_cutover }}
+        run: timeout --kill-after=10s 1750s bash deploy/erp/deploy-production.sh --release "$RELEASE_ID" --operation "$OPERATION" --confirm-cutover "$CONFIRM_CUTOVER"
       - uses: actions/upload-artifact@v4
         if: always()
         with:

@@ -291,6 +291,11 @@ class TransportTests(unittest.TestCase):
 
 
 class WorkflowGates(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.output = str(Path(self.tmp.name) / "result.json")
+
     def test_prepare_and_legacy_recovery_never_register_a_successful_deployment(self):
         for operation, result in (("prepare", "prepared"), ("recover", "restored-legacy")):
             with self.subTest(operation=operation), tempfile.TemporaryDirectory() as directory:
@@ -304,11 +309,11 @@ class WorkflowGates(unittest.TestCase):
                 client.deployment.assert_not_called()
                 client.deployment_status.assert_not_called()
 
-    def test_unconfirmed_cutover_or_production_bootstrap_cannot_reach_ssh(self):
-        for environment, operation in (("test", "cutover"), ("production", "prepare")):
+    def test_unconfirmed_test_or_production_cutover_cannot_reach_ssh(self):
+        for environment, operation in (("test", "cutover"), ("production", "cutover")):
             client = Mock()
             client.release.return_value = ({}, test_release())
-            argv = ["runner.py", "--environment", environment, "--operation", operation, "--release", test_release()["id"]]
+            argv = ["runner.py", "--environment", environment, "--operation", operation, "--release", test_release()["id"], "--output", self.output]
             with patch.object(sys, "argv", argv), patch.dict(os.environ, {"GITHUB_REF": "refs/heads/main"}, clear=True), \
                     patch("runner.GitHub", return_value=client), patch("runner.ssh_request") as ssh:
                 with self.assertRaises(ValueError):
@@ -317,7 +322,7 @@ class WorkflowGates(unittest.TestCase):
             client.deployment.assert_not_called()
 
     def test_daily_cd_off_switch_remains_effective(self):
-        argv = ["runner.py", "--environment", "test", "--operation", "deploy", "--release", test_release()["id"]]
+        argv = ["runner.py", "--environment", "test", "--operation", "deploy", "--release", test_release()["id"], "--output", self.output]
         with patch.object(sys, "argv", argv), patch.dict(os.environ, {"GITHUB_REF": "refs/heads/main", "ERP_CD_ENABLED": "false"}, clear=True), \
                 patch("runner.ssh_request") as ssh:
             with self.assertRaises(ValueError):

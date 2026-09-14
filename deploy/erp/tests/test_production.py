@@ -102,7 +102,7 @@ class ProductionRunner(unittest.TestCase):
     def test_disabled_daily_cd_is_reported(self):
         self.args.operation = 'deploy'
         with patch.dict(os.environ, ERP_CD_ENABLED='false'), patch('runner.ssh_request') as ssh:
-            with self.assertRaisesRegex(ValueError, 'Enable daily CD'):
+            with self.assertRaisesRegex(ValueError, 'Daily production CD is disabled'):
                 execute(self.args)
         ssh.assert_not_called()
         self.assertEqual(json.loads(self.output.read_text())['operation'], 'deploy')
@@ -116,15 +116,15 @@ class ProductionRunner(unittest.TestCase):
         self.github.deployment_status.assert_called_with(self.github.deployment.return_value, 'failure')
 
     def test_production_ssh_has_remote_deadline_and_no_relay(self):
-        env = {'ERP_SSH_HOST': 'production.example.com', 'ERP_SSH_USER': 'deploy',
+        env = {'ERP_SSH_HOST': '43.153.40.182', 'ERP_SSH_USER': 'ubuntu',
             'ERP_SSH_PORT': '22', 'ERP_DEPLOY_ROOT': '/opt/oakved-deploy/production',
             'ERP_SSH_PRIVATE_KEY': 'fake', 'ERP_SSH_KNOWN_HOSTS': 'fake', 'ERP_IMAGE_TRANSPORT': 'ghcr'}
         with patch.dict(os.environ, env), patch('runner.Path.read_text', return_value='compose'), \
                 patch('runner.transport', return_value={}) as transport, \
-                patch('runner.preload_test_images') as relay:
+                patch('runner.preload_test_images') as relay, patch('runner.bootstrap_bundle',return_value={}):
             ssh_request('production', 'preflight', release(2))
         command, bundle, _, timeout = transport.call_args.args
-        self.assertTrue(command[-1].startswith('timeout --signal=TERM --kill-after=15s 1400s python3'))
+        self.assertTrue(command[-1].startswith('sudo -n timeout --signal=TERM --kill-after=200s 1400s python3'))
         self.assertEqual(timeout, 1500)
         self.assertEqual(bundle['request']['operation'], 'preflight')
         self.assertNotIn('images_preloaded', bundle['request'])

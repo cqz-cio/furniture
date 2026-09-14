@@ -41,13 +41,14 @@ def owned_database(name, source=PROFILE["source_database"]):
     return name
 
 
-def backend_environment(runtime, database, user, password):
-    owned_database(database)
-    require(OWNED_USER.fullmatch(user) and password, "Missing restricted application credentials")
+def backend_environment(runtime, database, user, password, *, profile=PROFILE,
+                        database_validator=owned_database, user_pattern=OWNED_USER):
+    database_validator(database)
+    require(user_pattern.fullmatch(user) and password, "Missing restricted application credentials")
     url = urlsplit(runtime["YUDAO_DB_URL"].removeprefix("jdbc:"))
     require(not url.username and not url.password, "Embedded JDBC credentials are unsupported")
     require((url.scheme, url.hostname, url.port or 3306, url.path) ==
-            ("mysql", "127.0.0.1", 3306, "/" + PROFILE["source_database"]), "Legacy database target changed")
+            ("mysql", "127.0.0.1", 3306, "/" + profile["source_database"]), "Legacy database target changed")
     require(not any(k.startswith("SPRING_DATASOURCE") for k in runtime), "Review explicit datasource overrides before onboarding")
     prefixes = ("YUDAO_", "SPRING_", "VANZ_", "WX_", "AI_", "OPENAI_", "MAIL_", "PAY_", "SMS_", "OAUTH_", "ALIYUN_", "TENCENT_", "GOOGLE_")
     values = {k: v for k, v in runtime.items() if k.startswith(prefixes)}

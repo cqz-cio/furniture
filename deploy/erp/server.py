@@ -21,7 +21,7 @@ import urllib.error
 import urllib.request
 from urllib.parse import urlsplit
 
-from common import environment_images, fingerprint, require, timestamp, utcnow, validate_release, write_json, RELEASE
+from common import file_sha256, environment_images, fingerprint, require, timestamp, utcnow, validate_release, write_json, RELEASE
 from image_pull import pull_image
 
 COMMAND_LOG_DIRECTORY = None
@@ -100,6 +100,8 @@ class Server:
         self.environment = environment
         require(environment in ("test", "production") and self.root.name == environment
                 and self.root.is_dir(), "Use a preconfigured environment-specific deployment directory")
+        require((self.root / "config/server.json").is_file(),
+                "Complete prepare and the first cutover before enabling daily CD")
         self.config = json.loads((self.root / "config/server.json").read_text())
         require(self.config["environment"] == environment and self.config.get("initialized") is True,
                 "Complete and record the first Docker/database cutover before enabling CD")
@@ -231,7 +233,7 @@ class Server:
                  "--databases", self.config["database_name"]], int(self.config.get("backup_timeout_seconds", 300)), output)
         require(path.stat().st_size > 100, "Backup is empty")
         with path.open("rb") as stream:
-            digest = hashlib.file_digest(stream, "sha256").hexdigest()
+            digest = file_sha256(stream)
         write_json(path.with_suffix(".json"), {"sha256": digest, "bytes": path.stat().st_size, "created_at": utcnow().isoformat()})
         return str(path)
 

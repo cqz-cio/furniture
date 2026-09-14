@@ -11,7 +11,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-from common import DIGEST, environment_images, require, validate_release
+from common import file_sha256, DIGEST, environment_images, require, validate_release
 
 ACCEPT = ", ".join(("application/vnd.oci.image.index.v1+json", "application/vnd.oci.image.manifest.v1+json",
                     "application/vnd.docker.distribution.manifest.list.v2+json", "application/vnd.docker.distribution.manifest.v2+json"))
@@ -159,6 +159,6 @@ def build_archive(release, environment, directory, registry=None, timeout_second
             check()
             output.add(path, arcname="blobs/sha256/" + path.name, recursive=False)
     with archive.open("rb") as stream:
-        checksum = hashlib.file_digest(stream, "sha256").hexdigest()
+        checksum = file_sha256(stream)
     print(json.dumps({"stage": "runner-image-archive-ready", "bytes": archive.stat().st_size}), flush=True)
     return archive, {"sha256": checksum, "bytes": archive.stat().st_size, "release": release, "environment": environment}

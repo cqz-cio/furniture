@@ -16,6 +16,14 @@ def require(condition, message):
         raise ValueError(message)
 
 
+def file_sha256(stream):
+    """Bounded-memory file hashing, also available on Ubuntu 22.04/Python 3.10."""
+    digest = hashlib.sha256()
+    for block in iter(lambda: stream.read(1024 * 1024), b""):
+        digest.update(block)
+    return digest.hexdigest()
+
+
 def utcnow():
     return datetime.now(timezone.utc)
 

@@ -10,31 +10,31 @@
 
 美国 IP 是选择直拉的依据，不是网络测试结果。必须从正式主机实际拉取目标 digest，确认 DNS、HTTPS 出站、GHCR 及其镜像层存储可达。当前 Engine API 拉取使用匿名访问，**不读取 `docker login` 的凭据**；如果镜像包是私有的，需要先实现受限的注册表认证传递，不能仅执行 docker login 后宣称已支持。
 
-本 CD 只发布 ERP 后端和后台；不发布官网，不替换数据库、Redis 或附件。后端复用测试验证的镜像，后台采用同一 release 清单中的 production 构建变体。生产 API 沿用清单中的 `https://api.vanzhome.com`；正式 SSH 地址、后台地址、数据库和目录必须现场核实。
+本 CD 发布 ERP 后端和后台，不发布官网。首次接管使用原数据库的新副本迁移并切换，原库保留；不替换 MySQL/Redis 服务或删除附件。后端复用测试验证的镜像，后台采用同一 release 清单中的 production 变体。生产 API 为 `https://api.vanzhome.com`。
 
-2026-09-11 查验：用户提供的后台为 `https://api.vanzhome.com/admin/index`；Google 公共 DNS 的 A 记录为 **43.153.40.182**，与本机 SSH known_hosts 记录一致。已存在 `vanz_github_actions` 密钥文件，但连接该 IP 的 22 端口在 SSH banner 阶段超时，尚未确认登录用户、系统服务和数据库。GitHub `cqz-cio/furniture` 的 production 环境变量接口返回 404，当前未读取到生产 CD 配置；仍需核对环境是否未创建或当前身份无权读取。
+2026-09-14 已核验 `ubuntu@43.153.40.182:22`，本机 SSH 绑定物理 IPv4 `192.168.110.145`。用户授权后已安装现有 `vanz_github_actions` 公钥并配置 GitHub production 环境的 SSH Secrets/Variables。当前线上为 `furniture-erp-production` Docker 项目，另有旧 `oakved-yudao.service`，共同使用 V048 数据库 `codex_release_v47_20260814_162836`。Python 为 3.10，文件摘要计算已适配。
 
 ## 首次接入
 
-测试机 `124.220.2.69` 的 `prepare/cutover/recover` 适配器绑定其旧服务、数据库和路由，不能用于生产。当前生产入口是**已完成首次接入后的日常 CD**，不是旧服务器自动迁移脚本。
+生产入口现已支持独立的 `production_bootstrap.py` 和 `production_policy.py`，与测试环境共用受限数据库备份、还原、迁移和恢复引擎，但固定生产主机身份、Docker 项目、旧库与 Nginx 结构。不能对生产套用测试机的目标配置。
 
-首次接入需先盘点正式机的服务、端口、MySQL/Flyway、Redis、附件权限、反向代理和备份空间，使用生产数据副本演练迁移及恢复，再安排首次切换。核实成功后登记当前版本及对应 `releases/<release_id>/` 完整记录，最后设置 `initialized=true`。不能仅手填一个版本号或修改开关绕过首次接入；代码会拒绝没有已登记当前版本的生产发布。
+完整步骤见 [生产 CD 操作说明](../deploy/erp/PRODUCTION-CD.md)：先 `preflight`，再 `prepare` 演练备份还原和 V048 → V049/V050 迁移；维护窗口内手动勾选确认执行 `cutover`。切换成功后自动登记完整当前版本记录，随后才能设置 `ERP_CD_ENABLED=true`。首次中断使用相同版本的 `recover`。不能手填版本号绕过实际接管。
 
-配置参考 `deploy/erp/server.production.example.json`。示例保持 `initialized=false`，端口和路径仅为待核实建议值，不能直接覆盖现场配置。`config/backend.env`、`config/mysql.cnf` 保存真实凭据且权限为 0600，发布目录限制为部署用户可读；不得提交到 Git。
+配置参考 `deploy/erp/server.production.example.json`，实际配置由切换流程生成。新端口为 `48082/18081`，原 `48081/18080` 保留给旧容器。示例保持 `initialized=false`，不能直接覆盖现场。`config/backend.env`、`config/mysql.cnf` 保存真实凭据且权限为 0600，不得提交到 Git。
 
 GitHub 的 `production` Environment 设置：
 
 | 类型 | 名称 | 值 |
 | --- | --- | --- |
-| Variable | ERP_SSH_HOST | 域名当前指向 43.153.40.182；完成 SSH 核验后配置 |
-| Variable | ERP_SSH_USER | 有 Docker 和部署目录权限的专用账户 |
-| Variable | ERP_SSH_PORT | 真实 SSH 端口，默认 22 |
+| Variable | ERP_SSH_HOST | 43.153.40.182 |
+| Variable | ERP_SSH_USER | ubuntu，已验证 sudo -n |
+| Variable | ERP_SSH_PORT | 22 |
 | Variable | ERP_DEPLOY_ROOT | /opt/oakved-deploy/production |
 | Variable | ERP_CD_ENABLED | 完成接入和预检后才设 true |
 | Secret | ERP_SSH_PRIVATE_KEY | 正式环境部署私钥 |
 | Secret | ERP_SSH_KNOWN_HOSTS | 独立核验的正式主机公钥记录 |
 
-工作流固定 `ERP_IMAGE_TRANSPORT=ghcr`。自动 CI 上传 job 使用本次任务临时 `GITHUB_TOKEN`，权限为 packages/contents write 和 actions read；不调用 gh auth 或 docker login，不依赖个人 Token，不需要每次网页授权。现有两个公开 GHCR 包已核实关联 cqz-cio/furniture；实际 Actions 写入仍需首次 CI 验证，若出现 403 则检查包的 Manage Actions access。生产 CD 仅有读取和记录部署的权限。首次接入的独立盘点与完整当前版本登记仍是 preflight 的前提。
+工作流固定 `ERP_IMAGE_TRANSPORT=ghcr`。CI 上传使用本次任务临时 `GITHUB_TOKEN`，不需要每次网页授权。现有两个公开 GHCR 包及上传流程已验证；生产 CD 仅读取清单并记录部署。未初始化时 `preflight` 做首次环境检查，已初始化时检查当前服务与待发布版本。
 
 ## 日常操作
 
@@ -53,10 +53,10 @@ GitHub 的 `production` Environment 设置：
 - 启动/验收失败：仅当数据库未发生变化，或迁移完整完成且已验证旧程序兼容时，自动启动旧配套版本并验收。
 - DDL 部分执行、状态不明或恢复失败：保留未完成记录，停止自动重试，先核对现场。不会用旧备份覆盖当前业务数据。
 - 手工 **rollback**：只允许该生产机历史成功且仍受保护的最近两次旧版本，或显式 pin 的旧版本；仍检查数据库兼容性。无需重新构建，也不要求该旧版本当前仍是测试机运行版本。
-- SSH/进程超时：远端日常操作有 1400 秒总期限及 15 秒强制终止宽限；单次拉取最多 300 秒，60 秒无实际进度会停止。超时不等于回滚成功，先查 `state.json`、`deployment.log`、`command-logs/`；生产不能调用测试专用 recover。
+- SSH/进程超时：远端日常操作有 1400 秒总期限及 15 秒强制终止宽限；首次接管留有 200 秒恢复宽限。单次拉取最多 300 秒，60 秒无实际进度会停止。先检查持久阶段记录，不能把超时当成恢复成功。首次生产 `recover` 在流量开放前恢复原服务，可能开放后只向前恢复新版本，禁止回退到过时的原库。
 - 结果：CI 下载 `erp-ci-image-publication-result`，生产 CD 下载 `erp-production-deployment-result`。CI 上传与生产发布、注册表清理共用发布锁；本机构建、上传和测试 CD 共用串行锁；服务器另有进程锁和清理租约。
 - 本地归档和 GHCR 各只保留最新五个完整版本，详见 [清理策略](../deploy/erp/RETENTION.md)。超过五版的旧版本清理后不能再通过 CD 拉取回滚。服务器现有镜像回收及日志轮转沿用原逻辑，不删除数据卷、附件或数据库备份。
 
 ## 当前验证状态
 
-本次校验包括 Python 单元测试和 Actions 语法检查，覆盖配套 OCI 归档、原始 digest、分块上传、自动令牌刷新、CI 失败阻断 CD、精确测试门禁和预检不切换。2026-09-11 用个人 CLI 授权实测 GHCR 上传 32 MiB 耗时 25.7 秒，约 1.3 MB/s；未登记测速镜像，取消上传返回 405。尚未运行新工作流的完整构建上传或正式机端到端部署，不代表正式服务器已接入或上线。
+2026-09-14 已验证 SSH 密钥、生产预检查、GHCR 原始镜像下载、原库备份与独立库还原、V048 → V050 迁移、重复迁移无操作以及容器和代理保持原样。原生产库仍是 V048，线上未切换；`ERP_CD_ENABLED=false`。演练版本为 `cd-2c4acf698a5fa73e0caa6b3f94563c4fc5b7939e-34802780451-1`，已通过 CI 和测试 CD。备份约 216 MB，首次完整准备约 157 秒。准备有效期 24 小时，代码、审计或配置变化时需刷新。

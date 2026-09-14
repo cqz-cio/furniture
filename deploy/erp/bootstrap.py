@@ -17,6 +17,7 @@ import time
 import urllib.request
 
 from common import fingerprint, require, timestamp, utcnow, write_json
+import bootstrap_policy
 from bootstrap_policy import PROFILE, backend_environment, nginx_plan, owned_database, sha256, validate_audit_bundle, validate_target
 from bootstrap_io import Commands, Database, emit
 from bootstrap_image import capacity, migrate, prepare_images, verify_runtime
@@ -24,6 +25,15 @@ from server import Server, http_json, locked
 
 
 class Bootstrap:
+    policy = bootstrap_policy
+    environment = "test"
+    database_prefix = "oakved_cd_test_"
+    user_prefix = "erp_cd_"
+
+    @property
+    def profile(self):
+        return self.policy.PROFILE
+
     def __init__(self, payload):
         self.payload, self.release = payload, payload["release"]
         self.root = Path(payload["root"])
@@ -35,9 +45,9 @@ class Bootstrap:
         command_dir = self.directory / ("commands-" + secrets.token_hex(8))
         command_dir.mkdir(mode=0o700)
         self.commands, self.database = Commands(command_dir), None
-        self.database = Database(self.commands)
+        self.database = Database(self.commands, self.policy)
         import pwd
-        self.owner = pwd.getpwnam(PROFILE["user"])
+        self.owner = pwd.getpwnam(self.profile["user"])
 
     def save(self, phase=None, **fields):
         if phase:
@@ -57,17 +67,17 @@ class Bootstrap:
         return self.commands.run(args, label, seconds).strip()
 
     def source_runtime(self):
-        require(self.run(["systemctl", "is-active", PROFILE["service"]], "legacy-status") == "active", "Legacy ERP must be active before preparation")
-        pid = self.run(["systemctl", "show", PROFILE["service"], "-p", "MainPID", "--value"], "legacy-pid")
+        require(self.run(["systemctl", "is-active", self.profile["service"]], "legacy-status") == "active", "Legacy ERP must be active before preparation")
+        pid = self.run(["systemctl", "show", self.profile["service"], "-p", "MainPID", "--value"], "legacy-pid")
         require(pid.isdigit() and int(pid) > 0, "Legacy process unavailable")
-        require(str(Path("/proc/" + pid + "/exe").resolve()) == PROFILE["java"], "Legacy Java runtime changed")
+        require(str(Path("/proc/" + pid + "/exe").resolve()) == self.profile["java"], "Legacy Java runtime changed")
         values = dict(v.decode().split("=", 1) for v in Path("/proc/" + pid + "/environ").read_bytes().split(b"\0") if b"=" in v)
         # Run the same renderer used for the eventual backend; reject unknown overrides early.
-        backend_environment(values, "oakved_cd_test_live_" + "0" * 16, "erp_cd_a_" + "0" * 16, "0" * 64)
+        self.policy.backend_environment(values, self.database_prefix + "live_" + "0" * 16, self.user_prefix + "a_" + "0" * 16, "0" * 64)
         require(values.get("SERVER_PORT") == "48080", "Legacy backend port changed")
         require(values.get("YUDAO_REDIS_HOST") == "127.0.0.1" and values.get("YUDAO_REDIS_DATABASE") == "0", "Legacy Redis target changed")
-        require(self.database.version(PROFILE["source_database"]) == 47, "Legacy schema changed; review onboarding profile")
-        status, health = http_json("http://127.0.0.1:48080/actuator/health")
+        require(self.database.version(self.profile["source_database"]) == self.profile["source_version"], "Legacy schema changed; review onboarding profile")
+        status, health = http_json("http://127.0.0.1:" + str(self.profile.get("source_backend_port", 48080)) + "/actuator/health")
         require(status == 200 and isinstance(health, dict) and health.get("status") == "UP", "Legacy health check failed")
         return pid, values
 
@@ -76,9 +86,9 @@ class Bootstrap:
         sections = re.split(r"(?m)^# configuration file ([^\n]+):\n", expanded)
         actual = {sections[i]: sections[i+1] for i in range(1, len(sections)-1, 2)
                   if re.search(r"proxy_pass\s+http://127\.0\.0\.1:48080(?=[/;])", sections[i+1])}
-        require(set(actual) == set(PROFILE["nginx_files"]), "Active ERP proxy inventory differs from the verified test profile")
+        require(set(actual) == set(self.profile["nginx_files"]), "Active ERP proxy inventory differs from the verified test profile")
         originals = {}
-        for name in PROFILE["nginx_files"]:
+        for name in self.profile["nginx_files"]:
             path = Path(name)
             require(path.resolve() == path and path.is_file(), "Unexpected proxy symlink")
             originals[name] = path.read_text()
@@ -88,14 +98,14 @@ class Bootstrap:
         require(not (self.root / "state.json").exists() or not json.loads((self.root / "state.json").read_text()).get("current"), "ERP is already managed; use deploy")
         version = self.run(["docker", "compose", "version", "--short"], "compose-version").lstrip("v").split(".")
         require(tuple(map(int, version[:2])) >= (2, 30), "Docker Compose 2.30+ is required")
-        for port in (PROFILE["backend_port"], PROFILE["admin_port"]):
+        for port in (self.profile["backend_port"], self.profile["admin_port"]):
             with socket.socket() as sock:
                 sock.bind(("127.0.0.1", port))
         memory = {line.split(":")[0]: int(line.split()[1]) for line in Path("/proc/meminfo").read_text().splitlines()}
         require(memory["MemAvailable"] >= 768 * 1024, "At least 768 MiB available memory is required for rehearsal")
         capacity([self.root])
         pid, runtime = self.source_runtime()
-        source = PROFILE["source_database"]
+        source = self.profile["source_database"]
         require(self.database.query("SELECT @@partial_revokes") == "0", "Review MySQL schema-grant escaping for partial_revokes=ON")
         # This profile covers database-backed uploads only. Do not invent a mount for external files.
         require(self.database.query("SELECT COUNT(*) FROM infra_file f LEFT JOIN infra_file_config c ON c.id=f.config_id WHERE c.id IS NULL OR c.storage<>1", source) == "0", "External file storage requires a reviewed mount mapping")
@@ -104,26 +114,26 @@ class Bootstrap:
             require(self.database.query(f"SELECT COUNT(*) FROM information_schema.{table} WHERE {field}='{source}'") == "0", "Review database stored objects before isolated restoration")
         originals, nginx_hash = self.routes()
         token = secrets.token_hex(24)
-        plan = nginx_plan(originals, token)
-        enabled = self.run(["systemctl", "show", PROFILE["service"], "-p", "UnitFileState", "--value"], "legacy-enabled")
+        plan = self.policy.nginx_plan(originals, token)
+        enabled = self.run(["systemctl", "show", self.profile["service"], "-p", "UnitFileState", "--value"], "legacy-enabled")
         require(enabled in ("enabled", "disabled"), "Unsupported legacy unit enable state")
-        unit = self.run(["systemctl", "cat", PROFILE["service"]], "legacy-unit-backup")
+        unit = self.run(["systemctl", "cat", self.profile["service"]], "legacy-unit-backup")
         return {"pid": pid, "runtime": runtime, "originals": originals, "routes": plan, "probe_token": token,
                 "nginx_hash": nginx_hash, "legacy_enabled": enabled,
                 "unit": unit, "unit_hash": sha256(unit.encode()),
-                "jar_hash": sha256(Path(PROFILE["jar"]).read_bytes())}
+                "jar_hash": sha256(Path(self.profile["jar"]).read_bytes())}
 
     def clone_and_migrate(self, target, backup, receipt, runtime):
-        owned_database(target)
+        self.policy.owned_database(target)
         self.database.create(target)
-        user = "erp_cd_m_" + self.state["attempt"]
+        user = self.user_prefix + "m_" + self.state["attempt"]
         self.save(migration_user=user)
         password = secrets.token_hex(32)
         with self.database.restricted(target, user, password) as env:
             self.database.restore(backup, receipt, target, user, env)
             before = self.database.counts(target)
             before_audit = self.database.audit(target, self.payload["audit"]["before"])
-            result = migrate(self.commands, runtime, target, env)
+            result = self.migrate_clone(runtime, target, env)
             require(self.database.counts(target) == before, "Migration changed product, account or attachment counts")
             require(self.database.query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name IN ('website_code_config','website_code_history')", target) == "2", "CMS tables missing after migration")
             after_audit = self.database.audit(target, self.payload["audit"]["after"])
@@ -144,14 +154,15 @@ class Bootstrap:
         work = self.directory / attempt
         work.mkdir(mode=0o700)
         self.state = {"attempt": attempt, "release_id": self.release["id"], "release_hash": fingerprint(self.release),
-                      "writes_may_be_open": False, "candidate_started": False, "source_database": PROFILE["source_database"],
-                      "rehearsal_database": "oakved_cd_test_rehearse_" + attempt, "live_database": "oakved_cd_test_live_" + attempt}
+                      "preparation_contract": self.preparation_contract(),
+                      "writes_may_be_open": False, "candidate_started": False, "source_database": self.profile["source_database"],
+                      "rehearsal_database": self.database_prefix + "rehearse_" + attempt, "live_database": self.database_prefix + "live_" + attempt}
         self.save("preparing")
         write_json(work / "source.json", snapshot)
         write_json(work / "release.json", self.release)
         try:
-            prepare_images(self.commands, self.release, work, self.payload["helper"], preloaded=self.payload.get("images_preloaded") is True)
-            receipt = self.database.backup(PROFILE["source_database"], work / "rehearsal.sql")
+            self.prepare_image_runtime(work)
+            receipt = self.database.backup(self.profile["source_database"], work / "rehearsal.sql")
             result = self.clone_and_migrate(self.state["rehearsal_database"], work / "rehearsal.sql", receipt, work / "runtime")
             pid, _ = self.source_runtime()
             require(pid == snapshot["pid"] and self.routes()[1] == snapshot["nginx_hash"], "Legacy service or routing changed during preparation")
@@ -165,18 +176,24 @@ class Bootstrap:
 
     def verify_prepared(self, snapshot):
         require(self.state.get("release_hash") == fingerprint(self.release) and self.state.get("migration_passed") is True, "Prepare this exact release first")
+        require(self.state.get("preparation_contract") == self.preparation_contract(),
+                "Preparation helper, audits or configuration changed; prepare again")
         require(0 <= (utcnow() - timestamp(self.state["prepared_at"])).total_seconds() <= 86400, "Preparation expired; run prepare again")
         old = json.loads((self.work() / "source.json").read_text())
         require(old["pid"] == snapshot["pid"] and old["runtime"] == snapshot["runtime"] and old["nginx_hash"] == snapshot["nginx_hash"]
                 and old["jar_hash"] == snapshot["jar_hash"] and old["unit_hash"] == snapshot["unit_hash"], "Legacy configuration changed; prepare again")
-        require(self.database.version(self.state["rehearsal_database"]) == 49, "Rehearsal database changed")
+        require(self.database.version(self.state["rehearsal_database"]) == self.profile["target_version"], "Rehearsal database changed")
         verify_runtime(self.work())
 
+    def preparation_contract(self):
+        return fingerprint({"helper": self.payload["helper"]["sha256"], "audit": self.payload["audit"],
+                            "compose": self.payload["compose"], "profile": self.profile})
+
     def result(self, status):
-        return {"status": status, "environment": "test", "release_id": self.state.get("release_id"),
+        return {"status": status, "environment": self.environment, "release_id": self.state.get("release_id"),
                 "phase": self.state["phase"], "restore_passed": self.state.get("restore_passed", False),
                 "migration_passed": self.state.get("migration_passed", False),
-                "source_database": PROFILE["source_database"], "live_database": self.state.get("live_database"),
+                "source_database": self.profile["source_database"], "live_database": self.state.get("live_database"),
                 "remaining_findings": self.state.get("remaining_findings", []),
                 "report_path": str(self.path), "traffic_open": self.state.get("writes_may_be_open", False)}
 
@@ -205,7 +222,7 @@ class Bootstrap:
     def website_snapshot(self):
         result = {}
         for port in (80, 8081, 18081):
-            request = urllib.request.Request(f"http://127.0.0.1:{port}/", headers={"Host": PROFILE["host"]})
+            request = urllib.request.Request(f"http://127.0.0.1:{port}/", headers={"Host": self.profile["host"]})
             with urllib.request.urlopen(request, timeout=5) as response:
                 require(response.status == 200, "Existing website is not healthy")
                 result[str(port)] = sha256(response.read(1024 * 1024))
@@ -215,7 +232,7 @@ class Bootstrap:
         work = self.work()
         snapshot = json.loads((work / "source.json").read_text())
         metadata = verify_runtime(work)
-        user, password = "erp_cd_a_" + self.state["attempt"], secrets.token_hex(32)
+        user, password = self.user_prefix + "a_" + self.state["attempt"], secrets.token_hex(32)
         self.save(application_user=user)
         self.database.create_user(self.state["live_database"], user, password)
         config_dir = self.root / "config"
@@ -225,7 +242,7 @@ class Bootstrap:
             require(json.loads((config_dir / "server.json").read_text()).get("initialized") is False, "Existing managed configuration cannot be replaced")
         # Uploads are in MySQL on this host. A dedicated empty mount supports future uploads
         # without pretending an unrelated old example directory is an active attachment store.
-        data_root = Path("/opt/oakved-cd-data/test")
+        data_root = Path("/opt/oakved-cd-data") / self.environment
         require(data_root.resolve() == data_root, "Unexpected persistent directory symlink")
         data_root.mkdir(mode=0o755, parents=True, exist_ok=True)
         data_root.parent.chmod(0o755)
@@ -236,21 +253,22 @@ class Bootstrap:
             require(path.resolve() == path, "Unexpected data mount symlink")
             os.chown(path, metadata["uid"], self.owner.pw_gid)
             path.chmod(0o750)
-        value = {"environment": "test", "initialized": True, "project": "oakved-erp-test",
-            "backend_port": PROFILE["backend_port"], "admin_port": PROFILE["admin_port"],
-            "api_base_url": "http://" + PROFILE["host"], "storefront_url": "http://" + PROFILE["host"],
-            "admin_url": "http://" + PROFILE["host"] + "/admin/", "database_name": self.state["live_database"],
+        value = {"environment": self.environment, "initialized": True, "project": "oakved-erp-" + self.environment,
+            "backend_port": self.profile["backend_port"], "admin_port": self.profile["admin_port"],
+            "api_base_url": self.release["config"][self.environment]["api_base_url"],
+            "storefront_url": self.release["config"][self.environment]["storefront_url"],
+            "admin_url": self.release["config"][self.environment]["api_base_url"] + "/admin/", "database_name": self.state["live_database"],
             "uploads_path": str(data_root / "uploads"), "uploads_target": "/opt/yudao/uploads", "logs_path": str(data_root / "logs"),
-            "min_free_bytes": PROFILE["reserve_bytes"], "image_peak_bytes": metadata["image_peak_bytes"],
+            "min_free_bytes": self.profile["reserve_bytes"], "image_peak_bytes": metadata["image_peak_bytes"],
             "backup_estimate_bytes": self.state["fresh_backup"]["bytes"], "backup_timeout_seconds": 180,
             "migration_reviews": {}, "smoke_checks": [
                 {"tenant_id": tid, "path": path} for tid in (121, 162) for path in (
                     "/app-api/seo/navigation/public?siteId=1&locale=en",
                     "/app-api/seo/blog/public?siteId=1&locale=en&pageSize=1")]}
         write_json(config_dir / "server.json", value)
-        (config_dir / "backend.env").write_text(backend_environment(snapshot["runtime"], self.state["live_database"], user, password))
+        (config_dir / "backend.env").write_text(self.policy.backend_environment(snapshot["runtime"], self.state["live_database"], user, password))
         (config_dir / "mysql.cnf").write_text(f"[client]\nhost=127.0.0.1\nport=3306\nuser={user}\npassword={password}\n")
-        server = Server(self.root, "test")
+        server = Server(self.root, self.environment)
         require(not server.state.get("current"), "An active managed release already exists")
         server.state["in_progress"] = {"operation": "bootstrap", "release_id": self.release["id"], "phase": "candidate"}
         server.save()
@@ -282,8 +300,8 @@ class Bootstrap:
                 path.chmod(0o700 if path.is_dir() else 0o600)
 
     def finish(self, server):
-        server.state.update(current=self.release["id"], history=[], pins=[], compatible=[], schema_version=49, in_progress=None,
-                            bootstrap={"completed_at": utcnow().isoformat(), "source_database": PROFILE["source_database"]})
+        server.state.update(current=self.release["id"], history=[], pins=[], compatible=[], schema_version=self.profile["target_version"], in_progress=None,
+                            bootstrap={"completed_at": utcnow().isoformat(), "source_database": self.profile["source_database"]})
         server.save()
         self.save("complete", completed_at=utcnow().isoformat())
         self.grant_deployer_access()
@@ -296,8 +314,8 @@ class Bootstrap:
     def cleanup_scratch(self):
         """Remove only this successful attempt's temporary runtime and rehearsal DB."""
         require(self.state["phase"] == "complete" and self.state["writes_may_be_open"], "Cleanup requires a completed cutover")
-        name = owned_database(self.state["rehearsal_database"])
-        require(name.startswith("oakved_cd_test_rehearse_") and name != self.state["live_database"], "Never remove the live database")
+        name = self.policy.owned_database(self.state["rehearsal_database"])
+        require(name.startswith(self.database_prefix + "rehearse_") and name != self.state["live_database"], "Never remove the live database")
         current = json.loads((self.root / "config/server.json").read_text())
         require(current["database_name"] != name, "Rehearsal database has been adopted by the application")
         if self.database.query(f"SELECT COUNT(*) FROM information_schema.processlist WHERE DB='{name}'") == "0":
@@ -322,7 +340,7 @@ class Bootstrap:
     def cutover(self):
         if self.state["phase"] == "complete":
             require(self.state.get("release_hash") == fingerprint(self.release), "Use deploy for another release")
-            Server(self.root, "test").healthy(self.release)
+            Server(self.root, self.environment).healthy(self.release)
             return self.result("already-current")
         require(self.state["phase"] == "prepared", "Run prepare successfully for this release before cutover")
         self.verify_prepared(self.preflight())
@@ -333,21 +351,21 @@ class Bootstrap:
         try:
             self.replace_routes("maintenance")
             self.save("stopping-legacy")
-            self.run(["systemctl", "stop", PROFILE["service"]], "stop-legacy", seconds=45)
+            self.stop_legacy()
             self.save("fresh-backup")
-            require(self.database.query("SELECT COUNT(*) FROM information_schema.processlist WHERE DB='" + PROFILE["source_database"] + "'") == "0", "Another connection still uses the source database")
-            receipt = self.database.backup(PROFILE["source_database"], work / "cutover.sql")
+            require(self.database.query("SELECT COUNT(*) FROM information_schema.processlist WHERE DB='" + self.profile["source_database"] + "'") == "0", "Another connection still uses the source database")
+            receipt = self.database.backup(self.profile["source_database"], work / "cutover.sql")
             self.save("restoring-live-copy", fresh_backup=receipt)
             result = self.clone_and_migrate(self.state["live_database"], work / "cutover.sql", receipt, work / "runtime")
-            require(result["counts"] == self.database.counts(PROFILE["source_database"]), "Fresh copy differs from the stopped ERP data")
+            require(result["counts"] == self.database.counts(self.profile["source_database"]), "Fresh copy differs from the stopped ERP data")
             write_json(work / "cutover-migration.json", result)
             server = self.start_candidate()
             self.save("verifying-proxy")
             self.replace_routes("candidate")
             server.wait_healthy(self.release, headers={"X-ERP-CD-Probe": snapshot["probe_token"]})
             require(self.website_snapshot() == self.state["website_before"], "An existing website changed during cutover")
-            require(self.database.version(PROFILE["source_database"]) == 47, "Legacy database changed unexpectedly")
-            self.run(["systemctl", "disable", PROFILE["service"]], "disable-legacy-autostart")
+            require(self.database.version(self.profile["source_database"]) == self.profile["source_version"], "Legacy database changed unexpectedly")
+            self.disable_legacy()
             # Once this flag is durable, never restore the stale legacy database automatically.
             self.save("publishing", writes_may_be_open=True)
             self.replace_routes("open")
@@ -367,21 +385,22 @@ class Bootstrap:
         require(not self.state.get("writes_may_be_open"), "Traffic may have opened; only roll-forward recovery is allowed")
         snapshot = json.loads((self.work() / "source.json").read_text())
         if self.state.get("candidate_started"):
-            server = Server(self.root, "test")
+            server = Server(self.root, self.environment)
             require(server.config["database_name"] == self.state["live_database"] and not server.state.get("current"), "Candidate ownership changed")
             server.compose(self.release["id"], "stop", "--timeout", "30", timeout=60)
             server.state["in_progress"] = None
             server.state["last_failure"] = {"status": "restored-legacy", "release_id": self.release["id"]}
             server.save()
-        require(self.database.version(PROFILE["source_database"]) == 47, "Original database is not V047")
-        require(sha256(Path(PROFILE["jar"]).read_bytes()) == snapshot["jar_hash"], "Legacy JAR changed; cannot restore automatically")
-        require(sha256(self.run(["systemctl", "cat", PROFILE["service"]], "check-legacy-unit").encode()) == snapshot["unit_hash"], "Legacy unit changed; cannot restore automatically")
-        self.run(["systemctl", "enable" if snapshot["legacy_enabled"] == "enabled" else "disable", PROFILE["service"]], "restore-autostart")
-        self.run(["systemctl", "start", PROFILE["service"]], "restore-legacy", seconds=45)
+        require(self.database.version(self.profile["source_database"]) == self.profile["source_version"], "Original database is not V047")
+        require(sha256(Path(self.profile["jar"]).read_bytes()) == snapshot["jar_hash"], "Legacy JAR changed; cannot restore automatically")
+        require(sha256(self.run(["systemctl", "cat", self.profile["service"]], "check-legacy-unit").encode()) == snapshot["unit_hash"], "Legacy unit changed; cannot restore automatically")
+        self.run(["systemctl", "enable" if snapshot["legacy_enabled"] == "enabled" else "disable", self.profile["service"]], "restore-autostart")
+        self.run(["systemctl", "start", self.profile["service"]], "restore-legacy", seconds=45)
+        self.restore_previous_containers(snapshot)
         deadline = time.monotonic() + 150
         while True:
             try:
-                status, data = http_json("http://127.0.0.1:48080/actuator/health")
+                status, data = http_json("http://127.0.0.1:" + str(self.profile.get("source_backend_port", 48080)) + "/actuator/health")
                 if status == 200 and isinstance(data, dict) and data.get("status") == "UP":
                     break
             except OSError:
@@ -411,7 +430,7 @@ class Bootstrap:
     def recover(self):
         require(self.state.get("release_hash") == fingerprint(self.release), "Recover the recorded release only")
         if self.state["phase"] == "complete":
-            Server(self.root, "test").healthy(self.release)
+            Server(self.root, self.environment).healthy(self.release)
             self.grant_deployer_access()
             return self.result("already-current")
         if self.state["phase"] == "restored-legacy":
@@ -424,8 +443,9 @@ class Bootstrap:
             self.save("prepare-failed")
             return self.result("prepare-failed")
         if self.state.get("writes_may_be_open"):
-            require(self.run(["systemctl", "show", PROFILE["service"], "-p", "MainPID", "--value"], "legacy-stopped") == "0", "Legacy service restarted; stop and inspect both writers")
-            server = Server(self.root, "test")
+            self.verify_previous_containers_stopped()
+            require(self.run(["systemctl", "show", self.profile["service"], "-p", "MainPID", "--value"], "legacy-stopped") == "0", "Legacy service restarted; stop and inspect both writers")
+            server = Server(self.root, self.environment)
             require(server.config["database_name"] == self.state["live_database"], "Managed database changed")
             server.wait_healthy(self.release, local_only=True)
             self.replace_routes("open")
@@ -435,14 +455,40 @@ class Bootstrap:
         self.restore_legacy()
         return self.result("restored-legacy")
 
+    def prepare_image_runtime(self, work):
+        return prepare_images(self.commands, self.release, work, self.payload["helper"],
+                              preloaded=self.payload.get("images_preloaded") is True)
+
+    def migrate_clone(self, runtime, target, env):
+        return migrate(self.commands, runtime, target, env)
+
+    def stop_legacy(self):
+        self.run(["systemctl", "stop", self.profile["service"]], "stop-legacy", seconds=45)
+
+    def disable_legacy(self):
+        self.run(["systemctl", "disable", self.profile["service"]], "disable-legacy-autostart")
+
+    def restore_previous_containers(self, snapshot):
+        pass
+
+    def verify_previous_containers_stopped(self):
+        pass
+
 
 def main(payload):
-    validate_target(payload["environment"], payload["root"], payload["release"], payload["operation"], payload.get("confirm_cutover"))
+    return run_bootstrap(payload, Bootstrap, bootstrap_policy)
+
+
+def run_bootstrap(payload, bootstrap_class, policy):
+    operation = payload["operation"]
+    profile = policy.PROFILE
+    policy.validate_target(payload["environment"], payload["root"], payload["release"],
+                           "prepare" if operation == "preflight" else operation, payload.get("confirm_cutover"))
     validate_audit_bundle(payload["audit"])
-    require(os.geteuid() == 0 and os.environ.get("SUDO_USER") == PROFILE["user"], "Use the verified deployment user's sudo connection")
+    require(os.geteuid() == 0 and os.environ.get("SUDO_USER") == profile["user"], "Use the verified deployment user's sudo connection")
     require(os.uname().machine == "x86_64", "linux/amd64 required")
     key = Path("/etc/ssh/ssh_host_ed25519_key.pub").read_text().split()[1]
-    require(base64.b64encode(hashlib.sha256(base64.b64decode(key)).digest()).decode().rstrip("=") == PROFILE["host_key"], "Wrong test server host identity")
+    require(base64.b64encode(hashlib.sha256(base64.b64decode(key)).digest()).decode().rstrip("=") == profile["host_key"], "Wrong server host identity")
     root = Path(payload["root"])
     require(root.resolve() == root, "Unexpected deployment path symlink")
     os.umask(0o077)
@@ -454,7 +500,13 @@ def main(payload):
     signal.signal(signal.SIGTERM, interrupted)
     signal.signal(signal.SIGHUP, interrupted)
     with locked(root / "operation.lock"):
-        bootstrap = Bootstrap(payload)
-        result = getattr(bootstrap, payload["operation"])()
+        bootstrap = bootstrap_class(payload)
+        if operation == "preflight":
+            bootstrap.preflight()
+            result = {"status": "preflight-passed", "environment": payload["environment"],
+                      "release_id": payload["release"]["id"], "initialized": False,
+                      "next_operation": "prepare", "traffic_open": False}
+        else:
+            result = getattr(bootstrap, operation)()
     emit("finished", result=result)
     print("ERP_CD_RESULT=" + json.dumps(result), flush=True)
