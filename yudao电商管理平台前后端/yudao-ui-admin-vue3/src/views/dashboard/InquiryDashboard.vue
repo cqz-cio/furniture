@@ -178,7 +178,7 @@ const acquisitionFunnel = computed(() => websiteOnly ? [] : [
 const chartOptions = computed<EChartsOption>(() => {
   const series: LineSeriesOption[] = [
     {
-      name: websiteOnly ? '首页浏览量' : '网站访客',
+      name: websiteOnly ? '官网浏览量' : '网站访客',
       type: 'line',
       smooth: true,
       connectNulls: false,
@@ -196,9 +196,9 @@ const chartOptions = computed<EChartsOption>(() => {
     }
   ]
   return {
-    aria: { enabled: true, description: '按日展示网站和商品访客趋势' },
+    aria: { enabled: true, description: websiteOnly ? '按日展示官网各页面浏览量趋势' : '按日展示网站和商品访客趋势' },
     tooltip: { trigger: 'axis' },
-    legend: { data: websiteOnly ? ['首页浏览量'] : ['网站访客', '商品访客'], top: 0 },
+    legend: { data: websiteOnly ? ['官网浏览量'] : ['网站访客', '商品访客'], top: 0 },
     grid: { left: 16, right: 20, top: 42, bottom: 10, containLabel: true },
     xAxis: {
       type: 'category',
@@ -333,7 +333,7 @@ onMounted(loadDashboard)
           <h1>数据看板</h1>
           <el-tag effect="plain" round>{{ websiteOnly ? '公司官网' : 'B2B 询盘型' }}</el-tag>
         </div>
-        <p>{{ websiteOnly ? '查看本官网询盘处理、首页访问和内容运营数据。' : '先看询盘处理效率，再定位网站流量、Quote List 转化、商品关注度与 SEO 内容覆盖。' }}</p>
+        <p>{{ websiteOnly ? '查看本官网询盘处理、各页面访问和内容运营数据。' : '先看询盘处理效率，再定位网站流量、Quote List 转化、商品关注度与 SEO 内容覆盖。' }}</p>
         <span class="inquiry-dashboard__period">{{ selectedPeriodLabel }}</span>
       </div>
       <el-space wrap>
@@ -391,7 +391,7 @@ onMounted(loadDashboard)
           <div class="inquiry-dashboard__panel-title">
             <div>
               <strong>获客流量趋势</strong>
-              <small>{{ websiteOnly ? '按日统计首页浏览量' : '按日统计网站与商品详情访客' }}</small>
+              <small>{{ websiteOnly ? '按日统计官网各页面浏览量' : '按日统计网站与商品详情访客' }}</small>
             </div>
             <el-tag v-if="trafficSummary" effect="plain">
               数据截至 {{ formatTime(trafficSummary.asOf) }}
