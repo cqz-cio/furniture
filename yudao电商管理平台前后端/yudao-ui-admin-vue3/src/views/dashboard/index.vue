@@ -26,7 +26,7 @@ defineOptions({ name: 'FurnitureDashboard' })
 const route = useRoute()
 const router = useRouter()
 
-const canQuery = computed(() => checkPermi(['statistics:dashboard:query']))
+const canQuery = computed(() => checkPermi(['statistics:dashboard:query', 'statistics:website:query']))
 const canProfit = computed(() => checkPermi(['statistics:dashboard:profit-query']))
 const canExport = computed(() => checkPermi(['statistics:dashboard:export']))
 const canProfitExport = computed(() => canProfit.value && checkPermi(['statistics:dashboard:profit-export']))

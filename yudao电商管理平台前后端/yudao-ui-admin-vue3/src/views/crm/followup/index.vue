@@ -101,7 +101,7 @@
           </el-link>
         </template>
       </el-table-column>
-      <el-table-column align="center" label="操作">
+      <el-table-column v-if="allowDelete !== false" align="center" label="操作">
         <template #default="scope">
           <el-button link type="danger" @click="handleDelete(scope.row.id)"> 删除 </el-button>
         </template>
@@ -140,6 +140,7 @@ const getFileName = (url: string) => {
 const props = defineProps<{
   bizType: number
   bizId: number
+  allowDelete?: boolean
 }>()
 const message = useMessage() // 消息弹窗
 const { t } = useI18n() // 国际化

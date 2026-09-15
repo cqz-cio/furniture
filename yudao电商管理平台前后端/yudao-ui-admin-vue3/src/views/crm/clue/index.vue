@@ -228,19 +228,20 @@
           <el-button link type="primary" @click="openDetail(row.id)">查看</el-button>
           <el-button
             v-if="row.processStatus === InquiryProcessStatus.PENDING"
-            v-hasPermi="['crm:clue:update']"
+            v-hasPermi="['crm:clue:update', 'crm:clue:triage']"
             link
             type="primary"
             @click="updateStatus(row, InquiryProcessStatus.PROCESSING)"
           >
             开始处理
           </el-button>
-          <el-dropdown v-hasPermi="['crm:clue:update']" class="ml-12px">
+          <el-dropdown v-hasPermi="['crm:clue:update', 'crm:clue:triage']" class="ml-12px">
             <el-button link type="primary">更多<Icon icon="ep:arrow-down" /></el-button>
             <template #dropdown>
               <el-dropdown-menu>
                 <el-dropdown-item
                   v-if="!row.transformStatus && row.processStatus !== InquiryProcessStatus.INVALID"
+                  v-hasPermi="['crm:clue:update']"
                   :disabled="!row.companyName"
                   @click="transformInquiry(row)"
                 >
@@ -258,7 +259,7 @@
                 >
                   标记无效
                 </el-dropdown-item>
-                <el-dropdown-item divided @click="toggleTestData(row)">
+                <el-dropdown-item v-hasPermi="['crm:clue:update']" divided @click="toggleTestData(row)">
                   {{ row.testData ? '恢复为经营数据' : '标记为测试数据' }}
                 </el-dropdown-item>
               </el-dropdown-menu>

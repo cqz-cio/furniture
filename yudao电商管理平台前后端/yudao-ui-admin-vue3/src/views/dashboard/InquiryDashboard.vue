@@ -14,6 +14,7 @@ import {
 } from '@/api/mall/statistics/dashboard'
 import { getSeoMetadataPage } from '@/api/seo/metadata'
 import { checkPermi } from '@/utils/permission'
+import { WebsiteTrafficApi } from '@/api/mall/statistics/website'
 
 defineOptions({ name: 'InquiryDashboard' })
 
@@ -29,7 +30,7 @@ type InquiryPeriodSummary = {
 const router = useRouter()
 const loading = ref(true)
 const error = ref('')
-const trafficSummary = ref<DashboardSummary | null>(null)
+const trafficSummary = ref<Partial<DashboardSummary> | null>(null)
 const trafficTrend = ref<DashboardTrendItem[]>([])
 const inquirySummary = ref<InquiryPeriodSummary>({
   total: 0,
@@ -43,7 +44,8 @@ const popularProducts = ref<DashboardProduct[]>([])
 const productCounts = ref<Record<string, number>>({})
 const seoCounts = ref({ published: 0, draft: 0 })
 
-const canReadTraffic = checkPermi(['statistics:dashboard:query'])
+const websiteOnly = checkPermi(['statistics:website:query']) && !checkPermi(['statistics:dashboard:query'])
+const canReadTraffic = websiteOnly || checkPermi(['statistics:dashboard:query'])
 const canReadInquiry = checkPermi(['crm:clue:query'])
 const canReadProduct = checkPermi(['product:spu:query'])
 const canReadSeo = checkPermi(['seo:metadata:query'])
@@ -84,7 +86,7 @@ const visitorToInquiryRate = computed(() => {
 const trafficWarning = computed(() => {
   if (!canReadTraffic || loading.value) return ''
   if (!trafficSummary.value || trafficSummary.value.trafficDataStatus === 'UNAVAILABLE') {
-    return '官网访问统计尚未接通或当前周期没有可用数据。询盘统计仍可使用，但访客、商品关注度和访客转询盘率暂不能用于经营判断。'
+    return websiteOnly ? '官网访问统计尚未接通或当前周期没有可用数据。接入数据采集后才会显示真实访问量。' : '官网访问统计尚未接通或当前周期没有可用数据。询盘统计仍可使用，但访客、商品关注度和访客转询盘率暂不能用于经营判断。'
   }
   if (trafficSummary.value.trafficDataStatus === 'PARTIAL') {
     return '官网访问数据当前只有部分覆盖，请结合数据截至时间谨慎判断。'
@@ -119,7 +121,10 @@ const coreMetrics = computed(() => [
   }
 ])
 
-const trafficMetrics = computed(() => [
+const trafficMetrics = computed(() => websiteOnly ? [
+  { label: '首页浏览量', value: integer(trafficSummary.value?.homePv), hint: '首页 PV' },
+  { label: '首页访客', value: integer(trafficSummary.value?.homeUv), hint: '首页 UV' }
+] : [
   {
     label: '网站访客',
     value: canReadTraffic ? integer(trafficSummary.value?.homeUv) : '—',
@@ -147,7 +152,7 @@ const trafficMetrics = computed(() => [
   }
 ])
 
-const acquisitionFunnel = computed(() => [
+const acquisitionFunnel = computed(() => websiteOnly ? [] : [
   {
     label: '网站访客',
     value: canReadTraffic ? integer(trafficSummary.value?.homeUv) : '—'
@@ -173,11 +178,11 @@ const acquisitionFunnel = computed(() => [
 const chartOptions = computed<EChartsOption>(() => {
   const series: LineSeriesOption[] = [
     {
-      name: '网站访客',
+      name: websiteOnly ? '首页浏览量' : '网站访客',
       type: 'line',
       smooth: true,
       connectNulls: false,
-      data: trafficTrend.value.map((item) => item.homeUv),
+      data: trafficTrend.value.map((item) => websiteOnly ? item.homePv : item.homeUv),
       itemStyle: { color: '#176bdb' },
       areaStyle: { color: 'rgba(23, 107, 219, 0.08)' }
     },
@@ -193,7 +198,7 @@ const chartOptions = computed<EChartsOption>(() => {
   return {
     aria: { enabled: true, description: '按日展示网站和商品访客趋势' },
     tooltip: { trigger: 'axis' },
-    legend: { data: ['网站访客', '商品访客'], top: 0 },
+    legend: { data: websiteOnly ? ['首页浏览量'] : ['网站访客', '商品访客'], top: 0 },
     grid: { left: 16, right: 20, top: 42, bottom: 10, containLabel: true },
     xAxis: {
       type: 'category',
@@ -201,7 +206,7 @@ const chartOptions = computed<EChartsOption>(() => {
       data: trafficTrend.value.map((item) => item.day.slice(5))
     },
     yAxis: { type: 'value', minInterval: 1 },
-    series
+    series: websiteOnly ? series.slice(0, 1) : series
   }
 })
 
@@ -255,6 +260,13 @@ const loadTrafficData = async () => {
     startDate: dateRange.value[0],
     endDate: dateRange.value[1],
     compare: false
+  }
+  if (websiteOnly) {
+    const [summary, trend] = await Promise.all([WebsiteTrafficApi.getSummary(query), WebsiteTrafficApi.getTrend(query)])
+    trafficSummary.value = summary
+    trafficTrend.value = trend || []
+    popularProducts.value = []
+    return
   }
   const productQuery: DashboardQuery = {
     ...query,
@@ -319,9 +331,9 @@ onMounted(loadDashboard)
       <div>
         <div class="inquiry-dashboard__title-row">
           <h1>数据看板</h1>
-          <el-tag effect="plain" round>B2B 询盘型</el-tag>
+          <el-tag effect="plain" round>{{ websiteOnly ? '公司官网' : 'B2B 询盘型' }}</el-tag>
         </div>
-        <p>先看询盘处理效率，再定位网站流量、Quote List 转化、商品关注度与 SEO 内容覆盖。</p>
+        <p>{{ websiteOnly ? '查看本官网询盘处理、首页访问和内容运营数据。' : '先看询盘处理效率，再定位网站流量、Quote List 转化、商品关注度与 SEO 内容覆盖。' }}</p>
         <span class="inquiry-dashboard__period">{{ selectedPeriodLabel }}</span>
       </div>
       <el-space wrap>
@@ -379,7 +391,7 @@ onMounted(loadDashboard)
           <div class="inquiry-dashboard__panel-title">
             <div>
               <strong>获客流量趋势</strong>
-              <small>按日统计网站与商品详情访客</small>
+              <small>{{ websiteOnly ? '按日统计首页浏览量' : '按日统计网站与商品详情访客' }}</small>
             </div>
             <el-tag v-if="trafficSummary" effect="plain">
               数据截至 {{ formatTime(trafficSummary.asOf) }}
@@ -407,7 +419,7 @@ onMounted(loadDashboard)
             <small>{{ item.hint }}</small>
           </div>
         </div>
-        <div class="inquiry-dashboard__funnel" aria-label="B2B 询盘转化漏斗">
+        <div v-if="!websiteOnly" class="inquiry-dashboard__funnel" aria-label="B2B 询盘转化漏斗">
           <div v-for="item in acquisitionFunnel" :key="item.label">
             <span>{{ item.label }}</span>
             <strong>{{ item.value }}</strong>
@@ -463,7 +475,7 @@ onMounted(loadDashboard)
           <div class="inquiry-dashboard__panel-title">
             <div>
               <strong>内容运营概览</strong>
-              <small>商品展示与 SEO 元数据状态</small>
+              <small>{{ websiteOnly ? 'SEO 元数据状态' : '商品展示与 SEO 元数据状态' }}</small>
             </div>
           </div>
         </template>
@@ -491,7 +503,7 @@ onMounted(loadDashboard)
       </el-card>
     </section>
 
-    <el-card v-if="canReadTraffic" class="inquiry-dashboard__panel" shadow="never">
+    <el-card v-if="canReadTraffic && !websiteOnly" class="inquiry-dashboard__panel" shadow="never">
       <template #header>
         <div class="inquiry-dashboard__panel-title">
           <div>

@@ -43,6 +43,9 @@ public class CrmPermissionAspect {
     @Resource
     private AdminUserApi adminUserApi;
 
+    @Resource
+    private cn.iocoder.yudao.module.crm.service.permission.WebsiteInquiryAccess websiteInquiryAccess;
+
     @Before("@annotation(crmPermission)")
     public void doBefore(JoinPoint joinPoint, CrmPermission crmPermission) {
         // 1.1 获取相关属性值
@@ -62,7 +65,13 @@ public class CrmPermissionAspect {
         // 2. 逐个校验权限
         List<CrmPermissionDO> permissionList = crmPermissionService.getPermissionListByBiz(bizType, bizIds);
         Map<Long, List<CrmPermissionDO>> multiMap = convertMultiMap(permissionList, CrmPermissionDO::getBizId);
-        bizIds.forEach(bizId -> validatePermission(bizType, multiMap.get(bizId), permissionLevel));
+        bizIds.forEach(bizId -> {
+            if (websiteInquiryAccess.canAccess(bizType, bizId, permissionLevel)) return;
+            if (websiteInquiryAccess.isWebsiteOnlyOperator()) {
+                throw exception(CRM_PERMISSION_DENIED, CrmBizTypeEnum.getNameByType(bizType));
+            }
+            validatePermission(bizType, multiMap.get(bizId), permissionLevel);
+        });
     }
 
     private void validatePermission(Integer bizType, List<CrmPermissionDO> bizPermissions, Integer permissionLevel) {

@@ -134,7 +134,7 @@ public class CrmClueController {
 
     @PutMapping("/process-status")
     @Operation(summary = "更新询盘处理状态")
-    @PreAuthorize("@ss.hasPermission('crm:clue:update')")
+    @PreAuthorize("@ss.hasAnyPermissions('crm:clue:update', 'crm:clue:triage')")
     public CommonResult<Boolean> updateInquiryProcessStatus(
             @Valid @RequestBody CrmInquiryProcessStatusUpdateReqVO reqVO) {
         clueService.updateInquiryProcessStatus(reqVO);

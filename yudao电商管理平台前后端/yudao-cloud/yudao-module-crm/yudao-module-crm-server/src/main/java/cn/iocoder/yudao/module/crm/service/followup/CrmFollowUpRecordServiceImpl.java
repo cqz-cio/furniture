@@ -41,6 +41,8 @@ public class CrmFollowUpRecordServiceImpl implements CrmFollowUpRecordService {
 
     @Resource
     private CrmFollowUpRecordMapper crmFollowUpRecordMapper;
+    @Resource
+    private cn.iocoder.yudao.module.crm.service.permission.WebsiteInquiryAccess websiteInquiryAccess;
 
     @Resource
     @Lazy
@@ -64,6 +66,11 @@ public class CrmFollowUpRecordServiceImpl implements CrmFollowUpRecordService {
     @Override
     @CrmPermission(bizTypeValue = "#createReqVO.bizType", bizId = "#createReqVO.bizId", level = CrmPermissionLevelEnum.WRITE)
     public Long createFollowUpRecord(CrmFollowUpRecordSaveReqVO createReqVO) {
+        // Website operators may not use related IDs to mutate customer/contact/business records.
+        if (websiteInquiryAccess.isWebsiteOnlyOperator()
+                && (CollUtil.isNotEmpty(createReqVO.getBusinessIds()) || CollUtil.isNotEmpty(createReqVO.getContactIds()))) {
+            throw exception(cn.iocoder.yudao.module.crm.enums.ErrorCodeConstants.CRM_PERMISSION_DENIED, "客户关联");
+        }
         // 1. 创建更进记录
         CrmFollowUpRecordDO record = BeanUtils.toBean(createReqVO, CrmFollowUpRecordDO.class);
         crmFollowUpRecordMapper.insert(record);
@@ -106,6 +113,9 @@ public class CrmFollowUpRecordServiceImpl implements CrmFollowUpRecordService {
 
     @Override
     public void deleteFollowUpRecord(Long id, Long userId) {
+        if (websiteInquiryAccess.isWebsiteOnlyOperator()) {
+            throw exception(FOLLOW_UP_RECORD_DELETE_DENIED);
+        }
         // 校验存在
         CrmFollowUpRecordDO followUpRecord = validateFollowUpRecordExists(id);
         // 校验权限
@@ -132,7 +142,12 @@ public class CrmFollowUpRecordServiceImpl implements CrmFollowUpRecordService {
 
     @Override
     public CrmFollowUpRecordDO getFollowUpRecord(Long id) {
-        return crmFollowUpRecordMapper.selectById(id);
+        CrmFollowUpRecordDO record = crmFollowUpRecordMapper.selectById(id);
+        if (record != null && websiteInquiryAccess.isWebsiteOnlyOperator()
+                && !websiteInquiryAccess.canAccess(record.getBizType(), record.getBizId(), CrmPermissionLevelEnum.READ.getLevel())) {
+            throw exception(cn.iocoder.yudao.module.crm.enums.ErrorCodeConstants.CRM_PERMISSION_DENIED, "跟进记录");
+        }
+        return record;
     }
 
     @Override

@@ -16,7 +16,7 @@
         <el-button v-hasPermi="['crm:clue:update']" @click="openForm">编辑询盘</el-button>
         <el-button
           v-if="clue.processStatus === InquiryProcessStatus.PENDING"
-          v-hasPermi="['crm:clue:update']"
+          v-hasPermi="['crm:clue:update', 'crm:clue:triage']"
           type="primary"
           @click="updateStatus(InquiryProcessStatus.PROCESSING)"
         >
@@ -33,7 +33,7 @@
         <el-button v-if="clue.transformStatus" disabled type="success">已生成客户档案</el-button>
         <el-dropdown
           v-if="showMoreActions"
-          v-hasPermi="['crm:clue:update']"
+          v-hasPermi="['crm:clue:update', 'crm:clue:triage']"
           class="ml-12px"
           @command="updateStatus"
         >
@@ -59,6 +59,9 @@
             :inquiry-id="clueId"
             @configure="openMailSettings"
           />
+        </el-tab-pane>
+        <el-tab-pane v-if="canFollowUp" label="跟进记录" lazy>
+          <FollowUpRecord :biz-type="BizTypeEnum.CRM_CLUE" :biz-id="clueId" :allow-delete="false" />
         </el-tab-pane>
         <el-tab-pane label="操作日志">
           <div v-if="logLoadError" class="clue-log-error">
@@ -95,10 +98,13 @@ import WebsiteInquiryMailSettings from '../WebsiteInquiryMailSettings.vue'
 import type { OperateLogVO } from '@/api/system/operatelog'
 import { getOperateLogPage } from '@/api/crm/operateLog'
 import { BizTypeEnum } from '@/api/crm/permission'
+import FollowUpRecord from '@/views/crm/followup/index.vue'
+import { checkPermi } from '@/utils/permission'
 import { ErpPageState } from '@/components/ErpPageState'
 
 defineOptions({ name: 'CrmClueDetail' })
 
+const canFollowUp = checkPermi(['crm:clue:triage', 'crm:clue:update'])
 const clueId = ref(0)
 const loading = ref(true)
 const loadState = ref<'loading' | 'ready' | 'error'>('loading')

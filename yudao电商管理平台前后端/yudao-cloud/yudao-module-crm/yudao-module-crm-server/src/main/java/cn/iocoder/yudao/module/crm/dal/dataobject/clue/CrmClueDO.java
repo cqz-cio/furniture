@@ -31,6 +31,8 @@ public class CrmClueDO extends BaseDO {
      */
     @TableId
     private Long id;
+    /** Tenant ownership, also checked explicitly for website-wide triage. */
+    private Long tenantId;
     /**
      * 线索名称
      */
