@@ -78,6 +78,10 @@ class WebsiteMediaServiceTest extends BaseDbUnitTest {
         error(() -> service.update(new WebsiteMediaUpdateReqVO().setId(asset.getId()).setName("changed").setAlt("")), MEDIA_NOT_EXISTS.getCode());
         var image=new com.fasterxml.jackson.databind.ObjectMapper().createObjectNode().put("url", asset.getUrl()).put("alt", "x");
         error(() -> service.validateImage(image), MEDIA_REFERENCE_INVALID.getCode());
+        image.put("url", asset.getUrl().replace("website-media", "%77ebsite-media"));
+        error(() -> service.validateImage(image), MEDIA_REFERENCE_INVALID.getCode());
+        image.put("url", asset.getUrl().replace("/website-media/", "%2Fwebsite-media%2F"));
+        error(() -> service.validateImage(image), MEDIA_REFERENCE_INVALID.getCode());
         TenantContextHolder.setTenantId(500L); assertThat(service.get(asset.getId()).getArchived()).isFalse();
     }
     @Test void archiveHidesSelectionAndRestorePreservesPublishedLink() throws Exception {

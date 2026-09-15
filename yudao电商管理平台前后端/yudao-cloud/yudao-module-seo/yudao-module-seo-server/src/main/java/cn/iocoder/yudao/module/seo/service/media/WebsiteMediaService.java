@@ -68,7 +68,9 @@ public class WebsiteMediaService {
     }
     public void validateImage(JsonNode image) {
         String url = image.path("url").asText();
-        if (!url.contains("/website-media/")) return;
+        // URI.getPath decodes percent escapes: encoded managed URLs still require ownership.
+        String path = Objects.toString(URI.create(url).getPath(), "");
+        if (!path.contains("/website-media/")) return;
         Long tenant = tenant();
         var row = mapper.selectOne(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<WebsiteMediaDO>()
             .eq(WebsiteMediaDO::getTenantId, tenant).eq(WebsiteMediaDO::getUrl, url));
