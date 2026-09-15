@@ -43,9 +43,16 @@ public class FurnitureNavigationCatalog {
 
     /** CMS navigation follows existing role grants, without changing furniture package sync. */
     public Set<String> getMenuPaths(String businessMode, boolean canQueryWebsitePages) {
+        return getMenuPaths(businessMode, canQueryWebsitePages, false);
+    }
+
+    public Set<String> getMenuPaths(String businessMode, boolean canQueryWebsitePages, boolean canQueryWebsiteMedia) {
         Set<String> paths = new LinkedHashSet<>(getMenuPaths(businessMode));
         if (canQueryWebsitePages && menuPaths.contains("/seo/page-content")) {
             paths.add("/seo/page-content");
+        }
+        if (canQueryWebsiteMedia && menuPaths.contains("/seo/media")) {
+            paths.add("/seo/media");
         }
         return Collections.unmodifiableSet(paths);
     }

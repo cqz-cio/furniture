@@ -113,7 +113,7 @@ public class AuthController {
         if (CollUtil.isEmpty(roleIds)) {
             AuthPermissionInfoRespVO permissionInfo = AuthConvert.INSTANCE.convert(
                     user, Collections.emptyList(), Collections.emptyList());
-            permissionInfo.setFurnitureNavigationMenuPaths(getCurrentFurnitureNavigationMenuPaths(false));
+            permissionInfo.setFurnitureNavigationMenuPaths(getCurrentFurnitureNavigationMenuPaths(false, false));
             return success(permissionInfo);
         }
         List<RoleDO> roles = roleService.getRoleList(roleIds);
@@ -128,11 +128,12 @@ public class AuthController {
         AuthPermissionInfoRespVO permissionInfo = AuthConvert.INSTANCE.convert(user, roles, menuList);
         // buildMenuTree removes button entries from menuList; use the captured permission set.
         permissionInfo.setFurnitureNavigationMenuPaths(getCurrentFurnitureNavigationMenuPaths(
-                permissionInfo.getPermissions().contains("seo:page:query")));
+                permissionInfo.getPermissions().contains("seo:page:query"),
+                permissionInfo.getPermissions().contains("seo:media:query")));
         return success(permissionInfo);
     }
 
-    private Set<String> getCurrentFurnitureNavigationMenuPaths(boolean canQueryWebsitePages) {
+    private Set<String> getCurrentFurnitureNavigationMenuPaths(boolean canQueryWebsitePages, boolean canQueryWebsiteMedia) {
         Long tenantId = TenantContextHolder.getTenantId();
         if (tenantId == null) {
             return furnitureNavigationCatalog.getMenuPaths();
@@ -141,7 +142,7 @@ public class AuthController {
         if (tenant == null || TenantDO.PACKAGE_ID_SYSTEM.equals(tenant.getPackageId())) {
             return furnitureNavigationCatalog.getMenuPaths();
         }
-        return furnitureNavigationCatalog.getMenuPaths(tenant.getBusinessMode(), canQueryWebsitePages);
+        return furnitureNavigationCatalog.getMenuPaths(tenant.getBusinessMode(), canQueryWebsitePages, canQueryWebsiteMedia);
     }
 
     @PostMapping("/register")

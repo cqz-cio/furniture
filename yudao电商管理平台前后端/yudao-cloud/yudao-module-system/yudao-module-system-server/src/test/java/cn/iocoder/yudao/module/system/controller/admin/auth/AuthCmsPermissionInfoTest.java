@@ -54,6 +54,21 @@ class AuthCmsPermissionInfoTest {
     }
 
     private AuthPermissionInfoRespVO permissionInfo(boolean grantPageQuery) throws Exception {
+        return permissionInfo(grantPageQuery, false);
+    }
+
+    @Test
+    void mediaMenuSurvivesLoginNavigationFilteringOnlyWithItsGrant() throws Exception {
+        for (boolean grantPage : new boolean[]{false, true}) {
+            AuthPermissionInfoRespVO response = permissionInfo(grantPage, true);
+            assertTrue(response.getPermissions().contains("seo:media:query"));
+            assertTrue(response.getFurnitureNavigationMenuPaths().contains("/seo/media"));
+            assertTrue(response.getMenus().get(0).getChildren().stream().anyMatch(menu -> "media".equals(menu.getPath())));
+            assertFalse(permissionInfo(grantPage, false).getFurnitureNavigationMenuPaths().contains("/seo/media"));
+        }
+    }
+
+    private AuthPermissionInfoRespVO permissionInfo(boolean grantPageQuery, boolean grantMediaQuery) throws Exception {
         LoginUser login = new LoginUser(); login.setId(9001L);
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(login, null, List.of()));
@@ -64,6 +79,10 @@ class AuthCmsPermissionInfoTest {
         List<MenuDO> menus = new ArrayList<>(List.of(
                 menu(1L, 0L, 1, "/seo", ""), menu(2L, 1L, 2, "page-content", "")));
         if (grantPageQuery) menus.add(menu(3L, 2L, 3, "", "seo:page:query"));
+        if (grantMediaQuery) {
+            menus.add(menu(4L, 1L, 2, "media", ""));
+            menus.add(menu(5L, 4L, 3, "", "seo:media:query"));
+        }
         AdminUserService users = mock(AdminUserService.class);
         RoleService roles = mock(RoleService.class);
         MenuService menuService = mock(MenuService.class);

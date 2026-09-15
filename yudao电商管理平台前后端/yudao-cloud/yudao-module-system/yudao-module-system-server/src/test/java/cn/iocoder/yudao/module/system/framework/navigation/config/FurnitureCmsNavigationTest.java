@@ -6,6 +6,19 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class FurnitureCmsNavigationTest {
+    @Test
+    void mediaNavigationFollowsItsOwnGrantWithoutExpandingFurniturePackages() throws Exception {
+        FurnitureNavigationCatalog catalog = new FurnitureNavigationConfiguration()
+                .furnitureNavigationCatalog(new ObjectMapper());
+        assertTrue(catalog.getMenuPaths().contains("/seo/media"));
+        for (String mode : new String[]{"B2B", "B2C"}) {
+            assertFalse(catalog.getMenuPaths(mode).contains("/seo/media"));
+            assertFalse(catalog.getMenuPaths(mode, true, false).contains("/seo/media"));
+            assertTrue(catalog.getMenuPaths(mode, false, true).contains("/seo/media"));
+            assertTrue(catalog.getMenuPaths(mode, true, true).contains("/seo/media"));
+            assertFalse(catalog.getMenuPaths(mode).contains("/seo/media"));
+        }
+    }
 
     @Test
     void tripeerBrandOperatorCanNavigateEveryGrantedCmsModule() throws Exception {
