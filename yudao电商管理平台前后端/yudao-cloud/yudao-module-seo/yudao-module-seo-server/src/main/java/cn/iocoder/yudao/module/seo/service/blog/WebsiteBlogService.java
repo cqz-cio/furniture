@@ -35,6 +35,10 @@ public interface WebsiteBlogService {
 
     List<WebsiteBlogPublishRecordRespVO> getPublishHistory(Long articleId);
 
+    void restoreDraft(@Valid cn.iocoder.yudao.module.seo.controller.admin.blog.vo.WebsiteBlogRestoreReqVO request);
+
+    AppWebsiteBlogArticleRespVO getDraftPreview(Long id, Integer version);
+
     WebsiteBlogPreviewTicketRespVO createPreviewTicket(@Valid WebsiteBlogVersionReqVO reqVO);
 
     AppWebsiteBlogPageRespVO getPublishedPage(

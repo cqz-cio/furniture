@@ -18,16 +18,19 @@ import static cn.iocoder.yudao.framework.common.pojo.CommonResult.success;
 @Validated
 public class WebsiteTrafficController {
     @Resource private DashboardQueryService service;
+    @Resource private cn.iocoder.yudao.module.statistics.service.dashboard.WebsiteTrafficService website;
 
     @GetMapping("/summary")
     @PreAuthorize("@ss.hasPermission('statistics:website:query')")
     public CommonResult<WebsiteTrafficRespVO> summary(@Valid DashboardQueryReqVO request) {
+        if (website.configured()) return success(website.summary(request));
         return success(BeanUtils.toBean(service.summary(siteQuery(request), false), WebsiteTrafficRespVO.class));
     }
 
     @GetMapping("/trend")
     @PreAuthorize("@ss.hasPermission('statistics:website:query')")
     public CommonResult<List<WebsiteTrafficRespVO>> trend(@Valid DashboardQueryReqVO request) {
+        if (website.configured()) return success(website.trend(request));
         return success(BeanUtils.toBean(service.trend(siteQuery(request), false), WebsiteTrafficRespVO.class));
     }
 

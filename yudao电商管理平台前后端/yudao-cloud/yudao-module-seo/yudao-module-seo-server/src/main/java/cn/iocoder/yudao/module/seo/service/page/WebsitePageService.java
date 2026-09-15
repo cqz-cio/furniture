@@ -90,6 +90,20 @@ public class WebsitePageService {
         return response(row, false);
     }
 
+    @Transactional(rollbackFor = Exception.class)
+    public WebsitePageRespVO restoreDraft(@Valid WebsitePageRestoreReqVO request) {
+        site(request.getSiteId(), true);
+        WebsitePageDO row = versioned(request);
+        WebsitePageRevisionDO source = revisionMapper.selectRevision(row.getId(), request.getRevisionId());
+        if (source == null) throw exception(PAGE_VERSION_CONFLICT);
+        JsonNode content = JsonUtils.parseObject(source.getContentJson(), JsonNode.class);
+        WebsitePageContentValidator.validate(content);
+        mediaService.validateImage(content.path("modules").path("hero").path("image"));
+        row.setDraftJson(content.toString()).setDraftVersion(row.getDraftVersion() + 1);
+        pageMapper.updateById(row);
+        return response(row, false);
+    }
+
     public WebsitePageRespVO getPublished(@Valid WebsitePageKeyReqVO key) {
         site(key.getSiteId(), false);
         return response(requiredPage(key, false), true);
@@ -99,7 +113,7 @@ public class WebsitePageService {
         site(key.getSiteId(), false);
         WebsitePageDO row = requiredPage(key, false);
         return revisionMapper.selectHistory(row.getId()).stream().map(revision ->
-                new WebsitePageRespVO().setSiteId(row.getSiteId()).setPageKey(row.getPageKey())
+                new WebsitePageRespVO().setRevisionId(revision.getId()).setSiteId(row.getSiteId()).setPageKey(row.getPageKey())
                         .setLocale(row.getLocale()).setVersion(revision.getRevision())
                         .setContent(JsonUtils.parseObject(revision.getContentJson(), JsonNode.class))).toList();
     }
@@ -171,7 +185,7 @@ public class WebsitePageService {
         WebsitePageRevisionDO revision = row.getPublishedRevisionId() == null ? null
                 : revisionMapper.selectRevision(row.getId(), row.getPublishedRevisionId());
         if (published && revision == null) throw exception(PAGE_NOT_PUBLISHED);
-        return new WebsitePageRespVO().setSiteId(row.getSiteId()).setPageKey(row.getPageKey()).setLocale(row.getLocale())
+        return new WebsitePageRespVO().setRevisionId(revision == null ? null : revision.getId()).setSiteId(row.getSiteId()).setPageKey(row.getPageKey()).setLocale(row.getLocale())
                 .setVersion(published ? revision.getRevision() : row.getDraftVersion())
                 .setPublishedVersion(revision == null ? null : revision.getRevision())
                 .setContent(JsonUtils.parseObject(published ? revision.getContentJson() : row.getDraftJson(), JsonNode.class));

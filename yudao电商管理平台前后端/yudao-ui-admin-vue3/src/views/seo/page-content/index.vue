@@ -109,6 +109,13 @@ const preview = () => run(async () => {
   // An explicit link avoids losing the window to browser popup blocking.
   ElMessage.success('预览已准备好，请点击“打开整页预览”。')
 })
+const restore = (row: api.PageDraft) => run(async () => {
+  if (!draft.value || !row.revisionId || !canEdit.value) return
+  await ElMessageBox.confirm('将此历史版本恢复为草稿？当前未发布修改将被覆盖，线上内容保持不变。', '恢复草稿')
+  apply(await api.restoreDraft({ ...version(), revisionId: row.revisionId }))
+  historyOpen.value = false
+  ElMessage.success('已恢复为草稿，请预览确认后重新发布。')
+})
 const openHistory = () => run(async () => { history.value = await api.getHistory(key()); historyOpen.value = true })
 async function mayLeave() {
   if (busy.value) return false
@@ -169,6 +176,7 @@ onBeforeUnmount(() => { generation++; unregister(); window.removeEventListener('
         <el-table-column prop="version" label="版本" width="90" />
         <el-table-column prop="locale" label="语言" width="100" />
         <el-table-column label="首页标题"><template #default="{ row }">{{ row.content.modules.hero.title }}</template></el-table-column>
+        <el-table-column label="操作" width="140"><template #default="{ row }"><el-button v-if="canEdit" :disabled="busy" link type="primary" @click="restore(row)">恢复为草稿</el-button></template></el-table-column>
       </el-table>
     </el-dialog>
   </ContentWrap>

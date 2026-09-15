@@ -425,7 +425,7 @@ import { useMessage } from '@/hooks/web/useMessage'
 
 defineOptions({ name: 'SeoBlogEditorDrawer' })
 
-const props = defineProps<{ siteUrl?: string }>()
+const props = defineProps<{ siteUrl?: string; locale?: 'zh-CN' | 'en' }>()
 const emit = defineEmits<{ success: []; stateChange: [visible: boolean, articleId?: number] }>()
 
 const SITE_ID = 1
@@ -444,7 +444,7 @@ const formRef = ref()
 
 const emptyForm = (): WebsiteBlogArticle => ({
   siteId: SITE_ID,
-  locale: LOCALE,
+  locale: props.locale || LOCALE,
   slug: '',
   legacyPath: '',
   title: '',
@@ -600,7 +600,7 @@ const normalizePayload = (): WebsiteBlogArticleSaveReqVO => {
     id: form.value.id,
     version: form.value.version,
     siteId: SITE_ID,
-    locale: LOCALE,
+    locale: form.value.locale,
     slug: form.value.slug.trim().toLowerCase(),
     legacyPath: form.value.legacyPath?.trim() || '',
     title: form.value.title.trim(),

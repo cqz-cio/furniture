@@ -243,4 +243,26 @@ class WebsiteBlogServiceImplTest {
                 .setVersion(version);
     }
 
+    @Test void restoreUsesOwnedRecordAndOnlyEditableAtomicUpdate() {
+        var article = article(9L, 4);
+        when(articleMapper.selectByIdForTenant(9L)).thenReturn(article);
+        var snapshot = service.getDraftPreview(9L, 4); snapshot.setTitle("Historical title");
+        when(publishRecordMapper.selectForRestore(9L, 7L)).thenReturn(new WebsiteBlogPublishRecordDO()
+                .setId(7L).setArticleId(9L).setSnapshotJson(JsonUtils.toJsonString(snapshot)));
+        when(articleMapper.updateEditableAtomic(any(), eq(4), eq(TENANT_ID), eq("100"))).thenReturn(1);
+        var request = new cn.iocoder.yudao.module.seo.controller.admin.blog.vo.WebsiteBlogRestoreReqVO();
+        request.setId(9L); request.setVersion(4); request.setRecordId(7L);
+        service.restoreDraft(request);
+        var captor = ArgumentCaptor.forClass(WebsiteBlogArticleDO.class);
+        verify(articleMapper).updateEditableAtomic(captor.capture(), eq(4), eq(TENANT_ID), eq("100"));
+        assertThat(captor.getValue().getTitle()).isEqualTo("Historical title");
+        assertThat(captor.getValue().getPublishedPayloadJson()).isNull();
+        assertThat(captor.getValue().getStatus()).isNull();
+        verify(publishRecordMapper).selectForRestore(9L, 7L);
+        request.setRecordId(999L);
+        assertThatThrownBy(() -> service.restoreDraft(request)).isInstanceOf(RuntimeException.class);
+        request.setVersion(3);
+        assertThatThrownBy(() -> service.restoreDraft(request)).isInstanceOf(RuntimeException.class);
+    }
+
 }

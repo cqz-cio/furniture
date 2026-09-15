@@ -122,8 +122,8 @@ const coreMetrics = computed(() => [
 ])
 
 const trafficMetrics = computed(() => websiteOnly ? [
-  { label: '首页浏览量', value: integer(trafficSummary.value?.homePv), hint: '首页 PV' },
-  { label: '首页访客', value: integer(trafficSummary.value?.homeUv), hint: '首页 UV' }
+  { label: '官网浏览量', value: integer(trafficSummary.value?.homePv), hint: '各页面 PV；不含草稿预览' },
+  { label: '官网访客', value: integer(trafficSummary.value?.homeUv), hint: '已同意统计的浏览器标识去重 UV' }
 ] : [
   {
     label: '网站访客',

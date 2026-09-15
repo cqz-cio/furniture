@@ -69,6 +69,15 @@ public interface WebsiteNavigationRevisionMapper extends BaseMapperX<WebsiteNavi
 
     @Update("""
             UPDATE website_navigation_revision
+            SET status = 'ARCHIVED', version = version + 1, updater = #{updater}, update_time = CURRENT_TIMESTAMP
+            WHERE id = #{id} AND version = #{expectedVersion} AND status = 'DRAFT'
+              AND tenant_id = #{tenantId} AND deleted = FALSE
+            """)
+    int archiveDraftAtomic(@Param("id") Long id, @Param("expectedVersion") Integer expectedVersion,
+                           @Param("tenantId") Long tenantId, @Param("updater") String updater);
+
+    @Update("""
+            UPDATE website_navigation_revision
             SET status = 'ARCHIVED',
                 updater = #{updater},
                 update_time = CURRENT_TIMESTAMP

@@ -1,4 +1,7 @@
 import request from '@/config/axios'
+import { getSeoSiteConfig } from '@/api/seo/siteConfig'
+import { createSitePreview } from '@/api/seo/site-preview'
+import { hasPermission } from '@/directives/permission/hasPermi'
 
 export type WebsiteBlogStatus = 'DRAFT' | 'PUBLISHED' | 'OFFLINE'
 
@@ -126,8 +129,19 @@ export const offlineWebsiteBlogArticle = (id: number, version: number) =>
 export const getWebsiteBlogPublishHistory = (articleId: number) =>
   request.get<WebsiteBlogPublishRecord[]>({ url: '/seo/blog/history', params: { articleId } })
 
-export const createWebsiteBlogPreviewTicket = (id: number, version: number) =>
-  request.post<WebsiteBlogPreviewTicket>({
+export const createWebsiteBlogPreviewTicket = async (id: number, version: number) => {
+  if (hasPermission(['seo:page:preview'])) {
+    const article = await getWebsiteBlogArticle(id)
+    const config = await getSeoSiteConfig(article.siteId)
+    if (config?.navigationTemplate === 'TRIPEER_CORPORATE') {
+      const result = await createSitePreview({ siteId: article.siteId, locale: article.locale, articleId: id, articleVersion: version })
+      return { previewUrl: result.previewUrl, expiresInSeconds: result.expiresIn }
+    }
+  }
+  return request.post<WebsiteBlogPreviewTicket>({
     url: '/seo/blog/preview-ticket',
     data: { id, version }
   })
+
+}
+export const restoreWebsiteBlogDraft = (id: number, version: number, recordId: number) => request.post<boolean>({ url: '/seo/blog/restore-draft', data: { id, version, recordId } })

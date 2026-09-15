@@ -18,6 +18,7 @@ class WebsiteTrafficControllerTest {
         DashboardQueryService service = mock(DashboardQueryService.class);
         WebsiteTrafficController controller = new WebsiteTrafficController();
         ReflectionTestUtils.setField(controller, "service", service);
+        ReflectionTestUtils.setField(controller, "website", mock(cn.iocoder.yudao.module.statistics.service.dashboard.WebsiteTrafficService.class));
         when(service.summary(any(), eq(false))).thenReturn(new DashboardSummaryRespVO()
                 .setHomePv(40L).setHomeUv(12L).setPaidRevenue(999L).setGrossProfit(888L)
                 .setCostAmount(777L).setPaidOrderCount(9L).setTrafficDataStatus("PARTIAL"));
@@ -42,6 +43,7 @@ class WebsiteTrafficControllerTest {
         DashboardQueryService service = mock(DashboardQueryService.class);
         WebsiteTrafficController controller = new WebsiteTrafficController();
         ReflectionTestUtils.setField(controller, "service", service);
+        ReflectionTestUtils.setField(controller, "website", mock(cn.iocoder.yudao.module.statistics.service.dashboard.WebsiteTrafficService.class));
         DashboardTrendItemRespVO row = new DashboardTrendItemRespVO();
         row.setDay(LocalDate.of(2026, 9, 1));
         row.setHomePv(3L);

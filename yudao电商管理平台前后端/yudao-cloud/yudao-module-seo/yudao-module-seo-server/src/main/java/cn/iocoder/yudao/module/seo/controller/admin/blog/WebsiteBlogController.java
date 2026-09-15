@@ -101,6 +101,13 @@ public class WebsiteBlogController {
         return success(true);
     }
 
+    @PostMapping("/restore-draft")
+    @PreAuthorize("@ss.hasPermission('seo:blog:update')")
+    public CommonResult<Boolean> restore(@Valid @RequestBody cn.iocoder.yudao.module.seo.controller.admin.blog.vo.WebsiteBlogRestoreReqVO request) {
+        blogService.restoreDraft(request);
+        return success(true);
+    }
+
     @GetMapping("/history")
     @Operation(summary = "获得企业日志发布记录")
     @PreAuthorize("@ss.hasPermission('seo:blog:query')")

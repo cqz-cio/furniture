@@ -123,7 +123,7 @@ jobs:
           OAKVED_FLYWAY_TEST_ADMIN_URL: jdbc:mysql://127.0.0.1:3306/?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
           OAKVED_FLYWAY_TEST_USER: root
           OAKVED_FLYWAY_TEST_PASSWORD: root
-        run: mvn -B -ntp -pl yudao-server -am -Dtest=OakvedFlywayIntegrationTest,AuthCmsPermissionInfoTest,FurnitureCmsNavigationTest,WebsiteInquiryAccessTest,WebsiteTrafficControllerTest,WebsiteFollowUpScopeTest,CrmClueServiceImplTest,WebsiteMediaServiceTest,WebsitePageServiceTest -Dsurefire.failIfNoSpecifiedTests=false package
+        run: mvn -B -ntp -pl yudao-server -am -Dtest=OakvedFlywayIntegrationTest,AuthCmsPermissionInfoTest,FurnitureCmsNavigationTest,WebsiteInquiryAccessTest,WebsiteTrafficControllerTest,WebsiteFollowUpScopeTest,CrmClueServiceImplTest,WebsiteMediaServiceTest,WebsitePageServiceTest,WebsitePreviewServiceTest,WebsiteBlogServiceImplTest,WebsiteNavigationServiceImplTest,WebsiteTrafficServiceTest -Dsurefire.failIfNoSpecifiedTests=false package
 
       - name: Verify migrations are packaged in the JAR
         working-directory: yudao电商管理平台前后端/yudao-cloud

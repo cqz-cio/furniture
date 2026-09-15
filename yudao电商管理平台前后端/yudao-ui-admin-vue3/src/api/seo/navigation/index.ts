@@ -1,6 +1,6 @@
 import request from '@/config/axios'
 
-export type WebsiteNavigationTemplate = 'VANZ_B2B' | 'OAKVED_B2C'
+export type WebsiteNavigationTemplate = 'VANZ_B2B' | 'OAKVED_B2C' | 'TRIPEER_CORPORATE'
 export type WebsiteNavigationItemType = 'PAGE' | 'CATEGORY' | 'DIRECTORY' | 'ROUTE' | 'FILTER'
 
 export interface WebsiteNavigationItemRespVO {

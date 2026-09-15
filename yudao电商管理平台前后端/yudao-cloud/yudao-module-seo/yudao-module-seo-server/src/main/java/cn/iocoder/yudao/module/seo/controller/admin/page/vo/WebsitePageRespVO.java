@@ -5,6 +5,7 @@ import lombok.Data;
 
 @Data
 public class WebsitePageRespVO {
+    private Long revisionId;
     private Long siteId;
     private String pageKey;
     private String locale;

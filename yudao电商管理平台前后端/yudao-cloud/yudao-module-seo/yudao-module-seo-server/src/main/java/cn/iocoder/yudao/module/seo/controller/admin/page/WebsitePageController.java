@@ -42,6 +42,12 @@ public class WebsitePageController {
         return success(service.publish(request));
     }
 
+    @PostMapping("/restore-draft")
+    @PreAuthorize("@ss.hasPermission('seo:page:update')")
+    public CommonResult<WebsitePageRespVO> restore(@Valid @RequestBody WebsitePageRestoreReqVO request) {
+        return success(service.restoreDraft(request));
+    }
+
     @GetMapping("/history")
     @PreAuthorize("@ss.hasPermission('seo:page:query')")
     public CommonResult<List<WebsitePageRespVO>> history(@Valid WebsitePageKeyReqVO key) {

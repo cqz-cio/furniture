@@ -11,6 +11,13 @@ import java.util.List;
 @Mapper
 public interface WebsiteBlogPublishRecordMapper extends BaseMapperX<WebsiteBlogPublishRecordDO> {
 
+    default WebsiteBlogPublishRecordDO selectForRestore(Long articleId, Long id) {
+        return selectOne(new LambdaQueryWrapperX<WebsiteBlogPublishRecordDO>()
+                .eq(WebsiteBlogPublishRecordDO::getTenantId, TenantContextHolder.getRequiredTenantId())
+                .eq(WebsiteBlogPublishRecordDO::getArticleId, articleId)
+                .eq(WebsiteBlogPublishRecordDO::getId, id));
+    }
+
     default List<WebsiteBlogPublishRecordDO> selectListByArticleId(Long articleId) {
         return selectList(new LambdaQueryWrapperX<WebsiteBlogPublishRecordDO>()
                 .eq(WebsiteBlogPublishRecordDO::getTenantId, TenantContextHolder.getRequiredTenantId())

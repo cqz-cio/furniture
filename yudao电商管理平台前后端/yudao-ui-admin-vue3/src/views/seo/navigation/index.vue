@@ -1,4 +1,5 @@
 <template>
+  <ContentWrap><el-select :model-value="LOCALE" :disabled="busy" style="width: 150px" aria-label="导航语言" @change="changeLocale"><el-option label="简体中文" value="zh-CN" /><el-option label="English" value="en" /></el-select></ContentWrap>
   <div class="website-navigation-page">
     <section class="navigation-toolbar" aria-label="官网导航操作栏">
       <div class="navigation-toolbar__identity">
@@ -87,7 +88,7 @@
           title="一级导航"
           :message="
             isOakvedNavigation
-              ? '顺序与家具官网顶部一致；名称和显示状态可调整，真实地址由系统安全生成。'
+              ? '顺序与官网顶部一致；名称和显示状态可调整，真实地址由系统安全生成。'
               : '拖动调整官网顶部顺序；页面地址已固定，业务人员不用填写链接。'
           "
           surface="form"
@@ -113,7 +114,7 @@
           <p class="section-description">
             {{
               isOakvedNavigation
-                ? '拖动调整 NEW、SHOP BY COLLECTIONS、BEDROOM 等顶部顺序；不需要填写原始 URL。'
+                ? '拖动调整顶部导航顺序；不需要填写原始 URL。'
                 : '基础入口可改名、排序或隐藏；也可以新增指向现有官网页面的导航入口，不需要填写链接。'
             }}
           </p>
@@ -336,7 +337,7 @@
           </template>
 
           <p class="section-description">
-            二级和三级导航只需选择“固定页面、商品筛选或商品分类”；系统会生成真实官网地址。
+            二级和三级导航从可选页面中选择；系统会生成官网地址。
           </p>
 
           <el-collapse v-model="oakvedExpandedKeys" class="oakved-navigation-tree">
@@ -847,7 +848,7 @@ import ProductCategoryForm from '@/views/mall/product/category/CategoryForm.vue'
 defineOptions({ name: 'SeoNavigation' })
 
 const SITE_ID = 1
-const LOCALE = 'en'
+const LOCALE = ref<'zh-CN' | 'en'>('en')
 
 const vanzPageTargets = [
   { pageKey: 'HOME', title: '首页', defaultLabel: 'Home', href: '/' },
@@ -896,13 +897,14 @@ const history = ref<WebsiteNavigationRevisionRespVO[]>([])
 const siteConfigLoading = ref(false)
 const siteConfigured = ref(false)
 
-const isOakvedNavigation = computed(() => draft.value?.navigationTemplate === 'OAKVED_B2C')
+const isCorporateNavigation = computed(() => draft.value?.navigationTemplate === 'TRIPEER_CORPORATE')
+const isOakvedNavigation = computed(() => ['OAKVED_B2C', 'TRIPEER_CORPORATE'].includes(draft.value?.navigationTemplate || ''))
 const navigationBrandLabel = computed(() =>
-  isOakvedNavigation.value ? 'Oakved 官网导航' : 'VANZ 官网导航'
+  isCorporateNavigation.value ? 'TRIPEER 官网导航' : isOakvedNavigation.value ? 'Oakved 官网导航' : 'VANZ 官网导航'
 )
 const navigationDescription = computed(() =>
   isOakvedNavigation.value
-    ? '管理家具官网顶部导航及二、三级下拉目录；链接从安全目标中选择。'
+    ? '管理官网顶部导航及二、三级下拉目录；链接从本站页面中选择。'
     : '一级导航可新增安全页面入口；二级目录可选择或新建商品分类，名称与商品中心保持一致。'
 )
 const primarySectionTag = computed(() =>
@@ -1042,12 +1044,12 @@ const pendingCategoryRenames = computed(() =>
 
 const inlinePreviewDisplayUrl = computed(() => safePreviewDisplayUrl(inlinePreviewUrl.value))
 
-const oakvedItemTypeOptions: Array<{ label: string; value: WebsiteNavigationItemType }> = [
+const oakvedItemTypeOptions = computed<Array<{ label: string; value: WebsiteNavigationItemType }>>(() => [
   { label: '仅作为目录', value: 'DIRECTORY' },
   { label: '固定页面', value: 'ROUTE' },
   { label: '商品筛选', value: 'FILTER' },
   { label: '商品分类', value: 'CATEGORY' }
-]
+].filter(item => !isCorporateNavigation.value || ['DIRECTORY', 'ROUTE'].includes(item.value)) as Array<{ label: string; value: WebsiteNavigationItemType }>)
 
 const buildTree = (items: WebsiteNavigationItemRespVO[]) => {
   const nodeMap = new Map<string, WebsiteNavigationItemRespVO>()
@@ -1215,7 +1217,7 @@ const loadDraft = async () => {
   loading.value = true
   loadError.value = ''
   try {
-    const response = await getWebsiteNavigationDraft(SITE_ID, LOCALE)
+    const response = await getWebsiteNavigationDraft(SITE_ID, LOCALE.value)
     draft.value = response
     let normalizedUnavailableCategory = false
     const normalizedItems = response.items.map((item) => {
@@ -1225,7 +1227,7 @@ const loadDraft = async () => {
       }
       return { ...item, children: [] }
     })
-    if (response.navigationTemplate === 'OAKVED_B2C') {
+    if (['OAKVED_B2C', 'TRIPEER_CORPORATE'].includes(response.navigationTemplate)) {
       primaryItems.value = buildTree(normalizedItems)
       oakvedExpandedKeys.value = primaryItems.value
         .filter((item) => (item.children || []).length > 0)
@@ -1341,7 +1343,7 @@ const openCategoryCreator = () => categoryFormRef.value?.open('create')
 const handleCategoryCreated = async (payload?: { id?: number; name?: string }) => {
   refreshing.value = true
   try {
-    categoryOptions.value = (await getWebsiteNavigationCategoryOptions(SITE_ID, LOCALE)).map(
+    categoryOptions.value = (await getWebsiteNavigationCategoryOptions(SITE_ID, LOCALE.value)).map(
       (option) => ({ ...option })
     )
     const createdId = Number(payload?.id)
@@ -1475,8 +1477,17 @@ const refreshCategories = async () => {
   }
 }
 
+const changeLocale = async (value: 'zh-CN' | 'en') => {
+  if (busy.value || !(await ensureDraftSaved())) return
+  LOCALE.value = value; inlinePreviewUrl.value = ''; historyVisible.value = false
+  await loadDraft()
+}
 const requestPreviewUrl = async () => {
   if (!draft.value) return ''
+  if (isCorporateNavigation.value) {
+    const { createSitePreview } = await import('@/api/seo/site-preview')
+    return (await createSitePreview({ siteId: draft.value.siteId, locale: draft.value.locale, navigationVersion: draft.value.version })).previewUrl
+  }
   const ticket = await createWebsiteNavigationPreviewTicket(
     draft.value.revisionId,
     draft.value.version
@@ -1530,7 +1541,7 @@ const publishDraft = async () => {
 const loadHistory = async () => {
   historyLoading.value = true
   try {
-    history.value = await getWebsiteNavigationHistory(SITE_ID, LOCALE)
+    history.value = await getWebsiteNavigationHistory(SITE_ID, LOCALE.value)
   } finally {
     historyLoading.value = false
   }

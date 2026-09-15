@@ -9,6 +9,16 @@ import java.util.Arrays;
 @AllArgsConstructor
 public enum WebsiteNavigationTargetEnum {
 
+    TRIPEER_HOME("TRIPEER_HOME", "ROUTE", "首页", "/"),
+    TRIPEER_PROFILE("TRIPEER_PROFILE", "ROUTE", "公司概况", "/about/profile"),
+    TRIPEER_HISTORY("TRIPEER_HISTORY", "ROUTE", "发展历程", "/about/history"),
+    TRIPEER_MARKETS("TRIPEER_MARKETS", "ROUTE", "海外市场", "/about/markets"),
+    TRIPEER_BUSINESS("TRIPEER_BUSINESS", "ROUTE", "业务介绍", "/business"),
+    TRIPEER_INDUSTRY("TRIPEER_INDUSTRY", "ROUTE", "行业动态", "/news/insights"),
+    TRIPEER_COMPANY("TRIPEER_COMPANY", "ROUTE", "公司动态", "/news/company"),
+    TRIPEER_CULTURE("TRIPEER_CULTURE", "ROUTE", "企业文化", "/culture"),
+    TRIPEER_CONTACT("TRIPEER_CONTACT", "ROUTE", "联系我们", "/contact"),
+
     ROUTE_HOME("ROUTE_HOME", "ROUTE", "Home", "/"),
     ROUTE_PRODUCTS("ROUTE_PRODUCTS", "ROUTE", "All products", "/products"),
     ROUTE_CATALOG("ROUTE_CATALOG", "ROUTE", "OAKVED catalog", "/catalog"),

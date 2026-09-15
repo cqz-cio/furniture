@@ -35,6 +35,8 @@ public interface WebsiteNavigationService {
 
     AppWebsiteNavigationPreviewSessionRespVO exchangePreviewTicket(String ticket, String requestOrigin);
 
+    AppWebsiteNavigationRespVO getDraftPreview(Long siteId, String locale);
+
     AppWebsiteNavigationRespVO getPreview(String session, String requestOrigin);
 
 }

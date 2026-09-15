@@ -224,4 +224,26 @@ class WebsitePageServiceTest extends BaseDbUnitTest {
         error(() -> service.exchangePreviewTicket(ticket(), null), PAGE_PREVIEW_INVALID.getCode());
         error(() -> service.getPreview("anything", "http://localhost:5173"), PAGE_PREVIEW_INVALID.getCode());
     }
+    @Test void restoringHistoryChangesOnlyDraftAndRejectsStaleOrForeignRevision() {
+        service.initialize(key("zh-CN"));
+        String original = service.publish(version(1)).getContent().toString();
+        Long first = service.getHistory(key("zh-CN")).get(0).getRevisionId();
+        service.saveDraft(changed(1, "live second")); service.publish(version(2));
+        var restore = new WebsitePageRestoreReqVO(); restore.setSiteId(1L); restore.setPageKey("home");
+        restore.setLocale("zh-CN"); restore.setExpectedVersion(2); restore.setRevisionId(first);
+        var restored = service.restoreDraft(restore);
+        assertThat(restored.getVersion()).isEqualTo(3);
+        assertThat(restored.getContent().toString()).isEqualTo(original);
+        assertThat(service.getPublished(key("zh-CN")).getContent().path("modules").path("hero").path("title").asText()).isEqualTo("live second");
+        error(() -> service.restoreDraft(restore), PAGE_VERSION_CONFLICT.getCode());
+        restore.setExpectedVersion(3); restore.setRevisionId(Long.MAX_VALUE);
+        error(() -> service.restoreDraft(restore), PAGE_VERSION_CONFLICT.getCode());
+        service.publish(version(3));
+        assertThat(service.getPublished(key("zh-CN")).getContent().toString()).isEqualTo(original);
+        TenantContextHolder.setTenantId(501L);
+        service.initialize(key("zh-CN"));
+        restore.setExpectedVersion(1); restore.setRevisionId(first);
+        error(() -> service.restoreDraft(restore), PAGE_VERSION_CONFLICT.getCode());
+    }
+
 }

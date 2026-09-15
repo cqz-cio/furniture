@@ -229,6 +229,37 @@ public class WebsiteBlogServiceImpl implements WebsiteBlogService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void restoreDraft(cn.iocoder.yudao.module.seo.controller.admin.blog.vo.WebsiteBlogRestoreReqVO request) {
+        WebsiteBlogArticleDO current = getRequiredArticle(request.getId());
+        if (!Objects.equals(current.getVersion(), request.getVersion())) throw exception(BLOG_ARTICLE_VERSION_CONFLICT);
+        WebsiteBlogPublishRecordDO record = publishRecordMapper.selectForRestore(current.getId(), request.getRecordId());
+        if (record == null) throw exception(BLOG_ARTICLE_NOT_EXISTS);
+        AppWebsiteBlogArticleRespVO snapshot = JsonUtils.parseObject(record.getSnapshotJson(), AppWebsiteBlogArticleRespVO.class);
+        if (snapshot == null || !Objects.equals(snapshot.getId(), current.getId()) || snapshot.getCoverImage() == null)
+            throw exception(BLOG_ARTICLE_INVALID);
+        WebsiteBlogArticleSaveReqVO draft = new WebsiteBlogArticleSaveReqVO()
+                .setId(current.getId()).setVersion(current.getVersion()).setSiteId(current.getSiteId()).setLocale(current.getLocale())
+                .setSlug(snapshot.getSlug()).setLegacyPath(current.getLegacyPath()).setTitle(snapshot.getTitle())
+                .setTitleLines(snapshot.getTitleLines()).setCategory(snapshot.getCategory()).setLabel(snapshot.getLabel())
+                .setSummary(snapshot.getSummary()).setCoverImageUrl(snapshot.getCoverImage().getUrl())
+                .setCoverImageAlt(snapshot.getCoverImage().getAlt()).setHeroImageUrl(snapshot.getHeroImage())
+                .setSections(snapshot.getSections().stream().map(section -> new cn.iocoder.yudao.module.seo.controller.admin.blog.vo.WebsiteBlogSectionSaveReqVO()
+                    .setId(section.getId()).setTitle(section.getTitle()).setParagraphs(section.getParagraphs())).toList())
+                .setVisible(current.getVisible()).setPublishedAt(current.getPublishedAt()).setSortOrder(snapshot.getSortOrder())
+                .setSeoTitle(snapshot.getSeoTitle()).setSeoDescription(snapshot.getSeoDescription());
+        updateArticle(draft);
+    }
+
+    @Override
+    public AppWebsiteBlogArticleRespVO getDraftPreview(Long id, Integer version) {
+        WebsiteBlogArticleDO article = getRequiredArticle(id);
+        if (!Objects.equals(article.getVersion(), version)) throw exception(BLOG_ARTICLE_VERSION_CONFLICT);
+        return buildPublicResponse(article, parseSections(article.getSectionsJson()),
+                article.getPublishedAt() == null ? LocalDateTime.now() : article.getPublishedAt());
+    }
+
+    @Override
     public WebsiteBlogPreviewTicketRespVO createPreviewTicket(WebsiteBlogVersionReqVO reqVO) {
         WebsiteBlogArticleDO article = getRequiredArticle(reqVO.getId());
         if (!Objects.equals(article.getVersion(), reqVO.getVersion())) {

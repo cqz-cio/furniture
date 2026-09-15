@@ -436,4 +436,18 @@ class WebsiteNavigationServiceImplTest {
         return item;
     }
 
+    @Test void corporateCatalogContainsOnlyCompanyRoutesAndKeepsFurnitureTargetsSeparate() {
+        var template = cn.iocoder.yudao.module.seo.enums.navigation.WebsiteNavigationTemplateEnum.TRIPEER_CORPORATE;
+        List<WebsiteNavigationItemDO> seed = ReflectionTestUtils.invokeMethod(service, "createSeedItems", 77L, template);
+        assertThat(seed).hasSize(11);
+        assertThat(seed).extracting(WebsiteNavigationItemDO::getItemKey).contains("TRIPEER_HOME", "TRIPEER_CONTACT", "TRIPEER_COMPANY");
+        List<WebsiteNavigationItemSaveReqVO> requests = seed.stream().map(item -> new WebsiteNavigationItemSaveReqVO()
+            .setItemKey(item.getItemKey()).setParentItemKey(item.getParentItemKey()).setItemType(item.getItemType()).setLabel(item.getLabel())
+            .setTargetKey(item.getTargetKey()).setSort(item.getSort()).setVisible(item.getVisible()).setOpenMode(item.getOpenMode()).setStyleVariant(item.getStyleVariant())).toList();
+        List<WebsiteNavigationItemDO> result = ReflectionTestUtils.invokeMethod(service, "validateAndConvertItems", requests, 77L, template, java.util.Map.of());
+        assertThat(result).hasSize(11);
+        requests.get(0).setTargetKey("ROUTE_PRODUCTS");
+        assertThatThrownBy(() -> ReflectionTestUtils.invokeMethod(service,"validateAndConvertItems", requests,77L,template,java.util.Map.of())).isInstanceOf(RuntimeException.class);
+    }
+
 }

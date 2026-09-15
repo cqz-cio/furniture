@@ -8,7 +8,9 @@
         <div>
           <div class="blog-toolbar__title">
             <strong>文章管理</strong>
-            <el-tag size="small" type="info" effect="plain">English</el-tag>
+            <el-select :model-value="LOCALE" :disabled="busy || editorOpen || historyLoading" style="width: 130px" @change="changeLocale">
+              <el-option label="简体中文" value="zh-CN" /><el-option label="English" value="en" />
+            </el-select>
           </div>
           <p>编辑文章、管理排序与发布状态；官网只展示已发布且开启显示的内容。</p>
         </div>
@@ -207,6 +209,7 @@
     <BlogEditorDrawer
       ref="editorRef"
       :site-url="siteUrl"
+      :locale="LOCALE"
       @success="refreshAll"
       @state-change="handleEditorStateChange"
     />
@@ -229,6 +232,7 @@
             <template #default="{ row }">{{ formatDate(row.publishedAt) }}</template>
           </el-table-column>
           <el-table-column prop="publishedBy" label="发布人" width="100" />
+          <el-table-column label="操作" width="140"><template #default="{ row }"><el-button v-hasPermi="['seo:blog:update']" link type="primary" :disabled="historyLoading || busy" @click="restoreHistory(row)">恢复为草稿</el-button></template></el-table-column>
         </el-table>
       </div>
       <template #footer>
@@ -246,6 +250,7 @@ import {
   deleteWebsiteBlogArticle,
   getWebsiteBlogPage,
   getWebsiteBlogPublishHistory,
+  restoreWebsiteBlogDraft,
   getWebsiteBlogSummary,
   offlineWebsiteBlogArticle,
   publishWebsiteBlogArticle,
@@ -261,7 +266,7 @@ import BlogEditorDrawer from './BlogEditorDrawer.vue'
 defineOptions({ name: 'SeoBlog' })
 
 const SITE_ID = 1
-const LOCALE = 'en'
+const LOCALE = ref<'zh-CN' | 'en'>('en')
 
 const message = useMessage()
 const editorRef = ref<InstanceType<typeof BlogEditorDrawer>>()
@@ -301,7 +306,7 @@ const loadArticles = async () => {
       pageNo: query.pageNo,
       pageSize: query.pageSize,
       siteId: SITE_ID,
-      locale: LOCALE,
+      locale: LOCALE.value,
       keyword: query.keyword || undefined,
       status: query.status
     })
@@ -320,7 +325,7 @@ const loadArticles = async () => {
 }
 
 const loadSummary = async () => {
-  summary.value = await getWebsiteBlogSummary(SITE_ID, LOCALE)
+  summary.value = await getWebsiteBlogSummary(SITE_ID, LOCALE.value)
 }
 
 const loadSiteConfig = async () => {
@@ -332,6 +337,11 @@ const loadSiteConfig = async () => {
   }
 }
 
+const changeLocale = async (value: 'zh-CN' | 'en') => {
+  if (busy.value || editorOpen.value || historyLoading.value) return
+  LOCALE.value = value; query.pageNo = 1; selectedArticle.value = undefined; historyVisible.value = false
+  await refreshAll()
+}
 const refreshAll = () => Promise.all([loadArticles(), loadSummary(), loadSiteConfig()])
 
 const resolveMediaUrl = (value?: string) => {
@@ -412,6 +422,18 @@ const deleteArticle = async (article: WebsiteBlogArticle) => {
   await refreshAll()
 }
 
+const restoreHistory = async (record: WebsiteBlogPublishRecord) => {
+  const article = historyArticle.value
+  if (!article?.id || article.version == null || busy.value || historyLoading.value) return
+  historyLoading.value = true
+  try {
+    await message.confirm('恢复此版本将覆盖当前编辑稿，线上文章保持不变。确认恢复为草稿？')
+    await restoreWebsiteBlogDraft(article.id, article.version, record.id)
+    historyVisible.value = false
+    await refreshAll()
+    message.success('已恢复为草稿，请编辑、预览确认后重新发布。')
+  } finally { historyLoading.value = false }
+}
 const openHistory = async (article: WebsiteBlogArticle) => {
   if (!article.id) return
   historyVisible.value = true

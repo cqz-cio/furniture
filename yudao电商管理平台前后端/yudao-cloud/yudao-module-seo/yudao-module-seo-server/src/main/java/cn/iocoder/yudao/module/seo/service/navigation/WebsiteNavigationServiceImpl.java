@@ -132,6 +132,21 @@ public class WebsiteNavigationServiceImpl implements WebsiteNavigationService {
             oakvedSeed("OAKVED_DINING_BAR_COUNTER_STOOLS", "OAKVED_DINING", "FILTER", "FILTER_CATEGORY_BAR_COUNTER_STOOL", "Bar & Counter Stools", 70, DEFAULT_STYLE_VARIANT),
             oakvedSeed("OAKVED_DINING_UPHOLSTERY_SWATCHES", "OAKVED_DINING", "FILTER", "FILTER_GROUP_UPHOLSTERY_SWATCHES", "Upholstery Swatches", 80, DEFAULT_STYLE_VARIANT),
             oakvedSeed("OAKVED_DINING_SALES", "OAKVED_DINING", "ROUTE", "ROUTE_SALE", "Sales", 90, DEFAULT_STYLE_VARIANT));
+    private static final List<OakvedSeedSpec> TRIPEER_SEED_ITEMS = List.of(
+        oakvedSeed("TRIPEER_HOME", "", "ROUTE", "TRIPEER_HOME", "首页", 10, DEFAULT_STYLE_VARIANT),
+        oakvedSeed("TRIPEER_ABOUT", "", "DIRECTORY", null, "公司介绍", 20, DEFAULT_STYLE_VARIANT),
+        oakvedSeed("TRIPEER_PROFILE", "TRIPEER_ABOUT", "ROUTE", "TRIPEER_PROFILE", "公司概况", 10, DEFAULT_STYLE_VARIANT),
+        oakvedSeed("TRIPEER_HISTORY", "TRIPEER_ABOUT", "ROUTE", "TRIPEER_HISTORY", "发展历程", 20, DEFAULT_STYLE_VARIANT),
+        oakvedSeed("TRIPEER_MARKETS", "TRIPEER_ABOUT", "ROUTE", "TRIPEER_MARKETS", "海外市场", 30, DEFAULT_STYLE_VARIANT),
+        oakvedSeed("TRIPEER_BUSINESS", "", "ROUTE", "TRIPEER_BUSINESS", "业务介绍", 30, DEFAULT_STYLE_VARIANT),
+        oakvedSeed("TRIPEER_NEWS", "", "DIRECTORY", null, "新闻动态", 40, DEFAULT_STYLE_VARIANT),
+        oakvedSeed("TRIPEER_INDUSTRY", "TRIPEER_NEWS", "ROUTE", "TRIPEER_INDUSTRY", "行业动态", 10, DEFAULT_STYLE_VARIANT),
+        oakvedSeed("TRIPEER_COMPANY", "TRIPEER_NEWS", "ROUTE", "TRIPEER_COMPANY", "公司动态", 20, DEFAULT_STYLE_VARIANT),
+        oakvedSeed("TRIPEER_CULTURE", "", "ROUTE", "TRIPEER_CULTURE", "企业文化", 50, DEFAULT_STYLE_VARIANT),
+        oakvedSeed("TRIPEER_CONTACT", "", "ROUTE", "TRIPEER_CONTACT", "联系我们", 60, DEFAULT_STYLE_VARIANT));
+    private static final Set<String> TRIPEER_PRIMARY_KEYS = TRIPEER_SEED_ITEMS.stream()
+        .filter(item -> StrUtil.isBlank(item.parentItemKey())).map(OakvedSeedSpec::itemKey).collect(Collectors.toSet());
+
     private static final Set<String> OAKVED_PRIMARY_KEYS = OAKVED_SEED_ITEMS.stream()
             .filter(item -> StrUtil.isBlank(item.parentItemKey()))
             .map(OakvedSeedSpec::itemKey)
@@ -156,6 +171,13 @@ public class WebsiteNavigationServiceImpl implements WebsiteNavigationService {
         WebsiteNavigationRevisionDO draft = revisionMapper.selectActive(siteId, normalizedLocale,
                 WebsiteNavigationRevisionStatusEnum.DRAFT.getCode());
         if (draft == null) {
+            draft = createDraft(siteId, normalizedLocale, template);
+        }
+        if (template == WebsiteNavigationTemplateEnum.TRIPEER_CORPORATE
+                && !isTemplateCompatible(itemMapper.selectListByRevisionId(draft.getId()), template)) {
+            if (revisionMapper.archiveDraftAtomic(draft.getId(), draft.getVersion(), currentTenantId(), currentUpdater()) == 0) {
+                throw exception(NAVIGATION_VERSION_CONFLICT);
+            }
             draft = createDraft(siteId, normalizedLocale, template);
         }
         ensureDraftTemplate(draft, template);
@@ -303,6 +325,13 @@ public class WebsiteNavigationServiceImpl implements WebsiteNavigationService {
     }
 
     @Override
+    public AppWebsiteNavigationRespVO getDraftPreview(Long siteId, String locale) {
+        WebsiteNavigationDraftRespVO draft = getDraft(siteId, locale);
+        WebsiteNavigationRevisionDO revision = getRequiredDraft(draft.getRevisionId());
+        return buildPublicResponse(revision, navigationTemplate(siteId), itemMapper.selectListByRevisionId(revision.getId()));
+    }
+
+    @Override
     public AppWebsiteNavigationRespVO getPreview(String session, String requestOrigin) {
         WebsiteNavigationPreviewGrant grant = previewRedisDAO.getSession(session);
         WebsiteNavigationRevisionDO revision = verifyPreviewGrant(grant, requestOrigin);
@@ -333,18 +362,32 @@ public class WebsiteNavigationServiceImpl implements WebsiteNavigationService {
             return concurrentDraft;
         }
         if (published == null) {
-            insertItems(createSeedItems(draft.getId(), template));
+            insertItems(localizeSeeds(createSeedItems(draft.getId(), template), draft.getLocale(), template));
         } else {
             List<WebsiteNavigationItemDO> publishedItems = itemMapper.selectListByRevisionId(published.getId());
             insertItems(isTemplateCompatible(publishedItems, template)
                     ? cloneItems(publishedItems, draft.getId())
-                    : createSeedItems(draft.getId(), template));
+                    : localizeSeeds(createSeedItems(draft.getId(), template), draft.getLocale(), template));
         }
         return draft;
     }
 
+    private List<WebsiteNavigationItemDO> localizeSeeds(List<WebsiteNavigationItemDO> items, String locale, WebsiteNavigationTemplateEnum template) {
+        if (template == WebsiteNavigationTemplateEnum.TRIPEER_CORPORATE && "en".equals(locale)) {
+            Map<String, String> labels = Map.ofEntries(Map.entry("TRIPEER_HOME","Home"), Map.entry("TRIPEER_ABOUT","About"),
+                Map.entry("TRIPEER_PROFILE","Company Profile"), Map.entry("TRIPEER_HISTORY","Our Journey"), Map.entry("TRIPEER_MARKETS","Overseas Markets"),
+                Map.entry("TRIPEER_BUSINESS","Business"), Map.entry("TRIPEER_NEWS","News & Updates"), Map.entry("TRIPEER_INDUSTRY","Industry News"),
+                Map.entry("TRIPEER_COMPANY","Company News"), Map.entry("TRIPEER_CULTURE","Corporate Culture"), Map.entry("TRIPEER_CONTACT","Contact"));
+            items.forEach(item -> item.setLabel(labels.getOrDefault(item.getItemKey(), item.getLabel())));
+        }
+        return items;
+    }
+
     private List<WebsiteNavigationItemDO> createSeedItems(Long revisionId,
                                                           WebsiteNavigationTemplateEnum template) {
+        if (template == WebsiteNavigationTemplateEnum.TRIPEER_CORPORATE) {
+            return TRIPEER_SEED_ITEMS.stream().map(seed -> oakvedItem(revisionId, seed)).toList();
+        }
         if (template == WebsiteNavigationTemplateEnum.OAKVED_B2C) {
             return OAKVED_SEED_ITEMS.stream()
                     .map(seed -> oakvedItem(revisionId, seed))
@@ -395,8 +438,8 @@ public class WebsiteNavigationServiceImpl implements WebsiteNavigationService {
         if (requestItems == null || requestItems.isEmpty() || requestItems.size() > MAX_NAVIGATION_ITEMS) {
             throw exception(NAVIGATION_CONFIG_INVALID);
         }
-        List<WebsiteNavigationItemDO> items = template == WebsiteNavigationTemplateEnum.OAKVED_B2C
-                ? validateOakvedItems(requestItems, revisionId, categoryMap)
+        List<WebsiteNavigationItemDO> items = template != WebsiteNavigationTemplateEnum.VANZ_B2B
+                ? validateOakvedItems(requestItems, revisionId, categoryMap, template)
                 : validateVanzItems(requestItems, revisionId, categoryMap);
         validateTree(items);
         return items;
@@ -481,8 +524,9 @@ public class WebsiteNavigationServiceImpl implements WebsiteNavigationService {
 
     private List<WebsiteNavigationItemDO> validateOakvedItems(
             List<WebsiteNavigationItemSaveReqVO> requestItems, Long revisionId,
-            Map<Long, ProductCategoryNavigationRespDTO> categoryMap) {
-        Map<String, OakvedSeedSpec> primarySpecs = OAKVED_SEED_ITEMS.stream()
+            Map<Long, ProductCategoryNavigationRespDTO> categoryMap, WebsiteNavigationTemplateEnum template) {
+        boolean corporate = template == WebsiteNavigationTemplateEnum.TRIPEER_CORPORATE;
+        Map<String, OakvedSeedSpec> primarySpecs = (corporate ? TRIPEER_SEED_ITEMS : OAKVED_SEED_ITEMS).stream()
                 .filter(seed -> StrUtil.isBlank(seed.parentItemKey()))
                 .collect(Collectors.toMap(OakvedSeedSpec::itemKey, Function.identity()));
         Set<String> itemKeys = new HashSet<>();
@@ -511,11 +555,12 @@ public class WebsiteNavigationServiceImpl implements WebsiteNavigationService {
             } else if (WebsiteNavigationItemTypeEnum.ROUTE.getCode().equals(itemType)
                     || WebsiteNavigationItemTypeEnum.FILTER.getCode().equals(itemType)) {
                 WebsiteNavigationTargetEnum target = WebsiteNavigationTargetEnum.fromCode(targetKey);
-                if (target == null || !itemType.equals(target.getItemType()) || categoryId != null) {
+                if (target == null || !itemType.equals(target.getItemType()) || categoryId != null
+                        || target.getCode().startsWith("TRIPEER_") != corporate) {
                     throw exception(NAVIGATION_CONFIG_INVALID);
                 }
             } else if (WebsiteNavigationItemTypeEnum.CATEGORY.getCode().equals(itemType)) {
-                if (categoryId == null || targetKey != null) {
+                if (corporate || categoryId == null || targetKey != null) {
                     throw exception(NAVIGATION_CONFIG_INVALID);
                 }
                 ProductCategoryNavigationRespDTO category = categoryMap.get(categoryId);
@@ -554,7 +599,7 @@ public class WebsiteNavigationServiceImpl implements WebsiteNavigationService {
                 .filter(item -> StrUtil.isBlank(item.getParentItemKey()))
                 .map(WebsiteNavigationItemDO::getItemKey)
                 .collect(Collectors.toSet());
-        if (!rootKeys.equals(OAKVED_PRIMARY_KEYS)) {
+        if (!rootKeys.equals(corporate ? TRIPEER_PRIMARY_KEYS : OAKVED_PRIMARY_KEYS)) {
             throw exception(NAVIGATION_CONFIG_INVALID);
         }
         return items;
@@ -648,8 +693,9 @@ public class WebsiteNavigationServiceImpl implements WebsiteNavigationService {
             option.setSelected(selectedCategoryIds.contains(category.getId()));
             return option;
         }).toList());
-        response.setTargetOptions(template == WebsiteNavigationTemplateEnum.OAKVED_B2C
+        response.setTargetOptions(template != WebsiteNavigationTemplateEnum.VANZ_B2B
                 ? Arrays.stream(WebsiteNavigationTargetEnum.values())
+                        .filter(target -> target.getCode().startsWith("TRIPEER_") == (template == WebsiteNavigationTemplateEnum.TRIPEER_CORPORATE))
                         .map(target -> new WebsiteNavigationTargetOptionRespVO(
                                 target.getCode(), target.getItemType(), target.getLabel(), target.getHref()))
                         .toList()
@@ -810,7 +856,7 @@ public class WebsiteNavigationServiceImpl implements WebsiteNavigationService {
             classifyAtomicFailure(draft.getId());
         }
         itemMapper.deleteByRevisionId(draft.getId());
-        insertItems(createSeedItems(draft.getId(), template));
+        insertItems(localizeSeeds(createSeedItems(draft.getId(), template), draft.getLocale(), template));
         draft.setVersion(draft.getVersion() + 1);
     }
 
@@ -831,12 +877,12 @@ public class WebsiteNavigationServiceImpl implements WebsiteNavigationService {
         if (items == null || items.isEmpty()) {
             return false;
         }
-        if (template == WebsiteNavigationTemplateEnum.OAKVED_B2C) {
+        if (template != WebsiteNavigationTemplateEnum.VANZ_B2B) {
             Set<String> rootKeys = items.stream()
                     .filter(item -> StrUtil.isBlank(item.getParentItemKey()))
                     .map(WebsiteNavigationItemDO::getItemKey)
                     .collect(Collectors.toSet());
-            return rootKeys.equals(OAKVED_PRIMARY_KEYS);
+            return rootKeys.equals(template == WebsiteNavigationTemplateEnum.TRIPEER_CORPORATE ? TRIPEER_PRIMARY_KEYS : OAKVED_PRIMARY_KEYS);
         }
         return items.stream().anyMatch(item ->
                 WebsiteNavigationItemTypeEnum.PAGE.getCode().equals(item.getItemType()));

@@ -21,12 +21,14 @@ public class AppConsentEvidenceController {
     @Resource
     private ConsentEvidenceService consentEvidenceService;
 
+    @jakarta.annotation.security.PermitAll
     @PostMapping("/evidence")
     public CommonResult<AppConsentEvidenceRespVO> issue(
             @Valid @RequestBody AppConsentEvidenceIssueReqVO request) {
         return CommonResult.success(consentEvidenceService.issue(request, ServletUtils.getClientIP()));
     }
 
+    @jakarta.annotation.security.PermitAll
     @PostMapping("/withdraw")
     public CommonResult<Boolean> withdraw(
             @RequestHeader("x-analytics-consent-evidence") String evidence) {
