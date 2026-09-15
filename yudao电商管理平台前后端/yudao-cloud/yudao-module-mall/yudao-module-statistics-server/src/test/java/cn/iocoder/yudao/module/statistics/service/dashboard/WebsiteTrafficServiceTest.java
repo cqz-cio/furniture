@@ -56,5 +56,8 @@ class WebsiteTrafficServiceTest {
         request.setEventType(5).setPagePath("/contact?email=private");
         assertThatThrownBy(() -> controller.track(request,id,id,"consent")).isInstanceOf(IllegalArgumentException.class);
         verifyNoInteractions(collector);
+        request.setPagePath("/blog/product-preview");
+        controller.track(request,id,id,"consent");
+        verify(collector).trackPublic(eq(request),eq(id),eq(id),eq("consent"),any(),isNull());
     }
 }

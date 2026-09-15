@@ -22,7 +22,7 @@ public class AppWebsiteTrafficController {
         if (!website.enabled()) throw new IllegalStateException("tracking is disabled");
         if (!Integer.valueOf(5).equals(request.getEventType()) || request.getSpuId() != null || request.getSkuId() != null
                 || !visitor.matches("[a-zA-Z0-9-]{16,64}") || !session.matches("[a-zA-Z0-9-]{16,64}")
-                || !request.getPagePath().matches("/(?:[a-z0-9-]+/?)*") || request.getPagePath().contains("preview"))
+                || !request.getPagePath().matches("/(?:[a-z0-9-]+/?)*") || request.getPagePath().matches("/(?:cms-preview|preview)(?:/.*)?"))
             throw new IllegalArgumentException("invalid website page view");
         behavior.trackPublic(request, visitor, session, consent, ServletUtils.getClientIP(), null);
         return CommonResult.success(true);
