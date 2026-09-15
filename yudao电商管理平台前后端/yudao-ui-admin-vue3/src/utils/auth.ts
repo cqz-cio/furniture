@@ -1,3 +1,4 @@
+import { ref } from 'vue'
 import { useCache, CACHE_KEY } from '@/hooks/web/useCache'
 import { TokenType } from '@/api/login/types'
 import { decrypt, encrypt } from '@/utils/jsencrypt'
@@ -6,6 +7,9 @@ const { wsCache } = useCache()
 
 const AccessTokenKey = 'ACCESS_TOKEN'
 const RefreshTokenKey = 'REFRESH_TOKEN'
+
+// 本地缓存不是响应式数据；通知布局在账号或有效租户变化时重新加载名称。
+export const authContextVersion = ref(0)
 
 // 获取token
 export const getAccessToken = () => {
@@ -23,12 +27,15 @@ export const getRefreshToken = () => {
 export const setToken = (token: TokenType) => {
   wsCache.set(RefreshTokenKey, token.refreshToken)
   wsCache.set(AccessTokenKey, token.accessToken)
+  authContextVersion.value++
 }
 
 // 删除token
 export const removeToken = () => {
   wsCache.delete(AccessTokenKey)
   wsCache.delete(RefreshTokenKey)
+  wsCache.delete(CACHE_KEY.VisitTenantId)
+  authContextVersion.value++
 }
 
 /** 格式化token（jwt格式） */
@@ -68,7 +75,12 @@ export const getTenantId = () => {
 }
 
 export const setTenantId = (tenantId: number) => {
+  const changed = String(getTenantId()) !== String(tenantId)
   wsCache.set(CACHE_KEY.TenantId, tenantId)
+  if (changed) {
+    wsCache.delete(CACHE_KEY.VisitTenantId)
+    authContextVersion.value++
+  }
 }
 
 export const getVisitTenantId = () => {
@@ -77,4 +89,5 @@ export const getVisitTenantId = () => {
 
 export const setVisitTenantId = (visitTenantId: number) => {
   wsCache.set(CACHE_KEY.VisitTenantId, visitTenantId)
+  authContextVersion.value++
 }

@@ -9,11 +9,7 @@
       >
         <!-- 左上角的 logo + 系统标题 -->
         <div class="relative flex items-center text-white">
-          <img
-            :src="oakvedWordmark"
-            alt="Oakved"
-            class="mr-12px h-28px w-auto max-w-140px shrink-0 object-contain"
-          />
+          <span class="mr-12px h-28px w-140px shrink-0 text-20px leading-28px">{{ SYSTEM_BRAND_NAME }}</span>
           <span class="min-w-0 text-20px font-bold">{{ underlineToHump(appStore.getTitle) }}</span>
         </div>
         <!-- 左边的背景图 + 欢迎语 -->
@@ -40,11 +36,7 @@
           style="color: var(--el-text-color-primary);"
         >
           <div class="flex items-center at-2xl:hidden at-xl:hidden">
-            <img
-              :src="oakvedWordmark"
-              alt="Oakved"
-              class="mr-12px h-28px w-auto max-w-140px shrink-0 object-contain"
-            />
+            <span class="mr-12px h-28px w-140px shrink-0 text-20px leading-28px">{{ SYSTEM_BRAND_NAME }}</span>
             <span class="min-w-0 text-20px font-bold">{{
               underlineToHump(appStore.getTitle)
             }}</span>
@@ -78,7 +70,7 @@
   </div>
 </template>
 <script lang="ts" setup>
-import oakvedWordmark from '@/assets/svgs/oakved-wordmark.svg'
+import { SYSTEM_BRAND_NAME } from '@/utils/tenantBranding'
 import { underlineToHump } from '@/utils'
 
 import { useDesign } from '@/hooks/web/useDesign'

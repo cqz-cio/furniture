@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { useAppStore } from '@/store/modules/app'
 import { useDesign } from '@/hooks/web/useDesign'
-import oakvedWordmark from '@/assets/svgs/oakved-wordmark.svg'
+import { useTenantBranding } from '@/hooks/web/useTenantBranding'
 
 defineOptions({ name: 'Logo' })
 
@@ -11,6 +11,7 @@ const { getPrefixCls } = useDesign()
 const prefixCls = getPrefixCls('logo')
 
 const appStore = useAppStore()
+const { tenantName } = useTenantBranding()
 
 const layout = computed(() => appStore.getLayout)
 </script>
@@ -25,11 +26,10 @@ const layout = computed(() => appStore.getLayout)
       ]"
       to="/"
     >
-      <img
-        :src="oakvedWordmark"
-        alt="Oakved"
-        class="h-[calc(var(--logo-height)-18px)] w-auto max-w-[calc(100%-24px)] shrink-0 object-contain"
-      />
+      <span
+        :title="tenantName"
+        class="min-w-0 truncate text-20px font-bold text-[var(--logo-title-text-color)]"
+      >{{ tenantName }}</span>
     </router-link>
   </div>
 </template>

@@ -8,7 +8,7 @@
       @change="handleChange"
       clearable
     >
-      <el-option v-for="item in tenants" :key="item.id" :label="item.name" :value="item.id" />
+      <el-option v-for="item in tenants" :key="item.id" :label="getTenantDisplayName(item.name)" :value="item.id" />
     </el-select>
   </div>
 </template>
@@ -20,6 +20,7 @@ import { getVisitTenantId, setVisitTenantId } from '@/utils/auth'
 import { useMessage } from '@/hooks/web/useMessage'
 import { useTagsView } from '@/hooks/web/useTagsView'
 import { canChangeTenant } from '@/utils/tenantChangeGuard'
+import { getTenantDisplayName } from '@/utils/tenantBranding'
 
 const message = useMessage() // 消息弹窗
 const tagsView = useTagsView() // 标签页操作
@@ -41,7 +42,7 @@ const handleChange = async (id: number) => {
   // 提示切换成功
   const tenant = tenants.value.find((item) => item.id === id)
   if (tenant) {
-    message.success(`切换当前租户为: ${tenant.name}`)
+    message.success(`切换当前租户为: ${getTenantDisplayName(tenant.name)}`)
   }
 }
 

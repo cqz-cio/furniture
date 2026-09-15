@@ -33,7 +33,7 @@
             <el-option
               v-for="tenant in tenantOptions"
               :key="tenant.id"
-              :label="tenant.name"
+              :label="getTenantDisplayName(tenant.name)"
               :value="tenant.name"
             />
           </el-select>
@@ -163,6 +163,7 @@
   </el-form>
 </template>
 <script lang="ts" setup>
+import { getTenantDisplayName } from '@/utils/tenantBranding'
 import { ElLoading } from 'element-plus'
 import LoginFormTitle from './LoginFormTitle.vue'
 import type { RouteLocationNormalizedLoaded } from 'vue-router'
