@@ -75,4 +75,9 @@ public interface ErrorCodeConstants {
     ErrorCode BLOG_PREVIEW_ORIGIN_MISMATCH = new ErrorCode(1_070_006_006,
             "Blog 预览请求来源与站点配置不一致");
 
+
+    ErrorCode MEDIA_NOT_EXISTS = new ErrorCode(1_070_009_000, "素材不存在或不属于当前租户");
+    ErrorCode MEDIA_FILE_INVALID = new ErrorCode(1_070_009_001, "请上传有效的 JPG、PNG 或 PDF，文件不超过 10 MB，图片不超过 2500 万像素");
+    ErrorCode MEDIA_STORAGE_UNAVAILABLE = new ErrorCode(1_070_009_002, "素材公开访问地址尚未配置，请联系管理员");
+    ErrorCode MEDIA_REFERENCE_INVALID = new ErrorCode(1_070_009_003, "图片素材与当前租户或文件地址不匹配，请重新选择");
 }

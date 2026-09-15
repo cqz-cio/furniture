@@ -116,6 +116,9 @@ class OakvedFlywayIntegrationTest {
                 + " AND m.permission IN ('crm:clue:query','crm:clue:triage','statistics:website:query')"));
         assertEquals(2, scalar(dataSource, "SELECT COUNT(DISTINCT m.path)" + scope
                 + " AND m.type=2 AND m.path IN ('clue','/dashboard')"));
+        assertEquals(1, scalar(dataSource, "SELECT COUNT(*)" + scope + " AND m.type=2 AND m.path='media'"));
+        assertEquals(4, scalar(dataSource, "SELECT COUNT(DISTINCT m.permission)" + scope
+                + " AND m.permission IN ('seo:media:query','seo:media:upload','seo:media:update','seo:media:archive')"));
         assertEquals(0, scalar(dataSource, "SELECT COUNT(*) FROM system_users u JOIN system_tenant t"
                 + " ON t.id=u.tenant_id WHERE t.code='TRIPEER' AND u.deleted=0"),
                 "CMS migrations must not seed login accounts or passwords");

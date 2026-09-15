@@ -5,6 +5,8 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { hasPermission } from '@/directives/permission/hasPermi'
 import { registerTenantChangeGuard } from '@/utils/tenantChangeGuard'
 import * as api from '@/api/seo/page-content'
+import WebsiteMediaLibrary from '@/components/WebsiteMediaLibrary/index.vue'
+import type { WebsiteMedia } from '@/api/seo/media'
 
 defineOptions({ name: 'SeoPageContent' })
 const locale = ref<'zh-CN' | 'en'>('zh-CN')
@@ -18,6 +20,14 @@ const loadError = ref('')
 const uninitialized = ref(false)
 const history = ref<api.PageDraft[]>([])
 const historyOpen = ref(false)
+const mediaOpen = ref(false)
+const canSelectMedia = computed(() => hasPermission(['seo:media:query']))
+function selectMedia(asset: WebsiteMedia) {
+  if (!content.value || !canEdit.value) return
+  writeField('image.url', asset.url)
+  writeField('image.alt', asset.alt || asset.name)
+  mediaOpen.value = false
+}
 const previewUrl = ref('')
 const canEdit = computed(() => hasPermission(['seo:page:update']))
 const canPublish = computed(() => hasPermission(['seo:page:publish']))
@@ -140,8 +150,9 @@ onBeforeUnmount(() => { generation++; unregister(); window.removeEventListener('
           <el-input :model-value="readField(field.path)" :type="field.type === 'textarea' ? 'textarea' : 'text'"
             :rows="field.path === 'body' ? 5 : 2" :maxlength="field.maxLength" show-word-limit
             :disabled="busy || !canEdit" @update:model-value="value => writeField(field.path, value)" />
+          <el-button v-if="field.path === 'image.url' && canEdit && canSelectMedia" class="mt-8px" :disabled="busy" @click="mediaOpen = true">从素材库选择图片</el-button>
         </el-form-item>
-        <p>图片可使用官网 /assets/ 路径或不带临时签名的 HTTPS 图片地址。</p>
+        <p>可从素材库选择图片，也可填写官网 /assets/ 路径或稳定的 HTTPS 图片地址。选择后需保存、预览并发布。</p>
         <p>草稿版本 {{ draft.version }} · 已发布 {{ draft.publishedVersion || '尚未发布' }} · {{ dirty ? '有未保存修改' : '已保存' }}</p>
         <el-button v-if="canEdit" :disabled="busy || !dirty" @click="saveClick">保存草稿</el-button>
         <el-button v-if="canPreview" :disabled="busy || (dirty && !canEdit)" @click="preview">{{ dirty ? '保存并准备预览' : '准备预览' }}</el-button>
@@ -150,6 +161,9 @@ onBeforeUnmount(() => { generation++; unregister(); window.removeEventListener('
         <p v-if="previewUrl"><a :href="previewUrl" target="_blank" rel="noopener noreferrer">打开整页预览（链接两分钟内有效）</a></p>
       </template>
     </el-form>
+    <el-dialog v-model="mediaOpen" title="选择官网图片" width="min(1000px, 96vw)" destroy-on-close :close-on-click-modal="false">
+      <WebsiteMediaLibrary v-if="mediaOpen" selectable images-only @select="selectMedia" />
+    </el-dialog>
     <el-dialog v-model="historyOpen" title="最近发布版本" width="640px">
       <el-table :data="history">
         <el-table-column prop="version" label="版本" width="90" />

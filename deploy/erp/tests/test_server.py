@@ -154,6 +154,18 @@ class EnvironmentAndLeases(unittest.TestCase):
         with self.assertRaises(ValueError):
             Server(self.root, "production")
 
+    def test_media_origin_is_staged_from_the_verified_environment(self):
+        server = Server(self.root, "test")
+        server.config.update(backend_port=48081, admin_port=18080, uploads_path='/opt/uploads',
+                             uploads_target='/opt/uploads', logs_path='/opt/logs')
+        (self.root / 'config/backend.env').write_text('EXISTING_SETTING=kept\n')
+        value = release(2)
+        server.stage(value, 'services: {}\n')
+        rendered = (server.record(value['id']) / 'images.env').read_text()
+        self.assertIn('ERP_PUBLIC_API_URL=' + value['config']['test']['api_base_url'] + '\n', rendered)
+        self.assertNotIn('https://api.vanzhome.com', rendered)
+        self.assertEqual((server.record(value['id']) / 'backend.env').read_text(), 'EXISTING_SETTING=kept\n')
+
     def test_wrong_project_is_rejected(self):
         path = self.root / "config/server.json"
         value = json.loads(path.read_text())

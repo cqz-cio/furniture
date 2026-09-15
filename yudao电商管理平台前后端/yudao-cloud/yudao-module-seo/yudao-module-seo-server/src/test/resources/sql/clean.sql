@@ -10,3 +10,5 @@ DELETE FROM seo_metadata;
 DELETE FROM seo_site_config;
 DELETE FROM website_code_history;
 DELETE FROM website_code_config;
+
+DELETE FROM "website_media";

@@ -11,6 +11,7 @@ services:
       SERVER_ADDRESS: 127.0.0.1
       SERVER_PORT: ${ERP_BACKEND_PORT:?backend port required}
       SPRING_FLYWAY_ENABLED: "true"
+      YUDAO_WEBSITE_MEDIA_PUBLIC_BASE_URL: ${ERP_PUBLIC_API_URL:?public API URL required}
       YUDAO_SECURITY_MOCK_ENABLE: "false"
       ERP_RELEASE_INFO_ENABLED: "true"
       ERP_RELEASE_ID: ${ERP_RELEASE_ID:?release ID required}

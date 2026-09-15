@@ -26,6 +26,7 @@ import static cn.iocoder.yudao.module.seo.enums.ErrorCodeConstants.*;
 @Validated
 public class WebsitePageService {
     private static final SecureRandom RANDOM = new SecureRandom();
+    @Resource private cn.iocoder.yudao.module.seo.service.media.WebsiteMediaService mediaService;
     @Resource private WebsitePageMapper pageMapper;
     @Resource private WebsitePageRevisionMapper revisionMapper;
     @Resource private SeoSiteConfigMapper siteMapper;
@@ -63,6 +64,7 @@ public class WebsitePageService {
         site(request.getSiteId(), true);
         WebsitePageDO row = versioned(request);
         WebsitePageContentValidator.validate(request.getContent());
+        mediaService.validateImage(request.getContent().path("modules").path("hero").path("image"));
         row.setDraftJson(request.getContent().toString()).setDraftVersion(row.getDraftVersion() + 1);
         pageMapper.updateById(row);
         return response(row, false);
@@ -72,7 +74,9 @@ public class WebsitePageService {
     public WebsitePageRespVO publish(@Valid WebsitePageVersionReqVO request) {
         site(request.getSiteId(), true);
         WebsitePageDO row = versioned(request);
-        WebsitePageContentValidator.validate(JsonUtils.parseObject(row.getDraftJson(), JsonNode.class));
+        JsonNode draftContent = JsonUtils.parseObject(row.getDraftJson(), JsonNode.class);
+        WebsitePageContentValidator.validate(draftContent);
+        mediaService.validateImage(draftContent.path("modules").path("hero").path("image"));
         if (row.getPublishedRevisionId() != null) {
             WebsitePageRevisionDO current = revisionMapper.selectRevision(row.getId(), row.getPublishedRevisionId());
             if (current != null && current.getRevision().equals(row.getDraftVersion())) return response(row, false);
@@ -109,6 +113,7 @@ public class WebsitePageService {
         String origin = origin(base);
         WebsitePageRespVO snapshot = response(row, false);
         WebsitePageContentValidator.validate(snapshot.getContent());
+        mediaService.validateImage(snapshot.getContent().path("modules").path("hero").path("image"));
         String token = token("ppv_");
         previewDAO.setTicket(token, new WebsitePagePreviewGrant(
                 TenantContextHolder.getRequiredTenantId(), row.getSiteId(), origin, snapshot));

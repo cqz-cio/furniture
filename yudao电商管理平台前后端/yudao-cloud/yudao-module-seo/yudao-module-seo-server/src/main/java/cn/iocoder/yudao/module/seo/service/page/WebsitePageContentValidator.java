@@ -30,7 +30,11 @@ public final class WebsitePageContentValidator {
             // Relative files must be bundled website assets; external images use HTTPS.
             boolean asset = url.startsWith("/assets/") && !url.contains("..")
                     && !url.contains("%") && !url.contains("\\") && uri.getRawQuery() == null && uri.getRawFragment() == null;
-            boolean external = "https".equals(uri.getScheme()) && uri.getHost() != null
+            // HTTP is limited to the managed file route for HTTP test sites; the service
+            // must also resolve this exact URL to a current-tenant media record.
+            boolean managed = uri.getPath() != null && uri.getPath().matches(
+                    "/admin-api/infra/file/[0-9]+/get/website-media/[0-9]+/[A-Za-z0-9/.-]+");
+            boolean external = ("https".equals(uri.getScheme()) || (managed && "http".equals(uri.getScheme()))) && uri.getHost() != null
                     && uri.getRawUserInfo() == null && uri.getRawFragment() == null && uri.getRawQuery() == null;
             if (!asset && !external) fail();
         } catch (java.net.URISyntaxException ex) { fail(); }

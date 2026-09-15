@@ -296,6 +296,7 @@ class Server:
         images = environment_images(release, self.environment)
         values = {"ERP_BACKEND_IMAGE": images["erp-backend"], "ERP_ADMIN_IMAGE": images["erp-admin"],
             "ERP_RELEASE_ID": release["id"], "ERP_DEPLOY_ENVIRONMENT": self.environment,
+            "ERP_PUBLIC_API_URL": release["config"][self.environment]["api_base_url"],
             "ERP_BACKEND_PORT": self.config["backend_port"], "ERP_ADMIN_PORT": self.config["admin_port"],
             "ERP_UPLOADS_PATH": self.config["uploads_path"], "ERP_UPLOADS_TARGET": self.config["uploads_target"],
             "ERP_LOGS_PATH": self.config["logs_path"]}
