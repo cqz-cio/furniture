@@ -14,6 +14,8 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright')
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const imagePath = process.env.AVATAR_TEST_IMAGE
 assert.ok(imagePath, 'Set AVATAR_TEST_IMAGE to a local image fixture')
+const filePath = '/admin-api/infra/file/4/get/20260916/avatar.png'
+let savedImage = await fs.readFile(imagePath)
 const artifactDir = process.env.AVATAR_TEST_OUTPUT || path.join(root, 'work/avatar-test')
 await fs.mkdir(artifactDir, { recursive: true })
 
@@ -28,7 +30,8 @@ export const useUpload = () => ({ httpRequest: async ({file}) => {
   state.uploads++; window.uploadedFile = file;
   await new Promise(resolve => setTimeout(resolve, 250));
   if (state.fail) throw new Error('Simulated upload failure');
-  return { data: URL.createObjectURL(file) };
+  await fetch('/@avatar-upload', { method: 'POST', body: file });
+  return { data: 'http://127.0.0.1:48080${filePath}' };
 } });
 export const updateUserProfile = async ({avatar}) => { state.saved++; window.savedAvatar = avatar; };
 `
@@ -42,10 +45,18 @@ const aliases = [
 const server = await createServer({
   root,
   configFile: false,
+  envFile: false,
+  define: { 'import.meta.env.VITE_BASE_URL': '""' },
   logLevel: 'error',
   cacheDir: path.join(artifactDir, 'vite-cache'),
+  optimizeDeps: {
+    include: ['vue', 'element-plus', 'vue-i18n', '@vueuse/core', 'vue-types', 'cropperjs'],
+    noDiscovery: true,
+    force: true
+  },
   server: { host: '127.0.0.1', port: 0 },
   resolve: {
+    dedupe: ['vue'],
     alias: [
       ...aliases.map((find) => ({ find, replacement: '\0avatar-state' })),
       { find: '@', replacement: path.join(root, 'src') }
@@ -95,6 +106,20 @@ app.mount('#app');`
       },
       configureServer(server) {
         server.middlewares.use((req, res, next) => {
+          if (req.url === '/@avatar-upload' && req.method === 'POST') {
+            const chunks = []
+            req.on('data', (chunk) => chunks.push(chunk))
+            req.on('end', () => {
+              savedImage = Buffer.concat(chunks)
+              res.end('ok')
+            })
+            return
+          }
+          if (req.url === filePath) {
+            res.setHeader('Content-Type', 'image/png')
+            res.end(savedImage)
+            return
+          }
           if (req.url !== '/') return next()
           res.setHeader('Content-Type', 'text/html')
           res.end(
@@ -121,7 +146,7 @@ try {
   page = await browser.newPage({ viewport: { width: 1440, height: 960 } })
   page.setDefaultTimeout(12000)
   const errors = []
-  page.on('pageerror', (error) => errors.push(error.message))
+  page.on('pageerror', (error) => errors.push(error.stack || error.message))
   await page.goto(`http://127.0.0.1:${server.httpServer.address().port}`)
   await page.getByRole('button', { name: '编辑头像' }).click()
   const confirm = page.getByRole('button', { name: '确认并上传' })
@@ -207,6 +232,11 @@ try {
   await page.getByRole('button', { name: 'ant-design:zoom-in-outlined' }).click({ force: true })
   await confirm.click()
   await page.waitForFunction(() => window.testState.saved === 1 && window.testState.avatar)
+  assert.equal(
+    await page.evaluate(() => window.savedAvatar),
+    `http://127.0.0.1:${server.httpServer.address().port}${filePath}`,
+    'Save the reachable public URL, never backend loopback'
+  )
   const fileInfo = await page.evaluate(async () => {
     const file = window.uploadedFile
     const bitmap = await createImageBitmap(file)
@@ -231,6 +261,10 @@ try {
   assert.equal(fileInfo.alpha, 255, 'Saved avatar contains image pixels')
   assert.notEqual(fileInfo.data, initial, 'Immediate save captures latest zoom')
   await page.locator('.el-overlay').waitFor({ state: 'hidden' })
+  await page.evaluate((path) => {
+    window.testState.avatar = 'http://127.0.0.1:48080' + path
+  }, filePath)
+  await page.waitForFunction(() => document.querySelector('.img-lg img')?.naturalWidth === 512)
   await page.getByRole('button', { name: '编辑头像' }).click()
   await page.waitForFunction(
     () => document.querySelector('.v-cropper-am-preview img')?.naturalWidth === 512

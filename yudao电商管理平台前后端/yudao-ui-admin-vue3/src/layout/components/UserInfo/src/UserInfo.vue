@@ -2,6 +2,7 @@
 import { ElMessageBox } from 'element-plus'
 
 import avatarImg from '@/assets/imgs/avatar.gif'
+import { resolveAvatarUrl } from '@/utils/avatar'
 import { isDevLinksVisible } from '@/config/furnitureLite'
 import { useDesign } from '@/hooks/web/useDesign'
 import { useTagsViewStore } from '@/store/modules/tagsView'
@@ -24,7 +25,7 @@ const { getPrefixCls } = useDesign()
 
 const prefixCls = getPrefixCls('user-info')
 
-const avatar = computed(() => userStore.user.avatar || avatarImg)
+const avatar = computed(() => resolveAvatarUrl(userStore.user.avatar) || avatarImg)
 const userName = computed(() =>
   userStore.user.nickname === '芋道源码' ? 'Oakved Console' : userStore.user.nickname || 'Admin'
 )

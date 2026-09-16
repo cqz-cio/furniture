@@ -15,6 +15,7 @@
 import { propTypes } from '@/utils/propTypes'
 import { updateUserProfile } from '@/api/system/user/profile'
 import { CropperAvatar } from '@/components/Cropper'
+import { resolveAvatarUrl } from '@/utils/avatar'
 import { useUserStore } from '@/store/modules/user'
 import { useUpload } from '@/components/UploadFile/src/useUpload'
 import { UploadRequestOptions } from 'element-plus/es/components/upload/src/upload'
@@ -36,12 +37,13 @@ const handelUpload = async ({ data }) => {
   uploading.value = true
   try {
     const { httpRequest } = useUpload()
-    const avatar = (
+    const uploaded = (
       (await httpRequest({
         file: new File([data], 'avatar.png', { type: 'image/png' }),
         filename: 'avatar.png'
       } as UploadRequestOptions)) as unknown as { data: string }
     ).data
+    const avatar = resolveAvatarUrl(uploaded)
     await updateUserProfile({ avatar })
 
     // 关闭弹窗，并更新 userStore

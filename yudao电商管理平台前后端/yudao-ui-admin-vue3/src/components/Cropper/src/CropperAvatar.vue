@@ -32,6 +32,7 @@ import { propTypes } from '@/utils/propTypes'
 import { useI18n } from 'vue-i18n'
 import CopperModal from './CopperModal.vue'
 import avatar from '@/assets/imgs/avatar.gif'
+import { resolveAvatarUrl } from '@/utils/avatar'
 
 defineOptions({ name: 'CropperAvatar' })
 
@@ -44,7 +45,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update:value', 'change'])
-const sourceValue = ref(props.value)
+const sourceValue = ref(resolveAvatarUrl(props.value))
 const { getPrefixCls } = useDesign()
 const prefixCls = getPrefixCls('cropper-avatar')
 const { t } = useI18n()
@@ -52,7 +53,7 @@ const { t } = useI18n()
 const cropperModelRef = ref()
 
 watchEffect(() => {
-  sourceValue.value = props.value
+  sourceValue.value = resolveAvatarUrl(props.value)
 })
 
 watch(
