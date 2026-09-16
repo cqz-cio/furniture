@@ -16,6 +16,7 @@ import { propTypes } from '@/utils/propTypes'
 import { updateUserProfile } from '@/api/system/user/profile'
 import { CropperAvatar } from '@/components/Cropper'
 import { resolveAvatarUrl } from '@/utils/avatar'
+import { generateUUID } from '@/utils'
 import { useUserStore } from '@/store/modules/user'
 import { useUpload } from '@/components/UploadFile/src/useUpload'
 import { UploadRequestOptions } from 'element-plus/es/components/upload/src/upload'
@@ -37,10 +38,12 @@ const handelUpload = async ({ data }) => {
   uploading.value = true
   try {
     const { httpRequest } = useUpload()
+    // File storage preserves names; a new URL prevents stale browser/CDN avatars.
+    const filename = `avatar-${generateUUID()}.png`
     const uploaded = (
       (await httpRequest({
-        file: new File([data], 'avatar.png', { type: 'image/png' }),
-        filename: 'avatar.png'
+        file: new File([data], filename, { type: 'image/png' }),
+        filename
       } as UploadRequestOptions)) as unknown as { data: string }
     ).data
     const avatar = resolveAvatarUrl(uploaded)

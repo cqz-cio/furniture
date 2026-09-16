@@ -15,13 +15,13 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const imagePath = process.env.AVATAR_TEST_IMAGE
 assert.ok(imagePath, 'Set AVATAR_TEST_IMAGE to a local image fixture')
 const filePath = '/admin-api/infra/file/4/get/20260916/avatar.png'
-let savedImage = await fs.readFile(imagePath)
+const savedImages = new Map([[filePath, await fs.readFile(imagePath)]])
 const artifactDir = process.env.AVATAR_TEST_OUTPUT || path.join(root, 'work/avatar-test')
 await fs.mkdir(artifactDir, { recursive: true })
 
 const state = `
 import { reactive } from 'vue';
-export const state = reactive({ avatar: '', fail: false, uploads: 0, saved: 0, messages: [] });
+export const state = reactive({ avatar: localStorage.getItem('avatar') || '', fail: false, uploads: 0, saved: 0, messages: [] });
 window.testState = state;
 export const useUserStore = () => ({ getUser: state, setUserAvatarAction: async avatar => { state.avatar = avatar } });
 export const useMessage = () => ({ success: text => state.messages.push({ type: 'success', text }), error: text => state.messages.push({ type: 'error', text }) });
@@ -30,10 +30,10 @@ export const useUpload = () => ({ httpRequest: async ({file}) => {
   state.uploads++; window.uploadedFile = file;
   await new Promise(resolve => setTimeout(resolve, 250));
   if (state.fail) throw new Error('Simulated upload failure');
-  await fetch('/@avatar-upload', { method: 'POST', body: file });
-  return { data: 'http://127.0.0.1:48080${filePath}' };
+  await fetch('/@avatar-upload?name=' + encodeURIComponent(file.name), { method: 'POST', body: file });
+  return { data: 'http://127.0.0.1:48080${path.posix.dirname(filePath)}/' + file.name };
 } });
-export const updateUserProfile = async ({avatar}) => { state.saved++; window.savedAvatar = avatar; };
+export const updateUserProfile = async ({avatar}) => { state.saved++; window.savedAvatar = avatar; localStorage.setItem('avatar', avatar); };
 `
 const aliases = [
   '@/hooks/web/useDesign',
@@ -106,18 +106,23 @@ app.mount('#app');`
       },
       configureServer(server) {
         server.middlewares.use((req, res, next) => {
-          if (req.url === '/@avatar-upload' && req.method === 'POST') {
+          const requestUrl = new URL(req.url, 'http://localhost')
+          if (requestUrl.pathname === '/@avatar-upload' && req.method === 'POST') {
             const chunks = []
             req.on('data', (chunk) => chunks.push(chunk))
             req.on('end', () => {
-              savedImage = Buffer.concat(chunks)
+              savedImages.set(
+                path.posix.dirname(filePath) + '/' + requestUrl.searchParams.get('name'),
+                Buffer.concat(chunks)
+              )
               res.end('ok')
             })
             return
           }
-          if (req.url === filePath) {
+          if (savedImages.has(requestUrl.pathname)) {
             res.setHeader('Content-Type', 'image/png')
-            res.end(savedImage)
+            res.setHeader('Cache-Control', 'public, max-age=604800')
+            res.end(savedImages.get(requestUrl.pathname))
             return
           }
           if (req.url !== '/') return next()
@@ -232,9 +237,10 @@ try {
   await page.getByRole('button', { name: 'ant-design:zoom-in-outlined' }).click({ force: true })
   await confirm.click()
   await page.waitForFunction(() => window.testState.saved === 1 && window.testState.avatar)
+  const firstAvatar = await page.evaluate(() => window.savedAvatar)
   assert.equal(
-    await page.evaluate(() => window.savedAvatar),
-    `http://127.0.0.1:${server.httpServer.address().port}${filePath}`,
+    new URL(firstAvatar).origin,
+    `http://127.0.0.1:${server.httpServer.address().port}`,
     'Save the reachable public URL, never backend loopback'
   )
   const fileInfo = await page.evaluate(async () => {
@@ -254,17 +260,22 @@ try {
       data: canvas.toDataURL()
     }
   })
-  assert.equal(fileInfo.name, 'avatar.png')
+  assert.match(fileInfo.name, /^avatar-[0-9a-f-]{36}\.png$/)
   assert.equal(fileInfo.type, 'image/png')
   assert.equal(fileInfo.width, 512)
   assert.equal(fileInfo.height, 512)
   assert.equal(fileInfo.alpha, 255, 'Saved avatar contains image pixels')
   assert.notEqual(fileInfo.data, initial, 'Immediate save captures latest zoom')
   await page.locator('.el-overlay').waitFor({ state: 'hidden' })
-  await page.evaluate((path) => {
-    window.testState.avatar = 'http://127.0.0.1:48080' + path
-  }, filePath)
+  const displayedPixels = () =>
+    page.locator('.img-lg img').evaluate((img) => {
+      const canvas = document.createElement('canvas')
+      canvas.width = canvas.height = 512
+      canvas.getContext('2d').drawImage(img, 0, 0, 512, 512)
+      return canvas.toDataURL()
+    })
   await page.waitForFunction(() => document.querySelector('.img-lg img')?.naturalWidth === 512)
+  assert.equal(await displayedPixels(), fileInfo.data, 'First save is displayed immediately')
   await page.getByRole('button', { name: '编辑头像' }).click()
   await page.waitForFunction(
     () => document.querySelector('.v-cropper-am-preview img')?.naturalWidth === 512
@@ -274,6 +285,53 @@ try {
   await page.waitForFunction(
     (expected) => document.querySelector('.v-cropper-am-preview img')?.src === expected,
     initial
+  )
+  await confirm.click()
+  await page.waitForFunction(() => window.testState.saved === 2)
+  await page.locator('.el-overlay').waitFor({ state: 'hidden' })
+  const secondAvatar = await page.evaluate(() => window.savedAvatar)
+  assert.notEqual(secondAvatar, firstAvatar, 'Every save must have a different persistent URL')
+  await page.waitForFunction((src) => {
+    const img = document.querySelector('.img-lg img')
+    return img?.src === src && img.complete && img.naturalWidth === 512
+  }, secondAvatar)
+  assert.equal(await displayedPixels(), initial, 'Second save replaces the displayed pixels')
+  assert.notDeepEqual(
+    savedImages.get(new URL(firstAvatar).pathname),
+    savedImages.get(new URL(secondAvatar).pathname)
+  )
+  await page.reload()
+  await page.waitForFunction(() => document.querySelector('.img-lg img')?.naturalWidth === 512)
+  assert.equal(
+    await displayedPixels(),
+    initial,
+    'Reload retains the latest avatar under seven-day caching'
+  )
+  // Simulate an already cached legacy URL subsequently overwritten on the server.
+  const legacyUrl = `http://127.0.0.1:${server.httpServer.address().port}${filePath}`
+  await page.evaluate(async (src) => {
+    const img = new Image()
+    img.src = src
+    await img.decode()
+  }, legacyUrl)
+  savedImages.set(filePath, savedImages.get(new URL(firstAvatar).pathname))
+  await page.evaluate((src) => {
+    window.testState.avatar = src
+  }, legacyUrl)
+  await page.waitForFunction(
+    () =>
+      document.querySelector('.img-lg img')?.src.includes('avatarVersion=') &&
+      document.querySelector('.img-lg img')?.complete
+  )
+  assert.equal(
+    await displayedPixels(),
+    fileInfo.data,
+    'Legacy overwritten files bypass their stale cache'
+  )
+  await page.screenshot({ path: path.join(artifactDir, 'avatar-saved.png') })
+  await page.getByRole('button', { name: '编辑头像' }).click()
+  await page.waitForFunction(
+    () => document.querySelector('.v-cropper-am-preview img')?.naturalWidth === 512
   )
   await page.locator('input[type=file]').setInputFiles({
     name: 'broken.jpg',
@@ -305,7 +363,10 @@ try {
           'save latest',
           'reopen',
           'replace',
-          'invalid/recover'
+          'invalid/recover',
+          'consecutive saves with seven-day cache',
+          'reload persists latest',
+          'legacy stale cache recovery'
         ]
       },
       null,

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { resolveAvatarUrl } from '../src/utils/avatar.ts'
 
-const file = '/admin-api/infra/file/4/get/20260916/avatar.png'
+const file = '/admin-api/infra/file/4/get/20260916/avatar-unique.png'
 for (const host of ['127.0.0.1:48080', 'localhost:48080', '[::1]:48080']) {
   assert.equal(
     resolveAvatarUrl(`http://${host}${file}`, 'https://api.vanzhome.com'),
@@ -28,3 +28,8 @@ for (const unchanged of [
   assert.equal(resolveAvatarUrl(unchanged, 'https://api.vanzhome.com'), unchanged)
 }
 console.log('Avatar URL regression checks passed (production, test, legacy and external sources).')
+const legacy = 'https://api.vanzhome.com/admin-api/infra/file/4/get/20260916/avatar.png'
+const refreshed = resolveAvatarUrl(legacy, 'https://api.vanzhome.com')
+assert.ok(new URL(refreshed).searchParams.get('avatarVersion'))
+assert.equal(resolveAvatarUrl(refreshed, 'https://api.vanzhome.com'), refreshed)
+assert.equal(resolveAvatarUrl(legacy, 'https://other.example.com'), legacy)
