@@ -8,8 +8,7 @@
     @keydown.enter.prevent="open()"
     @keydown.space.prevent="open()"
   >
-    <el-avatar v-if="sourceValue" :src="sourceValue" alt="avatar" class="img-circle img-lg" />
-    <el-avatar v-if="!sourceValue" :src="avatar" alt="avatar" class="img-circle img-lg" />
+    <el-avatar :src="avatar" alt="avatar" class="img-circle img-lg" @error="handleAvatarError" />
     <span class="avatar-edit-mask" aria-hidden="true">
       <Icon icon="ep:edit-pen" :size="22" />
       <small>编辑头像</small>
@@ -19,7 +18,7 @@
     </el-button>
     <CopperModal
       ref="cropperModelRef"
-      :srcValue="sourceValue"
+      :srcValue="cropSource"
       :loading="loading"
       @upload-success="handleUploadSuccess"
     />
@@ -31,7 +30,7 @@ import { useDesign } from '@/hooks/web/useDesign'
 import { propTypes } from '@/utils/propTypes'
 import { useI18n } from 'vue-i18n'
 import CopperModal from './CopperModal.vue'
-import avatar from '@/assets/imgs/avatar.gif'
+import { useAvatar } from '@/hooks/web/useAvatar'
 import { resolveAvatarUrl } from '@/utils/avatar'
 
 defineOptions({ name: 'CropperAvatar' })
@@ -46,6 +45,7 @@ const props = defineProps({
 
 const emit = defineEmits(['update:value', 'change'])
 const sourceValue = ref(resolveAvatarUrl(props.value))
+const { avatar, cropSource, handleAvatarError } = useAvatar(sourceValue)
 const { getPrefixCls } = useDesign()
 const prefixCls = getPrefixCls('cropper-avatar')
 const { t } = useI18n()

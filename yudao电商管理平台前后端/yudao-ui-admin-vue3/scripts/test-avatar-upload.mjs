@@ -21,9 +21,13 @@ await fs.mkdir(artifactDir, { recursive: true })
 
 const state = `
 import { reactive } from 'vue';
-export const state = reactive({ avatar: localStorage.getItem('avatar') || '', fail: false, uploads: 0, saved: 0, messages: [] });
+export const state = reactive({ avatar: localStorage.getItem('avatar') || '', nickname: '芋道源码', fail: false, uploads: 0, saved: 0, messages: [] });
 window.testState = state;
-export const useUserStore = () => ({ getUser: state, setUserAvatarAction: async avatar => { state.avatar = avatar } });
+export const useUserStore = () => ({ user: state, getUser: state, setUserAvatarAction: async avatar => { state.avatar = avatar } });
+export const useTagsViewStore = () => ({});
+export const useLockStore = () => ({});
+export const useRouter = () => ({ push() {}, replace() {} });
+export const isDevLinksVisible = () => false;
 export const useMessage = () => ({ success: text => state.messages.push({ type: 'success', text }), error: text => state.messages.push({ type: 'error', text }) });
 export const useDesign = () => ({ getPrefixCls: name => 'v-' + name });
 export const useUpload = () => ({ httpRequest: async ({file}) => {
@@ -40,6 +44,9 @@ const aliases = [
   '@/components/UploadFile/src/useUpload',
   '@/api/system/user/profile',
   '@/store/modules/user',
+  '@/store/modules/tagsView',
+  '@/store/modules/lock',
+  '@/config/furnitureLite',
   '/@avatar-state'
 ]
 const server = await createServer({
@@ -54,7 +61,7 @@ const server = await createServer({
     noDiscovery: true,
     force: true
   },
-  server: { host: '127.0.0.1', port: 0 },
+  server: { host: '127.0.0.1', port: 0, preTransformRequests: false },
   resolve: {
     dedupe: ['vue'],
     alias: [
@@ -75,6 +82,7 @@ const server = await createServer({
       name: 'avatar-test-fixtures',
       enforce: 'pre',
       resolveId(id) {
+        if (/\/components\/Lock(Dialog|Page)\.vue$/.test(id)) return '\0avatar-lock-stub'
         if (id === '\0avatar-state') return id
         if (
           aliases.includes(id) ||
@@ -88,6 +96,7 @@ const server = await createServer({
         if (id === '/@avatar-entry') return '\0avatar-entry'
       },
       load(id) {
+        if (id === '\0avatar-lock-stub') return 'export default { render: () => null }'
         if (id === '\0avatar-state') return state
         if (id === '\0avatar-entry')
           return `
@@ -96,9 +105,10 @@ import ElementPlus, { ElButton } from 'element-plus';
 import 'element-plus/dist/index.css';
 import { createI18n } from 'vue-i18n';
 import UserAvatar from '/src/views/Profile/components/UserAvatar.vue';
+import HeaderUserInfo from '/src/layout/components/UserInfo/src/UserInfo.vue';
 import Dialog from '/src/components/Dialog/src/Dialog.vue';
 import { state } from '/@avatar-state';
-const app = createApp({ render: () => h(UserAvatar, { img: state.avatar }) });
+const app = createApp({ render: () => h('div', [h(HeaderUserInfo), h(UserAvatar, { img: state.avatar })]) });
 app.use(ElementPlus).use(createI18n({ legacy: false, locale: 'zh', messages: { zh: { cropper: { modalTitle: '头像上传', okText: '确认并上传', preview: '头像预览', uploadSuccess: '上传成功' } } } }));
 app.component('Dialog', Dialog).component('Icon', { render: () => h('span') });
 app.component('XButton', { props: ['preIcon'], setup: (props, {attrs}) => () => h(ElButton, {...attrs, 'aria-label': props.preIcon}, () => props.preIcon.split(':')[1]) });
@@ -135,7 +145,7 @@ app.mount('#app');`
     },
     vue(),
     AutoImport({
-      imports: ['vue', { 'vue-i18n': ['useI18n'], '/@avatar-state': ['useMessage'] }],
+      imports: ['vue', { 'vue-i18n': ['useI18n'], '/@avatar-state': ['useMessage', 'useRouter'] }],
       dts: false
     })
   ]
@@ -153,7 +163,43 @@ try {
   const errors = []
   page.on('pageerror', (error) => errors.push(error.stack || error.message))
   await page.goto(`http://127.0.0.1:${server.httpServer.address().port}`)
-  await page.getByRole('button', { name: '编辑头像' }).click()
+  assert.equal(
+    await page.locator('.erp-user-name').innerText(),
+    '芋道源码',
+    'Never replace the saved nickname with product branding'
+  )
+  await page.evaluate(() => {
+    window.testState.nickname = '自定义管理员'
+    window.testState.avatar = '/@missing-avatar.png'
+  })
+  await page.waitForFunction(
+    () =>
+      Array.from(document.querySelectorAll('.img-lg img,.erp-user-avatar img')).length === 2 &&
+      Array.from(document.querySelectorAll('.img-lg img,.erp-user-avatar img')).every(
+        (img) => img.naturalWidth === 80
+      )
+  )
+  assert.equal(await page.locator('.erp-user-name').innerText(), '自定义管理员')
+  await page.getByRole('button', { name: '编辑头像', exact: true }).last().click()
+  assert.equal(
+    await page.locator('cropper-image').count(),
+    0,
+    'Do not reopen the failed remote image in the editor'
+  )
+  await page.keyboard.press('Escape')
+  await page.locator('.el-overlay').waitFor({ state: 'hidden' })
+  await page.evaluate((src) => {
+    window.testState.avatar = src
+  }, filePath)
+  await page.waitForFunction(() =>
+    Array.from(document.querySelectorAll('.img-lg img,.erp-user-avatar img')).every(
+      (img) => img.naturalWidth === 500
+    )
+  )
+  await page.evaluate(() => {
+    window.testState.avatar = ''
+  })
+  await page.getByRole('button', { name: '编辑头像', exact: true }).last().click()
   const confirm = page.getByRole('button', { name: '确认并上传' })
   assert.equal(await confirm.isDisabled(), true, 'Empty selection cannot upload')
   await page.locator('input[type=file]').setInputFiles(imagePath)
@@ -276,7 +322,7 @@ try {
     })
   await page.waitForFunction(() => document.querySelector('.img-lg img')?.naturalWidth === 512)
   assert.equal(await displayedPixels(), fileInfo.data, 'First save is displayed immediately')
-  await page.getByRole('button', { name: '编辑头像' }).click()
+  await page.getByRole('button', { name: '编辑头像', exact: true }).last().click()
   await page.waitForFunction(
     () => document.querySelector('.v-cropper-am-preview img')?.naturalWidth === 512
   )
@@ -329,7 +375,7 @@ try {
     'Legacy overwritten files bypass their stale cache'
   )
   await page.screenshot({ path: path.join(artifactDir, 'avatar-saved.png') })
-  await page.getByRole('button', { name: '编辑头像' }).click()
+  await page.getByRole('button', { name: '编辑头像', exact: true }).last().click()
   await page.waitForFunction(
     () => document.querySelector('.v-cropper-am-preview img')?.naturalWidth === 512
   )
@@ -353,6 +399,9 @@ try {
         geometry,
         file: { ...fileInfo, data: undefined },
         scenarios: [
+          'saved nickname preserved in header',
+          'failed remote avatar fallback in header and profile',
+          'failed avatar remains editable and recovers on source change',
           'empty',
           'load',
           'preview',

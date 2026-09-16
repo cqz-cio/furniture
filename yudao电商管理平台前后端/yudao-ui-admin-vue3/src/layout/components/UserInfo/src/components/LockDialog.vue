@@ -2,7 +2,7 @@
 import { useValidator } from '@/hooks/web/useValidator'
 import { useDesign } from '@/hooks/web/useDesign'
 import { useLockStore } from '@/store/modules/lock'
-import avatarImg from '@/assets/imgs/avatar.gif'
+import { useAvatar } from '@/hooks/web/useAvatar'
 import { useUserStore } from '@/store/modules/user'
 
 const { getPrefixCls } = useDesign()
@@ -21,12 +21,8 @@ const props = defineProps({
 })
 
 const userStore = useUserStore()
-const avatar = computed(() => userStore.user.avatar || avatarImg)
-const userName = computed(() =>
-  userStore.user.nickname === '芋道源码'
-    ? 'Oakved Console'
-    : userStore.user.nickname || 'Admin'
-)
+const { avatar, handleAvatarError } = useAvatar(() => userStore.user.avatar)
+const userName = computed(() => userStore.user.nickname || 'Admin')
 
 const emit = defineEmits(['update:modelValue'])
 
@@ -71,7 +67,7 @@ const handleLock = async () => {
     :title="dialogTitle"
   >
     <div class="flex flex-col items-center">
-      <img :src="avatar" alt="" class="w-70px h-70px rounded-[50%]" />
+      <img :src="avatar" alt="" class="w-70px h-70px rounded-[50%]" @error="handleAvatarError" />
       <span class="text-14px my-10px text-[var(--top-header-text-color)]">
         {{ userName }}
       </span>

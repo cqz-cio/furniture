@@ -1,8 +1,7 @@
 <script lang="ts" setup>
 import { ElMessageBox } from 'element-plus'
 
-import avatarImg from '@/assets/imgs/avatar.gif'
-import { resolveAvatarUrl } from '@/utils/avatar'
+import { useAvatar } from '@/hooks/web/useAvatar'
 import { isDevLinksVisible } from '@/config/furnitureLite'
 import { useDesign } from '@/hooks/web/useDesign'
 import { useTagsViewStore } from '@/store/modules/tagsView'
@@ -25,10 +24,8 @@ const { getPrefixCls } = useDesign()
 
 const prefixCls = getPrefixCls('user-info')
 
-const avatar = computed(() => resolveAvatarUrl(userStore.user.avatar) || avatarImg)
-const userName = computed(() =>
-  userStore.user.nickname === '芋道源码' ? 'Oakved Console' : userStore.user.nickname || 'Admin'
-)
+const { avatar, handleAvatarError } = useAvatar(() => userStore.user.avatar)
+const userName = computed(() => userStore.user.nickname || 'Admin')
 const showDevLinks = computed(() => isDevLinksVisible())
 
 // 锁定屏幕
@@ -66,7 +63,7 @@ const toDocument = () => {
   <ElDropdown :class="prefixCls" trigger="click">
     <div class="erp-user-trigger">
       <div class="erp-user-avatar">
-        <ElAvatar :src="avatar" :alt="`${userName}头像`" />
+        <ElAvatar :src="avatar" :alt="`${userName}头像`" @error="handleAvatarError" />
         <ElTooltip content="编辑头像" placement="bottom">
           <button
             aria-label="编辑头像"
