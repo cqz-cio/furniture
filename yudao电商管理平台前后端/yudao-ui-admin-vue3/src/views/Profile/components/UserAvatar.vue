@@ -5,6 +5,7 @@
       :btnProps="{ preIcon: 'ant-design:cloud-upload-outlined' }"
       :showBtn="false"
       :value="img"
+      :loading="uploading"
       width="120px"
       @change="handelUpload"
     />
@@ -27,19 +28,31 @@ defineProps({
 const userStore = useUserStore()
 
 const cropperRef = ref()
+const uploading = ref(false)
+const message = useMessage()
+const { t } = useI18n()
 const handelUpload = async ({ data }) => {
-  const { httpRequest } = useUpload()
-  const avatar = (
-    (await httpRequest({
-      file: data,
-      filename: 'avatar.png'
-    } as UploadRequestOptions)) as unknown as { data: string }
-  ).data
-  await updateUserProfile({ avatar })
+  if (uploading.value) return
+  uploading.value = true
+  try {
+    const { httpRequest } = useUpload()
+    const avatar = (
+      (await httpRequest({
+        file: new File([data], 'avatar.png', { type: 'image/png' }),
+        filename: 'avatar.png'
+      } as UploadRequestOptions)) as unknown as { data: string }
+    ).data
+    await updateUserProfile({ avatar })
 
-  // 关闭弹窗，并更新 userStore
-  cropperRef.value.close()
-  await userStore.setUserAvatarAction(avatar)
+    // 关闭弹窗，并更新 userStore
+    await userStore.setUserAvatarAction(avatar)
+    cropperRef.value.close()
+    message.success(t('cropper.uploadSuccess'))
+  } catch {
+    message.error('头像上传失败，请重试')
+  } finally {
+    uploading.value = false
+  }
 }
 </script>
 

@@ -6,22 +6,33 @@
       :title="t('cropper.modalTitle')"
       maxHeight="380px"
       width="800px"
+      @opened="dialogReady = true"
     >
       <div :class="prefixCls">
         <div :class="`${prefixCls}-left`">
           <div :class="`${prefixCls}-cropper`">
             <CropperImage
-              v-if="src"
+              v-if="src && dialogVisible && dialogReady"
+              ref="cropperImageRef"
+              :key="src"
               :circled="circled"
               :src="src"
+              :outputSize="512"
+              crossorigin="anonymous"
               height="300px"
               @cropend="handleCropend"
               @ready="handleReady"
+              @cropend-error="handleCropError"
             />
           </div>
 
           <div :class="`${prefixCls}-toolbar`">
-            <el-upload :beforeUpload="handleBeforeUpload" :fileList="[]" accept="image/*">
+            <el-upload
+              :disabled="loading || exporting"
+              :beforeUpload="handleBeforeUpload"
+              :fileList="[]"
+              accept="image/*"
+            >
               <el-tooltip :content="t('cropper.selectImage')" placement="bottom">
                 <XButton preIcon="ant-design:upload-outlined" type="primary" />
               </el-tooltip>
@@ -29,7 +40,7 @@
             <el-space>
               <el-tooltip :content="t('cropper.btn_reset')" placement="bottom">
                 <XButton
-                  :disabled="!src"
+                  :disabled="!cropper || loading || exporting"
                   preIcon="ant-design:reload-outlined"
                   size="small"
                   type="primary"
@@ -38,7 +49,7 @@
               </el-tooltip>
               <el-tooltip :content="t('cropper.btn_rotate_left')" placement="bottom">
                 <XButton
-                  :disabled="!src"
+                  :disabled="!cropper || loading || exporting"
                   preIcon="ant-design:rotate-left-outlined"
                   size="small"
                   type="primary"
@@ -47,7 +58,7 @@
               </el-tooltip>
               <el-tooltip :content="t('cropper.btn_rotate_right')" placement="bottom">
                 <XButton
-                  :disabled="!src"
+                  :disabled="!cropper || loading || exporting"
                   preIcon="ant-design:rotate-right-outlined"
                   size="small"
                   type="primary"
@@ -56,7 +67,7 @@
               </el-tooltip>
               <el-tooltip :content="t('cropper.btn_scale_x')" placement="bottom">
                 <XButton
-                  :disabled="!src"
+                  :disabled="!cropper || loading || exporting"
                   preIcon="vaadin:arrows-long-h"
                   size="small"
                   type="primary"
@@ -65,7 +76,7 @@
               </el-tooltip>
               <el-tooltip :content="t('cropper.btn_scale_y')" placement="bottom">
                 <XButton
-                  :disabled="!src"
+                  :disabled="!cropper || loading || exporting"
                   preIcon="vaadin:arrows-long-v"
                   size="small"
                   type="primary"
@@ -74,7 +85,7 @@
               </el-tooltip>
               <el-tooltip :content="t('cropper.btn_zoom_in')" placement="bottom">
                 <XButton
-                  :disabled="!src"
+                  :disabled="!cropper || loading || exporting"
                   preIcon="ant-design:zoom-in-outlined"
                   size="small"
                   type="primary"
@@ -83,7 +94,7 @@
               </el-tooltip>
               <el-tooltip :content="t('cropper.btn_zoom_out')" placement="bottom">
                 <XButton
-                  :disabled="!src"
+                  :disabled="!cropper || loading || exporting"
                   preIcon="ant-design:zoom-out-outlined"
                   size="small"
                   type="primary"
@@ -108,7 +119,13 @@
         </div>
       </div>
       <template #footer>
-        <el-button type="primary" @click="handleOk">{{ t('cropper.okText') }}</el-button>
+        <el-button
+          type="primary"
+          :disabled="!previewSource || !cropper"
+          :loading="loading || exporting"
+          @click="handleOk"
+        >{{ t('cropper.okText') }}</el-button
+        >
       </template>
     </Dialog>
   </div>
@@ -125,6 +142,7 @@ defineOptions({ name: 'CopperModal' })
 
 const props = defineProps({
   srcValue: propTypes.string.def(''),
+  loading: propTypes.bool.def(false),
   circled: propTypes.bool.def(true)
 })
 const emit = defineEmits(['uploadSuccess'])
@@ -134,23 +152,43 @@ const prefixCls = getPrefixCls('cropper-am')
 
 const src = ref(props.srcValue)
 const previewSource = ref('')
-const cropper = ref<Cropper>()
+const cropper = shallowRef<Cropper>()
+const cropperImageRef = ref<InstanceType<typeof CropperImage>>()
+const exporting = ref(false)
+const message = useMessage()
 const dialogVisible = ref(false)
+const dialogReady = ref(false)
 let filename = ''
-let scaleX = 1
-let scaleY = 1
+let readVersion = 0
 
 // Block upload
 function handleBeforeUpload(file: File) {
+  if (props.loading || exporting.value) return false
+  if (!file.type.startsWith('image/')) {
+    message.error('请选择有效的图片文件')
+    return false
+  }
+  const version = ++readVersion
   const reader = new FileReader()
-  reader.readAsDataURL(file)
   src.value = ''
   previewSource.value = ''
+  cropper.value = undefined
   reader.onload = function (e) {
+    if (version !== readVersion || !dialogVisible.value) return
     src.value = (e.target?.result as string) ?? ''
     filename = file.name
   }
+  reader.onerror = () => {
+    if (version === readVersion) handleCropError()
+  }
+  reader.readAsDataURL(file)
   return false
+}
+
+function handleCropError() {
+  previewSource.value = ''
+  cropper.value = undefined
+  message.error('图片读取或裁剪失败，请重新选择图片')
 }
 
 function handleCropend({ imgBase64 }: CropendResult) {
@@ -162,34 +200,59 @@ function handleReady(cropperInstance: Cropper) {
 }
 
 function handlerToolbar(event: string, arg?: number) {
-  if (!cropper.value) return
+  if (!cropper.value || props.loading || exporting.value) return
   const cropperImage = cropper.value.getCropperImage()
   const cropperSelection = cropper.value.getCropperSelection()
 
   if (event === 'reset') {
-    cropperImage?.$resetTransform()
-    cropperSelection?.$reset()
+    cropperImage?.$resetTransform().$center('contain')
+    cropperSelection?.$initSelection(true, true)
   } else if (event === 'rotate') {
     cropperImage?.$rotate(`${arg}deg`)
   } else if (event === 'scaleX') {
-    scaleX = scaleX === -1 ? 1 : -1
-    cropperImage?.$scale(scaleX, 1)
+    cropperImage?.$scale(-1, 1)
   } else if (event === 'scaleY') {
-    scaleY = scaleY === -1 ? 1 : -1
-    cropperImage?.$scale(1, scaleY)
+    cropperImage?.$scale(1, -1)
   } else if (event === 'zoom') {
     cropperImage?.$zoom(arg!)
   }
 }
 
 async function handleOk() {
-  const blob = dataURLtoBlob(previewSource.value)
-  emit('uploadSuccess', { source: previewSource.value, data: blob, filename: filename })
+  if (!cropper.value || !previewSource.value || props.loading || exporting.value) return
+  exporting.value = true
+  try {
+    // Export the current selection, including edits made before the preview debounce runs.
+    const result = await cropperImageRef.value!.getCropResult()
+    if (!dialogVisible.value) return
+    const blob = dataURLtoBlob(result.imgBase64)
+    emit('uploadSuccess', { source: result.imgBase64, data: blob, filename })
+  } catch {
+    handleCropError()
+  } finally {
+    exporting.value = false
+  }
 }
 
 function openModal() {
+  if (dialogVisible.value || props.loading) return
+  dialogReady.value = false
+  readVersion++
+  src.value = props.srcValue
+  previewSource.value = ''
+  cropper.value = undefined
+  filename = 'avatar.png'
   dialogVisible.value = true
 }
+
+watch(dialogVisible, (visible) => {
+  if (!visible) {
+    dialogReady.value = false
+    readVersion++
+    cropper.value = undefined
+    previewSource.value = ''
+  }
+})
 
 function closeModal() {
   dialogVisible.value = false

@@ -20,6 +20,7 @@
     <CopperModal
       ref="cropperModelRef"
       :srcValue="sourceValue"
+      :loading="loading"
       @upload-success="handleUploadSuccess"
     />
   </div>
@@ -37,6 +38,7 @@ defineOptions({ name: 'CropperAvatar' })
 const props = defineProps({
   width: propTypes.string.def('200px'),
   value: propTypes.string.def(''),
+  loading: propTypes.bool.def(false),
   showBtn: propTypes.bool.def(true),
   btnText: propTypes.string.def('')
 })
@@ -45,7 +47,6 @@ const emit = defineEmits(['update:value', 'change'])
 const sourceValue = ref(props.value)
 const { getPrefixCls } = useDesign()
 const prefixCls = getPrefixCls('cropper-avatar')
-const message = useMessage()
 const { t } = useI18n()
 
 const cropperModelRef = ref()
@@ -62,9 +63,7 @@ watch(
 )
 
 function handleUploadSuccess({ source, data, filename }) {
-  sourceValue.value = source
   emit('change', { source, data, filename })
-  message.success(t('cropper.uploadSuccess'))
 }
 
 function open() {

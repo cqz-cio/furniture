@@ -18,6 +18,7 @@ const props = defineProps({
   circled: propTypes.bool.def(false),
   realTimePreview: propTypes.bool.def(true),
   height: propTypes.string.def('360px'),
+  outputSize: propTypes.number.def(0),
   crossorigin: {
     type: String as PropType<'' | 'anonymous' | 'use-credentials' | undefined>,
     default: undefined
@@ -30,7 +31,10 @@ const emit = defineEmits(['cropend', 'ready', 'cropendError'])
 const attrs = useAttrs()
 const imgElRef = ref<HTMLImageElement>()
 const containerRef = ref<HTMLElement>()
-const cropper = ref<Cropper>()
+const cropper = shallowRef<Cropper>()
+let generation = 0
+let previewVersion = 0
+let ready = false
 
 const { getPrefixCls } = useDesign()
 const prefixCls = getPrefixCls('cropper-image')
@@ -44,8 +48,11 @@ const getWrapperStyle = computed((): CSSProperties => {
 })
 
 onMounted(init)
+watch(() => props.src, init, { flush: 'post' })
 
 onUnmounted(() => {
+  generation++
+  ready = false
   cropper.value?.destroy()
 })
 
@@ -54,15 +61,25 @@ async function init() {
   const containerEl = unref(containerRef)
   if (!imgEl || !containerEl) return
 
-  cropper.value = new Cropper(imgEl, {
+  const currentGeneration = ++generation
+  ready = false
+  cropper.value?.destroy()
+  if (!props.src) return
+  const instance = new Cropper(imgEl, {
     container: containerEl,
     ...props.options
   })
+  cropper.value = instance
+  const canvas = instance.getCropperCanvas()
+  if (canvas) {
+    canvas.style.width = '100%'
+    canvas.style.height = '100%'
+  }
 
   // Wait for custom elements to be ready, then configure
   await nextTick()
-  const cropperSelection = cropper.value.getCropperSelection()
-  const cropperImage = cropper.value.getCropperImage()
+  const cropperSelection = instance.getCropperSelection()
+  const cropperImage = instance.getCropperImage()
 
   if (cropperSelection) {
     cropperSelection.initialCoverage = 0.5
@@ -78,25 +95,40 @@ async function init() {
     cropperImage.addEventListener('transform', () => {
       debounceRealTimeCroppered()
     })
-    // Emit ready once image loads
-    cropperImage.addEventListener('load', () => {
-      emit('ready', cropper.value)
-      realTimeCroppered()
-    })
+    try {
+      // The native image lives in a shadow root; its load event does not bubble.
+      await cropperImage.$ready()
+      if (currentGeneration !== generation) return
+      cropperImage.$resetTransform().$center('contain')
+      cropperSelection?.$initSelection(true, true)
+      ready = true
+      emit('ready', instance)
+      debounceRealTimeCroppered()
+    } catch {
+      if (currentGeneration === generation) emit('cropendError')
+    }
   }
 }
 
 // Real-time display preview
-function realTimeCroppered() {
-  props.realTimePreview && croppered()
+async function realTimeCroppered() {
+  if (!props.realTimePreview || !ready) return
+  const version = ++previewVersion
+  const currentGeneration = generation
+  try {
+    const result = await getCropResult()
+    if (currentGeneration === generation && version === previewVersion) emit('cropend', result)
+  } catch {
+    if (currentGeneration === generation) emit('cropendError')
+  }
 }
 
 // event: return base64 and width and height information after cropping
-async function croppered() {
-  if (!cropper.value) return
-
-  const selection = cropper.value.getCropperSelection()
-  if (!selection) return
+async function getCropResult() {
+  const selection = cropper.value?.getCropperSelection()
+  if (!ready || !selection || selection.width <= 0 || selection.height <= 0) {
+    throw new Error('Image is not ready to crop')
+  }
 
   const imgInfo = {
     x: selection.x,
@@ -105,29 +137,16 @@ async function croppered() {
     height: selection.height
   }
 
-  try {
-    let canvas = await selection.$toCanvas()
-    if (props.circled) {
-      canvas = getRoundedCanvas(canvas)
-    }
-    canvas.toBlob((blob) => {
-      if (!blob) return
-      const fileReader = new FileReader()
-      fileReader.readAsDataURL(blob)
-      fileReader.onloadend = (e) => {
-        emit('cropend', {
-          imgBase64: e.target?.result ?? '',
-          imgInfo
-        })
-      }
-      fileReader.onerror = () => {
-        emit('cropendError')
-      }
-    }, 'image/png')
-  } catch {
-    // Selection may not be ready yet
+  let canvas = await selection.$toCanvas(
+    props.outputSize ? { width: props.outputSize, height: props.outputSize } : undefined
+  )
+  if (props.circled) {
+    canvas = getRoundedCanvas(canvas)
   }
+  return { imgBase64: canvas.toDataURL('image/png'), imgInfo }
 }
+
+defineExpose({ getCropResult })
 
 // Get a circular picture canvas
 function getRoundedCanvas(sourceCanvas: HTMLCanvasElement) {
