@@ -5,6 +5,7 @@
     :model="loginData.loginForm"
     :rules="LoginRules"
     class="login-form"
+    autocomplete="off"
     label-position="top"
     label-width="120px"
     size="large"
@@ -45,6 +46,7 @@
             v-model="loginData.loginForm.username"
             :placeholder="t('login.usernamePlaceholder')"
             :prefix-icon="iconAvatar"
+            autocomplete="off"
           />
         </el-form-item>
       </el-col>
@@ -56,6 +58,7 @@
             :prefix-icon="iconLock"
             show-password
             type="password"
+            autocomplete="new-password"
             @keyup.enter="getCode()"
           />
         </el-form-item>
@@ -63,12 +66,7 @@
       <el-col :span="24" class="px-10px mt-[-20px] mb-[-20px]">
         <el-form-item>
           <el-row justify="space-between" style="width: 100%">
-            <el-col :span="6">
-              <el-checkbox v-model="loginData.loginForm.rememberMe">
-                {{ t('login.remember') }}
-              </el-checkbox>
-            </el-col>
-            <el-col :offset="6" :span="12">
+            <el-col :offset="12" :span="12">
               <el-link
                 class="float-right"
                 type="primary"
@@ -208,11 +206,11 @@ const loginData = reactive({
   captchaEnable: import.meta.env.VITE_APP_CAPTCHA_ENABLE,
   tenantEnable: import.meta.env.VITE_APP_TENANT_ENABLE,
   loginForm: {
-    tenantName: import.meta.env.VITE_APP_DEFAULT_LOGIN_TENANT || '',
-    username: import.meta.env.VITE_APP_DEFAULT_LOGIN_USERNAME || '',
-    password: import.meta.env.VITE_APP_DEFAULT_LOGIN_PASSWORD || '',
+    tenantName: '',
+    username: '',
+    password: '',
     captchaVerification: '',
-    rememberMe: true // 默认记录我。如果不需要，可手动修改
+    rememberMe: false
   }
 })
 
@@ -264,7 +262,14 @@ const loadTenantOptions = async () => {
     const tenants = await LoginApi.getTenantSimpleList()
     tenantOptions.value = (tenants || [])
       .filter((tenant) => tenant?.id && tenant?.name)
-      .sort((left, right) => left.name.localeCompare(right.name, 'zh-CN'))
+      .sort((left, right) => {
+        const leftIsAdmin = getTenantDisplayName(left.name) === '超级管理员'
+        const rightIsAdmin = getTenantDisplayName(right.name) === '超级管理员'
+        return (
+          Number(rightIsAdmin) - Number(leftIsAdmin) ||
+          left.name.localeCompare(right.name, 'zh-CN')
+        )
+      })
 
     const currentTenant = tenantOptions.value.find(
       (tenant) => tenant.name === loginData.loginForm.tenantName
@@ -283,30 +288,6 @@ const loadTenantOptions = async () => {
 const handleTenantDropdownVisible = (visible: boolean) => {
   if (visible && tenantLoadFailed.value) {
     loadTenantOptions()
-  }
-}
-// 记住我
-const getLoginFormCache = () => {
-  const loginForm = authUtil.getLoginForm()
-  if (loginForm) {
-    loginData.loginForm = {
-      ...loginData.loginForm,
-      username: loginForm.username ? loginForm.username : loginData.loginForm.username,
-      password: loginForm.password ? loginForm.password : loginData.loginForm.password,
-      rememberMe: loginForm.rememberMe,
-      tenantName: loginForm.tenantName ? loginForm.tenantName : loginData.loginForm.tenantName
-    }
-  }
-}
-// 根据域名，获得租户信息
-const getTenantByWebsite = async () => {
-  if (loginData.tenantEnable === 'true') {
-    const website = location.host
-    const res = await LoginApi.getTenantByWebsite(website)
-    if (res) {
-      loginData.loginForm.tenantName = res.name
-      authUtil.setTenantId(res.id)
-    }
   }
 }
 const loading = ref() // ElLoading.service 返回的实例
@@ -330,11 +311,7 @@ const handleLogin = async (params: any) => {
       text: '正在加载系统中...',
       background: 'rgba(0, 0, 0, 0.7)'
     })
-    if (loginDataLoginForm.rememberMe) {
-      authUtil.setLoginForm(loginDataLoginForm)
-    } else {
-      authUtil.removeLoginForm()
-    }
+    authUtil.removeLoginForm()
     authUtil.setToken(res)
     if (!redirect.value) {
       redirect.value = '/index'
@@ -396,9 +373,9 @@ watch(
   }
 )
 onMounted(async () => {
-  getLoginFormCache()
+  // 每次进入都使用空账号密码，同时清理旧版本“记住我”保存的登录信息。
+  authUtil.removeLoginForm()
   await loadTenantOptions()
-  await getTenantByWebsite()
 })
 </script>
 
