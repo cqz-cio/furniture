@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -19,13 +19,11 @@
     <div id="app">
       <style>
         .app-loading {
-          display: flex;
-          width: 100%;
-          height: 100%;
-          justify-content: center;
-          align-items: center;
-          flex-direction: column;
+          position: fixed;
+          inset: 0;
           background: #f0f2f5;
+          color: #182235;
+          font-family: 'Microsoft YaHei', Arial, sans-serif;
         }
 
         .app-loading .app-loading-wrap {
@@ -33,116 +31,37 @@
           top: 50%;
           left: 50%;
           display: flex;
-          -webkit-transform: translate3d(-50%, -50%, 0);
-          transform: translate3d(-50%, -50%, 0);
-          justify-content: center;
+          width: min(560px, calc(100% - 48px));
+          margin-top: -18px;
+          transform: translate(-50%, -50%);
           align-items: center;
           flex-direction: column;
         }
 
         .app-loading .app-loading-title {
-          margin-bottom: 30px;
+          margin: 18px 0 0;
           font-size: 20px;
-          font-weight: bold;
+          font-weight: 600;
+          line-height: 28px;
           text-align: center;
         }
 
         .app-loading .app-loading-logo {
-          width: 100px;
-          margin: 0 auto 15px auto;
-        }
-
-        .app-loading .app-loading-item {
-          position: relative;
-          display: inline-block;
-          width: 60px;
-          height: 60px;
-          vertical-align: middle;
-          border-radius: 50%;
-        }
-
-        .app-loading .app-loading-outter {
-          position: absolute;
+          display: block;
           width: 100%;
-          height: 100%;
-          border: 4px solid #2d8cf0;
-          border-bottom: 0;
-          border-left-color: transparent;
-          border-radius: 50%;
-          animation: loader-outter 1s cubic-bezier(0.42, 0.61, 0.58, 0.41) infinite;
-        }
-
-        .app-loading .app-loading-inner {
-          position: absolute;
-          top: calc(50% - 20px);
-          left: calc(50% - 20px);
-          width: 40px;
-          height: 40px;
-          border: 4px solid #87bdff;
-          border-right: 0;
-          border-top-color: transparent;
-          border-radius: 50%;
-          animation: loader-inner 1s cubic-bezier(0.42, 0.61, 0.58, 0.41) infinite;
-        }
-
-        @-webkit-keyframes loader-outter {
-          0% {
-            -webkit-transform: rotate(0deg);
-            transform: rotate(0deg);
-          }
-
-          100% {
-            -webkit-transform: rotate(360deg);
-            transform: rotate(360deg);
-          }
-        }
-
-        @keyframes loader-outter {
-          0% {
-            -webkit-transform: rotate(0deg);
-            transform: rotate(0deg);
-          }
-
-          100% {
-            -webkit-transform: rotate(360deg);
-            transform: rotate(360deg);
-          }
-        }
-
-        @-webkit-keyframes loader-inner {
-          0% {
-            -webkit-transform: rotate(0deg);
-            transform: rotate(0deg);
-          }
-
-          100% {
-            -webkit-transform: rotate(-360deg);
-            transform: rotate(-360deg);
-          }
-        }
-
-        @keyframes loader-inner {
-          0% {
-            -webkit-transform: rotate(0deg);
-            transform: rotate(0deg);
-          }
-
-          100% {
-            -webkit-transform: rotate(-360deg);
-            transform: rotate(-360deg);
-          }
+          height: auto;
         }
       </style>
       <div class="app-loading">
         <div class="app-loading-wrap">
-          <div class="app-loading-title">
-            <img src="/logo.gif" class="app-loading-logo" alt="Logo" />
-            <div class="app-loading-title">%VITE_APP_TITLE%</div>
-          </div>
-          <div class="app-loading-item">
-            <div class="app-loading-outter"></div>
-            <div class="app-loading-inner"></div>
-          </div>
+          <img
+            src="%BASE_URL%company-logo.svg"
+            class="app-loading-logo"
+            width="560"
+            height="189"
+            alt="全品轩 TRIPEER"
+          />
+          <div class="app-loading-title">%VITE_APP_TITLE%</div>
         </div>
       </div>
     </div>
