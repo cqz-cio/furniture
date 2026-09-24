@@ -149,7 +149,9 @@ def clean_cache(cache, apply=False, output='local-retention-plan.json'):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--cache', required=True)
-    parser.add_argument('--apply', action='store_true')
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument('--apply', action='store_true')
+    mode.add_argument('--dry-run', action='store_true', help='Read-only preview; never delete archives')
     args = parser.parse_args()
     if args.apply:
         from retention import require_cleanup_context

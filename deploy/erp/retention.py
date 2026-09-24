@@ -9,6 +9,7 @@ import urllib.request
 
 from common import PACKAGES, RELEASE, DIGEST, deletion_plan, fingerprint, image_refs, latest_release_plan, manifest_children, require, utcnow, write_json
 from github_release import GitHub
+from network_retry import retry_read
 
 
 class Registry:
@@ -21,16 +22,20 @@ class Registry:
             auth = base64.b64encode((os.environ["GITHUB_ACTOR"] + ":" + os.environ["GH_TOKEN"]).encode()).decode()
             url = "https://ghcr.io/token?" + urllib.parse.urlencode({"service": "ghcr.io", "scope": "repository:" + package + ":pull"})
             req = urllib.request.Request(url, headers={"Authorization": "Basic " + auth})
-            with urllib.request.urlopen(req, timeout=20) as response:
-                self.tokens[package] = json.load(response)["token"]
+            def read_token():
+                with urllib.request.urlopen(req, timeout=20) as response:
+                    return json.load(response)["token"]
+            self.tokens[package] = retry_read(read_token, "GHCR token read")
         req = urllib.request.Request("https://ghcr.io/v2/" + package + "/manifests/" + digest, headers={
             "Authorization": "Bearer " + self.tokens[package], "Accept": ",".join((
                 "application/vnd.oci.image.index.v1+json", "application/vnd.oci.image.manifest.v1+json",
                 "application/vnd.docker.distribution.manifest.list.v2+json", "application/vnd.docker.distribution.manifest.v2+json"))})
-        with urllib.request.urlopen(req, timeout=20) as response:
-            raw = response.read(8 * 1024 * 1024 + 1)
-            require(len(raw) <= 8 * 1024 * 1024 and "sha256:" + hashlib.sha256(raw).hexdigest() == digest, "Registry digest verification failed")
-            return json.loads(raw)
+        def read_manifest():
+            with urllib.request.urlopen(req, timeout=20) as response:
+                raw = response.read(8 * 1024 * 1024 + 1)
+                require(len(raw) <= 8 * 1024 * 1024 and "sha256:" + hashlib.sha256(raw).hexdigest() == digest, "Registry digest verification failed")
+                return json.loads(raw)
+        return retry_read(read_manifest, "GHCR manifest read")
 
 
 def collection(github, package):
@@ -113,7 +118,9 @@ def clean(github, registry, apply=False):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--apply", action="store_true")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--apply", action="store_true")
+    mode.add_argument("--dry-run", action="store_true", help="Read-only preview; never mutate GitHub or GHCR")
     args = parser.parse_args()
     require(os.environ.get("GITHUB_REF") == "refs/heads/main", "Cleanup must use main")
     if args.apply:

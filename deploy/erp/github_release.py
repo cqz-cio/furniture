@@ -9,6 +9,7 @@ import urllib.parse
 import urllib.request
 
 from common import PACKAGES, RELEASE, fingerprint, require, utcnow, validate_release, write_json
+from network_retry import retry_read
 
 
 class SafeRedirect(urllib.request.HTTPRedirectHandler):
@@ -36,12 +37,15 @@ class GitHub:
         req = urllib.request.Request(url, data=data, method=method, headers={
             "Authorization": "Bearer " + self.token, "Accept": "application/octet-stream" if raw else "application/vnd.github+json",
             "Content-Type": "application/json", "X-GitHub-Api-Version": "2022-11-28", "User-Agent": "oakved-erp-cd"})
-        try:
+        def send():
             with self.opener.open(req, timeout=20) as response:
                 content = response.read(8 * 1024 * 1024 + 1)
                 require(len(content) <= 8 * 1024 * 1024, "API response too large")
                 return content if raw else (json.loads(content) if content else None)
+        try:
+            return retry_read(send, "GitHub read") if method in ("GET", "HEAD") else send()
         except urllib.error.HTTPError as error:
+            error.close()
             # Do not echo response bodies, credentials, or signed download URLs.
             raise RuntimeError(f"GitHub {method} failed: HTTP {error.code}") from None
 

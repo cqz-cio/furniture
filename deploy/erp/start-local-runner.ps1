@@ -10,6 +10,22 @@ $runnerExe = Join-Path $runnerRoot 'bin\Runner.Listener.exe'
 $existingRunner = Get-CimInstance Win32_Process -Filter "Name='Runner.Listener.exe'" | Where-Object { $_.ExecutablePath -eq $runnerExe }
 if ($existingRunner) { $existingRunner | Select-Object ProcessId; exit 0 }
 $env:PATH = 'C:\Python314;C:\Program Files\Docker\Docker\resources\bin;D:\Git\cmd;C:\Windows\System32\OpenSSH;' + $env:PATH
+$networkCheck = Join-Path $PSScriptRoot 'runner_network.py'
+if (-not (Test-Path -LiteralPath $networkCheck)) { throw 'Runner network check missing; reinstall startup files' }
+$networkLog = Join-Path $runnerLogs "$runnerStamp-network.log"
+$networkErrorLog = Join-Path $runnerLogs "$runnerStamp-network-stderr.log"
+$networkProcess = Start-Process -FilePath 'C:\Python314\python.exe' -ArgumentList @('-u', '-B', ('"' + $networkCheck + '"'), '--timeout', '1200') -WorkingDirectory $runnerRoot -WindowStyle Hidden -PassThru -RedirectStandardOutput $networkLog -RedirectStandardError $networkErrorLog
+@{ pid = $networkProcess.Id; started = (Get-Date).ToString('o'); log = $networkLog; deadlineSeconds = 1200 } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $runnerLogs 'network-check.json')
+if (-not $networkProcess.WaitForExit(1210000)) {
+    & "$env:SystemRoot\System32\taskkill.exe" /PID $networkProcess.Id /T /F | Out-Null
+    if (-not $networkProcess.WaitForExit(5000)) { throw "Network check process did not stop; inspect PID $($networkProcess.Id)" }
+    throw "Network check timed out; see $networkLog"
+}
+$networkProcess.Refresh()
+if ($networkProcess.ExitCode -ne 0) { throw "GitHub network not ready; runner was not started. See $networkLog" }
+# Another invocation could have started a listener while this one was waiting.
+$existingRunner = Get-CimInstance Win32_Process -Filter "Name='Runner.Listener.exe'" | Where-Object { $_.ExecutablePath -eq $runnerExe }
+if ($existingRunner) { $existingRunner | Select-Object ProcessId; exit 0 }
 if (-not (Get-Process -Name 'Docker Desktop' -ErrorAction SilentlyContinue)) {
     Start-Process 'C:\Program Files\Docker\Docker\Docker Desktop.exe' -WindowStyle Hidden
 }

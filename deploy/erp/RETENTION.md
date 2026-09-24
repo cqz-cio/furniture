@@ -6,11 +6,23 @@
 
 - `ERP local image CI` 整个工作流成功后自动执行，包括镜像已上传成功。
 - 每天北京时间 03:30 自动检查；GitHub 调度可能延迟。
-- 手动运行默认只预览；勾选 `apply` 才删除。
+- 手动运行默认只预览；勾选 `apply` 才删除。本地 CLI 可显式使用 `--dry-run`，与 `--apply` 互斥。
 - 自动清理默认启用。仓库变量 `ERP_IMAGE_CLEANUP_ENABLED=false` 暂停自动清理，也禁止手动实际删除；仍允许手动预览。
 - 清理运行在本机 Windows Runner。电脑关机、账户未登录或 Runner 离线时，两边的清理任务都会排队，等 Runner 恢复；生产 CD 仍运行在 GitHub，不依赖本机在线。
 
 两个 CI 工作流继续分开，清理作为 CI 成功后的独立任务，便于独立重试和定时运行。它先获取 `erp-test-local-build-deploy`，再获取 `erp-release-control`，与构建、上传、测试 CD、生产 CD 互斥。锁顺序与 CI 一致，避免互相等待。运行中任务不会主动取消；GitHub 默认并发队列只保留一个待执行任务，待执行任务仍可能被后来的任务替换，必要时手动补跑。
+
+## 开机网络就绪检查
+
+安装器会把启动器及 `runner_network.py` 复制到 Runner 目录。登录后先通过系统/TUN 路由检查 GitHub API、Actions 启动接口、Actions 下载站点和 GHCR，连续三轮成功（间隔 10 秒）才启动监听器。检查最多等待 20 分钟；失败则记录日志并退出，不让未就绪的 Runner 接收任务。计划任务的执行上限为 25 分钟。
+
+升级已安装的启动任务：
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File deploy/erp/install-local-runner-startup.ps1 -UpdateExisting -SkipStart
+```
+
+升级前会保存原启动文件和计划任务 XML，保留账户、触发器、动作和其他设置。`-SkipStart` 不重启当前监听器，下一次登录生效。日志在 Runner 的 `local-logs/*-network.log`；超时后网络恢复时可手动运行启动器。检查通过不保证之后永不掉线，因此清理读取仍需要有限重试。
 
 ## 实际空间范围
 
@@ -24,7 +36,7 @@
 
 ## 查看结果
 
-Actions 的 `erp-retention-plan` 附件包含 `local-retention-plan.json` 和 `retention-plan.json`，列出保留、淘汰、可恢复的中断删除和实际镜像删除计划。本地还报告预计释放字节数。任一侧检查失败显示任务失败，另一侧仍尝试检查；总任务上限 15 分钟，每次网络请求最多 20 秒。清单损坏、未知目录内容、链接路径、共享依赖不完整都会阻止对应侧删除。
+Actions 的 `erp-retention-plan` 附件包含 `local-retention-plan.json` 和 `retention-plan.json`，列出保留、淘汰、可恢复的中断删除和实际镜像删除计划。本地还报告预计释放字节数。任一侧检查失败显示任务失败，另一侧仍尝试检查；总任务上限 15 分钟，每次网络请求最多 20 秒。GitHub/GHCR 只读请求发生临时断线、读取中断或 408/429/部分 5xx 错误时，按 2、5、10、20 秒间隔最多重试 4 次；权限、证书校验、清单校验错误立即失败，删除和上传请求不自动重放。清单损坏、未知目录内容、链接路径、共享依赖不完整都会阻止对应侧删除。
 
 只读本地预览：
 
