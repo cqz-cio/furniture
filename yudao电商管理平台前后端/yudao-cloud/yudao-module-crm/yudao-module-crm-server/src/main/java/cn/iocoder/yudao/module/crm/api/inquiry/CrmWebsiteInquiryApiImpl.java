@@ -40,6 +40,8 @@ public class CrmWebsiteInquiryApiImpl implements CrmWebsiteInquiryApi {
         result.setCompanyName(inquiry.getCompanyName());
         result.setSubject(inquiry.getInquirySubject());
         result.setMessage(inquiry.getInquiryMessage());
+        result.setCategory(inquiry.getCategory());
+        result.setInquiryType(inquiry.getInquiryType());
         result.setSourcePage(inquiry.getSourcePage());
         result.setLocale(inquiry.getLocale());
         result.setUtmSource(inquiry.getUtmSource());

@@ -19,6 +19,8 @@ public class CrmWebsiteInquiryRespDTO {
     private String companyName;
     private String subject;
     private String message;
+    private String category;
+    private String inquiryType;
     private String sourcePage;
     private String locale;
     private String utmSource;

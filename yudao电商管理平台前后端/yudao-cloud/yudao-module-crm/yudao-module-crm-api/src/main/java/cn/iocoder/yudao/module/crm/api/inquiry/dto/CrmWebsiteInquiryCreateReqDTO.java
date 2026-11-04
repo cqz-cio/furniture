@@ -46,6 +46,12 @@ public class CrmWebsiteInquiryCreateReqDTO {
     @Size(max = 4000, message = "询盘内容不能超过 4000 个字符")
     private String message;
 
+    @Size(max = 60, message = "类别不能超过 60 个字符")
+    private String category;
+
+    @Size(max = 16, message = "询盘类型不能超过 16 个字符")
+    private String inquiryType;
+
     @Size(max = 255, message = "提交页面不能超过 255 个字符")
     private String sourcePage;
 

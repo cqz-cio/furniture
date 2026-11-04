@@ -106,6 +106,14 @@ public class CrmClueDO extends BaseDO {
      */
     private String inquiryMessage;
     /**
+     * 询盘产品兴趣类别
+     */
+    private String category;
+    /**
+     * 询盘类型（quote / samples / custom）
+     */
+    private String inquiryType;
+    /**
      * 提交页面
      */
     private String sourcePage;

@@ -133,6 +133,8 @@ public class CrmClueServiceImpl implements CrmClueService {
                 .setCountryCode(normalize(reqDTO.getCountryCode()))
                 .setInquirySubject(subject)
                 .setInquiryMessage(normalizeMultiline(reqDTO.getMessage()))
+                .setCategory(normalize(reqDTO.getCategory()))
+                .setInquiryType(normalize(reqDTO.getInquiryType()))
                 .setSourcePage(normalize(reqDTO.getSourcePage()))
                 .setLocale(normalize(reqDTO.getLocale()))
                 .setUtmSource(normalize(reqDTO.getUtmSource()))

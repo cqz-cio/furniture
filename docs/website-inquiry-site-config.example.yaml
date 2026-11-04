@@ -1,0 +1,17 @@
+# Trendz Green 官网询盘——独立站点隔离配置示例（默认禁用，无秘密占位）
+#
+# 本文件仅为示例，不会被 Spring 自动加载（不是 application-<profile>.yaml）。
+# 真实租户与密钥尚未建立：tenant-id 与 shared-secret 保持空，任何站点保持 enabled=false。
+# 启动校验要求启用站点 tenant-id 为正且非保留租户、shared-secret >=24 字符，
+# 因此即使只把 enabled 翻成 true，空配置也会安全失败，不会误开启投递。
+
+yudao:
+  website-inquiry:
+    sites:
+      trendzgreen:
+        enabled: false                 # 默认关闭
+        tenant-id: null                # 未建立，留空（禁止 162/121）
+        shared-secret: ""              # 未建立，留空（启用需 >=24 字符）
+        notify-enabled: false          # 站内信默认关闭
+        mail-enabled: false            # 邮件默认关闭
+        template-code: ""              # 无默认值，禁止回落到 vanz_website_inquiry

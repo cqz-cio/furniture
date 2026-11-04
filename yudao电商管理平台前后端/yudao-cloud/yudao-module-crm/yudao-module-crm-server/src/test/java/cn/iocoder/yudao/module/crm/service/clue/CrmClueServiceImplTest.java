@@ -32,6 +32,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DuplicateKeyException;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
@@ -101,6 +102,8 @@ class CrmClueServiceImplTest {
         assertEquals("+44", inquiry.getCountryCode());
         assertEquals("7700 900123", inquiry.getTelephone());
         assertEquals("Hotel dining chair project", inquiry.getInquirySubject());
+        assertEquals("Dining Chairs", inquiry.getCategory());
+        assertEquals("quote", inquiry.getInquiryType());
         assertEquals(CrmInquiryProcessStatusEnum.PENDING.getStatus(), inquiry.getProcessStatus());
         assertTrue(inquiry.getTestData());
         assertEquals(CrmInquiryPriorityEnum.NORMAL.getPriority(), inquiry.getPriority());
@@ -122,6 +125,30 @@ class CrmClueServiceImplTest {
         assertFalse(result.getCreated());
         verify(clueMapper, never()).insert(any(CrmClueDO.class));
         verify(crmPermissionService, never()).createPermission(any(CrmPermissionCreateReqBO.class));
+    }
+
+    @Test
+    void createWebsiteInquiry_concurrentDuplicateReturnsWinningRecord() {
+        when(clueMapper.selectByExternalInquiryId("web-001"))
+                .thenReturn(null, new CrmClueDO().setId(INQUIRY_ID));
+        when(clueMapper.insert(any(CrmClueDO.class)))
+                .thenThrow(new DuplicateKeyException("concurrent insert"));
+
+        CrmWebsiteInquiryCreateRespDTO result = clueService.createWebsiteInquiry(createWebsiteInquiryReqDTO());
+
+        assertEquals(INQUIRY_ID, result.getInquiryId());
+        assertFalse(result.getCreated());
+        verify(crmPermissionService, never()).createPermission(any(CrmPermissionCreateReqBO.class), anyLong());
+    }
+
+    @Test
+    void createWebsiteInquiry_unrelatedDuplicateFailureIsNotReportedAsSuccess() {
+        DuplicateKeyException failure = new DuplicateKeyException("other constraint");
+        when(clueMapper.insert(any(CrmClueDO.class))).thenThrow(failure);
+
+        assertEquals(failure, assertThrows(DuplicateKeyException.class,
+                () -> clueService.createWebsiteInquiry(createWebsiteInquiryReqDTO())));
+        verify(crmPermissionService, never()).createPermission(any(CrmPermissionCreateReqBO.class), anyLong());
     }
 
     @Test
@@ -333,6 +360,8 @@ class CrmClueServiceImplTest {
         reqDTO.setCompanyName("Northstar Interiors");
         reqDTO.setSubject("Hotel dining chair project");
         reqDTO.setMessage("Please quote 200 chairs.");
+        reqDTO.setCategory("Dining Chairs");
+        reqDTO.setInquiryType("quote");
         reqDTO.setSourcePage("/contact?utm_source=google");
         reqDTO.setLocale("en-GB");
         reqDTO.setUtmSource("google");

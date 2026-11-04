@@ -4,9 +4,11 @@ import cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder;
 import cn.iocoder.yudao.module.crm.api.inquiry.CrmWebsiteInquiryApi;
 import cn.iocoder.yudao.module.crm.api.inquiry.dto.CrmWebsiteInquiryCreateReqDTO;
 import cn.iocoder.yudao.module.crm.api.inquiry.dto.CrmWebsiteInquiryCreateRespDTO;
+import cn.iocoder.yudao.module.system.controller.app.inquiry.vo.AppWebsiteInquirySiteSubmitReqVO;
 import cn.iocoder.yudao.module.system.controller.app.inquiry.vo.AppWebsiteInquirySubmitReqVO;
 import cn.iocoder.yudao.module.system.dal.dataobject.tenant.TenantDO;
 import cn.iocoder.yudao.module.system.framework.inquiry.config.WebsiteInquiryProperties;
+import cn.iocoder.yudao.module.system.framework.inquiry.config.WebsiteInquirySiteProperties;
 import cn.iocoder.yudao.module.system.service.inquiry.mail.WebsiteInquiryMailService;
 import cn.iocoder.yudao.module.system.service.notify.NotifySendService;
 import cn.iocoder.yudao.module.system.service.tenant.TenantService;
@@ -48,6 +50,8 @@ public class WebsiteInquiryServiceImpl implements WebsiteInquiryService {
 
     @Resource
     private WebsiteInquiryProperties properties;
+    @Resource
+    private WebsiteInquirySiteProperties siteProperties;
     @Resource
     private TenantService tenantService;
     @Resource
@@ -108,8 +112,76 @@ public class WebsiteInquiryServiceImpl implements WebsiteInquiryService {
         return createResult.getInquiryId();
     }
 
+    @Override
+    public Long siteNotifyInquiry(String siteKey, String sharedSecret,
+                                  AppWebsiteInquirySiteSubmitReqVO reqVO) {
+        WebsiteInquirySiteProperties.Site site = siteProperties.getSite(siteKey);
+        if (site == null) {
+            throw exception(WEBSITE_INQUIRY_UNAUTHORIZED);
+        }
+        if (!site.isEnabled()) {
+            throw exception(WEBSITE_INQUIRY_DISABLED);
+        }
+        // 防御性：即使启动校验被绕过，也不允许把站点路由到 VANZ/Oakved 保留租户。
+        if (site.getTenantId() == null
+                || WebsiteInquirySiteProperties.RESERVED_TENANT_IDS.contains(site.getTenantId())) {
+            throw exception(WEBSITE_INQUIRY_CONFIGURATION_ERROR);
+        }
+        if (!isValidSecret(site.getSharedSecret(), sharedSecret)) {
+            throw exception(WEBSITE_INQUIRY_UNAUTHORIZED);
+        }
+        // 租户上下文必须等于站点服务端解析出的租户；伪造 tenant-id / 跨租户在此被拒绝。
+        Long tenantId = TenantContextHolder.getTenantId();
+        if (tenantId == null || !Objects.equals(site.getTenantId(), tenantId)) {
+            throw exception(WEBSITE_INQUIRY_UNAUTHORIZED);
+        }
+
+        TenantDO tenant = tenantService.getTenant(tenantId);
+        if (tenant == null || tenant.getContactUserId() == null) {
+            throw exception(WEBSITE_INQUIRY_CONFIGURATION_ERROR);
+        }
+
+        LocalDateTime submittedAt = LocalDateTime.now();
+        CrmWebsiteInquiryCreateRespDTO createResult = crmWebsiteInquiryApi.createWebsiteInquiry(
+                buildCrmSiteCreateReqDTO(reqVO, tenant.getContactUserId(), submittedAt));
+        if (createResult == null || createResult.getInquiryId() == null) {
+            throw exception(WEBSITE_INQUIRY_CONFIGURATION_ERROR);
+        }
+
+        // 站内信是入库后的旁路：站点默认关闭，失败不影响已入库结果。
+        if (Boolean.TRUE.equals(createResult.getCreated())
+                && site.isNotifyEnabled() && !isBlank(site.getTemplateCode())) {
+            try {
+                Long messageId = notifySendService.sendSingleNotifyToAdmin(
+                        tenant.getContactUserId(), site.getTemplateCode(),
+                        buildSiteTemplateParams(reqVO, submittedAt));
+                if (messageId == null) {
+                    log.warn("Website inquiry {} persisted, but the ERP notify service returned no message id",
+                            createResult.getInquiryId());
+                }
+            } catch (RuntimeException ex) {
+                log.warn("Website inquiry {} persisted, but the ERP notification failed",
+                        createResult.getInquiryId(), ex);
+            }
+        }
+        // 邮件也是入库后的旁路：站点默认关闭，只有显式 mailEnabled 才建立投递记录，
+        // 避免后台重试任务为未启用站点打开邮件通道。
+        if (site.isMailEnabled()) {
+            try {
+                websiteInquiryMailService.ensureDeliveryAndSend(createResult.getInquiryId());
+            } catch (RuntimeException ex) {
+                log.warn("Website inquiry {} persisted, but the ERP mail relay could not be queued",
+                        createResult.getInquiryId(), ex);
+            }
+        }
+        return createResult.getInquiryId();
+    }
+
     private boolean isValidSecret(String providedSecret) {
-        String configuredSecret = properties.getSharedSecret();
+        return isValidSecret(properties.getSharedSecret(), providedSecret);
+    }
+
+    private static boolean isValidSecret(String configuredSecret, String providedSecret) {
         if (isBlank(configuredSecret) || isBlank(providedSecret)) {
             return false;
         }
@@ -138,6 +210,46 @@ public class WebsiteInquiryServiceImpl implements WebsiteInquiryService {
         reqDTO.setUtmCampaign(normalize(reqVO.getUtmCampaign()));
         reqDTO.setSubmittedAt(submittedAt);
         return reqDTO;
+    }
+
+    private static CrmWebsiteInquiryCreateReqDTO buildCrmSiteCreateReqDTO(
+            AppWebsiteInquirySiteSubmitReqVO reqVO, Long ownerUserId, LocalDateTime submittedAt) {
+        CrmWebsiteInquiryCreateReqDTO reqDTO = new CrmWebsiteInquiryCreateReqDTO();
+        reqDTO.setExternalInquiryId(normalize(reqVO.getExternalInquiryId()));
+        reqDTO.setOwnerUserId(ownerUserId);
+        reqDTO.setContactName(normalize(reqVO.getName()));
+        reqDTO.setEmail(normalize(reqVO.getEmail()));
+        reqDTO.setCompanyName(normalize(reqVO.getCompanyName()));
+        reqDTO.setSubject(normalize(reqVO.getSubject()));
+        reqDTO.setMessage(normalizeMultiline(reqVO.getMessage()));
+        reqDTO.setCategory(normalize(reqVO.getCategory()));
+        reqDTO.setInquiryType(normalize(reqVO.getInquiryType()));
+        reqDTO.setSourcePage(normalize(reqVO.getSourcePage()));
+        reqDTO.setLocale(normalize(reqVO.getLocale()));
+        reqDTO.setUtmSource(normalize(reqVO.getUtmSource()));
+        reqDTO.setUtmMedium(normalize(reqVO.getUtmMedium()));
+        reqDTO.setUtmCampaign(normalize(reqVO.getUtmCampaign()));
+        reqDTO.setSubmittedAt(submittedAt);
+        return reqDTO;
+    }
+
+    private static Map<String, Object> buildSiteTemplateParams(
+            AppWebsiteInquirySiteSubmitReqVO reqVO, LocalDateTime submittedAt) {
+        Map<String, Object> params = new LinkedHashMap<>();
+        params.put("name", display(reqVO.getName()));
+        params.put("email", display(reqVO.getEmail()));
+        params.put("companyName", display(reqVO.getCompanyName()));
+        params.put("subject", display(reqVO.getSubject()));
+        params.put("category", display(reqVO.getCategory()));
+        params.put("inquiryType", display(reqVO.getInquiryType()));
+        params.put("message", displayNotificationMessage(reqVO.getMessage()));
+        params.put("sourcePage", display(reqVO.getSourcePage()));
+        params.put("locale", display(reqVO.getLocale()));
+        params.put("utmSource", display(reqVO.getUtmSource()));
+        params.put("utmMedium", display(reqVO.getUtmMedium()));
+        params.put("utmCampaign", display(reqVO.getUtmCampaign()));
+        params.put("submittedAt", submittedAt.format(SUBMITTED_AT_FORMATTER));
+        return params;
     }
 
     private static Map<String, Object> buildTemplateParams(

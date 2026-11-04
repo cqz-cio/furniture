@@ -9,12 +9,19 @@ import org.springframework.context.annotation.Configuration;
  * 官网询盘通知配置。
  */
 @Configuration(proxyBeanMethods = false)
-@EnableConfigurationProperties(WebsiteInquiryProperties.class)
+@EnableConfigurationProperties({WebsiteInquiryProperties.class, WebsiteInquirySiteProperties.class})
 public class WebsiteInquiryConfiguration {
 
     @Bean
     public InitializingBean websiteInquiryPropertiesValidator(WebsiteInquiryProperties properties) {
         return properties::validateForStartup;
+    }
+
+    @Bean
+    public InitializingBean websiteInquirySitePropertiesValidator(
+            WebsiteInquiryProperties legacyProperties, WebsiteInquirySiteProperties siteProperties) {
+        return () -> siteProperties.validateForStartup(
+                legacyProperties.getSharedSecret(), legacyProperties.getTemplateCode());
     }
 
 }

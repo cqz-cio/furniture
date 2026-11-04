@@ -32,6 +32,7 @@ tools/
 !/yudao电商管理平台前后端/yudao-cloud/sql/mysql/migrations/V045__website_blog_management.sql
 !/yudao电商管理平台前后端/yudao-cloud/sql/mysql/migrations/V048__product_category_and_detail_contract.sql
 !/yudao电商管理平台前后端/yudao-cloud/sql/mysql/migrations/V050__tripeer_page_cms.sql
+!/yudao电商管理平台前后端/yudao-cloud/sql/mysql/migrations/V054__website_inquiry_category_type.sql
 !/yudao电商管理平台前后端/yudao-cloud/sql/mysql/flyway/
 !/yudao电商管理平台前后端/yudao-cloud/sql/mysql/flyway/B*__oakved_baseline.sql
 
