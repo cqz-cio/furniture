@@ -13307,6 +13307,19 @@ DROP TEMPORARY TABLE tripeer_media_package;
 DROP TEMPORARY TABLE tripeer_media_scope;
 DROP TEMPORARY TABLE tripeer_media_guard;
 
+-- BEGIN V054__website_inquiry_category_type.sql
+-- Trendz Green independent site inquiry: persist category and inquiry type from the
+-- T1 site-isolated protocol. The legacy VANZ `/notify` path never sets these columns
+-- and remains unchanged. Columns are NOT NULL DEFAULT '' to match the existing
+-- website-inquiry columns added in V032 (existing rows keep the empty default).
+--
+-- This file is a migration SOURCE only. It is applied by Flyway when the backend
+-- starts; it is NOT applied by this task.
+
+ALTER TABLE `crm_clue`
+  ADD COLUMN `category` varchar(60) NOT NULL DEFAULT '' COMMENT '询盘产品兴趣类别' AFTER `inquiry_message`,
+  ADD COLUMN `inquiry_type` varchar(16) NOT NULL DEFAULT '' COMMENT '询盘类型：quote/samples/custom/catalog' AFTER `category`;
+
 -- BEGIN Oakved demo catalog
 -- Oakved demo catalog: tenant 121, 26 mall products, ERP products, stock and mappings.
 SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -13564,4 +13577,5 @@ INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256)
 INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('051','tripeer full cms permissions','V051__tripeer_full_cms_permissions.sql','c4d049ddf205264b7475c49c1630a3acd6e02be0a83293b1d76077b453e9be96') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
 INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('052','tripeer website operations','V052__tripeer_website_operations.sql','b767f21d16978efc5c23570d0745853e80bfca799599161d556640f84377b667') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
 INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('053','tenant website media library','V053__tenant_website_media_library.sql','4136e8cc130bda3d4711c6d978c5bc14116179e8a8a80126aca26e8c935ad4b4') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
+INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('054','website inquiry category type','V054__website_inquiry_category_type.sql','6d940a4e4fea1f8c830add5d46ec87d102c322a5f1b2c6e39663ddaa4968f31b') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
 SET FOREIGN_KEY_CHECKS = 1;
