@@ -69,6 +69,34 @@ class AuthCmsPermissionInfoTest {
     }
 
     private AuthPermissionInfoRespVO permissionInfo(boolean grantPageQuery, boolean grantMediaQuery) throws Exception {
+        return permissionInfo(grantPageQuery, grantMediaQuery, false);
+    }
+
+    @Test
+    void tablewareMenusRequireTheirIndependentGrants() throws Exception {
+        assertTrue(permissionInfo(true, false).getFurnitureNavigationMenuPaths().contains("/seo/catalog"));
+        assertFalse(permissionInfo(false, false).getFurnitureNavigationMenuPaths().contains("/seo/catalog"));
+        assertFalse(permissionInfo(true, true).getFurnitureNavigationMenuPaths().contains("/seo/operations"));
+        var response = permissionInfo(false, false, true);
+        assertTrue(response.getPermissions().contains("seo:operations:query"));
+        assertTrue(response.getFurnitureNavigationMenuPaths().contains("/seo/operations"));
+        assertFalse(response.getFurnitureNavigationMenuPaths().contains("/seo/catalog"));
+    }
+
+    private AuthPermissionInfoRespVO permissionInfo(boolean grantPageQuery, boolean grantMediaQuery, boolean grantOperations) throws Exception {
+        return permissionInfo(grantPageQuery, grantMediaQuery, grantOperations, false);
+    }
+
+    @Test
+    void tenantAccountMenusFollowExistingGrantsWithoutOpeningPlatformSettings() throws Exception {
+        var allowed = permissionInfo(false, false, false, true).getFurnitureNavigationMenuPaths();
+        assertTrue(allowed.contains("/system/user"));
+        assertTrue(allowed.contains("/system/role"));
+        assertFalse(allowed.contains("/system/tenant"));
+        assertFalse(permissionInfo(true, true).getFurnitureNavigationMenuPaths().contains("/system/user"));
+    }
+
+    private AuthPermissionInfoRespVO permissionInfo(boolean grantPageQuery, boolean grantMediaQuery, boolean grantOperations, boolean grantAccounts) throws Exception {
         LoginUser login = new LoginUser(); login.setId(9001L);
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(login, null, List.of()));
@@ -82,6 +110,14 @@ class AuthCmsPermissionInfoTest {
         if (grantMediaQuery) {
             menus.add(menu(4L, 1L, 2, "media", ""));
             menus.add(menu(5L, 4L, 3, "", "seo:media:query"));
+        }
+        if (grantOperations) {
+            menus.add(menu(6L, 1L, 2, "operations", ""));
+            menus.add(menu(7L, 6L, 3, "", "seo:operations:query"));
+        }
+        if (grantAccounts) {
+            menus.add(menu(8L, 2L, 3, "", "system:user:query"));
+            menus.add(menu(9L, 2L, 3, "", "system:role:query"));
         }
         AdminUserService users = mock(AdminUserService.class);
         RoleService roles = mock(RoleService.class);

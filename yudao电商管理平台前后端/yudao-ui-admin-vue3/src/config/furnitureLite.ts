@@ -28,6 +28,8 @@ const menuTitleOverrides: Record<string, string> = {
   '/crm/contact': '联系人管理',
   '/seo': '网站管理（CMS）',
   '/seo/blog': '文章管理',
+  '/seo/catalog': '餐具产品目录',
+  '/seo/operations': '网站运营中心',
   '/seo/metadata': 'SEO 管理',
   '/seo/website-code': '统计与广告代码',
   '/seo/site-config': '站点设置',

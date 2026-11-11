@@ -69,6 +69,7 @@
                   <el-option label="VANZ · 2B 官网导航" value="VANZ_B2B" />
                   <el-option label="Oakved · 2C 家具导航" value="OAKVED_B2C" />
                   <el-option label="TRIPEER · 企业官网" value="TRIPEER_CORPORATE" />
+                  <el-option label="Trendz Green · 餐具 B2B 官网" value="TABLEWARE_B2B" />
                 </el-select>
               </el-form-item>
               <el-form-item label="站点名称" prop="siteName" class="seo-config-grid__wide">

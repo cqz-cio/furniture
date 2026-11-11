@@ -11,5 +11,6 @@ public class WebsiteBlogSectionRespVO {
     private String number;
     private String title;
     private List<String> paragraphs;
+    private List<com.fasterxml.jackson.databind.JsonNode> blocks;
 
 }

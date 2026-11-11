@@ -18,5 +18,7 @@ public class WebsiteBlogSectionSaveReqVO {
 
     @Size(max = 50)
     private List<@Size(max = 4000) String> paragraphs;
+    @Size(max = 500)
+    private List<com.fasterxml.jackson.databind.JsonNode> blocks;
 
 }

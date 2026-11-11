@@ -11,7 +11,8 @@ public enum WebsiteNavigationTemplateEnum {
 
     VANZ_B2B("VANZ_B2B"),
     OAKVED_B2C("OAKVED_B2C"),
-    TRIPEER_CORPORATE("TRIPEER_CORPORATE");
+    TRIPEER_CORPORATE("TRIPEER_CORPORATE"),
+    TABLEWARE_B2B("TABLEWARE_B2B");
 
     private final String code;
 

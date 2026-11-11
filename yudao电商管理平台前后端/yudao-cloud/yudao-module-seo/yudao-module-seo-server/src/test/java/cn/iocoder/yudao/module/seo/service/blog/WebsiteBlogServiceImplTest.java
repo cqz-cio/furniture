@@ -58,6 +58,8 @@ class WebsiteBlogServiceImplTest {
         previewRedisDAO = mock(WebsiteBlogPreviewRedisDAO.class);
         siteConfigService = mock(SeoSiteConfigService.class);
         service = new WebsiteBlogServiceImpl();
+        ReflectionTestUtils.setField(service, "approvalGuard", mock(cn.iocoder.yudao.module.seo.service.operations.WebsiteApprovalGuard.class));
+        ReflectionTestUtils.setField(service, "mediaService", mock(cn.iocoder.yudao.module.seo.service.media.WebsiteMediaService.class));
         ReflectionTestUtils.setField(service, "websiteBlogArticleMapper", articleMapper);
         ReflectionTestUtils.setField(service, "publishRecordMapper", publishRecordMapper);
         ReflectionTestUtils.setField(service, "previewRedisDAO", previewRedisDAO);

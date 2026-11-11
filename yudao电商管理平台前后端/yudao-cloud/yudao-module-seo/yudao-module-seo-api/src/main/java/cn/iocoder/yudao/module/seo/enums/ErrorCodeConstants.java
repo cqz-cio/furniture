@@ -74,10 +74,23 @@ public interface ErrorCodeConstants {
             "Blog 预览凭证已过期、已使用或内容已更新，请重新生成预览");
     ErrorCode BLOG_PREVIEW_ORIGIN_MISMATCH = new ErrorCode(1_070_006_006,
             "Blog 预览请求来源与站点配置不一致");
+    ErrorCode BLOG_ARTICLE_DELETE_REQUIRES_OFFLINE = new ErrorCode(1_070_006_007,
+            "已发布文章不能直接删除，请先由发布员下线");
 
 
     ErrorCode MEDIA_NOT_EXISTS = new ErrorCode(1_070_009_000, "素材不存在或不属于当前租户");
     ErrorCode MEDIA_FILE_INVALID = new ErrorCode(1_070_009_001, "请上传有效的 JPG、PNG 或 PDF，文件不超过 10 MB，图片不超过 2500 万像素");
     ErrorCode MEDIA_STORAGE_UNAVAILABLE = new ErrorCode(1_070_009_002, "素材公开访问地址尚未配置，请联系管理员");
     ErrorCode MEDIA_REFERENCE_INVALID = new ErrorCode(1_070_009_003, "图片素材与当前租户或文件地址不匹配，请重新选择");
+    ErrorCode MEDIA_PDF_REQUIRES_REVIEW = new ErrorCode(1_070_009_004, "餐具官网 PDF 请上传到运营中心的资料管理，经审核发布后公开");
+
+    ErrorCode OPERATION_INVALID = new ErrorCode(1_070_010_000, "运营数据或文件格式无效，请检查必填字段、日期和文件大小");
+    ErrorCode OPERATION_NOT_FOUND = new ErrorCode(1_070_010_001, "记录不存在、不属于当前站点或未公开");
+    ErrorCode OPERATION_VERSION_CONFLICT = new ErrorCode(1_070_010_002, "记录或内容版本已变化，请刷新后重试");
+    ErrorCode OPERATION_APPROVAL_REQUIRED = new ErrorCode(1_070_010_003, "当前内容版本尚未通过审核，请先提交并批准该版本");
+    ErrorCode OPERATION_DOCUMENT_EXPIRED = new ErrorCode(1_070_010_004, "资料已经过期，不能发布");
+    ErrorCode OPERATION_OFFLINE_REQUIRED = new ErrorCode(1_070_010_005, "已发布资料须先下线才能删除");
+    ErrorCode OPERATION_BACKUP_INVALID = new ErrorCode(1_070_010_006, "备份校验失败、租户站点不匹配或引用文件缺失");
+    ErrorCode OPERATION_LIMIT = new ErrorCode(1_070_010_007, "当前站点记录数量已达到本地运营上限");
+    ErrorCode OPERATION_FILE_REFERENCED = new ErrorCode(1_070_010_008, "文件仍被资料草稿或已发布版本引用，不能删除");
 }

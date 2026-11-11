@@ -10,7 +10,7 @@ export interface SeoSiteConfigSaveReqVO {
   defaultRobots: string
   defaultOgImage: string
   defaultLocale: string
-  navigationTemplate: 'VANZ_B2B' | 'OAKVED_B2C' | 'TRIPEER_CORPORATE'
+  navigationTemplate: 'VANZ_B2B' | 'OAKVED_B2C' | 'TRIPEER_CORPORATE' | 'TABLEWARE_B2B'
 }
 
 export interface SeoSiteConfigRespVO extends SeoSiteConfigSaveReqVO {

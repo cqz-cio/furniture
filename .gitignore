@@ -38,6 +38,8 @@ tools/
 
 # package files
 *.tar
+__pycache__/
+*.pyc
 
 # launch secrets and evidence
 /furniture web/.env.production
@@ -47,3 +49,8 @@ tools/
 !/furniture web/.env.production.example
 !/furniture web/.env.launch-smoke.example
 !/furniture web/.env.backend-production.example
+
+!/yudao电商管理平台前后端/yudao-cloud/sql/mysql/migrations/V055__website_blog_published_visibility_snapshot.sql
+!/yudao电商管理平台前后端/yudao-cloud/sql/mysql/migrations/V056__tableware_erp_operations.sql
+!/yudao电商管理平台前后端/yudao-cloud/sql/mysql/migrations/V057__tableware_management_menus.sql
+!/yudao电商管理平台前后端/yudao-cloud/sql/mysql/migrations/V058__tableware_catalog_actions.sql

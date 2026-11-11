@@ -53,6 +53,7 @@ import java.util.regex.Pattern;
 
 import static cn.iocoder.yudao.framework.common.exception.util.ServiceExceptionUtil.exception;
 import static cn.iocoder.yudao.module.seo.enums.ErrorCodeConstants.BLOG_ARTICLE_DUPLICATE;
+import static cn.iocoder.yudao.module.seo.enums.ErrorCodeConstants.BLOG_ARTICLE_DELETE_REQUIRES_OFFLINE;
 import static cn.iocoder.yudao.module.seo.enums.ErrorCodeConstants.BLOG_ARTICLE_IDENTITY_IMMUTABLE;
 import static cn.iocoder.yudao.module.seo.enums.ErrorCodeConstants.BLOG_ARTICLE_INVALID;
 import static cn.iocoder.yudao.module.seo.enums.ErrorCodeConstants.BLOG_ARTICLE_NOT_EXISTS;
@@ -63,6 +64,10 @@ import static cn.iocoder.yudao.module.seo.enums.ErrorCodeConstants.BLOG_PREVIEW_
 @Service
 @Validated
 public class WebsiteBlogServiceImpl implements WebsiteBlogService {
+    @Resource
+    private cn.iocoder.yudao.module.seo.service.operations.WebsiteApprovalGuard approvalGuard;
+    @Resource
+    private cn.iocoder.yudao.module.seo.service.media.WebsiteMediaService mediaService;
 
     private static final Duration PREVIEW_TICKET_TTL = Duration.ofMinutes(10);
     private static final Duration PREVIEW_SESSION_TTL = Duration.ofMinutes(30);
@@ -162,8 +167,18 @@ public class WebsiteBlogServiceImpl implements WebsiteBlogService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void deleteArticle(Long id) {
-        getRequiredArticle(id);
-        websiteBlogArticleMapper.deleteByIdForTenant(id);
+        WebsiteBlogArticleDO article = getRequiredArticle(id);
+        if (WebsiteBlogStatusEnum.PUBLISHED.getCode().equals(article.getStatus())) {
+            throw exception(BLOG_ARTICLE_DELETE_REQUIRES_OFFLINE);
+        }
+        // The SQL predicate also protects against publication after the initial read.
+        if (websiteBlogArticleMapper.deleteByIdForTenant(id) == 0) {
+            article = getRequiredArticle(id);
+            if (WebsiteBlogStatusEnum.PUBLISHED.getCode().equals(article.getStatus())) {
+                throw exception(BLOG_ARTICLE_DELETE_REQUIRES_OFFLINE);
+            }
+            throw exception(BLOG_ARTICLE_VERSION_CONFLICT);
+        }
     }
 
     @Override
@@ -173,8 +188,11 @@ public class WebsiteBlogServiceImpl implements WebsiteBlogService {
         if (!Objects.equals(article.getVersion(), reqVO.getVersion())) {
             throw exception(BLOG_ARTICLE_VERSION_CONFLICT);
         }
+        approvalGuard.requireApproved(article.getSiteId(), "article", article.getId().toString(), article.getVersion());
         List<WebsiteBlogSectionRespVO> sections = parseSections(article.getSectionsJson());
         validatePublishable(article, sections);
+        validateTablewareIdentity(article.getSiteId(), article.getSlug(), article.getLegacyPath());
+        validateTablewareImages(article.getSiteId(), article.getCoverImageUrl(), article.getHeroImageUrl(), sections);
         LocalDateTime effectivePublishedAt = article.getPublishedAt() == null
                 ? LocalDateTime.now() : article.getPublishedAt();
         AppWebsiteBlogArticleRespVO payload = buildPublicResponse(article, sections, effectivePublishedAt);
@@ -199,6 +217,7 @@ public class WebsiteBlogServiceImpl implements WebsiteBlogService {
                 .setSnapshotJson(payloadJson);
         record.setTenantId(currentTenantId());
         publishRecordMapper.insert(record);
+        approvalGuard.published(article.getSiteId(), "article", article.getId().toString(), article.getVersion());
     }
 
     @Override
@@ -245,7 +264,7 @@ public class WebsiteBlogServiceImpl implements WebsiteBlogService {
                 .setSummary(snapshot.getSummary()).setCoverImageUrl(snapshot.getCoverImage().getUrl())
                 .setCoverImageAlt(snapshot.getCoverImage().getAlt()).setHeroImageUrl(snapshot.getHeroImage())
                 .setSections(snapshot.getSections().stream().map(section -> new cn.iocoder.yudao.module.seo.controller.admin.blog.vo.WebsiteBlogSectionSaveReqVO()
-                    .setId(section.getId()).setTitle(section.getTitle()).setParagraphs(section.getParagraphs())).toList())
+                    .setId(section.getId()).setTitle(section.getTitle()).setParagraphs(section.getParagraphs()).setBlocks(section.getBlocks())).toList())
                 .setVisible(current.getVisible()).setPublishedAt(current.getPublishedAt()).setSortOrder(snapshot.getSortOrder())
                 .setSeoTitle(snapshot.getSeoTitle()).setSeoDescription(snapshot.getSeoDescription());
         updateArticle(draft);
@@ -326,12 +345,14 @@ public class WebsiteBlogServiceImpl implements WebsiteBlogService {
             throw exception(BLOG_ARTICLE_INVALID);
         }
         String legacyPath = normalizeLegacyPath(reqVO.getLegacyPath());
+        validateTablewareIdentity(reqVO.getSiteId(), slug, legacyPath);
         String coverImageUrl = normalizeImageUrl(reqVO.getCoverImageUrl(), true);
         String heroImageUrl = normalizeImageUrl(reqVO.getHeroImageUrl(), false);
         String title = trim(reqVO.getTitle());
         String summary = trim(reqVO.getSummary());
         List<String> titleLines = normalizeTitleLines(reqVO.getTitleLines(), title);
         List<WebsiteBlogSectionRespVO> sections = normalizeSections(reqVO.getSections());
+        validateTablewareImages(reqVO.getSiteId(), coverImageUrl, heroImageUrl, sections);
         int sortOrder = reqVO.getSortOrder() == null ? 0 : reqVO.getSortOrder();
         if (sortOrder < -100000 || sortOrder > 100000) {
             throw exception(BLOG_ARTICLE_INVALID);
@@ -353,8 +374,8 @@ public class WebsiteBlogServiceImpl implements WebsiteBlogService {
                 .setVisible(reqVO.getVisible() == null || reqVO.getVisible())
                 .setPublishedAt(reqVO.getPublishedAt())
                 .setSortOrder(sortOrder)
-                .setSeoTitle(StrUtil.blankToDefault(trim(reqVO.getSeoTitle()), title + " — VANZ Journal"))
-                .setSeoDescription(StrUtil.blankToDefault(trim(reqVO.getSeoDescription()), summary));
+                .setSeoTitle(StrUtil.blankToDefault(trim(reqVO.getSeoTitle()), title))
+                .setSeoDescription(StrUtil.blankToDefault(trim(reqVO.getSeoDescription()), summary.substring(0, Math.min(summary.length(), 320))));
     }
 
     private WebsiteBlogArticleRespVO toAdminResponse(WebsiteBlogArticleDO article) {
@@ -418,6 +439,7 @@ public class WebsiteBlogServiceImpl implements WebsiteBlogService {
             publicSection.setNumber(section.getNumber());
             publicSection.setTitle(section.getTitle());
             publicSection.setParagraphs(section.getParagraphs());
+            publicSection.setBlocks(section.getBlocks());
             return publicSection;
         }).toList());
         response.setSeoTitle(article.getSeoTitle());
@@ -453,10 +475,11 @@ public class WebsiteBlogServiceImpl implements WebsiteBlogService {
             List<String> paragraphs = requestSection.getParagraphs() == null ? List.of()
                     : requestSection.getParagraphs().stream().map(WebsiteBlogServiceImpl::trim)
                     .filter(StrUtil::isNotBlank).toList();
-            if (StrUtil.isBlank(title) && paragraphs.isEmpty()) {
+            var blocks = WebsiteBlogBlocks.validate(requestSection.getBlocks());
+            if (StrUtil.isBlank(title) && paragraphs.isEmpty() && blocks.isEmpty()) {
                 continue;
             }
-            if (StrUtil.isBlank(title) || paragraphs.isEmpty()) {
+            if (StrUtil.isBlank(title) || (paragraphs.isEmpty() && blocks.isEmpty())) {
                 throw exception(BLOG_ARTICLE_INVALID);
             }
             String baseId = slugify(StrUtil.blankToDefault(requestSection.getId(), title));
@@ -473,6 +496,7 @@ public class WebsiteBlogServiceImpl implements WebsiteBlogService {
             section.setNumber(String.format(Locale.ROOT, "%02d", sections.size() + 1));
             section.setTitle(title);
             section.setParagraphs(paragraphs);
+            section.setBlocks(blocks);
             sections.add(section);
         }
         return sections;
@@ -532,6 +556,30 @@ public class WebsiteBlogServiceImpl implements WebsiteBlogService {
         throw exception(BLOG_ARTICLE_VERSION_CONFLICT);
     }
 
+    private void validateTablewareIdentity(Long siteId, String slug, String legacyPath) {
+        SeoSiteConfigDO site = siteConfigService.getSiteConfig(siteId);
+        if (site == null || !"TABLEWARE_B2B".equals(site.getNavigationTemplate())) return;
+        Set<String> reserved = Set.of("products", "product", "cms", "blog", "request-quote", "request-samples", "quote", "contact", "contact-us", "solutions", "custom-packaging", "manufacturing", "quality-compliance", "cups-straws", "food-containers", "tableware", "bags", "cups-lids", "bags-wraps", "about", "about-us", "sustainability", "materials", "applications", "resources", "certifications", "privacy", "privacy-policy", "terms", "terms-of-service", "assets", "downloads", "preview", "cms-preview", "cms-api", "api", "admin-api", "app-api", "404");
+        String path = legacyPath == null ? "" : legacyPath;
+        if (reserved.contains(slug) || (!path.isBlank() && (!path.substring(1).replaceAll("(?:/|\\.html)$", "").equals(slug) || !path.matches("/[a-z0-9]+(?:-[a-z0-9]+)*(?:/|\\.html)?") || reserved.contains(path.substring(1).replaceAll("(?:/|\\.html)$", "")))))
+            throw exception(BLOG_ARTICLE_INVALID);
+    }
+
+    private void validateTablewareImages(Long siteId, String cover, String hero, List<WebsiteBlogSectionRespVO> sections) {
+        SeoSiteConfigDO site = siteConfigService.getSiteConfig(siteId);
+        if (site == null || !"TABLEWARE_B2B".equals(site.getNavigationTemplate())) return;
+        List<String> images = new ArrayList<>();
+        if (StrUtil.isNotBlank(cover)) images.add(cover);
+        if (StrUtil.isNotBlank(hero)) images.add(hero);
+        for (var section : sections) if (section.getBlocks() != null) for (var block : section.getBlocks())
+            if ("image".equals(block.path("type").asText())) images.add(block.path("src").asText());
+        for (String image : images) {
+            cn.iocoder.yudao.module.seo.service.page.TablewareCatalogContentValidator.asset(image);
+            if (!image.startsWith("/assets/"))
+                mediaService.validateImage(JsonUtils.parseTree("{\"url\":" + JsonUtils.toJsonString(image) + "}"));
+        }
+    }
+
     private static String normalizeLegacyPath(String value) {
         String path = trim(value);
         if (StrUtil.isBlank(path)) {
@@ -573,6 +621,10 @@ public class WebsiteBlogServiceImpl implements WebsiteBlogService {
         int words = countWords(summary);
         for (WebsiteBlogSectionRespVO section : sections) {
             words += countWords(section.getTitle());
+            if (section.getBlocks() != null) for (var block : section.getBlocks()) {
+                words += countWords(block.path("text").asText(""));
+                if (block.path("items").isArray()) for (var item : block.path("items")) words += countWords(item.asText(""));
+            }
             for (String paragraph : section.getParagraphs()) {
                 words += countWords(paragraph);
             }

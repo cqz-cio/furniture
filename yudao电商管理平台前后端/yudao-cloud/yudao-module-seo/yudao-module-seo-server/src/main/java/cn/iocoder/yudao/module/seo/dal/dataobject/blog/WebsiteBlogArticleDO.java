@@ -43,6 +43,9 @@ public class WebsiteBlogArticleDO extends TenantBaseDO {
     private Integer publishedVersion;
     private String publishedSlug;
     private String publishedPayloadJson;
+    private Boolean publishedVisible;
+    private LocalDateTime publishedAtSnapshot;
+    private Integer publishedSortOrder;
     private LocalDateTime lastPublishedTime;
     private String publishedBy;
 

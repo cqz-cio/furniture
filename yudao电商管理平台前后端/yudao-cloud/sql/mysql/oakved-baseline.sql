@@ -13320,6 +13320,97 @@ ALTER TABLE `crm_clue`
   ADD COLUMN `category` varchar(60) NOT NULL DEFAULT '' COMMENT '询盘产品兴趣类别' AFTER `inquiry_message`,
   ADD COLUMN `inquiry_type` varchar(16) NOT NULL DEFAULT '' COMMENT '询盘类型：quote/samples/custom/catalog' AFTER `category`;
 
+-- BEGIN V055__website_blog_published_visibility_snapshot.sql
+-- Apply only during an explicitly authorized ERP deployment. Local fixture uses its own H2 schema.
+-- Draft edits must not change public visibility, schedule or ordering before publication.
+ALTER TABLE website_blog_article
+    ADD COLUMN published_visible bit(1) NULL COMMENT 'Visibility captured at publication',
+    ADD COLUMN published_at_snapshot datetime NULL COMMENT 'Publication schedule captured in snapshot',
+    ADD COLUMN published_sort_order int NULL COMMENT 'Sort order captured at publication';
+
+UPDATE website_blog_article
+SET published_visible = visible,
+    published_at_snapshot = COALESCE(
+        STR_TO_DATE(JSON_UNQUOTE(JSON_EXTRACT(published_payload_json, '$.publishedAt')), '%Y-%m-%dT%H:%i:%s'),
+        published_at),
+    published_sort_order = COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRACT(published_payload_json, '$.sortOrder')) AS SIGNED), sort_order),
+    -- Backfill metadata without making every existing article look newly edited.
+    update_time = update_time
+WHERE published_payload_json IS NOT NULL;
+
+CREATE INDEX idx_blog_published_snapshot ON website_blog_article
+    (tenant_id, site_id, locale, status, published_visible, published_at_snapshot);
+
+-- BEGIN V056__tableware_erp_operations.sql
+-- Schema only. Tenant, accounts, menus and grants are provisioned separately.
+CREATE TABLE IF NOT EXISTS website_operation_record (
+ id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY,
+ site_id bigint NOT NULL, kind varchar(20) NOT NULL,
+ target_kind varchar(20) NOT NULL DEFAULT '', target_key varchar(100) NOT NULL DEFAULT '',
+ content_version int NOT NULL DEFAULT 0, status varchar(20) NOT NULL DEFAULT '',
+ version int NOT NULL, payload_json mediumtext NOT NULL,
+ creator varchar(64) NOT NULL DEFAULT '', create_time datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ updater varchar(64) NOT NULL DEFAULT '', update_time datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+ deleted bit(1) NOT NULL DEFAULT b'0', tenant_id bigint NOT NULL,
+ KEY idx_website_operation_scope(tenant_id,site_id,kind,deleted,id),
+ KEY idx_website_review_version(tenant_id,site_id,target_kind,target_key,content_version,status,deleted)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS website_document (
+ id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY, site_id bigint NOT NULL,
+ version int NOT NULL, draft_json text NOT NULL, published_json text DEFAULT NULL,
+ creator varchar(64) NOT NULL DEFAULT '', create_time datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ updater varchar(64) NOT NULL DEFAULT '', update_time datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+ deleted bit(1) NOT NULL DEFAULT b'0', tenant_id bigint NOT NULL,
+ KEY idx_website_document_scope(tenant_id,site_id,deleted,id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- PDF content stays private. Only the checked document download controller can return bytes.
+CREATE TABLE IF NOT EXISTS website_private_file (
+ id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY, site_id bigint NOT NULL,
+ name varchar(160) NOT NULL, size bigint NOT NULL, sha256 char(64) NOT NULL, content mediumblob NOT NULL,
+ creator varchar(64) NOT NULL DEFAULT '', create_time datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ updater varchar(64) NOT NULL DEFAULT '', update_time datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+ deleted bit(1) NOT NULL DEFAULT b'0', tenant_id bigint NOT NULL,
+ UNIQUE KEY uk_website_private_hash(tenant_id,site_id,sha256,deleted)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- BEGIN V057__tableware_management_menus.sql
+-- Register capabilities only. No tenant, account, password or existing role grant is changed.
+SET @tableware_seo_root=(SELECT MIN(parent_id) FROM system_menu WHERE component='seo/page-content/index' AND deleted=b'0');
+CREATE TEMPORARY TABLE tableware_menu_guard(valid tinyint NOT NULL CHECK(valid=1));
+INSERT INTO tableware_menu_guard SELECT 0 WHERE @tableware_seo_root IS NULL;
+INSERT INTO system_menu(name,permission,type,sort,parent_id,path,icon,component,component_name,status,visible,keep_alive,always_show,creator,updater)
+SELECT '餐具产品目录','',2,86,@tableware_seo_root,'catalog','ep:goods','seo/catalog/index','SeoCatalog',0,b'1',b'1',b'1','V057','V057'
+WHERE NOT EXISTS(SELECT 1 FROM system_menu WHERE parent_id=@tableware_seo_root AND path='catalog' AND deleted=b'0');
+INSERT INTO system_menu(name,permission,type,sort,parent_id,path,icon,component,component_name,status,visible,keep_alive,always_show,creator,updater)
+SELECT '网站运营中心','',2,87,@tableware_seo_root,'operations','ep:checked','seo/operations/index','SeoOperations',0,b'1',b'1',b'1','V057','V057'
+WHERE NOT EXISTS(SELECT 1 FROM system_menu WHERE parent_id=@tableware_seo_root AND path='operations' AND deleted=b'0');
+SET @tableware_ops_menu=(SELECT MIN(id) FROM system_menu WHERE parent_id=@tableware_seo_root AND path='operations' AND deleted=b'0');
+INSERT INTO system_menu(name,permission,type,sort,parent_id,path,icon,component,component_name,status,visible,keep_alive,always_show,creator,updater)
+SELECT p.name,p.permission,3,p.sort,@tableware_ops_menu,'','','','',0,b'1',b'1',b'1','V057','V057'
+FROM (SELECT '查看运营内容' name,'seo:operations:query' permission,1 sort UNION ALL
+ SELECT '编辑与提交审核','seo:operations:update',2 UNION ALL
+ SELECT '批准或退回审核','seo:operations:approve',3 UNION ALL
+ SELECT '发布及恢复资料','seo:operations:publish',4) p
+WHERE NOT EXISTS(SELECT 1 FROM system_menu m WHERE m.permission=p.permission AND m.deleted=b'0');
+DROP TEMPORARY TABLE tableware_menu_guard;
+
+-- BEGIN V058__tableware_catalog_actions.sql
+-- Catalog shares page APIs but owns its menu ancestry. Granting these actions
+-- must not require exposing the TRIPEER-only home editor to a Tableware tenant.
+SET @tableware_catalog=(SELECT MIN(id) FROM system_menu WHERE component='seo/catalog/index' AND deleted=b'0');
+CREATE TEMPORARY TABLE tableware_catalog_guard(valid tinyint NOT NULL CHECK(valid=1));
+INSERT INTO tableware_catalog_guard SELECT 0 WHERE @tableware_catalog IS NULL;
+INSERT INTO system_menu(name,permission,type,sort,parent_id,path,icon,component,component_name,status,visible,keep_alive,always_show,creator,updater)
+SELECT p.name,p.permission,3,p.sort,@tableware_catalog,'','','','',0,b'1',b'1',b'1','V058','V058'
+FROM (SELECT '查看目录' name,'seo:page:query' permission,1 sort UNION ALL
+ SELECT '编辑目录','seo:page:update',2 UNION ALL
+ SELECT '预览目录','seo:page:preview',3 UNION ALL
+ SELECT '发布目录','seo:page:publish',4) p
+WHERE NOT EXISTS(SELECT 1 FROM system_menu m WHERE m.parent_id=@tableware_catalog AND m.permission=p.permission AND m.deleted=b'0');
+DROP TEMPORARY TABLE tableware_catalog_guard;
+
 -- BEGIN Oakved demo catalog
 -- Oakved demo catalog: tenant 121, 26 mall products, ERP products, stock and mappings.
 SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -13578,4 +13669,8 @@ INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256)
 INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('052','tripeer website operations','V052__tripeer_website_operations.sql','b767f21d16978efc5c23570d0745853e80bfca799599161d556640f84377b667') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
 INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('053','tenant website media library','V053__tenant_website_media_library.sql','4136e8cc130bda3d4711c6d978c5bc14116179e8a8a80126aca26e8c935ad4b4') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
 INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('054','website inquiry category type','V054__website_inquiry_category_type.sql','6d940a4e4fea1f8c830add5d46ec87d102c322a5f1b2c6e39663ddaa4968f31b') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
+INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('055','website blog published visibility snapshot','V055__website_blog_published_visibility_snapshot.sql','cbd120ba965ba98ccc4b5891abe6f5b37a63948c6c57ac982d7179f057b74caf') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
+INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('056','tableware erp operations','V056__tableware_erp_operations.sql','6efb7737f3501f999ffa90349120496b44a044d772b2a3ab9662f574adc72ac6') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
+INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('057','tableware management menus','V057__tableware_management_menus.sql','ebb26a4a100f036b7e20ce6a6ad0593af297b8171de7168fa2c35e17c5d577fb') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
+INSERT INTO `schema_migrations`(version,description,script_name,checksum_sha256) VALUES('058','tableware catalog actions','V058__tableware_catalog_actions.sql','d37e3d71ba32ef8687fca5589020f67a5d01b0ff4b9062c6b71bb9a3d966c2f7') ON DUPLICATE KEY UPDATE checksum_sha256=VALUES(checksum_sha256);
 SET FOREIGN_KEY_CHECKS = 1;

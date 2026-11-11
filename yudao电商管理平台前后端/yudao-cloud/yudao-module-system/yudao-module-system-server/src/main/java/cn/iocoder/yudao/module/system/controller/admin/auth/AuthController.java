@@ -38,6 +38,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.LinkedHashSet;
 import java.util.Set;
 
 import static cn.iocoder.yudao.framework.common.pojo.CommonResult.success;
@@ -113,7 +114,7 @@ public class AuthController {
         if (CollUtil.isEmpty(roleIds)) {
             AuthPermissionInfoRespVO permissionInfo = AuthConvert.INSTANCE.convert(
                     user, Collections.emptyList(), Collections.emptyList());
-            permissionInfo.setFurnitureNavigationMenuPaths(getCurrentFurnitureNavigationMenuPaths(false, false));
+            permissionInfo.setFurnitureNavigationMenuPaths(getCurrentFurnitureNavigationMenuPaths(false, false, false, Set.of()));
             return success(permissionInfo);
         }
         List<RoleDO> roles = roleService.getRoleList(roleIds);
@@ -129,11 +130,13 @@ public class AuthController {
         // buildMenuTree removes button entries from menuList; use the captured permission set.
         permissionInfo.setFurnitureNavigationMenuPaths(getCurrentFurnitureNavigationMenuPaths(
                 permissionInfo.getPermissions().contains("seo:page:query"),
-                permissionInfo.getPermissions().contains("seo:media:query")));
+                permissionInfo.getPermissions().contains("seo:media:query"),
+                permissionInfo.getPermissions().contains("seo:operations:query"), permissionInfo.getPermissions()));
         return success(permissionInfo);
     }
 
-    private Set<String> getCurrentFurnitureNavigationMenuPaths(boolean canQueryWebsitePages, boolean canQueryWebsiteMedia) {
+    private Set<String> getCurrentFurnitureNavigationMenuPaths(boolean canQueryWebsitePages, boolean canQueryWebsiteMedia,
+                                                              boolean canQueryWebsiteOperations, Set<String> permissions) {
         Long tenantId = TenantContextHolder.getTenantId();
         if (tenantId == null) {
             return furnitureNavigationCatalog.getMenuPaths();
@@ -142,7 +145,15 @@ public class AuthController {
         if (tenant == null || TenantDO.PACKAGE_ID_SYSTEM.equals(tenant.getPackageId())) {
             return furnitureNavigationCatalog.getMenuPaths();
         }
-        return furnitureNavigationCatalog.getMenuPaths(tenant.getBusinessMode(), canQueryWebsitePages, canQueryWebsiteMedia);
+        Set<String> paths = new LinkedHashSet<>(furnitureNavigationCatalog.getMenuPaths(
+                tenant.getBusinessMode(), canQueryWebsitePages, canQueryWebsiteMedia, canQueryWebsiteOperations));
+        // Tenant administrators can manage the accounts/roles their package already grants.
+        // This does not grant tenant administration, global menus or other system settings.
+        for (String resource : List.of("user", "role")) {
+            String path = "/system/" + resource;
+            if (permissions.contains("system:" + resource + ":query") && furnitureNavigationCatalog.getMenuPaths().contains(path)) paths.add(path);
+        }
+        return Collections.unmodifiableSet(paths);
     }
 
     @PostMapping("/register")

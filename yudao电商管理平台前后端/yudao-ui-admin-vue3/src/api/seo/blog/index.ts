@@ -5,11 +5,18 @@ import { hasPermission } from '@/directives/permission/hasPermi'
 
 export type WebsiteBlogStatus = 'DRAFT' | 'PUBLISHED' | 'OFFLINE'
 
+export type WebsiteBlogBlock =
+  | { type: 'paragraph'; text: string }
+  | { type: 'heading'; text: string; level: number }
+  | { type: 'list'; items: string[]; ordered?: boolean; table?: boolean }
+  | { type: 'image'; src: string; alt: string }
+
 export interface WebsiteBlogSection {
   id?: string
   number?: string
   title: string
   paragraphs: string[]
+  blocks?: WebsiteBlogBlock[]
 }
 
 export interface WebsiteBlogArticle {
@@ -29,7 +36,7 @@ export interface WebsiteBlogArticle {
   sections: WebsiteBlogSection[]
   status: WebsiteBlogStatus
   visible: boolean
-  publishedAt?: string
+  publishedAt?: string | number
   sortOrder: number
   seoTitle: string
   seoDescription: string
@@ -60,7 +67,7 @@ export interface WebsiteBlogArticleSaveReqVO {
   heroImageUrl: string
   sections: WebsiteBlogSection[]
   visible: boolean
-  publishedAt?: string
+  publishedAt?: number
   sortOrder: number
   seoTitle: string
   seoDescription: string
@@ -92,7 +99,7 @@ export interface WebsiteBlogPublishRecord {
   publishedVersion: number
   slug: string
   title: string
-  publishedAt: string
+  publishedAt: string | number
   publishedBy: string
   createTime: string
 }
@@ -134,7 +141,12 @@ export const createWebsiteBlogPreviewTicket = async (id: number, version: number
     const article = await getWebsiteBlogArticle(id)
     const config = await getSeoSiteConfig(article.siteId)
     if (config?.navigationTemplate === 'TRIPEER_CORPORATE') {
-      const result = await createSitePreview({ siteId: article.siteId, locale: article.locale, articleId: id, articleVersion: version })
+      const result = await createSitePreview({
+        siteId: article.siteId,
+        locale: article.locale,
+        articleId: id,
+        articleVersion: version
+      })
       return { previewUrl: result.previewUrl, expiresInSeconds: result.expiresIn }
     }
   }
@@ -142,6 +154,6 @@ export const createWebsiteBlogPreviewTicket = async (id: number, version: number
     url: '/seo/blog/preview-ticket',
     data: { id, version }
   })
-
 }
-export const restoreWebsiteBlogDraft = (id: number, version: number, recordId: number) => request.post<boolean>({ url: '/seo/blog/restore-draft', data: { id, version, recordId } })
+export const restoreWebsiteBlogDraft = (id: number, version: number, recordId: number) =>
+  request.post<boolean>({ url: '/seo/blog/restore-draft', data: { id, version, recordId } })

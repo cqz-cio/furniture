@@ -143,7 +143,14 @@
             <div class="media-grid">
               <el-form-item label="封面图片" prop="coverImageUrl">
                 <div class="media-upload-row">
+                  <el-button
+                    v-if="requiresReview"
+                    v-hasPermi="['seo:media:query']"
+                    @click="chooseMedia('coverImageUrl')"
+                    >从租户素材库选图</el-button
+                  >
                   <UploadImg
+                    v-else
                     v-model="form.coverImageUrl"
                     width="156px"
                     height="92px"
@@ -171,7 +178,14 @@
             <div class="media-grid">
               <el-form-item label="正文头图（可选）">
                 <div class="media-upload-row">
+                  <el-button
+                    v-if="requiresReview"
+                    v-hasPermi="['seo:media:query']"
+                    @click="chooseMedia('heroImageUrl')"
+                    >从租户素材库选图</el-button
+                  >
                   <UploadImg
+                    v-else
                     v-model="form.heroImageUrl"
                     width="156px"
                     height="92px"
@@ -190,7 +204,7 @@
                   <el-date-picker
                     v-model="form.publishedAt"
                     type="datetime"
-                    value-format="YYYY-MM-DDTHH:mm:ss"
+                    value-format="x"
                     format="YYYY-MM-DD HH:mm"
                     placeholder="发布时自动填入当前时间"
                     class="w-100%"
@@ -284,7 +298,8 @@
                     </el-button>
                   </div>
 
-                  <div class="paragraph-list">
+                  <BlogBlocksEditor v-if="element.blocks" v-model="element.blocks" />
+                  <div v-else class="paragraph-list">
                     <div
                       v-for="(_, paragraphIndex) in element.paragraphs"
                       :key="paragraphIndex"
@@ -309,7 +324,12 @@
                       </el-button>
                     </div>
                   </div>
-                  <el-button plain size="small" @click="element.paragraphs.push('')">
+                  <el-button
+                    v-if="!element.blocks"
+                    plain
+                    size="small"
+                    @click="element.paragraphs.push('')"
+                  >
                     <Icon icon="ep:plus" class="mr-4px" />新增段落
                   </el-button>
                 </article>
@@ -373,6 +393,13 @@
         <el-button :disabled="busy" @click="closeDrawer">取消</el-button>
         <div class="blog-editor__footer-actions">
           <el-button
+            v-if="requiresReview"
+            v-hasPermi="['seo:operations:update']"
+            :disabled="busy"
+            @click="saveAndSubmitReview"
+            >保存并提交审核</el-button
+          >
+          <el-button
             :loading="saving"
             :disabled="busy"
             v-hasPermi="['seo:blog:update', 'seo:blog:create']"
@@ -403,10 +430,12 @@
       </footer>
     </div>
   </el-drawer>
+  <el-dialog v-model="mediaOpen" title="选择租户图片" width="min(1050px,94vw)" destroy-on-close
+    ><WebsiteMediaLibrary selectable images-only @select="selectMedia"
+  /></el-dialog>
 </template>
 
 <script setup lang="ts">
-import dayjs from 'dayjs'
 import { computed, ref, watch } from 'vue'
 import draggable from 'vuedraggable'
 import { UploadImg } from '@/components/UploadFile'
@@ -422,10 +451,15 @@ import {
   type WebsiteBlogStatus
 } from '@/api/seo/blog'
 import { useMessage } from '@/hooks/web/useMessage'
+import BlogBlocksEditor from './BlogBlocksEditor.vue'
+import WebsiteMediaLibrary from '@/components/WebsiteMediaLibrary/index.vue'
+import type { WebsiteMedia } from '@/api/seo/media'
+import { normalizeBlogSections, normalizeBlogPublishedAt } from '@/utils/websiteBlogPayload'
+import { submitReview } from '@/api/seo/operations'
 
 defineOptions({ name: 'SeoBlogEditorDrawer' })
 
-const props = defineProps<{ siteUrl?: string; locale?: 'zh-CN' | 'en' }>()
+const props = defineProps<{ siteUrl?: string; locale?: 'zh-CN' | 'en'; requiresReview?: boolean }>()
 const emit = defineEmits<{ success: []; stateChange: [visible: boolean, articleId?: number] }>()
 
 const SITE_ID = 1
@@ -458,13 +492,25 @@ const emptyForm = (): WebsiteBlogArticle => ({
   sections: [],
   status: 'DRAFT',
   visible: true,
-  publishedAt: dayjs().format('YYYY-MM-DDTHH:mm:ss'),
+  publishedAt: Date.now(),
   sortOrder: 100,
   seoTitle: '',
   seoDescription: ''
 })
 
 const form = ref<WebsiteBlogArticle>(emptyForm())
+const savedPayload = ref('')
+const mediaOpen = ref(false),
+  mediaField = ref<'coverImageUrl' | 'heroImageUrl'>('coverImageUrl')
+function chooseMedia(field: 'coverImageUrl' | 'heroImageUrl') {
+  mediaField.value = field
+  mediaOpen.value = true
+}
+function selectMedia(asset: WebsiteMedia) {
+  form.value[mediaField.value] = asset.url
+  if (mediaField.value === 'coverImageUrl') form.value.coverImageAlt = asset.alt || asset.name
+  mediaOpen.value = false
+}
 
 const formRules = {
   title: [{ required: true, message: '请输入文章标题', trigger: 'blur' }],
@@ -486,13 +532,22 @@ const formRules = {
 const busy = computed(() => loading.value || saving.value || previewing.value || publishing.value)
 
 const paragraphCount = computed(() =>
-  form.value.sections.reduce((count, section) => count + section.paragraphs.length, 0)
+  form.value.sections.reduce(
+    (count, section) => count + (section.blocks?.length || section.paragraphs.length),
+    0
+  )
 )
 
 const wordCount = computed(() => {
   const parts = [
     form.value.summary,
-    ...form.value.sections.flatMap((section) => [section.title, ...section.paragraphs])
+    ...form.value.sections.flatMap((section) => [
+      section.title,
+      ...section.paragraphs,
+      ...(section.blocks || []).flatMap((b) =>
+        'text' in b ? [b.text] : b.type === 'list' ? b.items : []
+      )
+    ])
   ]
   return parts.join(' ').match(/[A-Za-z0-9]+(?:['’-][A-Za-z0-9]+)*/g)?.length || 0
 })
@@ -501,13 +556,17 @@ const estimatedReadTime = computed(() => `${Math.max(1, Math.ceil(wordCount.valu
 const resolveMediaUrl = (value?: string) => {
   if (!value || /^(?:https?:|data:|blob:)/i.test(value) || !props.siteUrl) return value || ''
   try {
-    return new URL(value, props.siteUrl.endsWith('/') ? props.siteUrl : `${props.siteUrl}/`).toString()
+    return new URL(
+      value,
+      props.siteUrl.endsWith('/') ? props.siteUrl : `${props.siteUrl}/`
+    ).toString()
   } catch {
     return value
   }
 }
 const seoPreviewUrl = computed(
-  () => `vanz.com${form.value.legacyPath || `/blog/${form.value.slug || 'article-slug'}`}`
+  () =>
+    `${props.siteUrl || ''}${form.value.legacyPath || `/blog/${form.value.slug || 'article-slug'}`}`
 )
 
 watch(
@@ -534,6 +593,8 @@ const open = async (mode: 'create' | 'update' | 'copy', articleId?: number) => {
   try {
     const article = await getWebsiteBlogArticle(articleId)
     form.value = JSON.parse(JSON.stringify(article))
+    form.value.publishedAt = normalizeBlogPublishedAt(article.publishedAt)
+    savedPayload.value = JSON.stringify(normalizePayload())
     if (mode === 'copy') {
       form.value.id = undefined
       form.value.version = undefined
@@ -545,7 +606,7 @@ const open = async (mode: 'create' | 'update' | 'copy', articleId?: number) => {
       form.value.title = `${article.title} Copy`
       form.value.slug = `${article.slug}-copy`
       form.value.legacyPath = ''
-      form.value.publishedAt = dayjs().format('YYYY-MM-DDTHH:mm:ss')
+      form.value.publishedAt = Date.now()
     }
   } finally {
     loading.value = false
@@ -562,7 +623,8 @@ const addSection = () => {
   form.value.sections.push({
     id: `section-${Date.now()}`,
     title: '',
-    paragraphs: ['']
+    paragraphs: props.requiresReview ? [] : [''],
+    ...(props.requiresReview ? { blocks: [{ type: 'paragraph' as const, text: '' }] } : {})
   })
 }
 
@@ -580,7 +642,9 @@ const sectionNumber = (index: number) => String(index + 1).padStart(2, '0')
 
 const fillSeoDefaults = () => {
   if (!form.value.seoTitle && form.value.title) {
-    form.value.seoTitle = `${form.value.title} — VANZ Journal`
+    form.value.seoTitle = props.requiresReview
+      ? form.value.title
+      : `${form.value.title} — VANZ Journal`
   }
   if (!form.value.seoDescription && form.value.summary) {
     form.value.seoDescription = form.value.summary
@@ -589,13 +653,7 @@ const fillSeoDefaults = () => {
 
 const normalizePayload = (): WebsiteBlogArticleSaveReqVO => {
   fillSeoDefaults()
-  const sections = form.value.sections
-    .map((section, index) => ({
-      id: section.id || `section-${index + 1}`,
-      title: section.title.trim(),
-      paragraphs: section.paragraphs.map((paragraph) => paragraph.trim()).filter(Boolean)
-    }))
-    .filter((section) => section.title || section.paragraphs.length)
+  const sections = normalizeBlogSections(form.value.sections)
   return {
     id: form.value.id,
     version: form.value.version,
@@ -613,7 +671,7 @@ const normalizePayload = (): WebsiteBlogArticleSaveReqVO => {
     heroImageUrl: form.value.heroImageUrl || '',
     sections,
     visible: form.value.visible,
-    publishedAt: form.value.publishedAt,
+    publishedAt: normalizeBlogPublishedAt(form.value.publishedAt),
     sortOrder: form.value.sortOrder || 0,
     seoTitle: form.value.seoTitle.trim(),
     seoDescription: form.value.seoDescription.trim()
@@ -628,7 +686,7 @@ const validateBeforeSave = async (requireBody: boolean) => {
   }
   const normalized = normalizePayload()
   const incompleteSection = normalized.sections.find(
-    (section) => !section.title || section.paragraphs.length === 0
+    (section) => !section.title || (section.paragraphs.length === 0 && !section.blocks?.length)
   )
   if (incompleteSection) {
     activeTab.value = 'content'
@@ -646,6 +704,16 @@ const validateBeforeSave = async (requireBody: boolean) => {
 const persist = async (showSuccess = true, requireBody = false) => {
   if (!(await validateBeforeSave(requireBody))) return undefined
   const payload = normalizePayload()
+  // Previewing an unchanged reviewed draft must not create a new, unapproved version.
+  if (
+    props.requiresReview &&
+    form.value.id &&
+    form.value.version &&
+    JSON.stringify(payload) === savedPayload.value
+  ) {
+    if (showSuccess) message.success('当前草稿已保存，没有新的修改。')
+    return form.value
+  }
   saving.value = true
   try {
     let articleId = form.value.id
@@ -656,6 +724,8 @@ const persist = async (showSuccess = true, requireBody = false) => {
     }
     if (!articleId) return undefined
     form.value = await getWebsiteBlogArticle(articleId)
+    form.value.publishedAt = normalizeBlogPublishedAt(form.value.publishedAt)
+    savedPayload.value = JSON.stringify(normalizePayload())
     formMode.value = 'update'
     slugTouched.value = true
     if (showSuccess) message.success('企业日志草稿已保存')
@@ -667,6 +737,13 @@ const persist = async (showSuccess = true, requireBody = false) => {
 }
 
 const saveDraft = () => persist(true, false)
+
+const saveAndSubmitReview = async () => {
+  const saved = await persist(false, true)
+  if (!saved?.id || !saved.version) return
+  await submitReview('article', String(saved.id), saved.version)
+  message.success('该版本已提交，请发布员在网站运营中心审核。')
+}
 
 const saveAndPreview = async () => {
   previewing.value = true
@@ -684,7 +761,11 @@ const saveAndPreview = async () => {
 const publishArticle = async () => {
   publishing.value = true
   try {
-    const saved = await persist(false, true)
+    if (props.requiresReview && JSON.stringify(normalizePayload()) !== savedPayload.value) {
+      message.warning('请先保存并提交审核，批准后再发布该版本。')
+      return
+    }
+    const saved = props.requiresReview ? form.value : await persist(false, true)
     if (!saved?.id || !saved.version) return
     await message.confirm('发布后将立即替换 2B 官网 Blog 的线上内容，确认继续吗？')
     await publishWebsiteBlogArticle(saved.id, saved.version)
@@ -1131,6 +1212,8 @@ const statusTagType = (status: WebsiteBlogStatus) =>
 .blog-editor__footer-actions {
   display: flex;
   gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .blog-editor__form :deep(.el-form-item) {

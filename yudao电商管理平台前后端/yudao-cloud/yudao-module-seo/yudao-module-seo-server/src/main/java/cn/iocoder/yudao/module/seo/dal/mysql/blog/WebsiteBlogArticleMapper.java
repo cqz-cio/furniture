@@ -43,11 +43,11 @@ public interface WebsiteBlogArticleMapper extends BaseMapperX<WebsiteBlogArticle
                 .eq(WebsiteBlogArticleDO::getSiteId, siteId)
                 .eq(WebsiteBlogArticleDO::getLocale, locale)
                 .eq(WebsiteBlogArticleDO::getStatus, "PUBLISHED")
-                .eq(WebsiteBlogArticleDO::getVisible, true)
-                .le(WebsiteBlogArticleDO::getPublishedAt, now)
+                .eq(WebsiteBlogArticleDO::getPublishedVisible, true)
+                .le(WebsiteBlogArticleDO::getPublishedAtSnapshot, now)
                 .isNotNull(WebsiteBlogArticleDO::getPublishedPayloadJson)
-                .orderByDesc(WebsiteBlogArticleDO::getSortOrder)
-                .orderByDesc(WebsiteBlogArticleDO::getPublishedAt)
+                .orderByDesc(WebsiteBlogArticleDO::getPublishedSortOrder)
+                .orderByDesc(WebsiteBlogArticleDO::getPublishedAtSnapshot)
                 .orderByDesc(WebsiteBlogArticleDO::getId));
     }
 
@@ -65,8 +65,8 @@ public interface WebsiteBlogArticleMapper extends BaseMapperX<WebsiteBlogArticle
                 .eq(WebsiteBlogArticleDO::getLocale, locale)
                 .eq(WebsiteBlogArticleDO::getPublishedSlug, slug)
                 .eq(WebsiteBlogArticleDO::getStatus, "PUBLISHED")
-                .eq(WebsiteBlogArticleDO::getVisible, true)
-                .le(WebsiteBlogArticleDO::getPublishedAt, now)
+                .eq(WebsiteBlogArticleDO::getPublishedVisible, true)
+                .le(WebsiteBlogArticleDO::getPublishedAtSnapshot, now)
                 .isNotNull(WebsiteBlogArticleDO::getPublishedPayloadJson));
     }
 
@@ -81,6 +81,7 @@ public interface WebsiteBlogArticleMapper extends BaseMapperX<WebsiteBlogArticle
     default int deleteByIdForTenant(Long id) {
         return delete(new LambdaQueryWrapper<WebsiteBlogArticleDO>()
                 .eq(WebsiteBlogArticleDO::getId, id)
+                .ne(WebsiteBlogArticleDO::getStatus, "PUBLISHED")
                 .eq(WebsiteBlogArticleDO::getTenantId, TenantContextHolder.getRequiredTenantId()));
     }
 
@@ -118,6 +119,9 @@ public interface WebsiteBlogArticleMapper extends BaseMapperX<WebsiteBlogArticle
     @Update("""
             UPDATE website_blog_article
             SET status = 'PUBLISHED',
+                published_visible = visible,
+                published_at_snapshot = #{publishedAt},
+                published_sort_order = sort_order,
                 published_at = #{publishedAt},
                 published_slug = #{publishedSlug},
                 published_payload_json = #{payloadJson},

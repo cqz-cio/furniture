@@ -6,6 +6,6 @@ import lombok.Data;
 @Data
 public class WebsitePageKeyReqVO {
     @NotNull @Positive private Long siteId;
-    @NotBlank @Pattern(regexp = "home") private String pageKey;
+    @NotBlank @Pattern(regexp = "home|catalog") private String pageKey;
     @NotBlank @Pattern(regexp = "zh-CN|en") private String locale;
 }

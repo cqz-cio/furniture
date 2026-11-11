@@ -47,12 +47,23 @@ public class FurnitureNavigationCatalog {
     }
 
     public Set<String> getMenuPaths(String businessMode, boolean canQueryWebsitePages, boolean canQueryWebsiteMedia) {
+        return getMenuPaths(businessMode, canQueryWebsitePages, canQueryWebsiteMedia, false);
+    }
+
+    public Set<String> getMenuPaths(String businessMode, boolean canQueryWebsitePages, boolean canQueryWebsiteMedia,
+                                    boolean canQueryWebsiteOperations) {
         Set<String> paths = new LinkedHashSet<>(getMenuPaths(businessMode));
         if (canQueryWebsitePages && menuPaths.contains("/seo/page-content")) {
             paths.add("/seo/page-content");
         }
         if (canQueryWebsiteMedia && menuPaths.contains("/seo/media")) {
             paths.add("/seo/media");
+        }
+        if (canQueryWebsitePages && menuPaths.contains("/seo/catalog")) {
+            paths.add("/seo/catalog");
+        }
+        if (canQueryWebsiteOperations && menuPaths.contains("/seo/operations")) {
+            paths.add("/seo/operations");
         }
         return Collections.unmodifiableSet(paths);
     }

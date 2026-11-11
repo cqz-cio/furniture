@@ -28,9 +28,15 @@ import static org.mockito.ArgumentMatchers.*;
 import static cn.iocoder.yudao.module.seo.enums.ErrorCodeConstants.*;
 
 @Import({WebsiteMediaService.class, WebsiteMediaController.class, WebsitePageService.class,
+    cn.iocoder.yudao.module.seo.service.blog.WebsiteBlogServiceImpl.class,
+    cn.iocoder.yudao.module.seo.service.config.SeoSiteConfigServiceImpl.class,
     ValidationAutoConfiguration.class, WebsitePageServiceTest.Config.class})
 @TestPropertySource(properties="yudao.website-media.public-base-url=https://erp.example")
 class WebsiteMediaServiceTest extends BaseDbUnitTest {
+    @MockBean cn.iocoder.yudao.module.seo.service.operations.WebsiteApprovalGuard approvalGuard;
+    @MockBean cn.iocoder.yudao.module.seo.dal.redis.blog.WebsiteBlogPreviewRedisDAO blogPreview;
+    @Resource cn.iocoder.yudao.module.seo.service.blog.WebsiteBlogService blogs;
+    @Resource cn.iocoder.yudao.module.seo.dal.mysql.blog.WebsiteBlogArticleMapper articles;
     @Resource WebsiteMediaService service;
     @Resource WebsiteMediaController controller;
     @Resource WebsitePageService pages;
@@ -154,5 +160,34 @@ class WebsiteMediaServiceTest extends BaseDbUnitTest {
         assertThat(pages.getPublished(key).getContent().path("modules").path("hero").path("image").path("url").asText()).isEqualTo(asset.getUrl());
         TenantContextHolder.setTenantId(501L); pages.initialize(key);save.setExpectedVersion(1);
         error(() -> pages.saveDraft(save),MEDIA_REFERENCE_INVALID.getCode());
+    }
+    @Test void tablewarePdfCannotBypassDocumentApprovalThroughPublicMedia() throws Exception {
+        var site=sites.selectBySiteId(1L);site.setNavigationTemplate("TABLEWARE_B2B");sites.updateById(site);
+        var bytes=new ByteArrayOutputStream();
+        try(var pdf=new org.apache.pdfbox.pdmodel.PDDocument()){pdf.addPage(new org.apache.pdfbox.pdmodel.PDPage());pdf.save(bytes);}
+        var pdf=new MockMultipartFile("file","supplier.pdf","application/pdf",bytes.toByteArray());
+        error(()->service.upload(pdf,""),MEDIA_PDF_REQUIRES_REVIEW.getCode());
+        verifyNoInteractions(files);assertThat(service.page(new WebsiteMediaPageReqVO()).getTotal()).isZero();
+        site.setNavigationTemplate("TRIPEER_CORPORATE");sites.updateById(site);
+        assertThat(service.upload(pdf,"").getMimeType()).isEqualTo("application/pdf");
+        verify(files,times(1)).createFile(any(byte[].class),anyString(),anyString(),eq("application/pdf"));
+    }
+    private cn.iocoder.yudao.module.seo.controller.admin.blog.vo.WebsiteBlogArticleSaveReqVO article(String cover,String hero,String blockImage) {
+        var request=new cn.iocoder.yudao.module.seo.controller.admin.blog.vo.WebsiteBlogArticleSaveReqVO();
+        request.setSiteId(1L);request.setLocale("en");request.setSlug("managed-image-test");request.setLegacyPath("/managed-image-test.html");request.setTitle("Managed image");request.setCategory("Journal");request.setLabel("Article");request.setSummary("Ownership test");request.setCoverImageUrl(cover);request.setCoverImageAlt("Image");request.setHeroImageUrl(hero);
+        var section=new cn.iocoder.yudao.module.seo.controller.admin.blog.vo.WebsiteBlogSectionSaveReqVO();section.setId("body");section.setTitle("Article");section.setParagraphs(java.util.List.of());
+        section.setBlocks(java.util.List.of(new com.fasterxml.jackson.databind.ObjectMapper().createObjectNode().put("type","image").put("src",blockImage).put("alt","Image")));request.setSections(java.util.List.of(section));return request;
+    }
+    @Test void tablewareArticleCoverHeroAndBodyImagesMustBelongToTenantOnSaveAndPublish() throws Exception {
+        var own=service.upload(png(),"Own image");TenantContextHolder.setTenantId(501L);var other=service.upload(png(),"Other image");TenantContextHolder.setTenantId(500L);
+        var site=sites.selectBySiteId(1L);site.setNavigationTemplate("TABLEWARE_B2B");sites.updateById(site);
+        error(()->blogs.createArticle(article(other.getUrl(),"",own.getUrl())),MEDIA_REFERENCE_INVALID.getCode());
+        error(()->blogs.createArticle(article(own.getUrl(),other.getUrl(),own.getUrl())),MEDIA_REFERENCE_INVALID.getCode());
+        error(()->blogs.createArticle(article(own.getUrl(),"",other.getUrl())),MEDIA_REFERENCE_INVALID.getCode());
+        long id=blogs.createArticle(article(own.getUrl(),own.getUrl(),own.getUrl()));
+        var version=new cn.iocoder.yudao.module.seo.controller.admin.blog.vo.WebsiteBlogVersionReqVO();version.setId(id);version.setVersion(1);blogs.publishArticle(version);
+        assertThat(blogs.getPublishedArticle(1L,"en","managed-image-test").getSections().get(0).getBlocks().get(0).path("src").asText()).isEqualTo(own.getUrl());
+        var row=articles.selectByIdForTenant(id);row.setCoverImageUrl(other.getUrl());articles.updateById(row);version.setVersion(row.getVersion());
+        error(()->blogs.publishArticle(version),MEDIA_REFERENCE_INVALID.getCode());
     }
 }

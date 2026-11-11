@@ -45,6 +45,10 @@ public class WebsiteMediaService {
         alt = Objects.toString(alt, "").strip();
         if (alt.length() > 240) throw exception(MEDIA_FILE_INVALID);
         var content = WebsiteMediaContent.read(file);
+        // Public image storage must never bypass the private document approval workflow.
+        if ("application/pdf".equals(content.mime())
+                && "TABLEWARE_B2B".equals(siteMapper.selectBySiteId(1L).getNavigationTemplate()))
+            throw exception(MEDIA_PDF_REQUIRES_REVIEW);
         String name = Objects.toString(file.getOriginalFilename(), "素材").replace('\\', '/');
         name = name.substring(name.lastIndexOf('/') + 1).replaceAll("[\\p{Cntrl}]", "").strip();
         if (name.isBlank()) name = "素材." + content.extension();

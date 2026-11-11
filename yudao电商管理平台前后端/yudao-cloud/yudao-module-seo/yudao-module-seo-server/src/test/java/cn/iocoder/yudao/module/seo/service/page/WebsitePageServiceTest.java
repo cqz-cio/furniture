@@ -27,6 +27,7 @@ import static org.mockito.ArgumentMatchers.*;
 @Import({WebsitePageService.class, ValidationAutoConfiguration.class, WebsitePageServiceTest.Config.class,
         cn.iocoder.yudao.module.seo.controller.admin.page.WebsitePageController.class})
 class WebsitePageServiceTest extends BaseDbUnitTest {
+    @org.springframework.boot.test.mock.mockito.MockBean private cn.iocoder.yudao.module.seo.service.operations.WebsiteApprovalGuard approvalGuard;
     @org.springframework.boot.test.mock.mockito.MockBean private cn.iocoder.yudao.module.seo.service.media.WebsiteMediaService mediaService;
     @Resource private WebsitePageService service;
     @Resource private SeoSiteConfigMapper siteMapper;

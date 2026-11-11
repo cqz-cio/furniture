@@ -5,6 +5,7 @@ import { hasPermission } from '@/directives/permission/hasPermi'
 import { registerTenantChangeGuard } from '@/utils/tenantChangeGuard'
 import { onBeforeRouteLeave } from 'vue-router'
 import * as api from '@/api/seo/media'
+import { getSeoSiteConfig } from '@/api/seo/siteConfig'
 
 const props = withDefaults(defineProps<{ selectable?: boolean; imagesOnly?: boolean }>(), { selectable: false, imagesOnly: false })
 const emit = defineEmits<{ select: [asset: api.WebsiteMedia] }>()
@@ -13,11 +14,14 @@ const total = ref(0)
 const loading = ref(false)
 const busy = ref(false)
 const error = ref('')
+const siteReady = ref(false)
+const tableware = ref(false)
+const onlyImages = computed(() => props.imagesOnly || tableware.value)
 const fileInput = ref<HTMLInputElement>()
 const editOpen = ref(false)
 const editing = reactive({ id: 0, name: '', alt: '' })
 const query = reactive<api.MediaQuery>({ pageNo: 1, pageSize: 20, name: '', kind: props.imagesOnly ? 'image' : undefined, archived: false })
-const canUpload = computed(() => hasPermission(['seo:media:upload']))
+const canUpload = computed(() => siteReady.value && hasPermission(['seo:media:upload']))
 const canUpdate = computed(() => hasPermission(['seo:media:update']))
 const canArchive = computed(() => hasPermission(['seo:media:archive']))
 let generation = 0
@@ -27,7 +31,7 @@ async function load(reset = false) {
   const current = ++generation
   loading.value = true; error.value = ''
   try {
-    const result = await api.getMediaPage({ ...query })
+    const result = await api.getMediaPage({ ...query, kind: onlyImages.value ? 'image' : query.kind })
     if (current === generation) { rows.value = result.list; total.value = result.total }
   } catch (e: any) { if (current === generation) { rows.value = []; total.value = 0; error.value = e?.msg || e?.message || '素材加载失败，请重试。' } }
   finally { if (current === generation) loading.value = false }
@@ -43,8 +47,8 @@ async function upload(event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]; input.value = ''
   if (!file || !canUpload.value) return
-  if (!/\.(jpe?g|png|pdf)$/i.test(file.name) || (props.imagesOnly && /\.pdf$/i.test(file.name)) || !file.size || file.size > 10 * 1024 * 1024) {
-    ElMessage.warning(props.imagesOnly ? '请选择 10 MB 以内的 JPG 或 PNG 图片。' : '请选择 10 MB 以内的 JPG、PNG 或 PDF。'); return
+  if (!/\.(jpe?g|png|pdf)$/i.test(file.name) || (onlyImages.value && /\.pdf$/i.test(file.name)) || !file.size || file.size > 10 * 1024 * 1024) {
+    ElMessage.warning(onlyImages.value ? '请选择 10 MB 以内的 JPG 或 PNG 图片。' : '请选择 10 MB 以内的 JPG、PNG 或 PDF。'); return
   }
   await act(async () => {
     await api.uploadMedia(file)
@@ -71,19 +75,30 @@ async function copy(row: api.WebsiteMedia) {
 const size = (bytes: number) => bytes >= 1024 * 1024 ? (bytes / 1024 / 1024).toFixed(1) + ' MB' : Math.ceil(bytes / 1024) + ' KB'
 const unregister = registerTenantChangeGuard(() => !busy.value)
 onBeforeRouteLeave(() => !busy.value)
-onMounted(() => load())
+onMounted(async () => {
+  try {
+    const config = await getSeoSiteConfig(1)
+    if (!alive) return
+    tableware.value = config?.navigationTemplate === 'TABLEWARE_B2B'
+    if (onlyImages.value) query.kind = 'image'
+    siteReady.value = true
+    await load()
+  } catch (e: any) {
+    if (alive) error.value = e?.msg || e?.message || '站点配置加载失败，请刷新后重试。'
+  }
+})
 onBeforeUnmount(() => { alive = false; generation++; unregister() })
 </script>
 
 <template>
-  <el-alert title="这里存放用于官网公开展示的图片和资料。上传不会自动发布页面；请勿上传内部资料或简历。" type="info" :closable="false" class="mb-16px" />
+  <el-alert :title="tableware ? '公开素材库仅存放 JPG、PNG 图片。PDF 请使用网站运营中心的资料管理，审核并发布后才会公开。' : '这里存放用于官网公开展示的图片和资料。上传不会自动发布页面；请勿上传内部资料或简历。'" type="info" :closable="false" class="mb-16px" />
   <el-form :inline="true" :disabled="busy">
     <el-form-item label="素材名称"><el-input v-model="query.name" maxlength="160" placeholder="搜索素材" clearable @keyup.enter="load(true)" /></el-form-item>
-    <el-form-item v-if="!imagesOnly" label="类型"><el-select v-model="query.kind" clearable placeholder="全部类型" class="!w-140px" @change="load(true)"><el-option label="图片" value="image" /><el-option label="PDF 资料" value="document" /></el-select></el-form-item>
+    <el-form-item v-if="!onlyImages" label="类型"><el-select v-model="query.kind" clearable placeholder="全部类型" class="!w-140px" @change="load(true)"><el-option label="图片" value="image" /><el-option label="PDF 资料" value="document" /></el-select></el-form-item>
     <el-form-item v-if="!selectable" label="范围"><el-select v-model="query.archived" class="!w-140px" @change="load(true)"><el-option label="可用素材" :value="false" /><el-option label="已移出素材" :value="true" /></el-select></el-form-item>
-    <el-form-item><el-button @click="load(true)">查询</el-button><el-button v-if="canUpload" type="primary" :loading="busy" @click="fileInput?.click()">上传{{ imagesOnly ? '图片' : '素材' }}</el-button></el-form-item>
+    <el-form-item><el-button @click="load(true)">查询</el-button><el-button v-if="canUpload" type="primary" :loading="busy" @click="fileInput?.click()">上传{{ onlyImages ? '图片' : '素材' }}</el-button></el-form-item>
   </el-form>
-  <input ref="fileInput" type="file" :accept="imagesOnly ? '.jpg,.jpeg,.png' : '.jpg,.jpeg,.png,.pdf'" hidden :disabled="busy" @change="upload" />
+  <input ref="fileInput" type="file" :accept="onlyImages ? '.jpg,.jpeg,.png' : '.jpg,.jpeg,.png,.pdf'" hidden :disabled="busy || !siteReady" @change="upload" />
   <el-alert v-if="error" :title="error" type="error" show-icon :closable="false" class="mb-16px" />
   <el-table v-loading="loading" :data="rows" empty-text="暂无素材，可先上传图片或调整筛选条件。">
     <el-table-column label="预览" width="100"><template #default="{ row }"><el-image v-if="row.kind === 'image'" :src="row.url" :preview-src-list="[row.url]" preview-teleported fit="contain" class="h-64px w-72px" /><el-tag v-else>PDF</el-tag></template></el-table-column>
@@ -91,7 +106,7 @@ onBeforeUnmount(() => { alive = false; generation++; unregister() })
     <el-table-column prop="alt" label="图片说明" min-width="150" show-overflow-tooltip />
     <el-table-column label="规格" width="140"><template #default="{ row }"><div>{{ size(row.size) }}</div><div v-if="row.width">{{ row.width }} × {{ row.height }}</div></template></el-table-column>
     <el-table-column label="操作" :min-width="selectable ? 190 : 230"><template #default="{ row }">
-      <el-button v-if="selectable && !row.archived && (!imagesOnly || row.kind === 'image')" type="primary" size="small" :disabled="busy" @click="emit('select', row)">使用此图片</el-button>
+      <el-button v-if="selectable && !row.archived && (!onlyImages || row.kind === 'image')" type="primary" size="small" :disabled="busy" @click="emit('select', row)">使用此图片</el-button>
       <el-button v-if="canUpdate" link type="primary" :disabled="busy" @click="edit(row)">编辑</el-button>
       <el-button link type="primary" @click="copy(row)">复制链接</el-button>
       <el-button v-if="canArchive && !selectable" link :disabled="busy" @click="archive(row)">{{ row.archived ? '恢复' : '移出' }}</el-button>

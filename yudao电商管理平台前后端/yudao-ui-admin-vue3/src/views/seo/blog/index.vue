@@ -8,7 +8,12 @@
         <div>
           <div class="blog-toolbar__title">
             <strong>文章管理</strong>
-            <el-select :model-value="LOCALE" :disabled="busy || editorOpen || historyLoading" style="width: 130px" @change="changeLocale">
+            <el-select
+              :model-value="LOCALE"
+              :disabled="busy || editorOpen || historyLoading"
+              style="width: 130px"
+              @change="changeLocale"
+            >
               <el-option label="简体中文" value="zh-CN" /><el-option label="English" value="en" />
             </el-select>
           </div>
@@ -51,6 +56,13 @@
         >
           <Icon icon="ep:promotion" class="mr-5px" />发布到官网
         </el-button>
+        <el-button
+          v-if="requiresReview"
+          v-hasPermi="['seo:operations:update']"
+          :disabled="busy || !selectedArticle"
+          @click="submitSelected"
+          >提交所选版本审核</el-button
+        >
       </div>
     </section>
 
@@ -117,7 +129,11 @@
         </el-table-column>
         <el-table-column label="封面" :width="editorOpen ? 72 : 90">
           <template #default="{ row }">
-            <img :src="resolveMediaUrl(row.coverImageUrl)" :alt="row.coverImageAlt" class="blog-cover" />
+            <img
+              :src="resolveMediaUrl(row.coverImageUrl)"
+              :alt="row.coverImageAlt"
+              class="blog-cover"
+            />
           </template>
         </el-table-column>
         <el-table-column label="标题 / Slug" :min-width="editorOpen ? 220 : 320">
@@ -175,16 +191,24 @@
                 </el-button>
                 <template #dropdown>
                   <el-dropdown-menu>
-                    <el-dropdown-item command="preview">
+                    <el-dropdown-item v-if="hasPermission(['seo:blog:preview'])" command="preview">
                       <Icon icon="ep:view" class="mr-6px" />预览
                     </el-dropdown-item>
                     <el-dropdown-item command="history">
                       <Icon icon="ep:clock" class="mr-6px" />发布记录
                     </el-dropdown-item>
-                    <el-dropdown-item v-if="row.status === 'PUBLISHED'" command="offline" divided>
+                    <el-dropdown-item
+                      v-if="row.status === 'PUBLISHED' && hasPermission(['seo:blog:publish'])"
+                      command="offline"
+                      divided
+                    >
                       <Icon icon="ep:remove" class="mr-6px" />下线
                     </el-dropdown-item>
-                    <el-dropdown-item command="delete" divided>
+                    <el-dropdown-item
+                      v-if="row.status !== 'PUBLISHED' && hasPermission(['seo:blog:delete'])"
+                      command="delete"
+                      divided
+                    >
                       <span class="is-danger"><Icon icon="ep:delete" class="mr-6px" />删除</span>
                     </el-dropdown-item>
                   </el-dropdown-menu>
@@ -210,6 +234,7 @@
       ref="editorRef"
       :site-url="siteUrl"
       :locale="LOCALE"
+      :requires-review="requiresReview"
       @success="refreshAll"
       @state-change="handleEditorStateChange"
     />
@@ -217,7 +242,10 @@
     <Dialog v-model="historyVisible" title="企业日志发布记录" width="720px">
       <div v-loading="historyLoading" class="history-dialog">
         <div v-if="historyArticle" class="history-dialog__article">
-          <img :src="resolveMediaUrl(historyArticle.coverImageUrl)" :alt="historyArticle.coverImageAlt" />
+          <img
+            :src="resolveMediaUrl(historyArticle.coverImageUrl)"
+            :alt="historyArticle.coverImageAlt"
+          />
           <div>
             <strong>{{ historyArticle.title }}</strong>
             <span>/{{ historyArticle.slug }}</span>
@@ -232,7 +260,18 @@
             <template #default="{ row }">{{ formatDate(row.publishedAt) }}</template>
           </el-table-column>
           <el-table-column prop="publishedBy" label="发布人" width="100" />
-          <el-table-column label="操作" width="140"><template #default="{ row }"><el-button v-hasPermi="['seo:blog:update']" link type="primary" :disabled="historyLoading || busy" @click="restoreHistory(row)">恢复为草稿</el-button></template></el-table-column>
+          <el-table-column label="操作" width="140"
+            ><template #default="{ row }"
+              ><el-button
+                v-hasPermi="['seo:blog:update']"
+                link
+                type="primary"
+                :disabled="historyLoading || busy"
+                @click="restoreHistory(row)"
+                >恢复为草稿</el-button
+              ></template
+            ></el-table-column
+          >
         </el-table>
       </div>
       <template #footer>
@@ -262,6 +301,8 @@ import {
 import { getSeoSiteConfig } from '@/api/seo/siteConfig'
 import { useMessage } from '@/hooks/web/useMessage'
 import BlogEditorDrawer from './BlogEditorDrawer.vue'
+import { hasPermission } from '@/directives/permission/hasPermi'
+import { submitReview } from '@/api/seo/operations'
 
 defineOptions({ name: 'SeoBlog' })
 
@@ -278,6 +319,7 @@ const previewLoading = ref(false)
 const publishLoading = ref(false)
 const total = ref(0)
 const siteUrl = ref('')
+const requiresReview = ref(false)
 const summary = ref<WebsiteBlogSummary>({ total: 0, draft: 0, published: 0, offline: 0 })
 const historyVisible = ref(false)
 const historyLoading = ref(false)
@@ -332,6 +374,7 @@ const loadSiteConfig = async () => {
   try {
     const config = await getSeoSiteConfig(SITE_ID)
     siteUrl.value = config?.siteUrl?.trim() || ''
+    requiresReview.value = config?.navigationTemplate === 'TABLEWARE_B2B'
   } catch {
     siteUrl.value = ''
   }
@@ -339,7 +382,10 @@ const loadSiteConfig = async () => {
 
 const changeLocale = async (value: 'zh-CN' | 'en') => {
   if (busy.value || editorOpen.value || historyLoading.value) return
-  LOCALE.value = value; query.pageNo = 1; selectedArticle.value = undefined; historyVisible.value = false
+  LOCALE.value = value
+  query.pageNo = 1
+  selectedArticle.value = undefined
+  historyVisible.value = false
   await refreshAll()
 }
 const refreshAll = () => Promise.all([loadArticles(), loadSummary(), loadSiteConfig()])
@@ -347,7 +393,10 @@ const refreshAll = () => Promise.all([loadArticles(), loadSummary(), loadSiteCon
 const resolveMediaUrl = (value?: string) => {
   if (!value || /^(?:https?:|data:|blob:)/i.test(value) || !siteUrl.value) return value || ''
   try {
-    return new URL(value, siteUrl.value.endsWith('/') ? siteUrl.value : `${siteUrl.value}/`).toString()
+    return new URL(
+      value,
+      siteUrl.value.endsWith('/') ? siteUrl.value : `${siteUrl.value}/`
+    ).toString()
   } catch {
     return value
   }
@@ -404,6 +453,17 @@ const publishArticle = async (article: WebsiteBlogArticle) => {
 }
 
 const publishSelected = () => selectedArticle.value && publishArticle(selectedArticle.value)
+const submitSelected = async () => {
+  const row = selectedArticle.value
+  if (!row?.id || !row.version || busy.value) return
+  publishLoading.value = true
+  try {
+    await submitReview('article', String(row.id), row.version)
+    message.success('该版本已提交，请发布员在网站运营中心审核。')
+  } finally {
+    publishLoading.value = false
+  }
+}
 
 const offlineArticle = async (article: WebsiteBlogArticle) => {
   if (!article.id || !article.version) return
@@ -432,7 +492,9 @@ const restoreHistory = async (record: WebsiteBlogPublishRecord) => {
     historyVisible.value = false
     await refreshAll()
     message.success('已恢复为草稿，请编辑、预览确认后重新发布。')
-  } finally { historyLoading.value = false }
+  } finally {
+    historyLoading.value = false
+  }
 }
 const openHistory = async (article: WebsiteBlogArticle) => {
   if (!article.id) return
@@ -462,7 +524,8 @@ const handleRowCommand = (command: string, article: WebsiteBlogArticle) => {
   if (command === 'delete') deleteArticle(article)
 }
 
-const formatDate = (value?: string) => (value ? dayjs(value).format('YYYY-MM-DD HH:mm') : '—')
+const formatDate = (value?: string | number) =>
+  value ? dayjs(value).format('YYYY-MM-DD HH:mm') : '—'
 
 const statusLabel = (status: WebsiteBlogStatus) =>
   ({ DRAFT: '草稿', PUBLISHED: '已发布', OFFLINE: '已下线' })[status]
