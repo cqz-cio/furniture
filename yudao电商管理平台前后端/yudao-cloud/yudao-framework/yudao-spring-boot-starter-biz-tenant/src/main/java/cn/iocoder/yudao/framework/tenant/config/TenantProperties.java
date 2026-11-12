@@ -41,6 +41,11 @@ public class TenantProperties {
     private Set<String> ignoreVisitUrls = Collections.emptySet();
 
     /**
+     * 禁止平台管理员跨租户访问的租户。租户自己的账号仍按原有权限访问。
+     */
+    private Set<Long> platformVisitDeniedTenantIds = Collections.emptySet();
+
+    /**
      * 需要忽略多租户的表
      *
      * 即默认所有表都开启多租户的功能，所以记得添加对应的 tenant_id 字段哟

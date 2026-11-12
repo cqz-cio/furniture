@@ -123,7 +123,7 @@ jobs:
           OAKVED_FLYWAY_TEST_ADMIN_URL: jdbc:mysql://127.0.0.1:3306/?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
           OAKVED_FLYWAY_TEST_USER: root
           OAKVED_FLYWAY_TEST_PASSWORD: root
-        run: mvn -B -ntp -pl yudao-server -am -Dtest=OakvedFlywayIntegrationTest,AuthCmsPermissionInfoTest,FurnitureCmsNavigationTest,WebsiteInquiryAccessTest,WebsiteTrafficControllerTest,WebsiteFollowUpScopeTest,CrmClueServiceImplTest,WebsiteMediaServiceTest,WebsitePageServiceTest,WebsitePreviewServiceTest,WebsiteBlogServiceImplTest,WebsiteNavigationServiceImplTest,WebsiteTrafficServiceTest,TablewareCmsServiceTest,WebsiteOperationsServiceTest -Dsurefire.failIfNoSpecifiedTests=false package
+        run: mvn -B -ntp -pl yudao-server -am -Dtest=OakvedFlywayIntegrationTest,AuthCmsPermissionInfoTest,FurnitureCmsNavigationTest,TenantVisitContextInterceptorTest,TenantControllerTest,WebsiteInquiryAccessTest,WebsiteTrafficControllerTest,WebsiteFollowUpScopeTest,CrmClueServiceImplTest,WebsiteMediaServiceTest,WebsitePageServiceTest,WebsitePreviewServiceTest,WebsiteBlogServiceImplTest,WebsiteNavigationServiceImplTest,WebsiteTrafficServiceTest,TablewareCmsServiceTest,WebsiteOperationsServiceTest -Dsurefire.failIfNoSpecifiedTests=false package
 
       - name: Verify migrations are packaged in the JAR
         working-directory: yudao电商管理平台前后端/yudao-cloud
@@ -169,6 +169,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Verify tenant visit isolation and account context
+        run: timeout --kill-after=5s 60s node --test scripts/check-tenant-visit.cjs scripts/check-tenant-branding.cjs
 
       # The inherited Yudao UI still has known type debt outside the furniture
       # modules. Keep reporting it without making every production build red.

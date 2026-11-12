@@ -12,6 +12,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.util.AntPathMatcher;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 import static cn.iocoder.yudao.framework.common.exception.util.ServiceExceptionUtil.exception0;
@@ -27,8 +28,16 @@ public class TenantVisitContextInterceptor implements HandlerInterceptor {
 
     private final SecurityFrameworkService securityFrameworkService;
 
+    private final AntPathMatcher pathMatcher = new AntPathMatcher();
+
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
+        // 个人账号接口及访问租户列表始终使用登录租户，不能沿用浏览器中旧的访问租户。
+        String uri = request.getRequestURI().substring(request.getContextPath().length());
+        if ("/admin-api/system/tenant/visit-list".equals(uri)
+                || tenantProperties.getIgnoreVisitUrls().stream().anyMatch(pattern -> pathMatcher.match(pattern, uri))) {
+            return true;
+        }
         // 如果和当前租户编号一致，则直接跳过
         Long visitTenantId = WebFrameworkUtils.getVisitTenantId(request);
         if (visitTenantId == null) {
@@ -49,6 +58,10 @@ public class TenantVisitContextInterceptor implements HandlerInterceptor {
             throw exception0(GlobalErrorCodeConstants.FORBIDDEN.getCode(), "您无权切换租户");
         }
 
+        if (tenantProperties.getPlatformVisitDeniedTenantIds().contains(visitTenantId)) {
+            throw exception0(GlobalErrorCodeConstants.FORBIDDEN.getCode(), "该租户仅允许使用其专属账号访问，请退出后登录该租户账号");
+        }
+
         // 【重点】切换租户编号
         loginUser.setVisitTenantId(visitTenantId);
         TenantContextHolder.setTenantId(visitTenantId);
@@ -61,6 +74,7 @@ public class TenantVisitContextInterceptor implements HandlerInterceptor {
         LoginUser loginUser = SecurityFrameworkUtils.getLoginUser();
         if (loginUser != null && loginUser.getTenantId() != null) {
             TenantContextHolder.setTenantId(loginUser.getTenantId());
+            loginUser.setVisitTenantId(null);
         }
     }
 

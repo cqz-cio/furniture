@@ -91,3 +91,8 @@ export const setVisitTenantId = (visitTenantId: number) => {
   wsCache.set(CACHE_KEY.VisitTenantId, visitTenantId)
   authContextVersion.value++
 }
+
+export const clearVisitTenantId = () => {
+  wsCache.delete(CACHE_KEY.VisitTenantId)
+  authContextVersion.value++
+}

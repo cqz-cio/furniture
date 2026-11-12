@@ -9,6 +9,10 @@ import cn.iocoder.yudao.framework.common.util.object.BeanUtils;
 import cn.iocoder.yudao.framework.excel.core.util.ExcelUtils;
 import cn.iocoder.yudao.framework.tenant.core.aop.TenantIgnore;
 import cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder;
+import cn.iocoder.yudao.framework.tenant.config.TenantProperties;
+import cn.iocoder.yudao.framework.security.core.LoginUser;
+import cn.iocoder.yudao.framework.security.core.service.SecurityFrameworkService;
+import cn.iocoder.yudao.framework.security.core.util.SecurityFrameworkUtils;
 import cn.iocoder.yudao.module.system.controller.admin.tenant.vo.tenant.TenantBusinessProfileRespVO;
 import cn.iocoder.yudao.module.system.controller.admin.tenant.vo.tenant.TenantPageReqVO;
 import cn.iocoder.yudao.module.system.controller.admin.tenant.vo.tenant.TenantRespVO;
@@ -27,11 +31,13 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Pattern;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Objects;
 
 import static cn.iocoder.yudao.framework.apilog.core.enums.OperateTypeEnum.EXPORT;
 import static cn.iocoder.yudao.framework.common.exception.util.ServiceExceptionUtil.exception;
@@ -47,6 +53,11 @@ public class TenantController {
 
     @Resource
     private TenantService tenantService;
+
+    @Autowired(required = false)
+    private TenantProperties tenantProperties;
+    @Resource
+    private SecurityFrameworkService securityFrameworkService;
 
     @GetMapping("/get-id-by-name")
     @PermitAll
@@ -66,6 +77,22 @@ public class TenantController {
         List<TenantDO> list = tenantService.getTenantListByStatus(CommonStatusEnum.ENABLE.getStatus());
         return success(convertList(list, tenantDO ->
                 new TenantRespVO().setId(tenantDO.getId()).setName(tenantDO.getName())));
+    }
+
+    @GetMapping("/visit-list")
+    @TenantIgnore
+    @Operation(summary = "获得平台管理员可以访问的租户列表")
+    public CommonResult<List<TenantRespVO>> getTenantVisitList() {
+        LoginUser user = SecurityFrameworkUtils.getLoginUser();
+        if (tenantProperties == null || user == null || !Objects.equals(user.getTenantId(), 1L)
+                || !securityFrameworkService.hasAnyRoles("super_admin")) {
+            return success(List.of());
+        }
+        List<TenantDO> list = tenantService.getTenantListByStatus(CommonStatusEnum.ENABLE.getStatus());
+        return success(convertList(list.stream()
+                        .filter(tenant -> !tenantProperties.getPlatformVisitDeniedTenantIds().contains(tenant.getId()))
+                        .toList(),
+                tenant -> new TenantRespVO().setId(tenant.getId()).setName(tenant.getName())));
     }
 
     @GetMapping("/get-by-website")

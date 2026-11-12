@@ -2,6 +2,10 @@ package cn.iocoder.yudao.module.system.controller.admin.tenant;
 
 import cn.iocoder.yudao.framework.common.pojo.CommonResult;
 import cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder;
+import cn.iocoder.yudao.framework.tenant.config.TenantProperties;
+import cn.iocoder.yudao.framework.security.core.LoginUser;
+import cn.iocoder.yudao.framework.security.core.service.SecurityFrameworkService;
+import cn.iocoder.yudao.framework.security.core.util.SecurityFrameworkUtils;
 import cn.iocoder.yudao.framework.test.core.ut.BaseMockitoUnitTest;
 import cn.iocoder.yudao.module.system.controller.admin.tenant.vo.tenant.TenantBusinessProfileRespVO;
 import cn.iocoder.yudao.module.system.controller.admin.tenant.vo.tenant.TenantSaveReqVO;
@@ -16,8 +20,13 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
+import java.util.Set;
 
 import static cn.iocoder.yudao.framework.test.core.util.AssertUtils.assertServiceException;
 import static cn.iocoder.yudao.module.system.enums.ErrorCodeConstants.TENANT_NOT_EXISTS;
@@ -33,9 +42,40 @@ public class TenantControllerTest extends BaseMockitoUnitTest {
     @Mock
     private TenantService tenantService;
 
+    @Spy
+    private TenantProperties tenantProperties = new TenantProperties();
+    @Mock
+    private SecurityFrameworkService securityFrameworkService;
+
     @AfterEach
     public void tearDown() {
         TenantContextHolder.clear();
+        SecurityContextHolder.clearContext();
+    }
+
+    @Test
+    public void visitListExcludesProtectedTenantButLoginListIncludesIt() {
+        tenantProperties.setPlatformVisitDeniedTenantIds(Set.of(164L));
+        when(tenantService.getTenantListByStatus(0)).thenReturn(List.of(
+                new TenantDO().setId(163L).setName("TRIPEER"),
+                new TenantDO().setId(164L).setName("Trendz Green")));
+        SecurityFrameworkUtils.setLoginUser(new LoginUser().setId(1L).setTenantId(1L), new MockHttpServletRequest());
+        when(securityFrameworkService.hasAnyRoles("super_admin")).thenReturn(true);
+        assertEquals(List.of(163L), tenantController.getTenantVisitList().getData().stream().map(t -> t.getId()).toList());
+        assertEquals(2, tenantController.getTenantSimpleList().getData().size());
+    }
+
+    @Test
+    public void tenantAccountHasNoCrossTenantVisitOptions() {
+        SecurityFrameworkUtils.setLoginUser(new LoginUser().setId(148L).setTenantId(164L), new MockHttpServletRequest());
+        assertTrue(tenantController.getTenantVisitList().getData().isEmpty());
+    }
+
+    @Test
+    public void disabledTenantModuleHasNoVisitOptions() {
+        ReflectionTestUtils.setField(tenantController, "tenantProperties", null);
+        SecurityFrameworkUtils.setLoginUser(new LoginUser().setId(1L).setTenantId(1L), new MockHttpServletRequest());
+        assertTrue(tenantController.getTenantVisitList().getData().isEmpty());
     }
 
     @Test

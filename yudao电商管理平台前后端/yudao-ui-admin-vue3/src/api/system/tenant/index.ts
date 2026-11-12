@@ -60,6 +60,11 @@ export const getTenantList = () => {
   return request.get({ url: '/system/tenant/simple-list' })
 }
 
+// 登录页仍使用公开的 simple-list；跨租户操作只使用服务器授权的列表。
+export const getTenantVisitList = (): Promise<Array<{ id: number; name: string }>> => {
+  return request.get({ url: '/system/tenant/visit-list', headers: { skipTenantVisit: true } })
+}
+
 // 获取当前有效租户业务配置
 export const getCurrentTenantBusinessProfile = (): Promise<TenantBusinessProfile> => {
   return request.get({ url: '/system/tenant/current-business-profile' })

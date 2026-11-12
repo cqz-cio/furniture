@@ -67,10 +67,11 @@ service.interceptors.request.use(
       if (tenantId) config.headers['tenant-id'] = tenantId
       // 只有登录时，才设置 visit-tenant-id 访问租户
       const visitTenantId = getVisitTenantId()
-      if (config.headers.Authorization && visitTenantId) {
+      if (config.headers.Authorization && visitTenantId && !config.headers.skipTenantVisit) {
         config.headers['visit-tenant-id'] = visitTenantId
       }
     }
+    delete config.headers.skipTenantVisit
     const method = config.method?.toUpperCase()
     // 防止 GET 请求缓存
     if (method === 'GET') {

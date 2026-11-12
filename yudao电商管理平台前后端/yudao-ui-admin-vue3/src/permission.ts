@@ -2,6 +2,7 @@ import router from './router'
 import type { RouteRecordRaw } from 'vue-router'
 import { isRelogin } from '@/config/axios/service'
 import { getAccessToken } from '@/utils/auth'
+import { validateTenantVisit } from '@/utils/tenantVisit'
 import { useTitle } from '@/hooks/web/useTitle'
 import { useNProgress } from '@/hooks/web/useNProgress'
 import { usePageLoading } from '@/hooks/web/usePageLoading'
@@ -68,6 +69,9 @@ router.beforeEach(async (to, from, next) => {
       const dictStore = useDictStoreWithOut()
       const userStore = useUserStoreWithOut()
       const permissionStore = usePermissionStoreWithOut()
+      if (!userStore.getIsSetUser) {
+        await validateTenantVisit()
+      }
       // 异步加载字典
       // 另外，间接 issue：https://gitee.com/yudaocode/yudao-ui-admin-vue3/issues/ID9FLI
       if (!dictStore.getIsSetDict) {
